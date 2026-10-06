@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { Toaster } from 'react-hot-toast'
 import { YandexMetrika } from '@/shared/components/YandexMetrika'
 import { MetrikaRouteHits } from '@/shared/components/MetrikaRouteHits'
@@ -15,16 +15,24 @@ import '@fontsource-variable/literata/wght.css'
 import '@fontsource-variable/literata/wght-italic.css'
 import './globals.css'
 import { color, values } from '@burcev/design-tokens'
+import { THEME_COOKIE, parseThemePreference } from '@/shared/theme/theme'
 
-export const viewport: Viewport = {
-    width: 'device-width',
-    initialScale: 1,
-    // Совпадает с фоном экрана темы (color.bg.canvas), чтобы полоса браузера
-    // и системная строка не отличались от страницы.
-    themeColor: [
-        { media: '(prefers-color-scheme: light)', color: values.light['color.bg.canvas'] },
-        { media: '(prefers-color-scheme: dark)', color: values.dark['color.bg.canvas'] },
-    ],
+/**
+ * Цвет системной строки совпадает с фоном экрана темы (color.bg.canvas).
+ * При явно выбранной теме — её фон, иначе — по системной настройке.
+ */
+export async function generateViewport(): Promise<Viewport> {
+    const theme = parseThemePreference((await cookies()).get(THEME_COOKIE)?.value)
+    return {
+        width: 'device-width',
+        initialScale: 1,
+        themeColor: theme === 'system'
+            ? [
+                { media: '(prefers-color-scheme: light)', color: values.light['color.bg.canvas'] },
+                { media: '(prefers-color-scheme: dark)', color: values.dark['color.bg.canvas'] },
+            ]
+            : values[theme]['color.bg.canvas'],
+    }
 }
 
 export const metadata: Metadata = {
@@ -73,9 +81,12 @@ export default async function RootLayout({
     // Set by middleware.ts for this response. The content policy names this
     // one nonce instead of allowing every inline script on the page.
     const nonce = (await headers()).get('x-nonce') ?? undefined
+    // Выбранная на этом устройстве тема приходит в разметке сразу: страница
+    // не мигает системной темой до загрузки скриптов.
+    const theme = parseThemePreference((await cookies()).get(THEME_COOKIE)?.value)
 
     return (
-        <html lang="ru">
+        <html lang="ru" data-theme={theme === 'system' ? undefined : theme}>
             <head>
                 {/* Registers controllerchange before React hydration so skipWaiting SW
                     activations that race ahead of useEffect still trigger a reload. */}

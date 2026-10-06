@@ -8,6 +8,9 @@ import { RoleShell } from '@/shared/components/RoleShell'
 import { apiClient } from '@/shared/utils/api-client'
 import { getProfile } from '@/features/settings/api/settings'
 import type { FullProfile } from '@/features/settings/api/settings'
+import { SettingsAppearance } from '@/features/settings/components/SettingsAppearance'
+import { Button } from '@/shared/components/ui/Button'
+import { ChevronRight } from 'lucide-react'
 
 const menuItems = [
     { label: 'Настройки профиля', href: '/settings/profile' },
@@ -45,7 +48,7 @@ export default function ProfilePage() {
     if (loading || !profile) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-canvas">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-line-strong" />
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-line border-t-primary" />
             </div>
         )
     }
@@ -53,53 +56,47 @@ export default function ProfilePage() {
     const initial = (profile.name || profile.email || '?')[0].toUpperCase()
 
     const content = (
-        <div className="w-full max-w-md mx-auto px-4 py-6">
-            {/* Avatar section */}
-            <div className="flex flex-col items-center mb-8">
+        <div className="mx-auto flex w-full max-w-content flex-col gap-8 px-screen-x py-6">
+            <div className="flex flex-col items-center text-center">
                 {profile.avatar_url ? (
                     <Image
                         src={profile.avatar_url}
                         alt={profile.name || 'Avatar'}
                         width={96}
                         height={96}
-                        className="w-24 h-24 rounded-full object-cover"
+                        className="h-24 w-24 rounded-full object-cover"
                     />
                 ) : (
-                    <div className="w-24 h-24 rounded-full bg-primary-soft flex items-center justify-center text-primary text-3xl font-semibold">
+                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary text-3xl font-semibold text-on-primary">
                         {initial}
                     </div>
                 )}
                 {profile.name && (
-                    <p className="mt-3 text-xl font-semibold text-fg">{profile.name}</p>
+                    <p className="mt-4 type-title-2 text-fg">{profile.name}</p>
                 )}
                 <p className="mt-1 text-sm text-fg-muted">{profile.email}</p>
             </div>
 
-            {/* Menu list */}
-            <div className="bg-surface rounded-2xl shadow-sm p-2 mb-8">
+            <nav aria-label="Настройки" className="overflow-hidden rounded-card border border-line bg-surface">
                 {menuItems.map((item, index) => (
                     <Link
                         key={item.href}
                         href={item.href}
-                        className={`flex items-center justify-between py-3 px-4${
+                        className={`flex min-h-14 items-center justify-between px-4 transition-colors hover:bg-subtle/60${
                             index < menuItems.length - 1 ? ' border-b border-line' : ''
                         }`}
                     >
-                        <span className="text-fg">{item.label}</span>
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-fg-subtle">
-                            <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
+                        <span className="text-base text-fg">{item.label}</span>
+                        <ChevronRight className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                     </Link>
                 ))}
-            </div>
+            </nav>
 
-            {/* Logout button */}
-            <button
-                onClick={handleLogout}
-                className="w-full py-3 text-danger-fg text-center font-medium"
-            >
+            <SettingsAppearance />
+
+            <Button variant="ghost" size="lg" block onClick={handleLogout} className="text-danger-fg hover:bg-danger-soft">
                 Выйти из аккаунта
-            </button>
+            </Button>
         </div>
     )
 
