@@ -235,6 +235,9 @@ export default async function Home({
                             className="flex gap-6 text-sm text-gray-500"
                         >
                             <SupportLink className="hover:text-gray-700" />
+                            <Link href="/kalkulyator-kbzhu" className="hover:text-gray-700">
+                                {t('landing.footer.calculator')}
+                            </Link>
                             <Link href="/content" className="hover:text-gray-700">
                                 {t('landing.footer.articles')}
                             </Link>

@@ -1773,6 +1773,15 @@ export const ru = {
         unitLbs: 'lbs',
         unitCm: 'см',
         unitIn: 'in',
+        // Открытая страница калькулятора /kalkulyator-kbzhu: вся форма на одном
+        // экране, расчёт там же, сохранение — уже в мастере.
+        calculator: {
+            calculate: 'Рассчитать',
+            calculating: 'Считаем…',
+            choose: 'Выберите',
+            saveAndPlan: 'Сохранить результат и получить план',
+            saveHint: 'Сохраним расчёт и покажем, как держать эту норму каждый день.',
+        },
         guest: {
             steps: {
                 goal: 'Цель',
@@ -2076,6 +2085,7 @@ export const ru = {
             register: 'Регистрация',
         },
         footer: {
+            calculator: 'Калькулятор КБЖУ',
             articles: 'Статьи',
             terms: 'Оферта',
             privacy: 'Конфиденциальность',

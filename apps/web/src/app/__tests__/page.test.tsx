@@ -141,6 +141,18 @@ describe('Посадочная страница', () => {
         expect(labels.every(Boolean)).toBe(true)
         expect(new Set(labels).size).toBe(2)
     })
+
+    // Открытая страница калькулятора получает ссылку с главной: без неё робот
+    // находит её только по карте сайта, и вес главной до неё не доходит.
+    it('ведёт из подвала на открытый калькулятор КБЖУ', async () => {
+        render(await Home({ features: {} }))
+
+        const footerNav = screen.getByRole('navigation', { name: 'Дополнительные ссылки' })
+        expect(within(footerNav).getByRole('link', { name: 'Калькулятор КБЖУ' })).toHaveAttribute(
+            'href',
+            '/kalkulyator-kbzhu',
+        )
+    })
 })
 
 // Настоящий путь enabledFeatures(): без props.features страница сама зовёт
