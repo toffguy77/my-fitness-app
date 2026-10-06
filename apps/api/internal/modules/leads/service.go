@@ -128,7 +128,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 	// Гость со страницы тарифов просит куратора так же, как вошедший человек.
 	if isCuratorRequestStep(step) {
 		s.announce(ctx, curatorRequest{
-			LeadID: lead.ID, Email: email, Name: in.Name, CaptureSource: captureSource,
+			LeadID: lead.ID, Email: email, CaptureSource: captureSource,
 		}, 0)
 	}
 	return lead, s.ResumeToken(lead.ID), nil

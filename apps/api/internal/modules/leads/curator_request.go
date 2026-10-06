@@ -68,7 +68,7 @@ func (s *Service) CreateCuratorRequest(ctx context.Context, userID int64, captur
 	email = strings.ToLower(strings.TrimSpace(email))
 
 	lead := &Lead{Email: email, Name: name.String, LastStep: "curator_request", Source: "product"}
-	req := curatorRequest{Email: email, Name: name.String, CaptureSource: captureSource, UserID: &userID}
+	req := curatorRequest{Email: email, CaptureSource: captureSource, UserID: &userID}
 
 	// Оповещение — только когда строка впервые становится заявкой: повторное
 	// нажатие той же кнопки не новость, а гостевая анкета, превратившаяся в

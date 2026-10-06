@@ -3,7 +3,6 @@ package leads
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/modules/notifications"
@@ -69,27 +68,25 @@ func (s *Service) WithOperatorAlerts(notifier OperatorNotifier, group GroupAnnou
 type curatorRequest struct {
 	LeadID        string
 	Email         string
-	Name          string
 	CaptureSource string
 	// UserID непуст, когда просит уже зарегистрированный человек.
 	UserID *int64
 }
 
 // who — как назвать человека в оповещении.
+//
+// Без имени, намеренно: имя — свободный текст, который гость вводит в
+// публичную форму, и в ленте группы оно стало бы чужим текстом от имени бота —
+// со ссылкой, которую Telegram сделает кликабельной. Адрес проверен на форму,
+// а остальное куратор увидит в очереди.
+//
+// Гостевой адрес помечается неподтверждённым: форму тарифов может заполнить
+// кто угодно и чьим угодно адресом.
 func (r curatorRequest) who() string {
-	name := strings.TrimSpace(r.Name)
-	var b strings.Builder
-	if name != "" {
-		b.WriteString(name)
-		b.WriteString(" ")
-	}
-	b.WriteString("<" + r.Email + ">")
 	if r.UserID != nil {
-		fmt.Fprintf(&b, ", клиент №%d", *r.UserID)
-	} else {
-		b.WriteString(", ещё не зарегистрирован")
+		return fmt.Sprintf("клиент №%d <%s>", *r.UserID, r.Email)
 	}
-	return b.String()
+	return fmt.Sprintf("гость <%s>, адрес не подтверждён", r.Email)
 }
 
 func sourceLabel(captureSource string) string {
@@ -211,11 +208,16 @@ func (s *Service) RaiseUnhandledCuratorRequests(ctx context.Context, after time.
 		 WHERE l.handled_at IS NULL
 		   AND l.curator_request_raised_at IS NULL
 		   AND l.curator_requested_at < NOW() - $1::interval
-		RETURNING l.id, l.email, COALESCE(l.name, ''), COALESCE(l.capture_source, ''),
+		RETURNING l.id, l.email, COALESCE(l.capture_source, ''),
 		          EXTRACT(EPOCH FROM NOW() - l.curator_requested_at)::bigint,
-		          (SELECT u.id FROM users u
-		            WHERE lower(u.email) = l.email AND u.deleted_at IS NULL
-		            LIMIT 1)`,
+		          -- Клиентом заявка названа, только если её оставил вошедший
+		          -- человек (source = 'product'). Гость мог вписать чужой адрес,
+		          -- и поиск по адресу выдал бы его за зарегистрированного.
+		          CASE WHEN l.source = 'product' THEN
+		              (SELECT u.id FROM users u
+		                WHERE lower(u.email) = l.email AND u.deleted_at IS NULL
+		                LIMIT 1)
+		          END`,
 		intervalOf(after))
 	if err != nil {
 		return 0, fmt.Errorf("find unhandled curator requests: %w", err)
@@ -232,7 +234,7 @@ func (s *Service) RaiseUnhandledCuratorRequests(ctx context.Context, after time.
 			p       pending
 			seconds int64
 		)
-		if err := rows.Scan(&p.req.LeadID, &p.req.Email, &p.req.Name, &p.req.CaptureSource,
+		if err := rows.Scan(&p.req.LeadID, &p.req.Email, &p.req.CaptureSource,
 			&seconds, &p.req.UserID); err != nil {
 			return 0, fmt.Errorf("read an unhandled curator request: %w", err)
 		}

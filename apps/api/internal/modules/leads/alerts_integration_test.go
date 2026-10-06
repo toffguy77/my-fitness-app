@@ -132,7 +132,7 @@ func TestCuratorRequest_ГостьСоСтраницыТарифовЗовёт(t
 	sent := group.messages()
 	require.Len(t, sent, 1)
 	assert.Contains(t, sent[0], "guest@example.test")
-	assert.Contains(t, sent[0], "ещё не зарегистрирован")
+	assert.Contains(t, sent[0], "адрес не подтверждён")
 	assert.Contains(t, sent[0], "страница тарифов")
 }
 
@@ -214,4 +214,52 @@ func TestDueReminders_ЗаявкеНаКуратораНеПишут(t *testing.
 	}
 	assert.Contains(t, ids, guestID, "гостю, бросившему анкету, напоминание по-прежнему уходит")
 	assert.NotContains(t, ids, request.ID)
+}
+
+// Имя гостя — свободный текст с публичной формы. В ленте группы оно стало бы
+// чужим текстом от имени бота.
+func TestCuratorRequest_ИмяГостяВГруппуНеПопадает(t *testing.T) {
+	ctx := context.Background()
+	_, service, group := alertingService(t, "alert_guest_name")
+
+	_, _, err := service.Create(ctx, leads.CreateInput{
+		Email:         "guest@example.test",
+		Name:          "Срочно: оплата куратора тут evil.example",
+		LastStep:      "pricing",
+		CaptureSource: leads.CapturePricingPage,
+		Consents:      leads.Consents{DataProcessing: true, Contact: true},
+	}, "127.0.0.1", "test")
+	require.NoError(t, err)
+
+	sent := group.messages()
+	require.Len(t, sent, 1)
+	assert.NotContains(t, sent[0], "evil.example")
+}
+
+// Форму тарифов можно заполнить чужим адресом. Напоминание не должно выдавать
+// такую заявку за просьбу зарегистрированного клиента.
+func TestRaiseUnhandledCuratorRequests_ГостьСЧужимАдресомНеКлиент(t *testing.T) {
+	ctx := context.Background()
+	db, service, group := alertingService(t, "alert_spoofed_email")
+	seedUser(t, db, "victim@example.test", "client")
+
+	_, _, err := service.Create(ctx, leads.CreateInput{
+		Email:         "victim@example.test",
+		LastStep:      "pricing",
+		Source:        "pricing",
+		CaptureSource: leads.CapturePricingPage,
+		Consents:      leads.Consents{DataProcessing: true, Contact: true},
+	}, "127.0.0.1", "test")
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `UPDATE leads SET curator_requested_at = now() - interval '5 hours'`)
+	require.NoError(t, err)
+
+	raised, err := service.RaiseUnhandledCuratorRequests(ctx, 4*time.Hour)
+	require.NoError(t, err)
+	require.Equal(t, 1, raised)
+
+	sent := group.messages()
+	last := sent[len(sent)-1]
+	assert.NotContains(t, last, "клиент №")
+	assert.Contains(t, last, "адрес не подтверждён")
 }
