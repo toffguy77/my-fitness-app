@@ -42,7 +42,7 @@ export function CuratorFooterNavigation({
 
     return (
         <nav
-            className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-line bg-surface px-2"
+            className="fixed bottom-0 left-0 right-0 z-50 grid h-auto min-h-16 grid-cols-5 items-stretch border-t border-line bg-nav px-2 pt-1.5 backdrop-blur-md"
             style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
             data-testid="curator-footer-navigation"
             aria-label={t('curator.navigation.aria')}
@@ -56,10 +56,12 @@ export function CuratorFooterNavigation({
                         key={item.id}
                         onClick={() => handleNavigationClick(item.id)}
                         className={cn(
-                            'flex flex-col items-center justify-center gap-1 px-3 py-2 transition-colors',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded-lg',
-                            'cursor-pointer hover:bg-subtle',
-                            isActive ? 'text-primary' : 'text-fg-muted'
+                            'flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-tile px-1 py-1 transition-colors',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus',
+                            'cursor-pointer hover:text-fg',
+                            // Активный пункт — чернилами и точкой бренда под
+                            // подписью, как в навигации клиента.
+                            isActive ? 'text-fg' : 'text-fg-subtle'
                         )}
                         aria-label={item.label}
                         aria-current={isActive ? 'page' : undefined}
@@ -70,21 +72,20 @@ export function CuratorFooterNavigation({
                             <Icon
                                 size={24}
                                 aria-hidden="true"
-                                className={cn(
-                                    'transition-colors',
-                                    isActive && 'stroke-[2.5]'
-                                )}
+                                strokeWidth={isActive ? 2 : 1.8}
+                                className="transition-colors"
                             />
                             {item.id === 'chats' && unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-medium text-on-primary">
+                                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold tabular-nums text-on-primary ring-2 ring-canvas">
                                     {unreadCount > 99 ? '99+' : unreadCount}
                                 </span>
                             )}
                         </span>
                         <span
                             className={cn(
-                                'text-xs transition-all',
-                                isActive && 'font-semibold'
+                                'relative max-w-full truncate pb-1.5 text-[11px] leading-[14px]',
+                                'after:absolute after:bottom-0 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full',
+                                isActive ? 'font-semibold after:bg-primary' : 'font-medium after:bg-transparent'
                             )}
                         >
                             {item.label}

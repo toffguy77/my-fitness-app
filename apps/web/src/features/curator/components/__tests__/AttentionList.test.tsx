@@ -114,9 +114,9 @@ describe('AttentionList', () => {
         expect(badge.className).toContain('bg-warning-soft')
     })
 
-    it('applies blue badge for priority 4-5', () => {
+    it('applies the informational badge for priority 4-5', () => {
         render(<AttentionList items={[makeItem({ priority: 5 })]} />)
         const badge = screen.getByText('Алерт КБЖУ')
-        expect(badge.className).toContain('bg-primary-soft')
+        expect(badge.className).toContain('bg-info-soft')
     })
 })

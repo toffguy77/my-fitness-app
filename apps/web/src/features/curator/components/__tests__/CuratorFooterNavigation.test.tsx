@@ -64,14 +64,14 @@ describe('CuratorFooterNavigation', () => {
         expect(clientsBtn).not.toHaveAttribute('aria-current')
     })
 
-    it('active item has blue text styling', () => {
+    it('active item is inked, the rest are subdued', () => {
         render(<CuratorFooterNavigation activeItem="chats" />)
 
         const chatsBtn = screen.getByTestId('nav-item-chats')
-        expect(chatsBtn.className).toContain('text-primary')
+        expect(chatsBtn).toHaveClass('text-fg')
 
         const clientsBtn = screen.getByTestId('nav-item-hub')
-        expect(clientsBtn.className).toContain('text-fg-muted')
+        expect(clientsBtn).toHaveClass('text-fg-subtle')
     })
 
     it('calls onNavigate and router.push on click', () => {

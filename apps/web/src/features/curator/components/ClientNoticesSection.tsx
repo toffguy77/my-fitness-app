@@ -65,7 +65,7 @@ export function ClientNoticesSection({ clientId }: { clientId: number }) {
 
     if (failed) {
         return (
-            <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm">
+            <div className="rounded-card border border-line bg-surface p-5">
                 <p className="text-sm text-fg-muted">{t('curator.notices.loadFailed')}</p>
             </div>
         )
@@ -74,32 +74,27 @@ export function ClientNoticesSection({ clientId }: { clientId: number }) {
     if (!notices) return null
 
     return (
-        <div className="mt-4 rounded-2xl bg-surface p-4 shadow-sm" data-testid="client-notices">
-            <p className="mb-3 text-sm font-medium text-fg-muted">{t('curator.notices.heading')}</p>
+        <div className="rounded-card border border-line bg-surface p-5" data-testid="client-notices">
+            <h2 className="type-title-3 mb-2 text-fg">{t('curator.notices.heading')}</h2>
 
             {notices.length === 0 ? (
                 <p className="text-sm text-fg-muted">{t('curator.notices.empty')}</p>
             ) : (
-                <div className="space-y-0">
-                    {notices.map((notice, index) => {
+                <div className="divide-y divide-line">
+                    {notices.map((notice) => {
                         const marks = notice.deliveries
                             .map((d) => deliveryLabel(d.channel, d.status))
                             .filter(Boolean)
 
                         return (
-                            <div
-                                key={notice.id}
-                                className={`py-3 ${
-                                    index < notices.length - 1 ? 'border-b border-line' : ''
-                                }`}
-                            >
+                            <div key={notice.id} className="py-3">
                                 <div className="flex items-baseline justify-between gap-3">
                                     <span className="text-fg">{notice.title}</span>
-                                    <span className="shrink-0 text-xs text-fg-subtle">
+                                    <span className="shrink-0 text-[13px] tabular-nums text-fg-subtle">
                                         {formatWhen(notice.createdAt)}
                                     </span>
                                 </div>
-                                <p className="mt-0.5 text-xs text-fg-muted">
+                                <p className="mt-0.5 text-[13px] text-fg-muted">
                                     {TYPE_LABELS[notice.type] ?? notice.type}
                                     {' · '}
                                     {notice.readAt ? t('curator.notices.read') : t('curator.notices.unread')}

@@ -1,7 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import { cn } from '@/shared/utils/cn'
 import type { CuratorLoad } from '../types'
 
 import { t } from '@/shared/i18n'
@@ -19,10 +18,7 @@ export function CuratorLoadCard({ curator }: CuratorLoadCardProps) {
 
     return (
         <div
-            className={cn(
-                'rounded-xl bg-surface p-4 shadow-sm border border-line',
-                'transition-shadow hover:shadow-md'
-            )}
+            className="rounded-card border border-line bg-surface p-4"
             data-testid={`curator-load-card-${curator.id}`}
         >
             <div className="flex items-center gap-3">
@@ -35,17 +31,17 @@ export function CuratorLoadCard({ curator }: CuratorLoadCardProps) {
                         className="h-10 w-10 rounded-full object-cover"
                     />
                 ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-subtle text-sm font-semibold text-fg-muted">
                         {initials}
                     </div>
                 )}
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-fg truncate">{curator.name}</p>
-                    <p className="text-xs text-fg-muted truncate">{curator.email}</p>
+                    <p className="type-headline truncate text-fg">{curator.name}</p>
+                    <p className="truncate text-sm text-fg-muted">{curator.email}</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-lg font-bold text-primary">{curator.client_count}</p>
-                    <p className="text-xs text-fg-muted">{t('admin.dashboard.clientsWord')}</p>
+                    <p className="type-num-l tabular-nums text-fg">{curator.client_count}</p>
+                    <p className="text-[13px] text-fg-muted">{t('admin.dashboard.clientsWord')}</p>
                 </div>
             </div>
         </div>

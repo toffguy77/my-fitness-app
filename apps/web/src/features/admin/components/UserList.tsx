@@ -3,8 +3,11 @@
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Search } from 'lucide-react'
+import { ChevronRight, Search } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
+import { Button } from '@/shared/components/ui/Button'
+import { Input } from '@/shared/components/ui/Input'
+import { ADMIN_FIELD_CLASS, ADMIN_ROW_CLASS, AdminSpinner } from './adminUi'
 import { adminApi } from '../api/adminApi'
 import type { AdminUser } from '../types'
 
@@ -16,10 +19,14 @@ const ROLE_LABELS: Record<string, string> = {
     super_admin: t('admin.roles.super_admin'),
 }
 
+/**
+ * Роль — категория, а не оценка: клиент нейтрален, куратор — сведение,
+ * администратор — предупреждение о повышенных правах.
+ */
 const ROLE_COLORS: Record<string, string> = {
-    client: 'bg-subtle text-fg',
-    coordinator: 'bg-primary-soft text-primary',
-    super_admin: 'bg-info-soft text-info-fg',
+    client: 'bg-subtle text-fg-muted',
+    coordinator: 'bg-info-soft text-info-fg',
+    super_admin: 'bg-warning-soft text-warning-fg',
 }
 
 const PAGE_SIZE = 50
@@ -61,11 +68,7 @@ export function UserList() {
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
-            </div>
-        )
+        return <AdminSpinner />
     }
 
     if (error) {
@@ -83,21 +86,22 @@ export function UserList() {
     return (
         <div className="space-y-4">
             {/* Search and filter */}
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
-                    <input
-                        type="text"
+                    <Search className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
+                    <Input
+                        type="search"
                         placeholder={t('admin.users.searchPlaceholder')}
+                        aria-label={t('admin.users.searchPlaceholder')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full rounded-lg border border-line py-2 pl-9 pr-3 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
+                        className="pl-11"
                     />
                 </div>
                 <select
                     value={roleFilter}
                     onChange={(e) => setRoleFilter(e.target.value)}
-                    className="rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
+                    className={cn(ADMIN_FIELD_CLASS, 'sm:w-48')}
                 >
                     <option value="all">{t('admin.users.allRoles')}</option>
                     <option value="client">{t('admin.users.clients')}</option>
@@ -106,13 +110,13 @@ export function UserList() {
                 </select>
             </div>
 
-            <p className="text-xs text-fg-muted">{t('admin.users.countOf', { shown: filtered.length, total: users.length })}</p>
+            <p className="text-sm tabular-nums text-fg-muted">{t('admin.users.countOf', { shown: filtered.length, total: users.length })}</p>
 
             {/* User list */}
             {filtered.length === 0 ? (
                 <p className="py-8 text-center text-sm text-fg-muted">{t('admin.users.notFound')}</p>
             ) : (
-                <div className="space-y-2">
+                <div className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
                     {filtered.map((user) => {
                         const initials = user.name
                             .split(' ')
@@ -126,49 +130,44 @@ export function UserList() {
                                 key={user.id}
                                 type="button"
                                 onClick={() => router.push(`/admin/users/${user.id}`)}
-                                className={cn(
-                                    'w-full rounded-xl bg-surface p-4 shadow-sm border border-line',
-                                    'text-left transition-shadow hover:shadow-md',
-                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2'
-                                )}
+                                className={ADMIN_ROW_CLASS}
                             >
-                                <div className="flex items-center gap-3">
-                                    {user.avatar_url ? (
-                                        <Image
-                                            src={user.avatar_url}
-                                            alt={user.name}
-                                            width={40}
-                                            height={40}
-                                            className="h-10 w-10 rounded-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
-                                            {initials || '?'}
-                                        </div>
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-fg truncate">
-                                            {user.name || user.email}
-                                        </p>
-                                        <p className="text-xs text-fg-muted truncate">{user.email}</p>
+                                {user.avatar_url ? (
+                                    <Image
+                                        src={user.avatar_url}
+                                        alt={user.name}
+                                        width={40}
+                                        height={40}
+                                        className="h-10 w-10 shrink-0 rounded-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-subtle text-sm font-semibold text-fg-muted" aria-hidden="true">
+                                        {initials || '?'}
                                     </div>
-                                    <span className={cn(
-                                        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                                        ROLE_COLORS[user.role] || 'bg-subtle text-fg'
-                                    )}>
-                                        {ROLE_LABELS[user.role] || user.role}
-                                    </span>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                    <p className="type-headline truncate text-fg">
+                                        {user.name || user.email}
+                                    </p>
+                                    <p className="truncate text-sm text-fg-muted">{user.email}</p>
+                                    {user.curator_name && (
+                                        <p className="text-[13px] text-fg-subtle">
+                                            {t('admin.users.curatorOf', { name: user.curator_name })}
+                                        </p>
+                                    )}
+                                    {user.role === 'coordinator' && user.client_count > 0 && (
+                                        <p className="text-[13px] tabular-nums text-fg-subtle">
+                                            {t('admin.users.clientCount', { count: user.client_count })}
+                                        </p>
+                                    )}
                                 </div>
-                                {user.curator_name && (
-                                    <p className="mt-2 text-xs text-fg-muted">
-                                        {t('admin.users.curatorOf', { name: user.curator_name })}
-                                    </p>
-                                )}
-                                {user.role === 'coordinator' && user.client_count > 0 && (
-                                    <p className="mt-2 text-xs text-fg-muted">
-                                        {t('admin.users.clientCount', { count: user.client_count })}
-                                    </p>
-                                )}
+                                <span className={cn(
+                                    'inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                                    ROLE_COLORS[user.role] || 'bg-subtle text-fg-muted'
+                                )}>
+                                    {ROLE_LABELS[user.role] || user.role}
+                                </span>
+                                <ChevronRight className="h-5 w-5 shrink-0 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                             </button>
                         )
                     })}
@@ -177,17 +176,17 @@ export function UserList() {
 
             {users.length < total && (
                 <div className="mt-6 text-center">
-                    <p className="mb-2 text-xs text-fg-muted">
+                    <p className="mb-2 text-sm tabular-nums text-fg-muted">
                         {t('admin.users.shownOf', { shown: users.length, total })}
                     </p>
-                    <button
+                    <Button
                         type="button"
+                        variant="secondary"
                         onClick={loadMore}
                         disabled={loadingMore}
-                        className="rounded-md border border-line px-4 py-2 text-sm hover:bg-canvas disabled:opacity-50"
                     >
                         {loadingMore ? t('admin.users.loadingMore') : t('admin.users.showMore')}
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>

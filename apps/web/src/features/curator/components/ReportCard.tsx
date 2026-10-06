@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown, MessageSquare } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
+import { Button } from '@/shared/components/ui/Button'
 import type { WeeklyReportView, RatingLevel } from '../types'
 import { FeedbackForm } from './FeedbackForm'
 
@@ -38,20 +39,21 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
     const feedback = report.curator_feedback
 
     return (
-        <div className="rounded-xl bg-surface shadow-sm border border-line overflow-hidden">
+        <div className="overflow-hidden rounded-card border border-line bg-surface">
             <button
                 type="button"
                 onClick={() => setExpanded(!expanded)}
-                className="w-full text-left px-4 py-3 hover:bg-canvas transition-colors"
+                aria-expanded={expanded}
+                className="min-h-14 w-full px-4 py-3 text-left transition-colors hover:bg-subtle/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             >
-                <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-fg">
+                <div className="flex items-center justify-between gap-3">
+                    <span className="type-headline tabular-nums text-fg">
                         {formatDateRu(report.week_start)} — {formatDateRu(report.week_end)}
                     </span>
                     <div className="flex items-center gap-2">
                         <span
                             className={cn(
-                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
                                 report.has_feedback
                                     ? 'bg-success-soft text-success-fg'
                                     : 'bg-warning-soft text-warning-fg',
@@ -64,17 +66,18 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                                 'h-4 w-4 text-fg-subtle transition-transform',
                                 expanded && 'rotate-180',
                             )}
+                            aria-hidden="true"
                         />
                     </div>
                 </div>
-                <p className="text-xs text-fg-muted mt-1">{t('curator.feedback.week', { week: report.week_number })}</p>
+                <p className="mt-0.5 text-sm tabular-nums text-fg-muted">{t('curator.feedback.week', { week: report.week_number })}</p>
             </button>
 
             {expanded && (
-                <div className="px-4 pb-4 border-t border-line space-y-3 pt-3">
+                <div className="space-y-3 border-t border-line px-4 pb-4 pt-3">
                     {/* Summary data */}
                     {report.summary && Object.keys(report.summary).length > 0 && (
-                        <div className="text-xs text-fg-muted space-y-1">
+                        <div className="space-y-1 text-sm tabular-nums text-fg-muted">
                             {Object.entries(report.summary).map(([key, value]) => (
                                 <p key={key}>
                                     <span className="font-medium text-fg">{key}:</span>{' '}
@@ -86,12 +89,12 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
 
                     {/* Feedback display */}
                     {feedback ? (
-                        <div className="space-y-2 rounded-lg bg-canvas p-3">
-                            <h4 className="text-xs font-semibold text-fg">{t('curator.feedback.heading')}</h4>
+                        <div className="space-y-2 rounded-tile bg-subtle p-4">
+                            <h4 className="type-overline text-fg-subtle">{t('curator.feedback.heading')}</h4>
                             {feedback.nutrition && (
-                                <div className="text-xs">
+                                <div className="text-sm">
                                     <span className="text-fg-muted">{t('curator.feedback.nutritionLabel')}</span>
-                                    <span className={RATING_COLORS[feedback.nutrition.rating]}>
+                                    <span className={cn('font-medium', RATING_COLORS[feedback.nutrition.rating])}>
                                         {RATING_LABELS[feedback.nutrition.rating]}
                                     </span>
                                     {feedback.nutrition.comment && (
@@ -100,9 +103,9 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                                 </div>
                             )}
                             {feedback.activity && (
-                                <div className="text-xs">
+                                <div className="text-sm">
                                     <span className="text-fg-muted">{t('curator.feedback.activityLabel')}</span>
-                                    <span className={RATING_COLORS[feedback.activity.rating]}>
+                                    <span className={cn('font-medium', RATING_COLORS[feedback.activity.rating])}>
                                         {RATING_LABELS[feedback.activity.rating]}
                                     </span>
                                     {feedback.activity.comment && (
@@ -111,9 +114,9 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                                 </div>
                             )}
                             {feedback.water && (
-                                <div className="text-xs">
+                                <div className="text-sm">
                                     <span className="text-fg-muted">{t('curator.feedback.waterLabel')}</span>
-                                    <span className={RATING_COLORS[feedback.water.rating]}>
+                                    <span className={cn('font-medium', RATING_COLORS[feedback.water.rating])}>
                                         {RATING_LABELS[feedback.water.rating]}
                                     </span>
                                     {feedback.water.comment && (
@@ -121,20 +124,16 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                                     )}
                                 </div>
                             )}
-                            <p className="text-xs text-fg mt-2">{feedback.summary}</p>
+                            <p className="type-quote pt-1 text-fg">{feedback.summary}</p>
                             {feedback.recommendations && (
-                                <p className="text-xs text-fg-muted italic">{feedback.recommendations}</p>
+                                <p className="text-sm text-fg-muted">{feedback.recommendations}</p>
                             )}
                         </div>
                     ) : (
-                        <button
-                            type="button"
-                            onClick={() => setShowFeedbackForm(true)}
-                            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-hover transition-colors"
-                        >
-                            <MessageSquare className="h-4 w-4" />
+                        <Button type="button" variant="secondary" onClick={() => setShowFeedbackForm(true)}>
+                            <MessageSquare className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                             {t('curator.feedback.give')}
-                        </button>
+                        </Button>
                     )}
                 </div>
             )}

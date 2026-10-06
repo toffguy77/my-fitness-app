@@ -55,14 +55,14 @@ describe('AdminFooterNavigation', () => {
         expect(dashboardBtn).toHaveAttribute('aria-current', 'page')
     })
 
-    it('active item has blue text styling', () => {
+    it('active item is inked, the rest are subdued', () => {
         render(<AdminFooterNavigation activeItem="chats" />)
 
         const chatsBtn = screen.getByTestId('nav-item-chats')
-        expect(chatsBtn.className).toContain('text-primary')
+        expect(chatsBtn).toHaveClass('text-fg')
 
         const dashboardBtn = screen.getByTestId('nav-item-dashboard')
-        expect(dashboardBtn.className).toContain('text-fg-muted')
+        expect(dashboardBtn).toHaveClass('text-fg-subtle')
     })
 
     it('calls onNavigate and router.push on click', () => {

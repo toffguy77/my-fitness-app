@@ -10,7 +10,7 @@ import { cn } from '@/shared/utils/cn'
 import type { WeeklySnapshot, PlatformBenchmark } from '../types'
 
 import { t } from '@/shared/i18n'
-import { AXIS_STYLE, GRID_STROKE, chartColor } from '@/shared/charts/chartTheme'
+import { AXIS_STYLE, GRID_STROKE, TOOLTIP_CLASS, chartColor } from '@/shared/charts/chartTheme'
 const CHART_HEIGHT = 200
 
 interface AnalyticsDynamicsChartProps {
@@ -27,7 +27,7 @@ function DynamicsTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-line bg-surface px-3 py-2 shadow-sm">
+        <div className={TOOLTIP_CLASS}>
             <p className="text-xs font-medium text-fg mb-1">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
                 <p key={entry.name} className="text-xs text-fg-muted">
@@ -35,7 +35,7 @@ function DynamicsTooltip({ active, payload, label }: {
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
                     />
-                    {entry.name === 'own' ? t('curator.analytics.own') : t('curator.analytics.platform')}: <span className="font-medium">{Number(entry.value)}%</span>
+                    {entry.name === 'own' ? t('curator.analytics.own') : t('curator.analytics.platform')}: <span className="font-medium tabular-nums">{Number(entry.value)}%</span>
                 </p>
             ))}
         </div>
@@ -69,8 +69,8 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
     // has to look like one.
     if (ownSnapshots.length === 0) {
         return (
-            <div className="rounded-xl bg-surface shadow-sm border border-line px-4 py-5">
-                <p className="text-sm font-semibold text-fg">{t('curator.analytics.dynamics')}</p>
+            <div className="rounded-card border border-line bg-surface p-5">
+                <h2 className="type-title-3 text-fg">{t('curator.analytics.dynamics')}</h2>
                 <p className="mt-2 text-sm text-fg-muted">
                     {t('curator.analytics.emptyHint')}
                 </p>
@@ -79,33 +79,37 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
     }
 
     return (
-        <div className="rounded-xl bg-surface shadow-sm border border-line overflow-hidden">
+        <div className="overflow-hidden rounded-card border border-line bg-surface">
             <button
                 type="button"
                 onClick={() => setExpanded(prev => !prev)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left"
+                aria-expanded={expanded}
+                className="flex min-h-14 w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-subtle/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             >
-                <span className="text-sm font-semibold text-fg">{t('curator.analytics.dynamics')}</span>
+                <span className="type-title-3 text-fg">{t('curator.analytics.dynamics')}</span>
                 {expanded ? (
-                    <ChevronUp className="h-4 w-4 text-fg-subtle" />
+                    <ChevronUp className="h-5 w-5 text-fg-subtle" aria-hidden="true" />
                 ) : (
-                    <ChevronDown className="h-4 w-4 text-fg-subtle" />
+                    <ChevronDown className="h-5 w-5 text-fg-subtle" aria-hidden="true" />
                 )}
             </button>
 
             {expanded && (
-                <div className="px-4 pb-4">
-                    <div className="flex gap-1 mb-3">
+                <div className="px-5 pb-5">
+                    {/* Период из трёх вариантов — сегменты; выбранный — чернилами. */}
+                    <div className="mb-3 inline-flex rounded-full border border-line p-1" role="group">
                         {([4, 8, 12] as const).map(w => (
                             <button
                                 key={w}
                                 type="button"
                                 onClick={() => setWeeks(w)}
+                                aria-pressed={weeks === w}
                                 className={cn(
-                                    'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                                    'h-9 rounded-full px-4 text-sm font-medium transition-colors',
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                                     weeks === w
-                                        ? 'bg-primary text-on-primary'
-                                        : 'bg-subtle text-fg-muted hover:bg-subtle'
+                                        ? 'bg-fg text-fg-inverse'
+                                        : 'text-fg-muted hover:text-fg'
                                 )}
                             >
                                 {t('curator.analytics.weeks', { count: w })}
@@ -114,7 +118,7 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                     </div>
 
                     {benchmarks.length === 0 && (
-                        <p className="mb-3 text-xs text-fg-muted">
+                        <p className="mb-3 rounded-tile bg-info-soft px-3 py-2 text-sm text-info-fg">
                             {t('curator.analytics.noBenchmarks')}
                         </p>
                     )}
@@ -139,9 +143,9 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                             <Line
                                 type="monotone"
                                 dataKey="own"
-                                stroke={chartColor.primary}
+                                stroke={chartColor.fg}
                                 strokeWidth={2}
-                                dot={{ r: 3 }}
+                                dot={{ r: 3, fill: chartColor.fg, strokeWidth: 0 }}
                                 activeDot={{ r: 5 }}
                                 name="own"
                             />
@@ -158,13 +162,13 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                         </LineChart>
                     </ResponsiveContainer>
 
-                    <div className="flex items-center gap-4 mt-2 text-xs text-fg-muted">
-                        <span className="flex items-center gap-1">
-                            <span className="inline-block w-3 h-0.5 bg-primary rounded" />
+                    <div className="mt-2 flex items-center gap-4 text-[13px] text-fg-muted">
+                        <span className="flex items-center gap-1.5">
+                            <span className="inline-block w-4 border-t-2 border-fg" aria-hidden="true" />
                             {t('curator.analytics.ownMetric')}
                         </span>
-                        <span className="flex items-center gap-1">
-                            <span className="inline-block w-3 h-0.5 bg-line rounded border-dashed" />
+                        <span className="flex items-center gap-1.5">
+                            <span className="inline-block w-4 border-t-2 border-dashed border-fg-subtle" aria-hidden="true" />
                             {t('curator.analytics.platform')}
                         </span>
                     </div>

@@ -36,8 +36,8 @@ export function ClientCard({ client }: ClientCardProps) {
             onClick={handleClick}
             data-testid="client-card"
             className={cn(
-                'w-full rounded-xl bg-surface p-4 shadow-sm border border-line',
-                'text-left transition-shadow hover:shadow-md',
+                'w-full rounded-card border border-line bg-surface p-4',
+                'text-left transition-colors hover:border-line-strong',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2'
             )}
         >
@@ -52,15 +52,15 @@ export function ClientCard({ client }: ClientCardProps) {
                         unoptimized
                     />
                 ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-subtle text-sm font-semibold text-fg-muted" aria-hidden="true">
                         {initials}
                     </div>
                 )}
-                <span className="flex-1 text-sm font-semibold text-fg truncate">
+                <span className="type-headline flex-1 truncate text-fg">
                     {client.name}
                 </span>
                 {client.unread_count > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-xs font-bold text-on-primary">
+                    <span data-testid="client-unread-badge" className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold tabular-nums text-on-primary">
                         {client.unread_count}
                     </span>
                 )}
@@ -74,26 +74,26 @@ export function ClientCard({ client }: ClientCardProps) {
                     <KBZHUProgress label={t('macros.carbs')} value={kbzhu.carbs} target={client.plan!.carbs} compact />
                 </div>
             ) : kbzhu ? (
-                <div className="text-xs text-fg-muted space-y-0.5">
+                <div className="space-y-0.5 text-sm tabular-nums text-fg-muted">
                     <p>{t('curator.card.macrosInline', { calories: Math.round(kbzhu.calories), protein: Math.round(kbzhu.protein), fat: Math.round(kbzhu.fat), carbs: Math.round(kbzhu.carbs) })}</p>
                     <p className="text-fg-subtle">{t('curator.card.noPlan')}</p>
                 </div>
             ) : (
-                <p className="text-xs text-fg-subtle">{t('curator.card.noDataToday')}</p>
+                <p className="text-sm text-fg-subtle">{t('curator.card.noDataToday')}</p>
             )}
 
             {client.last_weight != null && (
-                <div className="mt-2 flex items-center gap-2 text-xs">
+                <div className="mt-3 flex items-center gap-2 text-sm tabular-nums">
                     <span className="text-fg-muted">{t('curator.card.weightLabel')}</span>
                     <span className="font-semibold text-fg">{t('curator.card.kilograms', { value: client.last_weight })}</span>
                     {client.weight_trend === 'down' && (
-                        <TrendingDown className="h-3.5 w-3.5 text-success-fg" />
+                        <TrendingDown className="h-4 w-4 text-success-fg" aria-hidden="true" />
                     )}
                     {client.weight_trend === 'up' && (
-                        <TrendingUp className="h-3.5 w-3.5 text-danger-fg" />
+                        <TrendingUp className="h-4 w-4 text-danger-fg" aria-hidden="true" />
                     )}
                     {client.weight_trend === 'stable' && (
-                        <Minus className="h-3.5 w-3.5 text-fg-subtle" />
+                        <Minus className="h-4 w-4 text-fg-subtle" aria-hidden="true" />
                     )}
                     {client.target_weight != null && (
                         <span className="ml-auto text-fg-subtle">
@@ -104,8 +104,8 @@ export function ClientCard({ client }: ClientCardProps) {
             )}
 
             {client.today_water && client.today_water.glasses > 0 && (
-                <div className="mt-2 flex items-center gap-2 text-xs">
-                    <Droplets className="h-3.5 w-3.5 text-primary" />
+                <div className="mt-2 flex items-center gap-2 text-sm tabular-nums">
+                    <Droplets className="h-4 w-4 text-water" aria-hidden="true" />
                     <span className={client.today_water.glasses >= client.today_water.goal ? 'font-semibold text-success-fg' : 'text-fg-muted'}>
                         {t('curator.card.glasses', { glasses: client.today_water.glasses, goal: client.today_water.goal })}
                     </span>

@@ -34,17 +34,23 @@ export function ClientDetailTabs({ activeTab }: ClientDetailTabsProps) {
         router.push(qs ? `${pathname}?${qs}` : pathname)
     }
 
+    // Вкладки — подчёркиванием чернилами: терракота на экране только у
+    // главного действия. Каждая вкладка меняет адрес, поэтому активная
+    // отмечена как текущая страница.
     return (
-        <div className="flex gap-1 overflow-x-auto border-b border-line px-4 -mx-4">
+        <div className="-mx-screen-x flex gap-1 overflow-x-auto border-b border-line px-screen-x">
             {TABS.map((tab) => (
                 <button
                     key={tab.id}
+                    type="button"
                     onClick={() => handleTabClick(tab.id)}
+                    aria-current={current === tab.id ? 'page' : undefined}
                     className={cn(
-                        'whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors',
+                        '-mb-px min-h-11 whitespace-nowrap border-b-2 px-4 py-2.5 text-[15px] font-medium transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus',
                         current === tab.id
-                            ? 'border-b-2 border-primary text-primary'
-                            : 'text-fg-muted hover:text-fg',
+                            ? 'border-line-strong text-fg'
+                            : 'border-transparent text-fg-subtle hover:text-fg',
                     )}
                 >
                     {tab.label}

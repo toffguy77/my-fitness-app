@@ -23,7 +23,8 @@ const reasonLabels: Record<AttentionItem['reason'], string> = {
 function getPriorityBadgeClass(priority: number): string {
     if (priority <= 2) return 'bg-danger-soft text-danger-fg'
     if (priority === 3) return 'bg-warning-soft text-warning-fg'
-    return 'bg-primary-soft text-primary'
+    // Низкий приоритет сообщает, а не тревожит — информационная роль.
+    return 'bg-info-soft text-info-fg'
 }
 
 interface GroupedClient {
@@ -65,7 +66,7 @@ export function AttentionList({ items }: AttentionListProps) {
     if (grouped.length === 0) return null
 
     return (
-        <div className="space-y-2">
+        <div className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
             {grouped.map((group) => {
                 const initials = group.clientName
                     .split(' ')
@@ -86,10 +87,9 @@ export function AttentionList({ items }: AttentionListProps) {
                         data-testid="attention-item"
                         onClick={() => router.push(group.actionUrl)}
                         className={cn(
-                            'w-full rounded-xl bg-surface p-3 shadow-sm border border-line',
-                            'text-left transition-shadow hover:shadow-md',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
-                            'flex items-center gap-3'
+                            'flex min-h-14 w-full items-center gap-3 px-4 py-3',
+                            'text-left transition-colors hover:bg-subtle/60',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus'
                         )}
                     >
                         {group.clientAvatar ? (
@@ -102,19 +102,19 @@ export function AttentionList({ items }: AttentionListProps) {
                                 unoptimized
                             />
                         ) : (
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary shrink-0">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-fg-muted" aria-hidden="true">
                                 {initials}
                             </div>
                         )}
 
                         <div className="flex-1 min-w-0">
                             <p
-                                className="text-sm font-semibold text-fg truncate"
+                                className="type-headline truncate text-fg"
                                 data-testid="attention-client-name"
                             >
                                 {group.clientName}
                             </p>
-                            <p className="text-xs text-fg-muted truncate">
+                            <p className="truncate text-sm text-fg-muted">
                                 {group.items.map((i) => i.detail).join(' · ')}
                             </p>
                         </div>
@@ -124,7 +124,7 @@ export function AttentionList({ items }: AttentionListProps) {
                                 <span
                                     key={`${item.reason}-${item.detail}`}
                                     className={cn(
-                                        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
                                         getPriorityBadgeClass(item.priority)
                                     )}
                                 >

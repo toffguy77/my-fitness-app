@@ -4,8 +4,11 @@ import Image from 'next/image'
 import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Check } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
+import { Button, IconButton } from '@/shared/components/ui/Button'
+import { Card, CardTitle } from '@/shared/components/ui/Card'
+import { ADMIN_FIELD_CLASS, ADMIN_ROW_CLASS, AdminSpinner } from './adminUi'
 import { adminApi } from '../api/adminApi'
 import type { AdminUser, CuratorLoad } from '../types'
 import toast from 'react-hot-toast'
@@ -167,11 +170,7 @@ export function UserDetail({ userId }: UserDetailProps) {
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
-            </div>
-        )
+        return <AdminSpinner />
     }
 
     if (error || !user) {
@@ -185,174 +184,183 @@ export function UserDetail({ userId }: UserDetailProps) {
         .slice(0, 2)
         .toUpperCase()
 
+    const ROLE_OPTIONS = [
+        { value: 'client', label: t('admin.roles.client') },
+        { value: 'coordinator', label: t('admin.roles.coordinator') },
+    ] as const
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {/* Header */}
             <div className="flex items-center gap-3">
-                <button
-                    type="button"
+                <IconButton
+                    variant="ghost"
                     onClick={() => router.push('/admin/users')}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-subtle transition-colors"
                     aria-label={t('common.back')}
+                    className="-ml-2"
                 >
-                    <ArrowLeft className="h-5 w-5 text-fg" />
-                </button>
+                    <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                </IconButton>
                 {user.avatar_url ? (
                     <Image
                         src={user.avatar_url}
                         alt={user.name}
                         width={40}
                         height={40}
-                        className="h-10 w-10 rounded-full object-cover"
+                        className="h-10 w-10 shrink-0 rounded-full object-cover"
                     />
                 ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-subtle text-sm font-semibold text-fg-muted" aria-hidden="true">
                         {initials || '?'}
                     </div>
                 )}
-                <div className="flex-1 min-w-0">
-                    <p className="text-lg font-semibold text-fg truncate">{user.name || user.email}</p>
-                    <p className="text-sm text-fg-muted">{user.email}</p>
+                <div className="min-w-0 flex-1">
+                    <h1 className="type-title-2 truncate text-fg">{user.name || user.email}</h1>
+                    <p className="truncate text-sm text-fg-muted">{user.email}</p>
                 </div>
             </div>
 
             {/* Info card */}
-            <div className="rounded-xl bg-surface p-4 shadow-sm border border-line space-y-3">
-                <div className="flex justify-between text-sm">
-                    <span className="text-fg-muted">{t('admin.user.role')}</span>
-                    <span className="font-medium">{ROLE_LABELS[user.role] || user.role}</span>
-                </div>
-                {user.curator_name && (
-                    <div className="flex justify-between text-sm">
-                        <span className="text-fg-muted">{t('admin.user.curator')}</span>
-                        <span className="font-medium">{user.curator_name}</span>
+            <Card className="py-2">
+                <dl className="divide-y divide-line text-sm">
+                    <div className="flex min-h-11 items-center justify-between gap-3">
+                        <dt className="text-fg-muted">{t('admin.user.role')}</dt>
+                        <dd className="font-medium text-fg">{ROLE_LABELS[user.role] || user.role}</dd>
                     </div>
-                )}
-                {user.role === 'coordinator' && (
-                    <div className="flex justify-between text-sm">
-                        <span className="text-fg-muted">{t('admin.user.clientCount')}</span>
-                        <span className="font-medium">{user.client_count}</span>
+                    {user.curator_name && (
+                        <div className="flex min-h-11 items-center justify-between gap-3">
+                            <dt className="text-fg-muted">{t('admin.user.curator')}</dt>
+                            <dd className="font-medium text-fg">{user.curator_name}</dd>
+                        </div>
+                    )}
+                    {user.role === 'coordinator' && (
+                        <div className="flex min-h-11 items-center justify-between gap-3">
+                            <dt className="text-fg-muted">{t('admin.user.clientCount')}</dt>
+                            <dd className="font-medium tabular-nums text-fg">{user.client_count}</dd>
+                        </div>
+                    )}
+                    <div className="flex min-h-11 items-center justify-between gap-3">
+                        <dt className="text-fg-muted">{t('admin.user.registered')}</dt>
+                        <dd className="font-medium tabular-nums text-fg">{new Date(user.created_at).toLocaleDateString('ru-RU')}</dd>
                     </div>
-                )}
-                <div className="flex justify-between text-sm">
-                    <span className="text-fg-muted">{t('admin.user.registered')}</span>
-                    <span className="font-medium">{new Date(user.created_at).toLocaleDateString('ru-RU')}</span>
-                </div>
-                {user.last_login_at && (
-                    <div className="flex justify-between text-sm">
-                        <span className="text-fg-muted">{t('admin.user.lastLogin')}</span>
-                        <span className="font-medium">{new Date(user.last_login_at).toLocaleDateString('ru-RU')}</span>
-                    </div>
-                )}
-            </div>
+                    {user.last_login_at && (
+                        <div className="flex min-h-11 items-center justify-between gap-3">
+                            <dt className="text-fg-muted">{t('admin.user.lastLogin')}</dt>
+                            <dd className="font-medium tabular-nums text-fg">{new Date(user.last_login_at).toLocaleDateString('ru-RU')}</dd>
+                        </div>
+                    )}
+                </dl>
+            </Card>
 
             {/* Role management (not for super_admin) */}
             {user.role !== 'super_admin' && (
-                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line space-y-3">
-                    <h3 className="text-sm font-semibold text-fg">{t('admin.user.roleManagement')}</h3>
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            disabled={user.role === 'client' || actionLoading}
-                            onClick={() => handleChangeRole('client')}
-                            className={cn(
-                                'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                                user.role === 'client'
-                                    ? 'bg-subtle text-fg-muted cursor-not-allowed'
-                                    : 'bg-subtle text-fg hover:bg-subtle'
-                            )}
-                        >
-                            {t('admin.roles.client')}
-                        </button>
-                        <button
-                            type="button"
-                            disabled={user.role === 'coordinator' || actionLoading}
-                            onClick={() => handleChangeRole('coordinator')}
-                            className={cn(
-                                'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                                user.role === 'coordinator'
-                                    ? 'bg-primary-soft text-primary cursor-not-allowed'
-                                    : 'bg-primary-soft text-primary hover:bg-primary-soft'
-                            )}
-                        >
-                            {t('admin.roles.coordinator')}
-                        </button>
+                <Card className="space-y-3">
+                    <CardTitle>{t('admin.user.roleManagement')}</CardTitle>
+                    {/* Переключатель из двух вариантов — сегменты; текущая роль —
+                        инверсия чернилами и не нажимается. */}
+                    <div className="flex rounded-full border border-line p-1" role="group">
+                        {ROLE_OPTIONS.map((option) => {
+                            const current = user.role === option.value
+                            return (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    disabled={current || actionLoading}
+                                    aria-pressed={current}
+                                    onClick={() => handleChangeRole(option.value)}
+                                    className={cn(
+                                        'h-10 flex-1 rounded-full px-4 text-sm font-medium transition-colors',
+                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+                                        current
+                                            ? 'bg-fg text-fg-inverse'
+                                            : 'text-fg-muted hover:text-fg disabled:opacity-50'
+                                    )}
+                                >
+                                    {option.label}
+                                </button>
+                            )
+                        })}
                     </div>
-                </div>
+                </Card>
             )}
 
             {/* Доступ к куратору — платная услуга, поэтому срок виден всегда */}
             {user.role === 'client' && (
-                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line space-y-3">
-                    <h3 className="text-sm font-semibold text-fg">{t('admin.user.accessTitle')}</h3>
-                    <p className="text-sm text-fg-muted">{accessSummary(user)}</p>
+                <Card className="space-y-4">
+                    <div>
+                        <CardTitle>{t('admin.user.accessTitle')}</CardTitle>
+                        <p className="mt-1 text-sm tabular-nums text-fg-muted">{accessSummary(user)}</p>
+                    </div>
 
-                    <label className="block space-y-1">
-                        <span className="text-xs font-medium text-fg-muted">{t('admin.user.accessDateLabel')}</span>
+                    <label className="block">
+                        <span className="mb-1.5 block text-sm font-medium text-fg-muted">{t('admin.user.accessDateLabel')}</span>
                         <input
                             type="date"
                             value={accessUntil}
                             onChange={(e) => setAccessUntil(e.target.value)}
-                            className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                            className={ADMIN_FIELD_CLASS}
                         />
                     </label>
 
                     {user.curator_id && (
-                        <div className="flex gap-2">
-                            <button
+                        <div className="flex flex-wrap gap-3">
+                            <Button
                                 type="button"
                                 disabled={actionLoading}
                                 onClick={handleExtendAccess}
-                                className="flex-1 rounded-lg bg-primary-soft px-3 py-2 text-sm font-medium text-primary hover:bg-primary-soft disabled:opacity-50"
+                                className="flex-1"
                             >
                                 {t('admin.user.accessExtend')}
-                            </button>
-                            <button
+                            </Button>
+                            {/* Снятие — после подтверждения; сама кнопка — без подложки. */}
+                            <Button
                                 type="button"
+                                variant="ghost"
                                 disabled={actionLoading}
                                 onClick={handleRevokeAccess}
-                                className="flex-1 rounded-lg bg-danger-soft px-3 py-2 text-sm font-medium text-danger-fg hover:bg-danger-soft disabled:opacity-50"
+                                className="flex-1 text-danger-fg hover:bg-danger-soft"
                             >
                                 {t('admin.user.accessRevoke')}
-                            </button>
+                            </Button>
                         </div>
                     )}
-                </div>
+                </Card>
             )}
 
             {/* Curator assignment (only for clients) */}
             {user.role === 'client' && (
-                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line space-y-3">
-                    <h3 className="text-sm font-semibold text-fg">{t('admin.user.assignCurator')}</h3>
+                <section className="space-y-3">
+                    <h2 className="type-title-3 text-fg">{t('admin.user.assignCurator')}</h2>
                     {curators.length === 0 ? (
                         <p className="text-sm text-fg-muted">{t('admin.user.noCurators')}</p>
                     ) : (
-                        <div className="space-y-2">
-                            {curators.map((curator) => (
-                                <button
-                                    key={curator.id}
-                                    type="button"
-                                    disabled={actionLoading || curator.id === user.curator_id}
-                                    onClick={() => handleAssignCurator(curator.id)}
-                                    className={cn(
-                                        'w-full flex items-center gap-3 rounded-lg p-3 text-left transition-colors',
-                                        curator.id === user.curator_id
-                                            ? 'bg-primary-soft border border-primary/30'
-                                            : 'hover:bg-canvas border border-line'
-                                    )}
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-fg truncate">{curator.name}</p>
-                                        <p className="text-xs text-fg-muted">{t('admin.user.clientsOf', { count: curator.client_count })}</p>
-                                    </div>
-                                    {curator.id === user.curator_id && (
-                                        <span className="text-xs font-medium text-primary">{t('admin.user.current')}</span>
-                                    )}
-                                </button>
-                            ))}
+                        <div className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
+                            {curators.map((curator) => {
+                                const current = curator.id === user.curator_id
+                                return (
+                                    <button
+                                        key={curator.id}
+                                        type="button"
+                                        disabled={actionLoading || current}
+                                        onClick={() => handleAssignCurator(curator.id)}
+                                        className={cn(ADMIN_ROW_CLASS, 'disabled:cursor-default', current && 'bg-subtle hover:bg-subtle')}
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <p className="type-headline truncate text-fg">{curator.name}</p>
+                                            <p className="text-sm tabular-nums text-fg-muted">{t('admin.user.clientsOf', { count: curator.client_count })}</p>
+                                        </div>
+                                        {current && (
+                                            <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-fg">
+                                                <Check className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                                                {t('admin.user.current')}
+                                            </span>
+                                        )}
+                                    </button>
+                                )
+                            })}
                         </div>
                     )}
-                </div>
+                </section>
             )}
 
             {dialog}

@@ -1,11 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, ChevronDown, Plus, Pencil, Trash2 } from 'lucide-react'
+import { ChevronDown, Plus, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { curatorApi } from '../api/curatorApi'
 import type { WeeklyPlanView } from '../types'
 import { PlanForm } from './PlanForm'
+import { SectionSpinner } from './formSheet'
+import { IconButton } from '@/shared/components/ui/Button'
+import { Card, CardTitle } from '@/shared/components/ui/Card'
+import { MACRO_TEXT_COLORS } from '@/shared/constants/macros'
 
 import { t } from '@/shared/i18n'
 import toast from 'react-hot-toast'
@@ -84,11 +88,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
-            </div>
-        )
+        return <SectionSpinner />
     }
 
     if (error) {
@@ -98,26 +98,26 @@ export function PlanTab({ clientId }: PlanTabProps) {
     return (
         <div className="space-y-4">
             {activePlan ? (
-                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line">
+                <Card>
                     <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-fg">{t('curator.plan.current')}</h3>
-                        <div className="flex items-center gap-2 shrink-0">
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary-soft text-primary">
+                        <CardTitle>{t('curator.plan.current')}</CardTitle>
+                        <div className="flex shrink-0 items-center gap-1">
+                            <span className="mr-1 inline-flex items-center rounded-full bg-info-soft px-2.5 py-0.5 text-xs font-medium text-info-fg">
                                 {t('curator.plan.active')}
                             </span>
-                            <button
-                                type="button"
+                            <IconButton
+                                variant="ghost"
                                 onClick={() => {
                                     setEditingPlan(activePlan)
                                     setShowForm(true)
                                 }}
-                                className="p-1 text-fg-subtle hover:text-primary transition-colors"
+                                className="text-fg-muted hover:text-fg"
                                 aria-label={t('curator.plan.editAria')}
                             >
-                                <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                                type="button"
+                                <Pencil className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                            </IconButton>
+                            <IconButton
+                                variant="ghost"
                                 onClick={() => {
                                     confirm({
                                         title: t('curator.plan.deleteConfirm'),
@@ -126,95 +126,93 @@ export function PlanTab({ clientId }: PlanTabProps) {
                                         onConfirm: () => handleDelete(activePlan.id),
                                     })
                                 }}
-                                className="p-1 text-fg-subtle hover:text-danger-fg transition-colors"
+                                className="text-fg-muted hover:bg-danger-soft hover:text-danger-fg"
                                 aria-label={t('curator.plan.deleteAria')}
                             >
-                                <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                                <Trash2 className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                            </IconButton>
                         </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 text-center text-xs mt-3">
+                    <dl className="mt-4 grid grid-cols-4 gap-2 text-center">
                         <div>
-                            <p className="text-fg-muted">{t('macros.calories')}</p>
-                            <p className="font-semibold text-fg">{Math.round(activePlan.calories)}</p>
+                            <dt className="text-xs text-fg-muted">{t('macros.calories')}</dt>
+                            <dd className="type-num-l tabular-nums text-fg">{Math.round(activePlan.calories)}</dd>
                         </div>
                         <div>
-                            <p className="text-fg-muted">{t('macros.protein')}</p>
-                            <p className="font-semibold text-fg">{Math.round(activePlan.protein)}</p>
+                            <dt className="text-xs text-fg-muted">{t('macros.protein')}</dt>
+                            <dd className="type-num-l tabular-nums" style={{ color: MACRO_TEXT_COLORS.protein }}>{Math.round(activePlan.protein)}</dd>
                         </div>
                         <div>
-                            <p className="text-fg-muted">{t('macros.fat')}</p>
-                            <p className="font-semibold text-fg">{Math.round(activePlan.fat)}</p>
+                            <dt className="text-xs text-fg-muted">{t('macros.fat')}</dt>
+                            <dd className="type-num-l tabular-nums" style={{ color: MACRO_TEXT_COLORS.fat }}>{Math.round(activePlan.fat)}</dd>
                         </div>
                         <div>
-                            <p className="text-fg-muted">{t('macros.carbs')}</p>
-                            <p className="font-semibold text-fg">{Math.round(activePlan.carbs)}</p>
+                            <dt className="text-xs text-fg-muted">{t('macros.carbs')}</dt>
+                            <dd className="type-num-l tabular-nums" style={{ color: MACRO_TEXT_COLORS.carbs }}>{Math.round(activePlan.carbs)}</dd>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-fg-subtle">{t('curator.plan.period')}</span>
-                        <span className="text-xs text-fg-muted">
+                    </dl>
+                    <div className="mt-3 flex items-center gap-2 text-sm">
+                        <span className="text-fg-subtle">{t('curator.plan.period')}</span>
+                        <span className="tabular-nums text-fg-muted">
                             {formatDateRu(activePlan.start_date)} — {formatDateRu(activePlan.end_date)}
                         </span>
                     </div>
                     {activePlan.comment && (
-                        <p className="mt-1 text-xs text-fg-muted line-clamp-2">{activePlan.comment}</p>
+                        <p className="mt-1 line-clamp-2 text-sm text-fg-muted">{activePlan.comment}</p>
                     )}
-                </div>
+                </Card>
             ) : (
-                <div className="rounded-xl border-2 border-dashed border-line py-6 text-center sm:py-8">
-                    <p className="text-sm text-fg-subtle">{t('curator.plan.none')}</p>
+                <div className="rounded-card border border-dashed border-line px-5 py-8 text-center">
+                    <p className="text-sm text-fg-muted">{t('curator.plan.none')}</p>
                     <button
                         type="button"
                         onClick={() => {
                             setEditingPlan(undefined)
                             setShowForm(true)
                         }}
-                        className="mt-1.5 text-xs text-primary hover:text-primary font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
+                        className="mt-1 inline-flex min-h-11 items-center px-2 text-sm font-semibold text-primary focus:outline-none focus-visible:underline touch-manipulation"
                     >
                         {t('curator.plan.create')}
                     </button>
                 </div>
             )}
 
-            {/* FAB */}
-            <button
-                type="button"
+            {/* Плавающая кнопка — главное действие вкладки. */}
+            <IconButton
+                variant="primary"
+                size="lg"
                 onClick={() => {
                     setEditingPlan(undefined)
                     setShowForm(true)
                 }}
-                className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg hover:bg-primary-hover active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:bottom-24 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
+                className="fixed bottom-20 right-4 z-50 shadow-float sm:bottom-24 sm:right-6 sm:h-14 sm:w-14"
                 aria-label={t('curator.plan.createAria')}
             >
-                <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
-            </button>
+                <Plus className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
+            </IconButton>
 
             {pastPlans.length > 0 && (
                 <section>
                     <button
                         type="button"
                         onClick={() => setShowHistory(!showHistory)}
-                        className="flex items-center gap-1.5 text-sm font-medium text-fg hover:text-fg"
+                        aria-expanded={showHistory}
+                        className="flex min-h-11 items-center gap-1.5 text-sm font-semibold text-fg"
                     >
                         <ChevronDown
-                            className={cn('h-4 w-4 transition-transform', showHistory && 'rotate-180')}
+                            className={cn('h-4 w-4 text-fg-subtle transition-transform', showHistory && 'rotate-180')}
+                            aria-hidden="true"
                         />
                         {t('curator.plan.history', { count: pastPlans.length })}
                     </button>
                     {showHistory && (
-                        <div className="mt-2 space-y-2">
+                        <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
                             {pastPlans.map((plan) => (
-                                <div
-                                    key={plan.id}
-                                    className="rounded-lg bg-canvas p-3 border border-line text-xs"
-                                >
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-fg-muted">
-                                            {formatDateRu(plan.start_date)} — {formatDateRu(plan.end_date)}
-                                        </span>
-                                    </div>
-                                    <p className="text-fg">
+                                <li key={plan.id} className="px-4 py-3 text-sm">
+                                    <p className="mb-0.5 text-xs tabular-nums text-fg-muted">
+                                        {formatDateRu(plan.start_date)} — {formatDateRu(plan.end_date)}
+                                    </p>
+                                    <p className="tabular-nums text-fg">
                                         {t('curator.plan.macrosInline', {
                                             calories: Math.round(plan.calories),
                                             protein: Math.round(plan.protein),
@@ -223,11 +221,11 @@ export function PlanTab({ clientId }: PlanTabProps) {
                                         })}
                                     </p>
                                     {plan.comment && (
-                                        <p className="mt-1 text-fg-muted italic">{plan.comment}</p>
+                                        <p className="mt-1 italic text-fg-muted">{plan.comment}</p>
                                     )}
-                                </div>
+                                </li>
                             ))}
-                        </div>
+                        </ul>
                     )}
                 </section>
             )}

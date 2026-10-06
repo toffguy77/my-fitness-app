@@ -122,7 +122,10 @@ describe('FeedbackForm', () => {
         const excellentButtons = screen.getAllByRole('button', { name: 'Отлично' })
         await user.click(excellentButtons[0])
 
-        expect(excellentButtons[0].className).toContain('bg-success')
+        expect(excellentButtons[0]).toHaveAttribute('aria-pressed', 'true')
+        // A rating is a status: the chosen one carries the success role.
+        expect(excellentButtons[0]).toHaveClass('bg-success-soft', 'text-success-fg')
+        expect(excellentButtons[1]).toHaveAttribute('aria-pressed', 'false')
     })
 
     it('allows photo checkbox to be toggled', async () => {

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import type { DayDetail } from '../types'
 
 import { t } from '@/shared/i18n'
-import { AXIS_STYLE, GRID_STROKE, chartColor } from '@/shared/charts/chartTheme'
+import { AXIS_STYLE, GRID_STROKE, TOOLTIP_CLASS, chartColor } from '@/shared/charts/chartTheme'
 const CHART_HEIGHT = 160
 
 interface WaterChartProps {
@@ -24,7 +24,7 @@ function WaterTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-line bg-surface px-3 py-2 shadow-sm">
+        <div className={TOOLTIP_CLASS}>
             <p className="text-xs font-medium text-fg mb-1">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
                 <p key={entry.name} className="text-xs text-fg-muted">
@@ -58,10 +58,10 @@ export function WaterChart({ days }: WaterChartProps) {
 
     return (
         <Card variant="bordered">
-            <CardHeader className="pb-3">
+            <CardHeader className="mb-3">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-fg">{t('curator.charts.waterHeading')}</CardTitle>
-                    <span className="text-sm font-semibold text-fg">
+                    <CardTitle className="text-fg">{t('curator.charts.waterHeading')}</CardTitle>
+                    <span className="type-num-l tabular-nums text-fg">
                         {latestGlasses}/{waterGoal}
                     </span>
                 </div>

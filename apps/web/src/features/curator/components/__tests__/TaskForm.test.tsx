@@ -195,16 +195,19 @@ describe('TaskForm', () => {
 
         const mondayBtn = screen.getByText('Пн')
 
-        // Initially should have the unselected style
-        expect(mondayBtn).toHaveClass('bg-subtle')
+        // Initially not selected
+        expect(mondayBtn).toHaveAttribute('aria-pressed', 'false')
+        expect(mondayBtn).not.toHaveClass('bg-fg')
 
-        // Click to select
+        // Click to select: the chosen day is inverted in ink, not in brand colour
         await user.click(mondayBtn)
-        expect(mondayBtn).toHaveClass('bg-primary')
+        expect(mondayBtn).toHaveAttribute('aria-pressed', 'true')
+        expect(mondayBtn).toHaveClass('bg-fg', 'text-fg-inverse')
 
         // Click again to deselect
         await user.click(mondayBtn)
-        expect(mondayBtn).toHaveClass('bg-subtle')
+        expect(mondayBtn).toHaveAttribute('aria-pressed', 'false')
+        expect(mondayBtn).not.toHaveClass('bg-fg')
     })
 
     it('sends recurrence_days only when recurrence is weekly', async () => {

@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { curatorApi } from '../api/curatorApi'
 import type { TaskView, TaskStatus } from '../types'
 import { TaskCard } from './TaskCard'
 import { TaskForm } from './TaskForm'
+import { SectionSpinner } from './formSheet'
+import { IconButton } from '@/shared/components/ui/Button'
 
 import { t } from '@/shared/i18n'
 import toast from 'react-hot-toast'
@@ -86,18 +88,20 @@ export function TasksTab({ clientId }: TasksTabProps) {
 
     return (
         <div className="space-y-4">
-            {/* Filters */}
-            <div className="flex gap-2">
+            {/* Фильтр из трёх вариантов — сегменты; выбранный — инверсия чернилами. */}
+            <div className="inline-flex rounded-full border border-line p-1" role="group">
                 {FILTERS.map((f) => (
                     <button
                         key={f.id}
                         type="button"
                         onClick={() => setFilter(f.id)}
+                        aria-pressed={filter === f.id}
                         className={cn(
-                            'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                            'h-9 rounded-full px-4 text-sm font-medium transition-colors',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                             filter === f.id
-                                ? 'bg-primary text-on-primary'
-                                : 'bg-subtle text-fg-muted hover:bg-subtle',
+                                ? 'bg-fg text-fg-inverse'
+                                : 'text-fg-muted hover:text-fg',
                         )}
                     >
                         {f.label}
@@ -106,18 +110,16 @@ export function TasksTab({ clientId }: TasksTabProps) {
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
-                </div>
+                <SectionSpinner />
             ) : error ? (
                 <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
             ) : tasks.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-line py-6 text-center sm:py-8">
-                    <p className="text-sm text-fg-subtle">{t('curator.tasksTab.empty')}</p>
+                <div className="rounded-card border border-dashed border-line px-5 py-8 text-center">
+                    <p className="text-sm text-fg-muted">{t('curator.tasksTab.empty')}</p>
                     <button
                         type="button"
                         onClick={() => { setEditingTask(undefined); setShowForm(true) }}
-                        className="mt-1.5 text-xs text-primary hover:text-primary font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
+                        className="mt-1 inline-flex min-h-11 items-center px-2 text-sm font-semibold text-primary focus:outline-none focus-visible:underline touch-manipulation"
                     >
                         {t('curator.tasksTab.create')}
                     </button>
@@ -131,21 +133,22 @@ export function TasksTab({ clientId }: TasksTabProps) {
             )}
 
             {/*
-                Плавающая кнопка. Держится выше нижней навигации (sm:bottom-24,
-                z-50 — тем же способом, что и в дневнике питания): при
-                sm:bottom-6 она занимала 640–696 пикселей при навигации
-                656–720, и навигация перехватывала нажатие. Кнопка была видна,
-                но не нажималась.
+                Плавающая кнопка — главное действие вкладки. Держится выше нижней
+                навигации (sm:bottom-24, z-50 — тем же способом, что и в дневнике
+                питания): при sm:bottom-6 она занимала 640–696 пикселей при
+                навигации 656–720, и навигация перехватывала нажатие. Кнопка была
+                видна, но не нажималась.
             */}
-            <button
-                type="button"
+            <IconButton
+                variant="primary"
+                size="lg"
                 data-testid="create-task-fab"
                 onClick={() => { setEditingTask(undefined); setShowForm(true) }}
-                className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg hover:bg-primary-hover active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:bottom-24 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
+                className="fixed bottom-20 right-4 z-50 shadow-float sm:bottom-24 sm:right-6 sm:h-14 sm:w-14"
                 aria-label={t('curator.tasksTab.create')}
             >
-                <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
-            </button>
+                <Plus className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
+            </IconButton>
 
             {showForm && (
                 <TaskForm

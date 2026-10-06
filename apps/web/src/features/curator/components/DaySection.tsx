@@ -63,15 +63,16 @@ export function DaySection({ day, defaultExpanded = false }: DaySectionProps) {
     const hasPlan = plan !== null
 
     return (
-        <section className="rounded-xl bg-surface shadow-sm border border-line overflow-hidden">
+        <section className="overflow-hidden rounded-card border border-line bg-surface">
             {/* Collapsed header — always visible */}
             <button
                 type="button"
                 onClick={() => setExpanded(!expanded)}
-                className="w-full text-left px-4 py-3 hover:bg-canvas transition-colors"
+                aria-expanded={expanded}
+                className="min-h-14 w-full px-4 py-3 text-left transition-colors hover:bg-subtle/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             >
-                <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-semibold text-fg">
+                <div className="mb-1 flex items-center justify-between">
+                    <span className="type-title-3 text-fg">
                         {formatDateRu(day.date)}
                     </span>
                     <ChevronDown
@@ -79,12 +80,13 @@ export function DaySection({ day, defaultExpanded = false }: DaySectionProps) {
                             'h-4 w-4 text-fg-subtle transition-transform',
                             expanded && 'rotate-180'
                         )}
+                        aria-hidden="true"
                     />
                 </div>
 
                 {/* KBZHU one-liner with color coding */}
                 {kbzhu && (
-                    <p className="text-xs">
+                    <p className="text-sm tabular-nums">
                         {hasPlan ? (
                             <>
                                 <span className={deviationColor(kbzhu.calories, plan!.calories)}>
@@ -125,8 +127,8 @@ export function DaySection({ day, defaultExpanded = false }: DaySectionProps) {
 
                 {/* Water summary only (steps & workouts moved to separate sections) */}
                 {day.water && (
-                    <div className="flex items-center gap-1 mt-1.5 text-xs text-fg-muted">
-                        <Droplets className="h-3 w-3" />
+                    <div className="mt-1.5 flex items-center gap-1 text-sm tabular-nums text-fg-muted">
+                        <Droplets className="h-3.5 w-3.5 text-water" aria-hidden="true" />
                         <span>{t('curator.day.glasses', { glasses: day.water.glasses, goal: day.water.goal })}</span>
                     </div>
                 )}
@@ -134,13 +136,13 @@ export function DaySection({ day, defaultExpanded = false }: DaySectionProps) {
 
             {/* Expanded content */}
             {expanded && (
-                <div className="px-4 pb-4 border-t border-line">
+                <div className="border-t border-line px-4 pb-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                         {/* Left column: KBZHU progress + water */}
                         <div className="space-y-3">
                             {hasPlan && kbzhu ? (
                                 <div className="space-y-2">
-                                    <h3 className="text-xs font-semibold text-fg">{t('curator.day.macrosHeading')}</h3>
+                                    <h3 className="type-overline text-fg-subtle">{t('curator.day.macrosHeading')}</h3>
                                     <KBZHUProgress label={t('curator.day.caloriesLabel')} value={kbzhu.calories} target={plan!.calories} compact />
                                     <KBZHUProgress label={t('macros.protein')} value={kbzhu.protein} target={plan!.protein} compact />
                                     <KBZHUProgress label={t('macros.fat')} value={kbzhu.fat} target={plan!.fat} compact />
@@ -148,18 +150,18 @@ export function DaySection({ day, defaultExpanded = false }: DaySectionProps) {
                                 </div>
                             ) : kbzhu ? (
                                 <div>
-                                    <h3 className="text-xs font-semibold text-fg mb-1">{t('curator.day.macrosHeading')}</h3>
-                                    <p className="text-xs text-fg-muted">
+                                    <h3 className="type-overline mb-1 text-fg-subtle">{t('curator.day.macrosHeading')}</h3>
+                                    <p className="text-sm tabular-nums text-fg-muted">
                                         {t('curator.day.macrosInline', { calories: Math.round(kbzhu.calories), protein: Math.round(kbzhu.protein), fat: Math.round(kbzhu.fat), carbs: Math.round(kbzhu.carbs) })}
                                     </p>
-                                    <p className="text-xs text-fg-subtle mt-0.5">{t('curator.day.noPlan')}</p>
+                                    <p className="mt-0.5 text-sm text-fg-subtle">{t('curator.day.noPlan')}</p>
                                 </div>
                             ) : null}
 
                             {/* Water detail */}
                             {day.water && (
-                                <div className="flex items-center gap-2 text-xs text-fg-muted">
-                                    <Droplets className="h-3.5 w-3.5 text-primary" />
+                                <div className="flex items-center gap-2 text-sm tabular-nums text-fg-muted">
+                                    <Droplets className="h-4 w-4 text-water" aria-hidden="true" />
                                     <span>{t('curator.day.waterLine', { glasses: day.water.glasses, goal: day.water.goal, volume: day.water.glasses * day.water.glass_size })}</span>
                                 </div>
                             )}
@@ -167,30 +169,30 @@ export function DaySection({ day, defaultExpanded = false }: DaySectionProps) {
 
                         {/* Right column: Food entries by meal */}
                         <div className="space-y-3">
-                            <h3 className="text-xs font-semibold text-fg">{t('curator.day.meals')}</h3>
+                            <h3 className="type-overline text-fg-subtle">{t('curator.day.meals')}</h3>
                             {day.food_entries.length === 0 ? (
-                                <p className="text-xs text-fg-subtle">{t('curator.day.noEntries')}</p>
+                                <p className="text-sm text-fg-subtle">{t('curator.day.noEntries')}</p>
                             ) : (
                                 MEAL_ORDER.map((mealType) => {
                                     const entries = mealGroups[mealType]
                                     if (!entries || entries.length === 0) return null
                                     return (
                                         <div key={mealType}>
-                                            <h4 className="text-xs font-medium text-fg-muted mb-1">
+                                            <h4 className="mb-1 text-sm font-semibold text-fg">
                                                 {MEAL_LABELS[mealType] || mealType}
                                             </h4>
-                                            <div className="space-y-1">
+                                            <div className="divide-y divide-line">
                                                 {entries.map((entry) => (
-                                                    <div key={entry.id} className="text-xs">
-                                                        <div className="flex items-center justify-between">
+                                                    <div key={entry.id} className="py-1.5 text-sm">
+                                                        <div className="flex items-center justify-between gap-3">
                                                             <span className="text-fg">{entry.food_name}</span>
-                                                            <span className="text-fg-subtle">{t('curator.day.entryWeight', { weight: entry.weight })}</span>
+                                                            <span className="shrink-0 tabular-nums text-fg-subtle">{t('curator.day.entryWeight', { weight: entry.weight })}</span>
                                                         </div>
-                                                        <p className="text-fg-muted">
+                                                        <p className="text-[13px] tabular-nums text-fg-muted">
                                                             {t('curator.day.entryMacros', { calories: Math.round(entry.calories), protein: Math.round(entry.protein), fat: Math.round(entry.fat), carbs: Math.round(entry.carbs) })}
                                                         </p>
                                                         {entry.created_by != null && (
-                                                            <span className="text-primary font-medium">{t('curator.day.addedByCurator')}</span>
+                                                            <span className="text-[13px] font-medium text-info-fg">{t('curator.day.addedByCurator')}</span>
                                                         )}
                                                     </div>
                                                 ))}

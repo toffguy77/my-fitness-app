@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { curatorApi } from '../api/curatorApi'
 import { ClientCard } from './ClientCard'
+import { SectionSpinner } from './formSheet'
 import type { ClientCard as ClientCardType } from '../types'
 
 import { t } from '@/shared/i18n'
@@ -33,11 +33,7 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
     const clients = externalClients ?? internalClients
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
-            </div>
-        )
+        return <SectionSpinner />
     }
 
     if (error) {
@@ -79,10 +75,10 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
         <div className="space-y-6">
             {needsAttention.length > 0 && (
                 <section>
-                    <h2 className="text-sm font-semibold text-danger-fg mb-2">
+                    <h2 className="type-overline mb-2 text-danger-fg">
                         {t('curator.list.needAttention')}
                     </h2>
-                    <div className="space-y-3">
+                    <div className="grid gap-3 md:grid-cols-2">
                         {needsAttention.map((client) => (
                             <ClientCard key={client.id} client={client} />
                         ))}
@@ -93,11 +89,11 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
             {rest.length > 0 && (
                 <section>
                     {needsAttention.length > 0 && (
-                        <h2 className="text-sm font-semibold text-fg-muted mb-2">
+                        <h2 className="type-overline mb-2 text-fg-subtle">
                             {t('curator.list.others')}
                         </h2>
                     )}
-                    <div className="space-y-3">
+                    <div className="grid gap-3 md:grid-cols-2">
                         {rest.map((client) => (
                             <ClientCard key={client.id} client={client} />
                         ))}

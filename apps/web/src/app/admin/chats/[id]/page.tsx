@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { ReadOnlyMessageList } from '@/features/admin/components/ReadOnlyMessageList'
+import { IconButton } from '@/shared/components/ui/Button'
 
 import { t } from '@/shared/i18n'
 export default function AdminChatDetailPage() {
@@ -13,17 +14,18 @@ export default function AdminChatDetailPage() {
     return (
         <div className="flex flex-col h-[calc(100vh-8rem)]">
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
-                <button
-                    type="button"
+            <div className="flex items-center gap-2 border-b border-line bg-surface px-3 py-2">
+                <IconButton
+                    variant="ghost"
                     onClick={() => router.push('/admin/chats')}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-subtle transition-colors"
                     aria-label={t('common.back')}
                 >
-                    <ArrowLeft className="h-5 w-5 text-fg" />
-                </button>
-                <h1 className="text-sm font-semibold text-fg">{t('admin.chats.viewHeading')}</h1>
-                <span className="ml-auto text-xs text-fg-subtle">{t('admin.chats.readOnly')}</span>
+                    <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                </IconButton>
+                <h1 className="type-title-3 text-fg">{t('admin.chats.viewHeading')}</h1>
+                <span className="ml-auto rounded-full bg-subtle px-2.5 py-0.5 text-xs font-medium text-fg-muted">
+                    {t('admin.chats.readOnly')}
+                </span>
             </div>
 
             {/* Messages */}

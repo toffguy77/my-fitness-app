@@ -29,8 +29,9 @@ export default function AdminDashboardPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
+            <div className="flex items-center justify-center py-12" role="status">
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" aria-hidden="true" />
+                <span className="sr-only">{t('common.loading')}</span>
             </div>
         )
     }
@@ -40,32 +41,32 @@ export default function AdminDashboardPage() {
     const totalCurators = curators.length
 
     return (
-        <div className="px-4 py-6 space-y-6">
-            <h1 className="text-xl font-semibold text-fg">{t('admin.dashboard.heading')}</h1>
+        <div className="mx-auto w-full max-w-5xl px-screen-x py-5 space-y-6">
+            <h1 className="type-title-1 text-fg">{t('admin.dashboard.heading')}</h1>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line text-center">
-                    <p className="text-2xl font-bold text-fg">{totalUsers}</p>
-                    <p className="text-xs text-fg-muted">{t('admin.dashboard.users')}</p>
+            {/* Stats — счётчики, а не состояния: чернилами, без оценочного цвета. */}
+            <dl className="grid grid-cols-3 gap-3">
+                <div className="flex flex-col-reverse rounded-card border border-line bg-surface p-4">
+                    <dt className="text-[13px] text-fg-muted">{t('admin.dashboard.users')}</dt>
+                    <dd className="type-num-l tabular-nums text-fg">{totalUsers}</dd>
                 </div>
-                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line text-center">
-                    <p className="text-2xl font-bold text-primary">{totalCurators}</p>
-                    <p className="text-xs text-fg-muted">{t('admin.dashboard.curators')}</p>
+                <div className="flex flex-col-reverse rounded-card border border-line bg-surface p-4">
+                    <dt className="text-[13px] text-fg-muted">{t('admin.dashboard.curators')}</dt>
+                    <dd className="type-num-l tabular-nums text-fg">{totalCurators}</dd>
                 </div>
-                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line text-center">
-                    <p className="text-2xl font-bold text-success-fg">{totalClients}</p>
-                    <p className="text-xs text-fg-muted">{t('admin.dashboard.clients')}</p>
+                <div className="flex flex-col-reverse rounded-card border border-line bg-surface p-4">
+                    <dt className="text-[13px] text-fg-muted">{t('admin.dashboard.clients')}</dt>
+                    <dd className="type-num-l tabular-nums text-fg">{totalClients}</dd>
                 </div>
-            </div>
+            </dl>
 
             {/* Curator load */}
             <section>
-                <h2 className="text-sm font-semibold text-fg mb-3">{t('admin.dashboard.curatorLoad')}</h2>
+                <h2 className="type-title-2 mb-3 text-fg">{t('admin.dashboard.curatorLoad')}</h2>
                 {curators.length === 0 ? (
                     <p className="text-sm text-fg-muted">{t('admin.dashboard.noCurators')}</p>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                         {curators.map((curator) => (
                             <CuratorLoadCard key={curator.id} curator={curator} />
                         ))}
@@ -78,10 +79,10 @@ export default function AdminDashboardPage() {
             <section>
                 <Link
                     href="/admin/jobs"
-                    className="flex items-center justify-between rounded-xl border border-line bg-surface p-4 shadow-sm hover:bg-canvas"
+                    className="flex min-h-14 items-center justify-between rounded-card border border-line bg-surface px-4 transition-colors hover:bg-subtle/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                    <span className="text-sm font-medium text-fg">{t('admin.jobs.heading')}</span>
-                    <ChevronRight className="h-4 w-4 text-fg-subtle" />
+                    <span className="text-base text-fg">{t('admin.jobs.heading')}</span>
+                    <ChevronRight className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                 </Link>
             </section>
         </div>

@@ -29,15 +29,15 @@ describe('ClientDetailTabs', () => {
     it('highlights overview tab by default', () => {
         render(<ClientDetailTabs />)
         const btn = screen.getByText('Обзор')
-        expect(btn.className).toContain('border-primary')
+        expect(btn).toHaveAttribute('aria-current', 'page')
     })
 
     it('highlights active tab from activeTab prop', () => {
         render(<ClientDetailTabs activeTab="tasks" />)
         const btn = screen.getByText('Задачи')
-        expect(btn.className).toContain('border-primary')
+        expect(btn).toHaveAttribute('aria-current', 'page')
         const overview = screen.getByText('Обзор')
-        expect(overview.className).not.toContain('border-primary')
+        expect(overview).not.toHaveAttribute('aria-current')
     })
 
     it('navigates to tab on click', () => {

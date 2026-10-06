@@ -2,12 +2,17 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { curatorApi, type Lead } from '../api/curatorApi'
 import { isApiError, messageFor } from '@/shared/errors/apiErrors'
 
 import { t, plural } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
+import { Checkbox } from '@/shared/components/ui/Checkbox'
+import { SectionSpinner } from './formSheet'
+
+/** Ссылка-действие в карточке заявки. */
+const ACTION_LINK = 'inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline'
 /**
  * The work queue for people who worked out their numbers and stopped short
  * of registering.
@@ -135,68 +140,65 @@ export function LeadList() {
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
-            </div>
-        )
+        return <SectionSpinner />
     }
 
     return (
         <div>
-            <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-sm text-fg-muted">{t('curator.leads.total', { count: total })}</p>
-                <label className="flex items-center gap-2 text-sm text-fg-muted">
-                    <input
-                        type="checkbox"
-                        checked={includeHandled}
-                        onChange={handleToggleIncludeHandled}
-                    />
-                    {t('curator.leads.showHandled')}
-                </label>
+            <div className="mb-4 flex min-h-11 flex-wrap items-center justify-between gap-3">
+                <p className="text-sm tabular-nums text-fg-muted">{t('curator.leads.total', { count: total })}</p>
+                <Checkbox
+                    checked={includeHandled}
+                    onChange={handleToggleIncludeHandled}
+                    label={t('curator.leads.showHandled')}
+                />
             </div>
 
             {leads.length === 0 ? (
                 <p className="py-8 text-center text-sm text-fg-muted">{t('curator.leads.empty')}</p>
             ) : (
-                <ul className="space-y-3">
+                <ul className="grid gap-3 lg:grid-cols-2">
                     {/* Server order, not re-sorted: this is what makes it a queue
                         rather than a list the curator has to scan for who has
                         waited longest. */}
                     {leads.map((lead) => (
                         <li
                             key={lead.id}
-                            className="rounded-xl border border-line bg-surface p-4"
+                            className="rounded-card border border-line bg-surface p-4"
                             data-testid="lead-card"
                         >
                             <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <p className="text-sm font-semibold text-fg">
+                                <div className="min-w-0">
+                                    <p className="type-headline text-fg">
                                         {lead.name || t('curator.leads.noName')}
                                     </p>
                                     {/* Identifies who this is about, regardless of
                                         consent — withheld consent hides the ability
                                         to write to them, not who they are. */}
-                                    <p className="text-sm text-fg">{lead.email}</p>
+                                    <p className="truncate text-sm text-fg-muted">{lead.email}</p>
                                 </div>
                                 {lead.handled_at ? (
-                                    <span className="text-xs text-fg-muted">{t('curator.leads.handled')}</span>
+                                    <span className="inline-flex shrink-0 items-center rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-medium text-success-fg">
+                                        {t('curator.leads.handled')}
+                                    </span>
                                 ) : (
-                                    <button
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
                                         onClick={() => handleMarkHandled(lead)}
                                         disabled={busy === lead.id}
-                                        className="text-sm font-medium text-primary hover:text-primary disabled:text-fg-subtle"
+                                        className="shrink-0"
                                     >
                                         {t('curator.leads.markHandled')}
-                                    </button>
+                                    </Button>
                                 )}
                             </div>
 
-                            <p className="mt-2 text-xs text-fg-muted">
+                            <p className="mt-3 text-sm text-fg">
                                 {t('curator.leads.stoppedAt', { step: stepLabels[lead.last_step] ?? lead.last_step })}
                             </p>
 
-                            <p className="mt-1 text-xs text-fg-muted">
+                            <p className="mt-1 text-sm tabular-nums text-fg-muted">
                                 {[
                                     lead.parameters.goal && goalLabels[lead.parameters.goal],
                                     lead.parameters.height_cm && t('curator.leads.heightCm', { value: lead.parameters.height_cm }),
@@ -207,7 +209,7 @@ export function LeadList() {
                                     .join(' · ') || t('curator.leads.noParameters')}
                             </p>
 
-                            <p className="mt-1 text-xs text-fg-muted">
+                            <p className="mt-1 text-sm tabular-nums text-fg-muted">
                                 {ageLabel(lead.age_days)}
                                 {lead.reminder_sent && ` · ${t('curator.leads.reminderSent')}`}
                             </p>
@@ -217,7 +219,7 @@ export function LeadList() {
                                 каналы приводят тех, кто доходит», — раньше
                                 ответа не имел: браузер писал сюда
                                 document.referrer, пустой при прямом заходе. */}
-                            <p className="mt-1 text-xs text-fg-muted">
+                            <p className="mt-1 text-[13px] text-fg-subtle">
                                 {campaignOf(lead) ?? t('curator.leads.noCampaign')}
                             </p>
 
@@ -227,16 +229,16 @@ export function LeadList() {
                                 disabled one, which would read as a temporary
                                 obstacle rather than a rule. */}
                             {!lead.contact_allowed && (
-                                <p className="mt-2 text-xs font-medium text-warning-fg">
+                                <p className="mt-3 rounded-tile bg-warning-soft px-3 py-2 text-sm font-medium text-warning-fg">
                                     {t('curator.leads.noConsent')}
                                 </p>
                             )}
 
-                            <div className="mt-3 flex gap-4">
+                            <div className="mt-2 flex gap-5">
                                 {lead.contact_allowed && (
                                     <a
                                         href={`mailto:${lead.email}`}
-                                        className="text-sm text-primary hover:underline"
+                                        className={ACTION_LINK}
                                     >
                                         {t('curator.leads.write')}
                                     </a>
@@ -254,7 +256,7 @@ export function LeadList() {
                                 {lead.conversation_id && (
                                     <Link
                                         href={`/curator/support?conversation=${lead.conversation_id}`}
-                                        className="text-sm text-primary hover:underline"
+                                        className={ACTION_LINK}
                                     >
                                         {t('curator.leads.openConversation')}
                                     </Link>

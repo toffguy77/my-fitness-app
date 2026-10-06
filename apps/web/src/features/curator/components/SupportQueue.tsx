@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
     curatorApi,
@@ -12,6 +12,9 @@ import {
 
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { cn } from '@/shared/utils/cn'
+import { Button } from '@/shared/components/ui/Button'
+import { LABEL_CLASS, SectionSpinner, TEXTAREA_CLASS } from './formSheet'
 /**
  * Questions the bot could not answer.
  *
@@ -27,6 +30,23 @@ const statusLabels: Record<SupportConversation['status'], string> = {
     open: t('curator.support.open'),
     closed: t('curator.support.closed'),
 }
+
+/** Ждёт человека — предупреждение; отвечает бот — сведение; закрыто — нейтрально. */
+const statusStyles: Record<SupportConversation['status'], string> = {
+    escalated: 'bg-warning-soft text-warning-fg',
+    open: 'bg-info-soft text-info-fg',
+    closed: 'bg-subtle text-fg-muted',
+}
+
+/**
+ * Ответ оператора — голос человека, поэтому на поверхности `coach`; вопрос
+ * пользователя — вторичная заливка; бот — бумага с линией.
+ */
+const messageStyles = {
+    user: { bubble: 'bg-subtle text-fg', author: 'text-fg-muted' },
+    operator: { bubble: 'bg-coach text-on-coach', author: 'text-on-coach-muted' },
+    bot: { bubble: 'border border-line bg-surface text-fg-muted', author: 'text-fg-subtle' },
+} as const
 
 const stepLabels: Record<string, string> = {
     goal: t('curator.leadSteps.goal'),
@@ -120,29 +140,22 @@ export function SupportQueue() {
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
-            </div>
-        )
+        return <SectionSpinner />
     }
 
     if (selected) {
         return (
-            <div>
-                <button
-                    onClick={() => setSelected(null)}
-                    className="text-sm text-fg-muted hover:text-fg"
-                >
+            <div className="max-w-3xl">
+                <Button variant="ghost" size="sm" onClick={() => setSelected(null)} className="-ml-3 text-fg-muted">
                     {t('curator.support.backToList')}
-                </button>
+                </Button>
 
                 {/* What they were doing when they got stuck, so nobody has to
                     ask them to repeat it. */}
                 {selected.lead && (
-                    <div className="mt-4 rounded-lg border border-line bg-canvas p-3">
-                        <p className="text-sm font-medium text-fg">{selected.lead.email}</p>
-                        <p className="text-xs text-fg-muted">
+                    <div className="mt-4 rounded-tile bg-info-soft p-4">
+                        <p className="text-sm font-semibold text-info-fg">{selected.lead.email}</p>
+                        <p className="text-sm text-info-fg">
                             {t('curator.leads.stoppedAt', { step: stepLabels[selected.lead.last_step] ?? selected.lead.last_step })}
                             {selected.lead.summary && ` · ${selected.lead.summary}`}
                         </p>
@@ -150,31 +163,30 @@ export function SupportQueue() {
                 )}
 
                 <ul className="mt-4 space-y-3">
-                    {selected.messages.map((message) => (
-                        <li
-                            key={message.id}
-                            className={`rounded-lg p-3 text-sm ${
-                                message.author === 'user'
-                                    ? 'bg-subtle text-fg'
-                                    : message.author === 'operator'
-                                      ? 'bg-primary-soft text-fg'
-                                      : 'bg-surface text-fg-muted border border-line'
-                            }`}
-                        >
-                            <p className="mb-1 text-xs text-fg-muted">
-                                {message.author === 'user'
-                                    ? t('curator.support.authorUser')
-                                    : message.author === 'operator'
-                                      ? t('curator.support.authorOperator')
-                                      : t('curator.support.authorBot')}
-                            </p>
-                            {message.text}
-                        </li>
-                    ))}
+                    {selected.messages.map((message) => {
+                        const style =
+                            message.author === 'user'
+                                ? messageStyles.user
+                                : message.author === 'operator'
+                                  ? messageStyles.operator
+                                  : messageStyles.bot
+                        return (
+                            <li key={message.id} className={cn('rounded-tile p-4 text-[15px] leading-[22px]', style.bubble)}>
+                                <p className={cn('mb-1 text-[13px] font-medium', style.author)}>
+                                    {message.author === 'user'
+                                        ? t('curator.support.authorUser')
+                                        : message.author === 'operator'
+                                          ? t('curator.support.authorOperator')
+                                          : t('curator.support.authorBot')}
+                                </p>
+                                {message.text}
+                            </li>
+                        )
+                    })}
                 </ul>
 
-                <div className="mt-4">
-                    <label htmlFor="support-reply" className="block text-sm font-medium text-fg">
+                <div className="mt-6">
+                    <label htmlFor="support-reply" className={LABEL_CLASS}>
                         {t('curator.support.reply')}
                     </label>
                     <textarea
@@ -182,22 +194,18 @@ export function SupportQueue() {
                         value={reply}
                         onChange={(e) => setReply(e.target.value)}
                         rows={3}
-                        className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm text-fg"
+                        className={TEXTAREA_CLASS}
                     />
-                    <div className="mt-3 flex gap-3">
-                        <button
+                    <div className="mt-3 flex flex-wrap gap-3">
+                        <Button
                             onClick={handleReply}
                             disabled={!reply.trim() || sending}
-                            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-hover disabled:opacity-50"
                         >
                             {sending ? t('curator.support.sending') : t('curator.support.sendToTelegram')}
-                        </button>
-                        <button
-                            onClick={handleClose}
-                            className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-fg hover:bg-canvas"
-                        >
+                        </Button>
+                        <Button variant="secondary" onClick={handleClose}>
                             {t('curator.support.close')}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -209,33 +217,35 @@ export function SupportQueue() {
     }
 
     return (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
             {conversations.map((conversation) => (
                 <li key={conversation.id}>
                     <button
                         onClick={() => openThread(conversation)}
                         data-testid="support-conversation"
-                        className="w-full rounded-xl border border-line bg-surface p-4 text-left hover:shadow-md"
+                        className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-subtle/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                     >
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold text-fg">
-                                {conversation.telegram_name || conversation.telegram_username || t('curator.support.noName')}
+                        <span className="min-w-0 flex-1">
+                            <span className="flex items-center justify-between gap-3">
+                                <span className="type-headline truncate text-fg">
+                                    {conversation.telegram_name || conversation.telegram_username || t('curator.support.noName')}
+                                </span>
+                                <span
+                                    className={cn(
+                                        'inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                                        statusStyles[conversation.status],
+                                    )}
+                                >
+                                    {statusLabels[conversation.status]}
+                                </span>
                             </span>
-                            <span
-                                className={`text-xs ${
-                                    conversation.status === 'escalated'
-                                        ? 'font-semibold text-danger-fg'
-                                        : 'text-fg-muted'
-                                }`}
-                            >
-                                {statusLabels[conversation.status]}
-                            </span>
-                        </div>
-                        {conversation.escalation_reason && (
-                            <p className="mt-1 text-xs text-fg-muted">
-                                {t('curator.support.reason', { reason: conversation.escalation_reason })}
-                            </p>
-                        )}
+                            {conversation.escalation_reason && (
+                                <span className="mt-0.5 block text-sm text-fg-muted">
+                                    {t('curator.support.reason', { reason: conversation.escalation_reason })}
+                                </span>
+                            )}
+                        </span>
+                        <ChevronRight className="h-5 w-5 shrink-0 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                     </button>
                 </li>
             ))}

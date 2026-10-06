@@ -20,12 +20,12 @@ export function PhotosSection({ photos }: PhotosSectionProps) {
     if (!photos || photos.length === 0) return null
 
     return (
-        <section className="rounded-xl bg-surface p-4 shadow-sm border border-line">
-            <h2 className="text-sm font-semibold text-fg mb-3">{t('curator.photos.heading')}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <section className="rounded-card border border-line bg-surface p-5">
+            <h2 className="type-title-3 mb-4 text-fg">{t('curator.photos.heading')}</h2>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                 {photos.map((photo) => (
                     <div key={photo.id} className="space-y-1">
-                        <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-subtle">
+                        <div className="relative aspect-[3/4] overflow-hidden rounded-tile bg-subtle">
                             <Image
                                 src={photo.photo_url}
                                 alt={t('curator.photos.alt', { range: formatDateRange(photo.week_start, photo.week_end) })}
@@ -34,7 +34,7 @@ export function PhotosSection({ photos }: PhotosSectionProps) {
                                 unoptimized
                             />
                         </div>
-                        <p className="text-xs text-fg-muted text-center">
+                        <p className="text-center text-[13px] tabular-nums text-fg-muted">
                             {formatDateRange(photo.week_start, photo.week_end)}
                         </p>
                     </div>

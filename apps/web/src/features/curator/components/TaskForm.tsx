@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Loader2 } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
+import { Button } from '@/shared/components/ui/Button'
 import { curatorApi } from '../api/curatorApi'
 import type { TaskView, TaskType, TaskRecurrence } from '../types'
 
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { FIELD_CLASS, FORM_ERROR_CLASS, FormSheet, LABEL_CLASS, TEXTAREA_CLASS } from './formSheet'
 const TYPE_OPTIONS: { value: TaskType; label: string }[] = [
     { value: 'nutrition', label: t('curator.task.typeNutrition') },
     { value: 'workout', label: t('curator.task.typeWorkout') },
@@ -96,118 +97,111 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
     }
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-scrim">
-            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-surface p-5 pb-20 shadow-xl animate-in slide-in-from-bottom">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-semibold text-fg">{isEdit ? t('curator.task.editHeading') : t('curator.task.newHeading')}</h2>
-                    <button type="button" onClick={onClose} className="p-1 text-fg-subtle hover:text-fg-muted">
-                        <X className="h-5 w-5" />
-                    </button>
+        <FormSheet title={isEdit ? t('curator.task.editHeading') : t('curator.task.newHeading')} onClose={onClose}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className={LABEL_CLASS}>{t('curator.task.name')}</label>
+                    <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className={FIELD_CLASS}
+                        required
+                        placeholder={t('curator.task.namePlaceholder')}
+                    />
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
                     <div>
-                        <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.name')}</label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
-                            required
-                            placeholder={t('curator.task.namePlaceholder')}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.type')}</label>
-                            <select
-                                value={type}
-                                onChange={(e) => setType(e.target.value as TaskType)}
-                                disabled={isEdit}
-                                className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus disabled:opacity-60"
-                            >
-                                {TYPE_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.deadline')}</label>
-                            <input
-                                type="date"
-                                value={deadline}
-                                onChange={(e) => setDeadline(e.target.value)}
-                                className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.description')}</label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            rows={2}
-                            className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
-                            placeholder={t('curator.task.descriptionPlaceholder')}
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.recurrence')}</label>
+                        <label className={LABEL_CLASS}>{t('curator.task.type')}</label>
                         <select
-                            value={recurrence}
-                            onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)}
+                            value={type}
+                            onChange={(e) => setType(e.target.value as TaskType)}
                             disabled={isEdit}
-                            className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus disabled:opacity-60"
+                            className={FIELD_CLASS}
                         >
-                            {RECURRENCE_OPTIONS.map((opt) => (
+                            {TYPE_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
                                     {opt.label}
                                 </option>
                             ))}
                         </select>
                     </div>
+                    <div>
+                        <label className={LABEL_CLASS}>{t('curator.task.deadline')}</label>
+                        <input
+                            type="date"
+                            value={deadline}
+                            onChange={(e) => setDeadline(e.target.value)}
+                            className={FIELD_CLASS}
+                            required
+                        />
+                    </div>
+                </div>
 
-                    {recurrence === 'weekly' && (
-                        <div>
-                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.weekdays')}</label>
-                            <div className="flex gap-1.5">
-                                {WEEKDAYS.map((day) => (
+                <div>
+                    <label className={LABEL_CLASS}>{t('curator.task.description')}</label>
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={2}
+                        className={TEXTAREA_CLASS}
+                        placeholder={t('curator.task.descriptionPlaceholder')}
+                    />
+                </div>
+
+                <div>
+                    <label className={LABEL_CLASS}>{t('curator.task.recurrence')}</label>
+                    <select
+                        value={recurrence}
+                        onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)}
+                        disabled={isEdit}
+                        className={FIELD_CLASS}
+                    >
+                        {RECURRENCE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {recurrence === 'weekly' && (
+                    <div>
+                        <label className={LABEL_CLASS}>{t('curator.task.weekdays')}</label>
+                        {/* Выбранный день — инверсия чернилами, а не терракота:
+                            бренд на экране только у главного действия. */}
+                        <div className="flex flex-wrap gap-1.5">
+                            {WEEKDAYS.map((day) => {
+                                const selected = recurrenceDays.includes(day.value)
+                                return (
                                     <button
                                         key={day.value}
                                         type="button"
                                         onClick={() => toggleDay(day.value)}
+                                        aria-pressed={selected}
                                         className={cn(
-                                            'flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium transition-colors',
-                                            recurrenceDays.includes(day.value)
-                                                ? 'bg-primary text-on-primary'
-                                                : 'bg-subtle text-fg-muted hover:bg-subtle',
+                                            'flex h-11 w-11 items-center justify-center rounded-full text-sm font-medium transition-colors',
+                                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
+                                            selected
+                                                ? 'bg-fg text-fg-inverse'
+                                                : 'bg-subtle text-fg-muted hover:text-fg',
                                         )}
                                     >
                                         {day.label}
                                     </button>
-                                ))}
-                            </div>
+                                )
+                            })}
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {error && <p className="text-xs text-danger-fg">{error}</p>}
+                {error && <p className={FORM_ERROR_CLASS} role="alert">{error}</p>}
 
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-on-primary hover:bg-primary-hover disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                    >
-                        {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {isEdit ? t('common.save') : t('curator.task.create')}
-                    </button>
-                </form>
-            </div>
-        </div>
+                <Button type="submit" size="lg" block isLoading={saving} className="mt-2">
+                    {isEdit ? t('common.save') : t('curator.task.create')}
+                </Button>
+            </form>
+        </FormSheet>
     )
 }

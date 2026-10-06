@@ -12,8 +12,8 @@ export default function AdminEditArticlePage({
     const { id } = use(params)
 
     return (
-        <div className="px-4 py-6 pb-20">
-            <h1 className="text-xl font-semibold text-fg mb-4">
+        <div className="mx-auto w-full max-w-3xl px-screen-x py-5">
+            <h1 className="type-title-1 mb-5 text-fg">
                 {t('admin.navigation.editArticle')}
             </h1>
             <ArticleEditor articleId={id} returnPath="/admin/content" />
