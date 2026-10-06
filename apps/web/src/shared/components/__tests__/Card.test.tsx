@@ -12,7 +12,7 @@ describe('Card', () => {
         render(<Card data-testid="card">Default</Card>)
         const card = screen.getByTestId('card')
         expect(card.className).toContain('bg-surface')
-        expect(card.className).toContain('rounded-lg')
+        expect(card.className).toContain('rounded-card')
     })
 
     it('applies bordered variant classes', () => {
@@ -25,7 +25,7 @@ describe('Card', () => {
     it('applies elevated variant classes', () => {
         render(<Card variant="elevated" data-testid="card">Elevated</Card>)
         const card = screen.getByTestId('card')
-        expect(card.className).toContain('shadow-lg')
+        expect(card.className).toContain('shadow-overlay')
     })
 
     it('forwards additional className', () => {
@@ -72,8 +72,7 @@ describe('CardTitle', () => {
     it('applies font styling', () => {
         render(<CardTitle data-testid="title">Title</CardTitle>)
         const title = screen.getByTestId('title')
-        expect(title.className).toContain('text-xl')
-        expect(title.className).toContain('font-semibold')
+        expect(title.className).toContain('type-title-3')
     })
 
     it('forwards ref', () => {

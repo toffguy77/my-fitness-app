@@ -26,6 +26,8 @@ export default function robots(): MetadataRoute.Robots {
                 '/chat',
                 '/curator',
                 '/admin',
+                // Служебный справочник дизайн-системы — для команды, не для поиска.
+                '/design-system',
                 // The wizard: an app screen for two audiences, empty until the
                 // session is known. The calculator page search should find is
                 // /kalkulyator-kbzhu.

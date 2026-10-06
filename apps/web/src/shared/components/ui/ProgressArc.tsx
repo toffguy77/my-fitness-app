@@ -31,7 +31,7 @@ export function ProgressArc({ value, max, color = role.primary, label, children,
     const d = `M ${(W - 2 * R) / 2} ${H - STROKE / 2 - 4} A ${R} ${R} 0 0 1 ${W - (W - 2 * R) / 2} ${H - STROKE / 2 - 4}`
     return (
         <div
-            className={cn('relative mx-auto w-full max-w-[280px]', className)}
+            className={cn('mx-auto flex w-full max-w-[280px] flex-col', className)}
             role="img"
             aria-label={label}
         >
@@ -50,7 +50,9 @@ export function ProgressArc({ value, max, color = role.primary, label, children,
                     />
                 )}
             </svg>
-            <div className="absolute inset-x-0 bottom-1 flex flex-col items-center gap-0.5 text-center">
+            {/* Крупное число садится внутрь дуги, подпись — под её концами:
+                поверх концов дуги она бы с ними пересекалась. */}
+            <div className="relative -mt-[19%] flex flex-col items-center gap-1 text-center">
                 {children}
             </div>
         </div>

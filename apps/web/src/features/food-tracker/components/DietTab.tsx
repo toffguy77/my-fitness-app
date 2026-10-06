@@ -100,6 +100,8 @@ export function DietTab({
 
     // Local state for modal
     const [isModalOpen, setIsModalOpen] = useState(openEntryOn !== null);
+    // Способ, выбранный на панели быстрого ввода: окно открывается сразу на нём.
+    const [quickTab, setQuickTab] = useState<EntryMethodTab | null>(null);
 
     // Ссылка вида /food-tracker?add=photo должна привести прямо к распознаванию.
     // Начальное состояние выше берёт указание сразу, поэтому окно открывается
@@ -149,7 +151,6 @@ export function DietTab({
     // Быстрый ввод: окно записи открывается сразу на выбранном способе, а
     // приём пищи угадывается по времени — чаще всего человек записывает то,
     // что только что съел.
-    const [quickTab, setQuickTab] = useState<EntryMethodTab | null>(null);
     const handleQuickAdd = useCallback((method: QuickAddMethod) => {
         setSelectedMealType(mealForHour(new Date().getHours()));
         setEditingEntry(null);

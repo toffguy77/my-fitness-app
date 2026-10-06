@@ -24,6 +24,8 @@
     "lint:web": "npm run lint --workspace=apps/web",
     "lint:api": "cd apps/api && make lint",
     "type-check": "npm run type-check --workspaces --if-present",
+    "tokens:build": "npm run build --workspace=packages/design-tokens",
+    "tokens:check": "npm run check --workspace=packages/design-tokens",
     "prepare": "husky install",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",

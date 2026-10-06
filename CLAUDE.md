@@ -56,6 +56,7 @@ make build-api    # Go binary → apps/api/bin/server
 - `packages/ui/` — Shared React UI components (@burcev/ui)
 - `packages/utils/` — Shared utilities (@burcev/utils)
 - `packages/config/` — Shared ESLint/TypeScript configs (@burcev/config)
+- `packages/design-tokens/` — Design tokens (@burcev/design-tokens): W3C DTCG source → CSS, Tailwind theme, JS, JSON for mobile
 
 ### Frontend (`apps/web/src/`)
 Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
@@ -64,7 +65,6 @@ Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
 - `features/` — Self-contained feature modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **notifications**, **nutrition-calc**, **onboarding**, **settings**
   - Each feature has: `api/`, `components/`, `hooks/`, `store/` (Zustand), `types/`, `index.ts`
 - `shared/` — Cross-feature reusable code: `components/ui/`, `hooks/`, `utils/`, `types/`, `constants/`
-- `styles/tokens/` — Design tokens (colors, typography, spacing)
 - `lib/` — Third-party library integrations
 
 ### Backend (`apps/api/`)
@@ -119,6 +119,25 @@ the Metrika work were nearly shipped dead.
 - State backend: S3 bucket `burcev-terraform-state`
 - Manages: service accounts, S3 access keys, IAM bindings, PostgreSQL users/databases
 - Secrets (credentials, passwords) are in `.claude/CLAUDE.local.md` (local only, not in git)
+
+## Design System
+
+Правила и роли — `docs/design-system/README.md`, живой справочник —
+`/design-system`. Коротко:
+
+- **Значения — только в `packages/design-tokens/tokens/*.json`.** После правки
+  `npm run tokens:build` и коммит вместе с `dist/`; CI (`npm run tokens:check`)
+  падает, если `dist/` отстал, если у тем разный набор ролей или если пара
+  «текст на фоне» не держит контраст.
+- **В разметке — роли**: `bg-surface`, `text-fg-muted`, `border-line`,
+  `bg-primary`, `text-protein-fg`… Палитра Tailwind (`gray-500`, `blue-600`)
+  отключена в теме и запрещена ESLint, как и цвет литералом. В SVG и графиках —
+  `color.*` из `@burcev/design-tokens` или `@/shared/charts/chartTheme`.
+- **`dark:` для цвета не нужен** — роли переключаются темой сами.
+- **Ветка до дизайн-системы**: `node apps/web/scripts/design-system-codemod.mjs`,
+  затем `npm run lint:web`.
+- Новый повторяющийся элемент — компонент в `shared/components/ui` с тестом и
+  примером на `/design-system`.
 
 ## Lint Hygiene
 

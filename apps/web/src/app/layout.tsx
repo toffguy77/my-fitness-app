@@ -14,7 +14,7 @@ import '@fontsource-variable/golos-text'
 import '@fontsource-variable/literata/wght.css'
 import '@fontsource-variable/literata/wght-italic.css'
 import './globals.css'
-import { color } from '@burcev/design-tokens'
+import { color, values } from '@burcev/design-tokens'
 
 export const viewport: Viewport = {
     width: 'device-width',
@@ -22,8 +22,8 @@ export const viewport: Viewport = {
     // Совпадает с фоном экрана темы (color.bg.canvas), чтобы полоса браузера
     // и системная строка не отличались от страницы.
     themeColor: [
-        { media: '(prefers-color-scheme: light)', color: '#F6F1E8' },
-        { media: '(prefers-color-scheme: dark)', color: '#14110D' },
+        { media: '(prefers-color-scheme: light)', color: values.light['color.bg.canvas'] },
+        { media: '(prefers-color-scheme: dark)', color: values.dark['color.bg.canvas'] },
     ],
 }
 

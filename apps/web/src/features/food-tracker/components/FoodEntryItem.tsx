@@ -120,7 +120,7 @@ export function FoodEntryItem({
             onKeyDown={handleKeyDown}
             onMouseEnter={() => setShowActions(true)}
             onMouseLeave={() => setShowActions(false)}
-            className={`group -mx-2 flex min-h-14 items-center justify-between rounded-tile px-2 py-2.5 cursor-pointer transition-colors hover:bg-subtle/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus ${className}`}
+            className={`group flex min-h-14 items-center justify-between py-2.5 cursor-pointer transition-colors hover:bg-subtle/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus ${className}`}
             aria-label={ariaLabel}
         >
             {/* Food info */}

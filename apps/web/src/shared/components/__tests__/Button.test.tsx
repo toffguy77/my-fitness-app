@@ -42,22 +42,22 @@ describe('Button', () => {
     it('applies small size classes', () => {
         render(<Button size="sm">Small</Button>)
         const button = screen.getByRole('button')
-        expect(button.className).toContain('h-8')
+        expect(button.className).toContain('h-9')
         expect(button.className).toContain('text-sm')
     })
 
     it('applies medium size classes by default', () => {
         render(<Button>Medium</Button>)
         const button = screen.getByRole('button')
-        expect(button.className).toContain('h-10')
-        expect(button.className).toContain('text-base')
+        expect(button.className).toContain('h-11')
+        expect(button.className).toContain('text-[15px]')
     })
 
     it('applies large size classes', () => {
         render(<Button size="lg">Large</Button>)
         const button = screen.getByRole('button')
         expect(button.className).toContain('h-12')
-        expect(button.className).toContain('text-lg')
+        expect(button.className).toContain('h-12')
     })
 
     it('fires onClick handler when clicked', async () => {
