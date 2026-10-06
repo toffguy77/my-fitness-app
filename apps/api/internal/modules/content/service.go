@@ -1113,25 +1113,32 @@ func (s *Service) GetPublicFeed(ctx context.Context, category string, limit int,
 	return &FeedResponse{Articles: articles, Total: total}, nil
 }
 
-// GetPublicArticle returns a single published article with audience_scope = 'all', no auth required.
-// It is found by its slug, or by its id for links made before slugs existed.
-func (s *Service) GetPublicArticle(ctx context.Context, articleID string) (*Article, error) {
-	startTime := time.Now()
-
-	column := "a.slug"
-	if _, err := uuid.Parse(articleID); err == nil {
-		column = "a.id"
-	}
-
-	query := `
+const publicArticleColumns = `
 		SELECT a.id, a.slug, u.name AS author_name, a.title, a.excerpt,
 		       COALESCE(a.cover_image_url, ''), a.category, a.status, a.audience_scope,
 		       a.content_s3_key, a.published_at, a.created_at, a.updated_at,
 		       a.author_id
 		FROM articles a
-		JOIN users u ON u.id = a.author_id
-		WHERE ` + column + ` = $1 AND a.status = 'published' AND a.audience_scope = 'all'
-	`
+		JOIN users u ON u.id = a.author_id`
+
+const (
+	publicArticleByID = publicArticleColumns + `
+		WHERE a.id = $1 AND a.status = 'published' AND a.audience_scope = 'all'`
+	publicArticleBySlug = publicArticleColumns + `
+		WHERE a.slug = $1 AND a.status = 'published' AND a.audience_scope = 'all'`
+)
+
+// GetPublicArticle returns a single published article with audience_scope = 'all', no auth required.
+// It is found by its slug, or by its id for links made before slugs existed.
+func (s *Service) GetPublicArticle(ctx context.Context, articleID string) (*Article, error) {
+	startTime := time.Now()
+
+	// Two whole queries rather than one with the column spliced in: each
+	// lookup keeps its own index, and no SQL is ever built from strings.
+	query := publicArticleBySlug
+	if _, err := uuid.Parse(articleID); err == nil {
+		query = publicArticleByID
+	}
 
 	var article Article
 	var contentS3Key sql.NullString

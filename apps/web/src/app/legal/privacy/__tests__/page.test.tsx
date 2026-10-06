@@ -56,6 +56,16 @@ describe('PrivacyPage', () => {
         expect(screen.getByText(/дата последнего обновления: 6 октября 2026 г\./i)).toBeInTheDocument();
     });
 
+    // Cookie first_touch хранит 30 дней, откуда человек впервые пришёл.
+    // Цель обработки должна быть названа в политике, а не только в коде.
+    it('names keeping where a visitor first came from among the uses of cookies', () => {
+        const { container } = render(<PrivacyPage />);
+        const text = container.textContent ?? '';
+
+        expect(text).toMatch(/откуда вы впервые пришли/i);
+        expect(text).toMatch(/30 дней/);
+    });
+
     // 152-ФЗ: субъект должен знать, кто обрабатывает его данные. Названное
     // раньше ООО не существовало.
     it('names the real operator of personal data', () => {
