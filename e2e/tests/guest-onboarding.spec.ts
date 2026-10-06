@@ -135,3 +135,76 @@ test.describe('Guest onboarding', () => {
     await expect(page.getByText('Ваши параметры')).toBeVisible({ timeout: 15000 })
   })
 })
+
+/**
+ * The calculator on /kalkulyator-kbzhu and the wizard keep one set of answers.
+ *
+ * They used to meet only on a successful calculation: whatever was typed
+ * without one, or edited after it, stayed on the calculator page, and the
+ * wizard showed what an earlier visit had left in the browser.
+ */
+test.describe('Calculator to wizard', () => {
+  const earlierVisit = {
+    state: {
+      step: 1,
+      goal: 'gain',
+      sex: 'male',
+      birthDate: '1980-01-01',
+      heightCm: '190',
+      weightKg: '100',
+      activityLevel: 'active',
+      result: null,
+      email: '',
+    },
+    version: 0,
+  }
+
+  async function fillCalculator(page: import('@playwright/test').Page, weight: string) {
+    await page.getByText('Женский', { exact: true }).click()
+    await page.getByLabel('Дата рождения').fill('1995-05-05')
+    await page.getByLabel('Рост, см').fill('168')
+    await page.getByLabel('Вес, кг').fill(weight)
+    await page.getByLabel('Уровень активности').selectOption('moderate')
+    await page.getByLabel('Цель').selectOption('loss')
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await page.context().clearCookies()
+    await page.goto('/kalkulyator-kbzhu')
+    await page.evaluate((value) => localStorage.setItem('guest-onboarding', JSON.stringify(value)), earlierVisit)
+    await page.reload()
+  })
+
+  test('opens the wizard with what was typed, not with an earlier visit', async ({ page }) => {
+    await expect(page.getByLabel('Рост, см')).toHaveValue('190', { timeout: 15000 })
+    await fillCalculator(page, '65')
+
+    await page.goto('/onboarding')
+
+    await expect(page.getByText('Ваши параметры')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByLabel('Дата рождения')).toHaveValue('1995-05-05')
+    await expect(page.getByLabel('Рост, см')).toHaveValue('168')
+    await expect(page.getByLabel('Вес, кг')).toHaveValue('65')
+  })
+
+  test('carries the result of the last calculation, not of an earlier one', async ({ page }) => {
+    await fillCalculator(page, '65')
+    await page.getByRole('button', { name: 'Рассчитать' }).click()
+    await expect(page.getByRole('button', { name: 'Сохранить результат и получить план' })).toBeVisible({
+      timeout: 15000,
+    })
+
+    // A number that no longer matches the answers is not offered for saving.
+    await page.getByLabel('Вес, кг').fill('90')
+    await expect(page.getByRole('button', { name: 'Сохранить результат и получить план' })).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Рассчитать' }).click()
+    const calories = page.locator('[aria-live=polite] p.text-4xl')
+    await expect(calories).not.toBeEmpty({ timeout: 15000 })
+    const shown = await calories.textContent()
+
+    await page.getByRole('button', { name: 'Сохранить результат и получить план' }).click()
+
+    await expect(page.getByTestId('guest-calories')).toHaveText(shown!, { timeout: 15000 })
+  })
+})
