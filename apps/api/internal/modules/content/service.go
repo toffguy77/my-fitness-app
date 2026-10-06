@@ -114,6 +114,10 @@ func (s *Service) verifyOwnership(ctx context.Context, authorID int64, articleID
 func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateArticleRequest) (*Article, error) {
 	startTime := time.Now()
 
+	if req.Slug != nil && !ValidSlug(*req.Slug) {
+		return nil, fmt.Errorf("slug %q: %w", *req.Slug, apperrors.ErrValidation)
+	}
+
 	id := uuid.New().String()
 	contentS3Key := fmt.Sprintf("content/%s/body.md", id)
 
@@ -154,23 +158,36 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 		}
 	}()
 
+	// Every article is created with its address. An explicit one that is
+	// taken is refused rather than renumbered: whoever chose it chose that
+	// address, not a neighbour of it.
+	var slug string
+	if req.Slug != nil {
+		slug = *req.Slug
+	} else if slug, err = freeSlug(ctx, tx, BaseSlug(req.Title)); err != nil {
+		return nil, err
+	}
+
 	query := `
-		INSERT INTO articles (id, author_id, title, excerpt, cover_image_url, category, audience_scope, content_s3_key, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', NOW(), NOW())
-		RETURNING id, author_id, title, excerpt, COALESCE(cover_image_url, ''), category, status, audience_scope,
+		INSERT INTO articles (id, slug, author_id, title, excerpt, cover_image_url, category, audience_scope, content_s3_key, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', NOW(), NOW())
+		RETURNING id, slug, author_id, title, excerpt, COALESCE(cover_image_url, ''), category, status, audience_scope,
 		          scheduled_at, published_at, created_at, updated_at
 	`
 
 	var article Article
 	var scheduledAt, publishedAt sql.NullTime
 	err = tx.QueryRowContext(ctx, query,
-		id, authorID, req.Title, req.Excerpt, req.CoverImageURL, req.Category, req.AudienceScope, contentS3Key,
+		id, slug, authorID, req.Title, req.Excerpt, req.CoverImageURL, req.Category, req.AudienceScope, contentS3Key,
 	).Scan(
-		&article.ID, &article.AuthorID, &article.Title, &article.Excerpt,
+		&article.ID, &article.Slug, &article.AuthorID, &article.Title, &article.Excerpt,
 		&article.CoverImageURL, &article.Category, &article.Status, &article.AudienceScope,
 		&scheduledAt, &publishedAt, &article.CreatedAt, &article.UpdatedAt,
 	)
 	if err != nil {
+		if isSlugTaken(err) {
+			return nil, fmt.Errorf("slug %q is taken: %w", slug, apperrors.ErrConflict)
+		}
 		s.log.Error("Failed to create article", "error", err)
 		return nil, fmt.Errorf("failed to create article: %w", err)
 	}
@@ -255,7 +272,7 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 	startTime := time.Now()
 
 	query := `
-		SELECT a.id, a.author_id, COALESCE(u.name, '') AS author_name,
+		SELECT a.id, a.slug, a.author_id, COALESCE(u.name, '') AS author_name,
 		       a.title, a.excerpt, COALESCE(a.cover_image_url, ''), a.category, a.status, a.audience_scope,
 		       a.content_s3_key, a.scheduled_at, a.published_at, a.created_at, a.updated_at
 		FROM articles a
@@ -268,7 +285,7 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 	var scheduledAt, publishedAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, articleID).Scan(
-		&article.ID, &article.AuthorID, &article.AuthorName,
+		&article.ID, &article.Slug, &article.AuthorID, &article.AuthorName,
 		&article.Title, &article.Excerpt, &article.CoverImageURL,
 		&article.Category, &article.Status, &article.AudienceScope,
 		&contentS3Key, &scheduledAt, &publishedAt,
@@ -323,7 +340,7 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 	startTime := time.Now()
 
 	query := `
-		SELECT a.id, a.author_id, COALESCE(u.name, '') AS author_name,
+		SELECT a.id, a.slug, a.author_id, COALESCE(u.name, '') AS author_name,
 		       a.title, a.excerpt, COALESCE(a.cover_image_url, ''), a.category, a.status, a.audience_scope,
 		       a.scheduled_at, a.published_at, a.created_at, a.updated_at
 		FROM articles a
@@ -359,7 +376,7 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 		var scheduledAt, publishedAt sql.NullTime
 
 		if err := rows.Scan(
-			&a.ID, &a.AuthorID, &a.AuthorName,
+			&a.ID, &a.Slug, &a.AuthorID, &a.AuthorName,
 			&a.Title, &a.Excerpt, &a.CoverImageURL,
 			&a.Category, &a.Status, &a.AudienceScope,
 			&scheduledAt, &publishedAt, &a.CreatedAt, &a.UpdatedAt,
@@ -458,6 +475,17 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 		args = append(args, *req.CoverImageURL)
 		argIdx++
 	}
+	if req.Slug != nil {
+		changes, err := s.slugChangeAllowed(ctx, articleID, *req.Slug)
+		if err != nil {
+			return nil, err
+		}
+		if changes {
+			setClauses = append(setClauses, fmt.Sprintf("slug = $%d", argIdx))
+			args = append(args, *req.Slug)
+			argIdx++
+		}
+	}
 
 	// Always update updated_at
 	setClauses = append(setClauses, "updated_at = NOW()")
@@ -481,7 +509,7 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 
 	query := fmt.Sprintf( // nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
 		`UPDATE articles SET %s WHERE id = $%d
-		 RETURNING id, author_id, title, excerpt, COALESCE(cover_image_url, ''), category, status, audience_scope,
+		 RETURNING id, slug, author_id, title, excerpt, COALESCE(cover_image_url, ''), category, status, audience_scope,
 		           scheduled_at, published_at, created_at, updated_at`,
 		strings.Join(setClauses, ", "), argIdx,
 	)
@@ -490,7 +518,7 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 	var scheduledAt, publishedAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, args...).Scan(
-		&article.ID, &article.AuthorID, &article.Title, &article.Excerpt,
+		&article.ID, &article.Slug, &article.AuthorID, &article.Title, &article.Excerpt,
 		&article.CoverImageURL, &article.Category, &article.Status, &article.AudienceScope,
 		&scheduledAt, &publishedAt, &article.CreatedAt, &article.UpdatedAt,
 	)
@@ -518,6 +546,9 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 				)
 			}
 			return nil, fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
+		}
+		if isSlugTaken(err) {
+			return nil, fmt.Errorf("slug is taken: %w", apperrors.ErrConflict)
 		}
 		s.log.Error("Failed to update article", "error", err, "article_id", articleID)
 		return nil, fmt.Errorf("failed to update article: %w", err)
@@ -877,7 +908,8 @@ func (s *Service) GetFeed(ctx context.Context, clientID int64, category string, 
 
 	// Fetch paginated articles
 	selectQuery := fmt.Sprintf(`
-		SELECT a.id, COALESCE(u.name, '') AS author_name, a.title, a.excerpt,
+		SELECT a.id, CASE WHEN a.audience_scope = 'all' THEN a.slug ELSE '' END,
+		       COALESCE(u.name, '') AS author_name, a.title, a.excerpt,
 		       COALESCE(a.cover_image_url, ''), a.category, a.published_at
 		FROM articles a
 		JOIN users u ON u.id = a.author_id
@@ -901,7 +933,7 @@ func (s *Service) GetFeed(ctx context.Context, clientID int64, category string, 
 		var publishedAt sql.NullTime
 
 		if err := rows.Scan(
-			&card.ID, &card.AuthorName, &card.Title, &card.Excerpt,
+			&card.ID, &card.Slug, &card.AuthorName, &card.Title, &card.Excerpt,
 			&card.CoverImageURL, &card.Category, &publishedAt,
 		); err != nil {
 			s.log.Error("Failed to scan feed article row", "error", err)
@@ -934,7 +966,7 @@ func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID 
 	startTime := time.Now()
 
 	query := `
-		SELECT a.id, u.name AS author_name, a.title, a.excerpt,
+		SELECT a.id, a.slug, u.name AS author_name, a.title, a.excerpt,
 		       COALESCE(a.cover_image_url, ''), a.category, a.status, a.audience_scope,
 		       a.content_s3_key, a.published_at, a.created_at, a.updated_at,
 		       a.author_id
@@ -959,7 +991,7 @@ func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID 
 	var publishedAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, articleID, clientID).Scan(
-		&article.ID, &article.AuthorName, &article.Title, &article.Excerpt,
+		&article.ID, &article.Slug, &article.AuthorName, &article.Title, &article.Excerpt,
 		&article.CoverImageURL, &article.Category, &article.Status, &article.AudienceScope,
 		&contentS3Key, &publishedAt, &article.CreatedAt, &article.UpdatedAt,
 		&article.AuthorID,
@@ -1025,7 +1057,8 @@ func (s *Service) GetPublicFeed(ctx context.Context, category string, limit int,
 
 	// Fetch paginated articles
 	selectQuery := fmt.Sprintf(`
-		SELECT a.id, COALESCE(u.name, '') AS author_name, a.title, a.excerpt,
+		SELECT a.id, CASE WHEN a.audience_scope = 'all' THEN a.slug ELSE '' END,
+		       COALESCE(u.name, '') AS author_name, a.title, a.excerpt,
 		       COALESCE(a.cover_image_url, ''), a.category, a.published_at
 		FROM articles a
 		JOIN users u ON u.id = a.author_id
@@ -1049,7 +1082,7 @@ func (s *Service) GetPublicFeed(ctx context.Context, category string, limit int,
 		var publishedAt sql.NullTime
 
 		if err := rows.Scan(
-			&card.ID, &card.AuthorName, &card.Title, &card.Excerpt,
+			&card.ID, &card.Slug, &card.AuthorName, &card.Title, &card.Excerpt,
 			&card.CoverImageURL, &card.Category, &publishedAt,
 		); err != nil {
 			s.log.Error("Failed to scan public feed article row", "error", err)
@@ -1077,17 +1110,23 @@ func (s *Service) GetPublicFeed(ctx context.Context, category string, limit int,
 }
 
 // GetPublicArticle returns a single published article with audience_scope = 'all', no auth required.
+// It is found by its slug, or by its id for links made before slugs existed.
 func (s *Service) GetPublicArticle(ctx context.Context, articleID string) (*Article, error) {
 	startTime := time.Now()
 
+	column := "a.slug"
+	if _, err := uuid.Parse(articleID); err == nil {
+		column = "a.id"
+	}
+
 	query := `
-		SELECT a.id, u.name AS author_name, a.title, a.excerpt,
+		SELECT a.id, a.slug, u.name AS author_name, a.title, a.excerpt,
 		       COALESCE(a.cover_image_url, ''), a.category, a.status, a.audience_scope,
 		       a.content_s3_key, a.published_at, a.created_at, a.updated_at,
 		       a.author_id
 		FROM articles a
 		JOIN users u ON u.id = a.author_id
-		WHERE a.id = $1 AND a.status = 'published' AND a.audience_scope = 'all'
+		WHERE ` + column + ` = $1 AND a.status = 'published' AND a.audience_scope = 'all'
 	`
 
 	var article Article
@@ -1095,7 +1134,7 @@ func (s *Service) GetPublicArticle(ctx context.Context, articleID string) (*Arti
 	var publishedAt sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, articleID).Scan(
-		&article.ID, &article.AuthorName, &article.Title, &article.Excerpt,
+		&article.ID, &article.Slug, &article.AuthorName, &article.Title, &article.Excerpt,
 		&article.CoverImageURL, &article.Category, &article.Status, &article.AudienceScope,
 		&contentS3Key, &publishedAt, &article.CreatedAt, &article.UpdatedAt,
 		&article.AuthorID,

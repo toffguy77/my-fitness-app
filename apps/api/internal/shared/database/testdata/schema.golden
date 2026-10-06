@@ -8,6 +8,7 @@ INDEX analytics_identities idx_analytics_identities_user btree (user_id)
 INDEX article_audience article_audience_pkey btree (article_id, client_id)
 INDEX article_audience idx_article_audience_client btree (client_id)
 INDEX articles articles_pkey btree (id)
+INDEX articles articles_slug_key btree (slug)
 INDEX articles idx_articles_author btree (author_id)
 INDEX articles idx_articles_category btree (category)
 INDEX articles idx_articles_published_at btree (published_at DESC)
@@ -223,6 +224,7 @@ articles.excerpt character varying
 articles.id uuid NOT NULL DEFAULT gen_random_uuid()
 articles.published_at timestamp with time zone
 articles.scheduled_at timestamp with time zone
+articles.slug text NOT NULL
 articles.status USER-DEFINED NOT NULL DEFAULT 'draft'_status
 articles.title character varying NOT NULL
 articles.updated_at timestamp with time zone NOT NULL DEFAULT now()

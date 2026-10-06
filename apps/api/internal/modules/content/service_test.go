@@ -81,7 +81,7 @@ func setupTestServiceWithS3(t *testing.T, s3mock S3Uploader) (*Service, sqlmock.
 
 // articleListColumns defines the columns returned by ListArticles queries
 var articleListColumns = []string{
-	"id", "author_id", "author_name",
+	"id", "slug", "author_id", "author_name",
 	"title", "excerpt", "cover_image_url", "category", "status", "audience_scope",
 	"scheduled_at", "published_at", "created_at", "updated_at",
 }
@@ -395,14 +395,14 @@ func TestListArticles(t *testing.T) {
 		otherAuthorID := int64(99)
 
 		rows := sqlmock.NewRows(articleListColumns).
-			AddRow("art-1", authorID, "My Name",
+			AddRow("art-1", "art-1-slug", authorID, "My Name",
 				"My Article", "Excerpt", "", "nutrition", "published", "all",
 				nil, now, now, now).
-			AddRow("art-2", otherAuthorID, "Other Author",
+			AddRow("art-2", "art-2-slug", otherAuthorID, "Other Author",
 				"Their Article", "Excerpt", "", "training", "draft", "all",
 				nil, nil, now, now)
 
-		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
+		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "", "", false)
@@ -421,14 +421,14 @@ func TestListArticles(t *testing.T) {
 		authorID := int64(1)
 
 		rows := sqlmock.NewRows(articleListColumns).
-			AddRow("art-1", authorID, "Author Name",
+			AddRow("art-1", "art-1-slug", authorID, "Author Name",
 				"First Article", "Excerpt 1", "", "nutrition", "published", "all",
 				nil, now, now, now).
-			AddRow("art-2", authorID, "Author Name",
+			AddRow("art-2", "art-2-slug", authorID, "Author Name",
 				"Second Article", "Excerpt 2", "https://img.example.com/cover.jpg", "training", "draft", "my_clients",
 				nil, nil, now, now)
 
-		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
+		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "", "", false)
@@ -461,11 +461,11 @@ func TestListArticles(t *testing.T) {
 		authorID := int64(1)
 
 		rows := sqlmock.NewRows(articleListColumns).
-			AddRow("art-1", authorID, "Author",
+			AddRow("art-1", "art-1-slug", authorID, "Author",
 				"Published Article", "Excerpt", "", "nutrition", "published", "all",
 				nil, now, now, now)
 
-		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
+		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WithArgs("published").
 			WillReturnRows(rows)
 
@@ -485,11 +485,11 @@ func TestListArticles(t *testing.T) {
 		authorID := int64(1)
 
 		rows := sqlmock.NewRows(articleListColumns).
-			AddRow("art-1", authorID, "Author",
+			AddRow("art-1", "art-1-slug", authorID, "Author",
 				"Training Article", "Excerpt", "", "training", "draft", "all",
 				nil, nil, now, now)
 
-		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
+		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WithArgs("training").
 			WillReturnRows(rows)
 
@@ -510,7 +510,7 @@ func TestListArticles(t *testing.T) {
 
 		rows := sqlmock.NewRows(articleListColumns)
 
-		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
+		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WithArgs("published", "nutrition").
 			WillReturnRows(rows)
 
@@ -531,7 +531,7 @@ func TestListArticles(t *testing.T) {
 
 		rows := sqlmock.NewRows(articleListColumns)
 
-		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
+		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "", "", false)
@@ -551,11 +551,11 @@ func TestListArticles(t *testing.T) {
 		scheduledTime := now.Add(24 * time.Hour)
 
 		rows := sqlmock.NewRows(articleListColumns).
-			AddRow("art-1", authorID, "Author",
+			AddRow("art-1", "art-1-slug", authorID, "Author",
 				"Scheduled Article", "Excerpt", "", "nutrition", "scheduled", "all",
 				scheduledTime, nil, now, now)
 
-		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
+		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "", "", false)
@@ -576,7 +576,7 @@ func TestListArticles(t *testing.T) {
 
 		authorID := int64(1)
 
-		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
+		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnError(fmt.Errorf("connection refused"))
 
 		result, err := service.ListArticles(ctx, authorID, "", "", false)
@@ -699,10 +699,15 @@ func TestCreateArticle(t *testing.T) {
 
 		mock.ExpectBegin()
 
+		// The address comes from the title, checked against the ones taken.
+		mock.ExpectQuery(`SELECT EXISTS \(SELECT 1 FROM articles WHERE slug = \$1\)`).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
 		// INSERT RETURNING
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
 				sqlmock.AnyArg(), // uuid
+				"test-article",
 				authorID,
 				req.Title,
 				req.Excerpt,
@@ -712,11 +717,11 @@ func TestCreateArticle(t *testing.T) {
 				sqlmock.AnyArg(), // content_s3_key
 			).
 			WillReturnRows(sqlmock.NewRows([]string{
-				"id", "author_id", "title", "excerpt", "cover_image_url",
+				"id", "slug", "author_id", "title", "excerpt", "cover_image_url",
 				"category", "status", "audience_scope",
 				"scheduled_at", "published_at", "created_at", "updated_at",
 			}).AddRow(
-				"generated-uuid", authorID, req.Title, req.Excerpt, "",
+				"generated-uuid", "test-article", authorID, req.Title, req.Excerpt, "",
 				req.Category, "draft", req.AudienceScope,
 				nil, nil, now, now,
 			))
@@ -760,18 +765,22 @@ func TestCreateArticle(t *testing.T) {
 
 		mock.ExpectBegin()
 
+		// The address comes from the title, checked against the ones taken.
+		mock.ExpectQuery(`SELECT EXISTS \(SELECT 1 FROM articles WHERE slug = \$1\)`).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
 		// INSERT RETURNING
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
-				sqlmock.AnyArg(), authorID, req.Title, req.Excerpt,
+				sqlmock.AnyArg(), "targeted-article", authorID, req.Title, req.Excerpt,
 				req.CoverImageURL, req.Category, req.AudienceScope, sqlmock.AnyArg(),
 			).
 			WillReturnRows(sqlmock.NewRows([]string{
-				"id", "author_id", "title", "excerpt", "cover_image_url",
+				"id", "slug", "author_id", "title", "excerpt", "cover_image_url",
 				"category", "status", "audience_scope",
 				"scheduled_at", "published_at", "created_at", "updated_at",
 			}).AddRow(
-				"art-selected", authorID, req.Title, req.Excerpt, "",
+				"art-selected", "targeted-article", authorID, req.Title, req.Excerpt, "",
 				req.Category, "draft", req.AudienceScope,
 				nil, nil, time.Now(), time.Now(),
 			))
@@ -809,10 +818,12 @@ func TestCreateArticle(t *testing.T) {
 		}
 
 		mock.ExpectBegin()
+		mock.ExpectQuery(`SELECT EXISTS \(SELECT 1 FROM articles WHERE slug = \$1\)`).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
-				sqlmock.AnyArg(), authorID, req.Title, req.Excerpt,
+				sqlmock.AnyArg(), "failing-article", authorID, req.Title, req.Excerpt,
 				req.CoverImageURL, req.Category, req.AudienceScope, sqlmock.AnyArg(),
 			).
 			WillReturnError(fmt.Errorf("unique constraint violation"))
