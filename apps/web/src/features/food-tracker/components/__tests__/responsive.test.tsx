@@ -129,11 +129,12 @@ describe('WaterTracker Responsive Design', () => {
         onAddGlass: jest.fn(),
     };
 
-    it('renders with responsive padding', () => {
+    it('renders as a screen card: line, no shadow', () => {
         const { container } = render(<WaterTracker {...defaultProps} />);
 
         const section = container.querySelector('section');
-        expect(section).toHaveClass('p-3', 'sm:p-4');
+        expect(section).toHaveClass('rounded-card', 'border-line');
+        expect(section?.className).not.toMatch(/shadow-/);
     });
 
     it('renders header with icon', () => {

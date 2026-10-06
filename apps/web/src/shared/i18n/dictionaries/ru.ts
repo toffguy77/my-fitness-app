@@ -117,6 +117,11 @@ export const ru = {
         coach: {
             reply: 'Ответить',
         },
+        weekChart: {
+            title: 'Калории за неделю',
+            target: 'Цель',
+            actual: 'Факт',
+        },
     },
     foodTracker: {
         tabs: {
@@ -488,6 +493,12 @@ export const ru = {
                 firstMeal: 'Записать первый приём пищи',
                 platePhoto: 'Сфотографировать тарелку',
                 curatorHello: 'Познакомиться с куратором',
+            },
+            hints: {
+                profile: 'Рост, вес и цель — из них считается норма',
+                firstMeal: 'Поиском, по штрихкоду или по фото',
+                platePhoto: 'Блюдо и КБЖУ распознаются по снимку',
+                curatorHello: 'Пара слов о себе и своей цели',
             },
         },
         curatorCard: {

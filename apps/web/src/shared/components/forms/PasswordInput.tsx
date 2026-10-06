@@ -2,6 +2,7 @@
 
 import { forwardRef, useState } from 'react'
 import { Input, type InputProps } from '../ui/Input'
+import { IconButton } from '../ui/Button'
 import { Eye, EyeOff, Check, X } from 'lucide-react'
 import { PASSWORD_RULES } from '@/shared/validation/password'
 import { t } from '@/shared/i18n'
@@ -60,12 +61,11 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
                         ним — ошибка, и «по центру блока» уезжало с поля.
                         Область нажатия 44 px — внутри поля высотой 48.
                     */}
-                    <button
-                        type="button"
+                    <IconButton
+                        variant="ghost"
                         onClick={() => setShowPassword(!showPassword)}
                         className={cn(
-                            'absolute right-0.5 inline-flex h-11 w-11 items-center justify-center rounded-full text-fg-muted transition-colors',
-                            'hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+                            'absolute right-0.5 text-fg-muted hover:bg-transparent hover:text-fg focus-visible:ring-offset-0',
                             props.label ? 'top-[28px]' : 'top-0.5'
                         )}
                         aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
@@ -75,7 +75,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
                         ) : (
                             <Eye className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                         )}
-                    </button>
+                    </IconButton>
                 </div>
 
                 {showStrengthIndicator && strength && strength.label && (

@@ -23,14 +23,15 @@ describe('StatusBadge', () => {
         render(<StatusBadge status="draft" />);
         const badge = screen.getByText('Черновик');
         expect(badge.className).toContain('bg-subtle');
-        expect(badge.className).toContain('text-fg');
+        expect(badge.className).toContain('text-fg-muted');
     });
 
     it('applies correct styling for scheduled status', () => {
         render(<StatusBadge status="scheduled" />);
         const badge = screen.getByText('Запланирован');
-        expect(badge.className).toContain('bg-warning-soft');
-        expect(badge.className).toContain('text-warning-fg');
+        // Запланированное — сообщение о будущем, не «мимо нормы»
+        expect(badge.className).toContain('bg-info-soft');
+        expect(badge.className).toContain('text-info-fg');
     });
 
     it('applies correct styling for published status', () => {

@@ -17,6 +17,7 @@ import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import { useLogger } from '@/shared/hooks/useLogger';
 import type { FoodItem } from '../types';
 import { t } from '@/shared/i18n';
+import { Button, IconButton } from '@/shared/components/ui/Button';
 
 // ============================================================================
 // Types
@@ -155,7 +156,7 @@ export function BarcodeTab({
         <div className={`flex flex-col h-full ${className}`}>
             {/* Camera / Scanner Area — min-h ensures the container never
                 collapses even when all children are absolutely positioned. */}
-            <div className="relative flex-1 bg-black rounded-xl overflow-hidden mb-4 min-h-[280px]">
+            <div className="relative mb-4 min-h-[280px] flex-1 overflow-hidden rounded-card bg-black">
                 {/* Persistent scanner div — always in DOM, absolute so it
                     doesn't affect layout. html5-qrcode needs real dimensions
                     when scanner.start() is called (during 'starting' state). */}
@@ -163,14 +164,14 @@ export function BarcodeTab({
 
                 {/* Stop camera button */}
                 {scannerStatus === 'scanning' && (
-                    <button
-                        type="button"
+                    <IconButton
+                        variant="ghost"
                         onClick={handleStopCamera}
-                        className="absolute top-2 right-2 z-20 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-surface"
+                        className="absolute right-2 top-2 z-20 bg-black/50 text-white hover:bg-black/70"
                         aria-label={t('foodTracker.barcode.stopCamera')}
                     >
-                        <CameraOff className="w-5 h-5" />
-                    </button>
+                        <CameraOff className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                    </IconButton>
                 )}
 
                 {/* Opaque overlay for non-scanning states */}
@@ -178,37 +179,40 @@ export function BarcodeTab({
                     <div className="absolute inset-0 z-10 bg-black flex flex-col items-center justify-center p-6 text-center">
                         {scannerStatus === 'idle' && (
                             <>
-                                <Camera className="w-16 h-16 text-white/70 mb-4" />
+                                <Camera className="mb-4 h-14 w-14 text-white/70" strokeWidth={1.5} aria-hidden="true" />
                                 <p className="text-white/80 mb-6">
                                     {t('foodTracker.barcode.prompt')}
                                 </p>
                                 <div className="flex flex-col gap-3 w-full max-w-xs">
                                     {/* Live camera scan */}
-                                    <button
+                                    {/* Светлая кнопка на тёмном видоискателе: терракота
+                                        остаётся главному действию шторки — «Добавить». */}
+                                    <Button
                                         type="button"
+                                        variant="inverse"
+                                        size="lg"
                                         onClick={handleStartCamera}
-                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                     >
-                                        <Camera className="w-5 h-5" />
+                                        <Camera className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                                         <span>{t('foodTracker.barcode.scanWithCamera')}</span>
-                                    </button>
+                                    </Button>
                                     <div className="flex gap-3">
                                         {/* Native camera capture (take photo) */}
                                         <button
                                             type="button"
                                             onClick={handleCameraCapture}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/15 text-white rounded-xl hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                                            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-white/15 px-4 font-semibold text-white transition-colors hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                         >
-                                            <ImageIcon className="w-5 h-5" />
+                                            <ImageIcon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                                             <span>{t('foodTracker.barcode.photo')}</span>
                                         </button>
                                         {/* Gallery selection */}
                                         <button
                                             type="button"
                                             onClick={handleGallerySelect}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/15 text-white rounded-xl hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                                            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-white/15 px-4 font-semibold text-white transition-colors hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                         >
-                                            <Upload className="w-5 h-5" />
+                                            <Upload className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                                             <span>{t('foodTracker.barcode.gallery')}</span>
                                         </button>
                                     </div>
@@ -218,7 +222,7 @@ export function BarcodeTab({
 
                         {scannerStatus === 'starting' && (
                             <>
-                                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                                <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" aria-hidden="true" />
                                 <p className="text-white/80">
                                     {t('foodTracker.barcode.starting')}
                                 </p>
@@ -227,34 +231,35 @@ export function BarcodeTab({
 
                         {scannerStatus === 'error' && (
                             <>
-                                <AlertCircle className="w-16 h-16 text-danger-fg mb-4" />
-                                <p className="text-danger-fg mb-4">
+                                <AlertCircle className="mb-4 h-14 w-14 text-danger" strokeWidth={1.5} aria-hidden="true" />
+                                <p className="mb-4 text-white/90">
                                     {lookupError || t('foodTracker.barcode.cameraFailed')}
                                 </p>
                                 <div className="flex flex-col gap-3 w-full max-w-xs">
-                                    <button
+                                    <Button
                                         type="button"
+                                        variant="inverse"
+                                        size="lg"
                                         onClick={handleStartCamera}
-                                        className="flex items-center justify-center gap-2 px-4 py-3 text-primary hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                     >
-                                        <RefreshCw className="w-4 h-4" />
+                                        <RefreshCw className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                                         <span>{t('foodTracker.barcode.tryAgain')}</span>
-                                    </button>
+                                    </Button>
                                     <div className="flex gap-3">
                                         <button
                                             type="button"
                                             onClick={handleCameraCapture}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/15 text-white rounded-xl hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                                            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-white/15 px-4 font-semibold text-white transition-colors hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                         >
-                                            <ImageIcon className="w-5 h-5" />
+                                            <ImageIcon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                                             <span>{t('foodTracker.barcode.photo')}</span>
                                         </button>
                                         <button
                                             type="button"
                                             onClick={handleGallerySelect}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/15 text-white rounded-xl hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                                            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-white/15 px-4 font-semibold text-white transition-colors hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                         >
-                                            <Upload className="w-5 h-5" />
+                                            <Upload className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                                             <span>{t('foodTracker.barcode.gallery')}</span>
                                         </button>
                                     </div>
@@ -272,43 +277,45 @@ export function BarcodeTab({
                         type="text"
                         name="barcode"
                         placeholder={t('foodTracker.barcode.manualPlaceholder')}
-                        className="flex-1 px-4 py-3 bg-subtle rounded-xl text-fg placeholder-fg-muted focus:outline-none focus:ring-2 focus:ring-focus focus:bg-surface transition-colors"
+                        inputMode="numeric"
+                        className="h-12 min-w-0 flex-1 rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                         aria-label={t('foodTracker.barcode.label')}
                         pattern="[0-9]{8,14}"
                         title={t('foodTracker.barcode.lengthHint')}
                     />
-                    <button
+                    <Button
                         type="submit"
-                        className="px-4 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                        variant="secondary"
+                        size="lg"
                         aria-label={t('foodTracker.barcode.findAria')}
                     >
                         {t('foodTracker.barcode.find')}
-                    </button>
+                    </Button>
                 </div>
             </form>
 
             {/* Lookup Status */}
             {isLookingUp && (
-                <div className="flex items-center justify-center gap-3 p-4 bg-subtle rounded-xl mb-4">
-                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="mb-4 flex items-center justify-center gap-3 rounded-tile bg-subtle p-4">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
                     <span className="text-fg-muted">{t('foodTracker.barcode.looking', { suffix: scannedBarcode ? ` (${scannedBarcode})` : '' })}</span>
                 </div>
             )}
 
             {/* Scanned Product */}
             {scannedProduct && (
-                <div className="p-4 bg-success-soft border border-success/30 rounded-xl mb-4">
+                <div className="mb-4 rounded-tile border border-line bg-surface p-4">
                     <div className="flex items-start gap-3">
-                        <CheckCircle className="w-6 h-6 text-success-fg flex-shrink-0 mt-0.5" />
+                        <CheckCircle className="mt-0.5 h-6 w-6 flex-shrink-0 text-success-fg" strokeWidth={1.8} aria-hidden="true" />
                         <div className="flex-1">
-                            <h3 className="font-medium text-fg">{scannedProduct.name}</h3>
+                            <h3 className="type-headline text-fg">{scannedProduct.name}</h3>
                             {scannedProduct.brand && (
                                 <p className="text-sm text-fg-muted">{scannedProduct.brand}</p>
                             )}
                             {scannedBarcode && (
-                                <p className="text-xs text-fg-subtle mt-1">{t('foodTracker.barcode.withValue', { code: scannedBarcode })}</p>
+                                <p className="type-caption mt-1 text-fg-subtle tabular-nums">{t('foodTracker.barcode.withValue', { code: scannedBarcode })}</p>
                             )}
-                            <div className="mt-2 text-sm text-fg-muted">
+                            <div className="mt-2 text-sm text-fg-muted tabular-nums">
                                 <p>{t('foodTracker.barcode.per100')}</p>
                                 <p>
                                     {Math.round(scannedProduct.nutritionPer100.calories)} {t('units.kcal')} •{' '}
@@ -319,70 +326,70 @@ export function BarcodeTab({
                             </div>
                         </div>
                     </div>
-                    <div className="flex gap-2 mt-4">
-                        <button
+                    <div className="mt-4 flex gap-2">
+                        <Button
                             type="button"
-                            onClick={handleSelectProduct}
-                            className="flex-1 px-4 py-2 bg-success text-on-primary rounded-lg hover:bg-success transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-success"
-                        >
-                            {t('common.add')}
-                        </button>
-                        <button
-                            type="button"
+                            variant="ghost"
                             onClick={handleResetScan}
-                            className="px-4 py-2 text-fg-muted hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                             {t('foodTracker.barcode.scanAnother')}
-                        </button>
+                        </Button>
+                        <Button
+                            type="button"
+                            className="flex-1"
+                            onClick={handleSelectProduct}
+                        >
+                            {t('common.add')}
+                        </Button>
                     </div>
                 </div>
             )}
 
             {/* Lookup Error */}
             {lookupError && !scannedProduct && scannerStatus !== 'error' && (
-                <div className="p-4 bg-danger-soft border border-danger/30 rounded-xl mb-4">
+                <div className="mb-4 rounded-tile bg-danger-soft p-4">
                     <div className="flex items-start gap-3">
-                        <AlertCircle className="w-6 h-6 text-danger-fg flex-shrink-0 mt-0.5" />
+                        <AlertCircle className="mt-0.5 h-6 w-6 flex-shrink-0 text-danger-fg" strokeWidth={1.8} aria-hidden="true" />
                         <div className="flex-1">
                             <p className="text-danger-fg">{lookupError}</p>
                             {scannedBarcode && (
-                                <p className="text-sm text-danger-fg mt-1">
+                                <p className="mt-1 text-sm text-danger-fg tabular-nums">
                                     {t('foodTracker.barcode.withValue', { code: scannedBarcode })}
                                 </p>
                             )}
                         </div>
                     </div>
-                    <div className="flex gap-2 mt-4">
+                    <div className="mt-4 flex flex-wrap gap-2">
                         {onManualEntry && (
-                            <button
+                            <Button
                                 type="button"
+                                className="flex-1"
                                 onClick={handleManualEntry}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                             >
-                                <Plus className="w-4 h-4" />
+                                <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                                 <span>{t('foodTracker.entryModal.enterManually')}</span>
-                            </button>
+                            </Button>
                         )}
-                        <button
+                        <Button
                             type="button"
+                            variant="ghost"
                             onClick={handleResetScan}
-                            className="px-4 py-2 text-fg-muted hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                             {t('foodTracker.barcode.scanAnother')}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
 
             {/* Manual Entry Option (always visible at bottom when no scan result) */}
             {onManualEntry && !scannedProduct && !lookupError && (
-                <div className="pt-4 border-t border-line mt-auto">
+                <div className="mt-auto border-t border-line pt-3">
                     <button
                         type="button"
                         onClick={handleManualEntry}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-fg hover:bg-canvas rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-4 font-semibold text-fg transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
-                        <Plus className="w-5 h-5 text-fg-subtle" />
+                        <Plus className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                         <span>{t('foodTracker.entryModal.enterManually')}</span>
                     </button>
                 </div>

@@ -60,7 +60,7 @@ function getProgressColorClass(color: ProgressColor): string {
         case 'red':
             return 'bg-danger';
         default:
-            return 'bg-line';
+            return 'bg-track';
     }
 }
 
@@ -155,21 +155,21 @@ export function NutrientRecommendationItem({
         <button
             type="button"
             onClick={onClick}
-            className={`flex items-center gap-2 w-full p-1.5 hover:bg-canvas rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:gap-3 sm:p-2 touch-manipulation ${className}`}
+            className={`flex min-h-14 w-full items-center gap-3 rounded-tile px-2 py-2 text-left transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation ${className}`}
             role="listitem"
             aria-label={ariaLabel}
         >
             {/* Nutrient name and progress */}
             <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5 sm:mb-1">
-                    <span className="text-xs font-medium text-fg truncate sm:text-sm">
+                <div className="mb-1 flex items-center justify-between">
+                    <span className="truncate text-sm font-medium text-fg">
                         {name}
                         {isWeekly && (
-                            <span className="ml-1 text-[10px] text-fg-muted sm:text-xs">{t('foodTracker.nutrientItem.weekly')}</span>
+                            <span className="ml-1 text-xs text-fg-muted">{t('foodTracker.nutrientItem.weekly')}</span>
                         )}
                     </span>
                     <span
-                        className="text-[10px] text-fg-muted ml-2 whitespace-nowrap sm:text-sm"
+                        className="ml-2 whitespace-nowrap text-[13px] text-fg-muted tabular-nums"
                         aria-hidden="true"
                     >
                         {valueText}
@@ -189,7 +189,7 @@ export function NutrientRecommendationItem({
                 {/* Полоса прогресса — только когда есть что мерить. */}
                 {hasProgress && progressColor && (
                     <div
-                        className="h-1 bg-subtle rounded-full overflow-hidden sm:h-1.5"
+                        className="h-1.5 overflow-hidden rounded-full bg-track"
                         role="progressbar"
                         aria-valuenow={Math.round(percentage)}
                         aria-valuemin={0}
@@ -197,7 +197,7 @@ export function NutrientRecommendationItem({
                         aria-label={t('foodTracker.nutrientItem.progressAria', { name, percentage: Math.round(percentage) })}
                     >
                         <div
-                            className={`h-full rounded-full transition-all duration-300 ${getProgressColorClass(progressColor)}`}
+                            className={`h-full rounded-full transition-[width] duration-300 ease-standard ${getProgressColorClass(progressColor)}`}
                             style={{ width: `${displayPercentage}%` }}
                         />
                     </div>
@@ -206,7 +206,8 @@ export function NutrientRecommendationItem({
 
             {/* Chevron indicator */}
             <ChevronRight
-                className="w-3.5 h-3.5 text-fg-subtle flex-shrink-0 sm:w-4 sm:h-4"
+                className="h-4 w-4 flex-shrink-0 text-fg-subtle"
+                strokeWidth={1.8}
                 aria-hidden="true"
             />
         </button>

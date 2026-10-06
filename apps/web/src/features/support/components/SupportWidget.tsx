@@ -25,6 +25,8 @@ import { useWidgetStore } from '../store/widgetStore'
 import type { WidgetMessage } from '../api/widget'
 import { SupportLink } from '@/shared/components/SupportLink'
 import { t } from '@/shared/i18n'
+import { X } from 'lucide-react'
+import { Button, IconButton } from '@/shared/components/ui/Button'
 import { analyticsChoice, subscribeToAnalyticsChoice } from '@/shared/components/CookieConsent'
 
 const POLL_INTERVAL_MS = 10_000
@@ -121,7 +123,9 @@ export function SupportWidget() {
                 type="button"
                 onClick={handleOpen}
                 aria-expanded={false}
-                className="fixed bottom-6 right-6 z-40 inline-flex h-12 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-on-primary shadow-lg transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                // Голос продукта, а не главное действие страницы: тёмная поверхность
+                // `coach`, терракота остаётся главной кнопке лендинга.
+                className="fixed bottom-6 right-6 z-40 inline-flex h-12 items-center justify-center rounded-full bg-coach px-5 text-[15px] font-semibold text-on-coach shadow-float transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
                 {t('supportWidget.openButton')}
             </button>
@@ -132,21 +136,20 @@ export function SupportWidget() {
         <div
             role="dialog"
             aria-label={t('supportWidget.title')}
-            className="fixed bottom-6 right-6 z-40 flex w-[calc(100vw-3rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl"
+            className="fixed bottom-6 right-6 z-40 flex w-[calc(100vw-3rem)] max-w-sm flex-col overflow-hidden rounded-card border border-line bg-surface shadow-overlay"
         >
-            <header className="flex items-center justify-between border-b border-line px-4 py-3">
-                <h2 className="text-sm font-semibold text-fg">{t('supportWidget.title')}</h2>
-                <button
-                    type="button"
+            <header className="flex items-center justify-between gap-2 border-b border-line py-1 pl-4 pr-1">
+                <h2 className="type-title-3 text-fg">{t('supportWidget.title')}</h2>
+                <IconButton
+                    variant="ghost"
                     onClick={handleClose}
                     aria-label={t('supportWidget.closeButton')}
-                    className="rounded p-1 text-fg-subtle hover:bg-subtle hover:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                    ×
-                </button>
+                    <X className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                </IconButton>
             </header>
 
-            <p className="px-4 pt-3 text-xs text-fg-muted">{t('supportWidget.hint')}</p>
+            <p className="type-caption px-4 pt-3 text-fg-muted">{t('supportWidget.hint')}</p>
 
             <div
                 role="log"
@@ -167,9 +170,9 @@ export function SupportWidget() {
             </div>
 
             {error && (
-                <p role="alert" className="mx-4 mb-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger-fg">
+                <p role="alert" className="mx-4 mb-2 rounded-tile bg-danger-soft px-3 py-2 text-sm text-danger-fg">
                     {error}
-                    <button type="button" onClick={clearError} className="ml-2 underline">
+                    <button type="button" onClick={clearError} className="ml-2 font-semibold underline">
                         {t('common.close')}
                     </button>
                 </p>
@@ -187,36 +190,35 @@ export function SupportWidget() {
                     placeholder={t('supportWidget.questionPlaceholder')}
                     rows={2}
                     disabled={!token}
-                    className="w-full resize-none rounded-lg border border-line px-3 py-2 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    className="w-full resize-none rounded-field border border-line bg-surface px-4 py-3 text-base text-fg placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30 disabled:opacity-50"
                 />
                 <div className="mt-2 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-3">
                         <button
                             type="button"
                             onClick={() => void callHuman()}
                             disabled={!token}
-                            className="text-xs font-medium text-fg-muted hover:text-fg disabled:opacity-50"
+                            className="inline-flex min-h-11 items-center text-sm font-medium text-fg-muted hover:text-fg disabled:opacity-50"
                         >
                             {t('supportWidget.callHuman')}
                         </button>
-                        <SupportLink className="text-xs text-primary hover:underline" />
+                        <SupportLink className="text-sm font-semibold text-primary hover:underline" />
                     </div>
-                    <button
+                    <Button
                         type="submit"
                         disabled={!question.trim() || sending || !token}
-                        className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-xs font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                     >
                         {sending ? t('supportWidget.sending') : t('supportWidget.send')}
-                    </button>
+                    </Button>
                 </div>
             </form>
 
             {askedOnce && !showContactForm && !contactSaved && (
-                <div className="border-t border-line px-4 py-2">
+                <div className="border-t border-line px-4">
                     <button
                         type="button"
                         onClick={() => setContactRequested(true)}
-                        className="text-xs font-medium text-primary hover:underline"
+                        className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline"
                     >
                         {t('supportWidget.saveConversation')}
                     </button>
@@ -265,12 +267,12 @@ function ContactForm({
     return (
         <form onSubmit={handleSubmit} className="space-y-3 border-t border-line px-4 py-3">
             <div>
-                <h3 className="text-sm font-semibold text-fg">{t('supportWidget.contactTitle')}</h3>
-                <p className="mt-1 text-xs text-fg-muted">{t('supportWidget.contactHint')}</p>
+                <h3 className="type-headline text-fg">{t('supportWidget.contactTitle')}</h3>
+                <p className="type-caption mt-1 text-fg-muted">{t('supportWidget.contactHint')}</p>
             </div>
 
             <div>
-                <label htmlFor="support-widget-email" className="block text-xs font-medium text-fg">
+                <label htmlFor="support-widget-email" className="mb-1.5 block text-sm font-medium text-fg-muted">
                     {t('supportWidget.emailLabel')}
                 </label>
                 <input
@@ -280,38 +282,39 @@ function ContactForm({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('supportWidget.emailPlaceholder')}
-                    className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm text-fg"
+                    className="h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                 />
             </div>
 
             <div className="space-y-2">
-                <label className="flex cursor-pointer items-start gap-2">
+                <label className="flex cursor-pointer items-start gap-3">
                     <input
                         type="checkbox"
                         checked={dataConsent}
                         onChange={(e) => setDataConsent(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-line text-primary"
+                        className="mt-0.5 h-5 w-5 shrink-0 rounded-xs border-line accent-primary focus:ring-2 focus:ring-focus focus:ring-offset-2"
                     />
-                    <span className="text-xs text-fg-muted">{t('supportWidget.consentData')}</span>
+                    <span className="text-sm text-fg-muted">{t('supportWidget.consentData')}</span>
                 </label>
-                <label className="flex cursor-pointer items-start gap-2">
+                <label className="flex cursor-pointer items-start gap-3">
                     <input
                         type="checkbox"
                         checked={contactConsent}
                         onChange={(e) => setContactConsent(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-line text-primary"
+                        className="mt-0.5 h-5 w-5 shrink-0 rounded-xs border-line accent-primary focus:ring-2 focus:ring-focus focus:ring-offset-2"
                     />
-                    <span className="text-xs text-fg-muted">{t('supportWidget.consentContact')}</span>
+                    <span className="text-sm text-fg-muted">{t('supportWidget.consentContact')}</span>
                 </label>
             </div>
 
-            <button
+            <Button
                 type="submit"
+                variant="secondary"
+                block
                 disabled={!email || !dataConsent || saving}
-                className="w-full rounded-lg border border-primary py-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft disabled:opacity-50"
             >
                 {saving ? t('supportWidget.contactSaving') : t('supportWidget.contactSubmit')}
-            </button>
+            </Button>
         </form>
     )
 }

@@ -17,6 +17,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import type { NutrientRecommendation, NutrientCategoryType } from '../types';
 import { t } from '@/shared/i18n';
+import { Button, IconButton } from '@/shared/components/ui/Button';
 
 import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
@@ -79,7 +80,7 @@ function NutrientCheckbox({
 
     return (
         <label
-            className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-canvas cursor-pointer transition-colors"
+            className="flex min-h-12 cursor-pointer items-center gap-3 rounded-tile px-3 transition-colors hover:bg-subtle"
             htmlFor={`nutrient-${nutrient.id}`}
         >
             <input
@@ -87,10 +88,10 @@ function NutrientCheckbox({
                 id={`nutrient-${nutrient.id}`}
                 checked={isSelected}
                 onChange={handleChange}
-                className="w-5 h-5 rounded border-line text-primary focus:ring-focus focus:ring-2 cursor-pointer"
+                className="h-5 w-5 cursor-pointer rounded-xs border-line accent-primary focus:ring-2 focus:ring-focus focus:ring-offset-2"
             />
-            <span className="text-sm text-fg flex-1">{nutrient.name}</span>
-            <span className="text-xs text-fg-muted">{unitLabel(nutrient.unit)}</span>
+            <span className="flex-1 text-sm text-fg">{nutrient.name}</span>
+            <span className="text-[13px] text-fg-muted">{unitLabel(nutrient.unit)}</span>
         </label>
     );
 }
@@ -121,27 +122,27 @@ function CategorySection({
     const noneSelected = selectedCount === 0;
 
     return (
-        <div className="border border-line rounded-xl overflow-hidden">
+        <div className="overflow-hidden rounded-tile border border-line">
             {/* Category Header */}
             <button
                 type="button"
                 onClick={onToggleExpand}
-                className="w-full flex items-center justify-between px-4 py-3 bg-canvas hover:bg-subtle transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset"
+                className="flex min-h-14 w-full items-center justify-between px-4 transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                 aria-expanded={isExpanded}
                 aria-controls={`category-${category}-content`}
             >
                 <div className="flex items-center gap-2">
-                    <span className="font-medium text-fg">
+                    <span className="type-headline text-fg">
                         {CATEGORY_LABELS[category]}
                     </span>
-                    <span className="text-sm text-fg-muted">
+                    <span className="text-sm text-fg-muted tabular-nums">
                         ({selectedCount} / {nutrients.length})
                     </span>
                 </div>
                 {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-fg-muted" />
+                    <ChevronUp className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                 ) : (
-                    <ChevronDown className="w-5 h-5 text-fg-muted" />
+                    <ChevronDown className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                 )}
             </button>
 
@@ -149,25 +150,25 @@ function CategorySection({
             {isExpanded && (
                 <div
                     id={`category-${category}-content`}
-                    className="px-4 py-3 space-y-2"
+                    className="space-y-1 border-t border-line px-2 py-2"
                 >
                     {/* Select All / Deselect All */}
-                    <div className="flex items-center gap-2 pb-2 border-b border-line">
+                    <div className="flex items-center gap-1 border-b border-line pb-1">
                         <button
                             type="button"
                             onClick={onSelectAll}
                             disabled={allSelected}
-                            className="text-sm text-primary hover:text-primary disabled:text-fg-subtle disabled:cursor-not-allowed focus:outline-none focus-visible:underline"
+                            className="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold text-fg transition-colors hover:bg-subtle disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                             aria-label={t('foodTracker.configureNutrients.selectAllAria', { category: CATEGORY_LABELS[category] })}
                         >
                             {t('foodTracker.configureNutrients.selectAll')}
                         </button>
-                        <span className="text-fg-subtle">|</span>
+                        <span className="text-fg-subtle" aria-hidden="true">|</span>
                         <button
                             type="button"
                             onClick={onDeselectAll}
                             disabled={noneSelected}
-                            className="text-sm text-primary hover:text-primary disabled:text-fg-subtle disabled:cursor-not-allowed focus:outline-none focus-visible:underline"
+                            className="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold text-fg transition-colors hover:bg-subtle disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                             aria-label={t('foodTracker.configureNutrients.clearAria', { category: CATEGORY_LABELS[category] })}
                         >
                             {t('foodTracker.configureNutrients.clear')}
@@ -175,7 +176,7 @@ function CategorySection({
                     </div>
 
                     {/* Nutrient List */}
-                    <div className="space-y-1">
+                    <div>
                         {nutrients.map((nutrient) => (
                             <NutrientCheckbox
                                 key={nutrient.id}
@@ -335,38 +336,38 @@ export function ConfigureNutrientsModal({
 
     return (
         <div
-            className={`fixed inset-0 z-[60] flex items-center justify-center bg-scrim ${className}`}
+            className={`fixed inset-0 z-[60] flex items-end justify-center bg-scrim sm:items-center sm:p-4 ${className}`}
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
             aria-labelledby="configure-nutrients-title"
         >
-            <div className="bg-surface rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col mx-4">
+            <div className="flex max-h-[90vh] w-full flex-col rounded-t-sheet bg-surface shadow-overlay sm:max-w-lg sm:rounded-sheet">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-line">
+                <div className="flex items-start justify-between gap-3 px-6 pb-4 pt-6">
                     <div>
                         <h2
                             id="configure-nutrients-title"
-                            className="text-lg font-semibold text-fg"
+                            className="type-title-2 text-fg"
                         >
                             {t('foodTracker.configureNutrients.title')}
                         </h2>
-                        <p className="text-sm text-fg-muted mt-0.5">
+                        <p className="mt-1 text-sm text-fg-muted tabular-nums">
                             {t('foodTracker.configureNutrients.selectedCount', { selected: totalSelected, total: totalNutrients })}
                         </p>
                     </div>
-                    <button
-                        type="button"
+                    <IconButton
+                        variant="ghost"
                         onClick={onClose}
-                        className="p-2 text-fg-subtle hover:text-fg-muted hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                        className="-mr-2 -mt-1"
                         aria-label={t('common.close')}
                     >
-                        <X className="w-5 h-5" />
-                    </button>
+                        <X className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                    </IconButton>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                <div className="flex-1 space-y-3 overflow-y-auto border-t border-line px-6 py-4">
                     {CATEGORY_ORDER.map((category) => {
                         const categoryNutrients = nutrientsByCategory[category];
                         if (categoryNutrients.length === 0) return null;
@@ -388,22 +389,25 @@ export function ConfigureNutrientsModal({
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-line">
-                    <button
+                <div className="flex items-center gap-3 border-t border-line px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:justify-end sm:pb-4">
+                    <Button
                         type="button"
+                        variant="secondary"
+                        size="lg"
+                        className="flex-1 sm:flex-none"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-fg hover:text-fg hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                         {t('common.cancel')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
+                        size="lg"
+                        className="flex-1 sm:flex-none"
                         onClick={handleSave}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-on-primary bg-primary hover:bg-primary-hover rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                     >
-                        <Check className="w-4 h-4" />
+                        <Check className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
                         {t('common.save')}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

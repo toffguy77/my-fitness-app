@@ -29,6 +29,7 @@ import { useFoodTrackerStore } from '../store/foodTrackerStore';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
 import { t } from '@/shared/i18n';
+import { Button, IconButton } from '@/shared/components/ui/Button';
 
 // ============================================================================
 // Types
@@ -57,7 +58,7 @@ export interface FoodEntryModalProps {
 interface TabConfig {
     id: EntryMethodTab;
     label: string;
-    icon: React.ComponentType<{ className?: string }>;
+    icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
 }
 
 type ModalStep = 'select-food' | 'select-portion' | 'manual-entry';
@@ -368,35 +369,47 @@ export function FoodEntryModal({
         return null;
     }
 
+    // Поле КБЖУ на 100 г: число по центру, 48 px и 16 px текста, как `Input`.
+    const per100FieldClass =
+        'h-12 w-full rounded-field border border-line bg-surface px-2 text-center text-base text-fg tabular-nums ' +
+        'transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30';
+    const macroFields: { key: 'protein' | 'fat' | 'carbs'; label: string }[] = [
+        { key: 'protein', label: t('macros.protein') },
+        { key: 'fat', label: t('macros.fat') },
+        { key: 'carbs', label: t('macros.carbs') },
+    ];
+
     return (
         <div
-            className={`fixed inset-0 z-[60] flex items-end justify-center bg-scrim sm:items-center ${className}`}
+            className={`fixed inset-0 z-[60] flex items-end justify-center bg-scrim sm:items-center sm:p-4 ${className}`}
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
             aria-labelledby="food-entry-modal-title"
         >
+            {/* Шторка снизу на телефоне, окно по центру на десктопе — как
+                `ConfirmDialog` и формы куратора. */}
             <div
                 ref={modalRef}
-                className="w-full bg-surface rounded-t-2xl shadow-xl max-h-[85vh] flex flex-col sm:max-w-lg sm:rounded-2xl sm:max-h-[90vh]"
+                className="flex max-h-[90vh] w-full flex-col rounded-t-sheet bg-surface pb-[env(safe-area-inset-bottom)] shadow-overlay sm:max-w-lg sm:rounded-sheet sm:pb-0"
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-3 border-b border-line sm:p-4">
+                <div className="flex items-center gap-2 px-3 pb-2 pt-4 sm:px-4">
                     {(step === 'select-portion' || step === 'manual-entry') ? (
-                        <button
-                            type="button"
+                        <IconButton
+                            variant="ghost"
                             onClick={step === 'manual-entry' ? handleManualEntryCancel : handleBackToFoodSelection}
-                            className="p-1.5 text-fg-muted hover:text-fg hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:p-2 touch-manipulation"
                             aria-label={t('common.back')}
+                            className="touch-manipulation"
                         >
-                            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                        </button>
+                            <ArrowLeft className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                        </IconButton>
                     ) : (
-                        <div className="w-8" /> // Spacer
+                        <div className="w-11 shrink-0" aria-hidden="true" />
                     )}
                     <h2
                         id="food-entry-modal-title"
-                        className="text-base font-semibold text-fg sm:text-lg"
+                        className="type-title-2 min-w-0 flex-1 truncate text-center text-fg"
                     >
                         {step === 'select-food'
                             ? t('foodTracker.entryModal.addEntry')
@@ -406,23 +419,24 @@ export function FoodEntryModal({
                                     ? t('common.edit')
                                     : selectedFood?.name || t('foodTracker.entryModal.choosePortion')}
                     </h2>
-                    <button
+                    <IconButton
                         ref={firstFocusableRef}
-                        type="button"
+                        variant="ghost"
                         onClick={onClose}
-                        className="p-1.5 text-fg-muted hover:text-fg hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:p-2 touch-manipulation"
                         aria-label={t('common.close')}
+                        className="touch-manipulation"
                     >
-                        <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
+                        <X className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                    </IconButton>
                 </div>
 
                 {/* Content */}
                 {step === 'select-food' && (
                     <>
-                        {/* Tabs */}
+                        {/* Способы записи — вкладками с подчёркиванием, как
+                            вкладки дневника: выбранная — чернилами, не терракотой. */}
                         <div
-                            className="flex border-b border-line"
+                            className="flex border-b border-line px-2 sm:px-3"
                             role="tablist"
                             aria-label={t('foodTracker.tabs.label')}
                         >
@@ -441,20 +455,20 @@ export function FoodEntryModal({
                                         tabIndex={isActive ? 0 : -1}
                                         onClick={() => handleTabChange(tab.id)}
                                         onKeyDown={(e) => handleTabKeyDown(e, index)}
-                                        className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-1 text-[10px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:gap-1 sm:py-3 sm:px-2 sm:text-xs touch-manipulation ${isActive
-                                            ? 'text-primary border-b-2 border-primary -mb-px'
-                                            : 'text-fg-muted hover:text-fg'
+                                        className={`-mb-px flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 border-b-2 px-1 text-xs transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus touch-manipulation ${isActive
+                                            ? 'border-line-strong font-semibold text-fg'
+                                            : 'border-transparent font-medium text-fg-subtle hover:text-fg'
                                             }`}
                                     >
-                                        <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                        <span>{tab.label}</span>
+                                        <Icon className="h-5 w-5" aria-hidden="true" />
+                                        <span className="truncate">{tab.label}</span>
                                     </button>
                                 );
                             })}
                         </div>
 
                         {/* Tab Content */}
-                        <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-[300px]">
+                        <div className="min-h-[300px] flex-1 overflow-y-auto px-4 py-4 sm:px-5">
                             {activeTab === 'search' && (
                                 <SearchTabWithHook
                                     onSelectFood={handleSelectFood}
@@ -491,7 +505,7 @@ export function FoodEntryModal({
 
                 {step === 'manual-entry' && (
                     /* Manual Entry Step */
-                    <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+                    <div className="flex-1 overflow-y-auto border-t border-line px-4 py-4 sm:px-5">
                         <ManualEntryForm
                             onSubmit={handleManualEntrySubmit}
                             onCancel={handleManualEntryCancel}
@@ -501,148 +515,117 @@ export function FoodEntryModal({
 
                 {step === 'select-portion' && (
                     /* Portion Selection Step */
-                    <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+                    <div className="flex-1 overflow-y-auto border-t border-line px-4 py-4 sm:px-5">
                         {selectedFood && (
                             <>
-                                {/* Batch Progress Indicator */}
+                                {/* Batch Progress Indicator — сообщает, а не зовёт */}
                                 {batchFoods.length > 1 && (
-                                    <div className="flex items-center justify-between mb-4 p-3 bg-primary-soft rounded-lg">
-                                        <p className="text-sm text-primary">
+                                    <div className="mb-4 flex items-center justify-between gap-3 rounded-tile bg-info-soft py-1 pl-4 pr-1">
+                                        <p className="text-sm text-info-fg tabular-nums">
                                             {t('foodTracker.entryModal.batchProgress', { current: batchIndex + 1, total: batchFoods.length })}
                                         </p>
-                                        <button
+                                        <Button
                                             type="button"
+                                            variant="ghost"
+                                            size="md"
                                             onClick={handleSkipBatchItem}
-                                            className="text-sm text-primary hover:text-primary font-medium"
                                         >
                                             {t('common.skip')}
-                                        </button>
+                                        </Button>
                                     </div>
                                 )}
 
                                 {/* Food Info — Editable */}
-                                <div className="mb-4 p-3 bg-canvas rounded-lg">
+                                <div className="mb-4 rounded-tile border border-line p-4" data-testid="entry-food-details">
                                     {isEditingDetails ? (
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="block text-xs text-fg-muted mb-1">{t('foodTracker.entryModal.name')}</label>
+                                                <label htmlFor="entry-food-name" className="mb-1.5 block text-sm font-medium text-fg-muted">{t('foodTracker.entryModal.name')}</label>
                                                 <input
+                                                    id="entry-food-name"
                                                     type="text"
                                                     value={editedName}
                                                     onChange={(e) => setEditedName(e.target.value)}
-                                                    className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-focus"
+                                                    className="h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                                                 />
                                             </div>
-                                            <p className="text-xs text-fg-muted font-medium">{t('foodTracker.entryModal.macrosPer100')}</p>
+                                            <p className="type-overline text-fg-subtle">{t('foodTracker.entryModal.macrosPer100')}</p>
                                             <div className="grid grid-cols-4 gap-2">
                                                 <div>
-                                                    <label className="block text-[10px] text-fg-subtle mb-0.5">{t('macros.calories')}</label>
+                                                    <label className="mb-1 block truncate text-xs font-medium text-fg-muted">{t('macros.calories')}</label>
                                                     <input
                                                         type="number"
+                                                        inputMode="decimal"
                                                         value={editedNutritionPer100.calories || ''}
                                                         onChange={(e) => handleNutritionPer100Change('calories', e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-line rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-focus"
+                                                        className={per100FieldClass}
                                                         min="0"
                                                         step="1"
                                                     />
                                                 </div>
-                                                <div>
-                                                    <label className="flex items-center gap-1 text-[10px] text-fg-muted mb-0.5">
-                                                        <span
-                                                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                                            style={{ backgroundColor: MACRO_COLORS.protein }}
-                                                            aria-hidden="true"
+                                                {macroFields.map(({ key, label }) => (
+                                                    <div key={key}>
+                                                        <label className="mb-1 flex items-center gap-1 text-xs font-medium text-fg-muted">
+                                                            <span
+                                                                className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                                                                style={{ backgroundColor: MACRO_COLORS[key] }}
+                                                                aria-hidden="true"
+                                                            />
+                                                            <span className="truncate">{label}</span>
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            inputMode="decimal"
+                                                            value={editedNutritionPer100[key] || ''}
+                                                            onChange={(e) => handleNutritionPer100Change(key, e.target.value)}
+                                                            className={per100FieldClass}
+                                                            min="0"
+                                                            step="0.1"
                                                         />
-                                                        {t('macros.protein')}
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        value={editedNutritionPer100.protein || ''}
-                                                        onChange={(e) => handleNutritionPer100Change('protein', e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-line rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-focus"
-                                                        min="0"
-                                                        step="0.1"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="flex items-center gap-1 text-[10px] text-fg-muted mb-0.5">
-                                                        <span
-                                                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                                            style={{ backgroundColor: MACRO_COLORS.fat }}
-                                                            aria-hidden="true"
-                                                        />
-                                                        {t('macros.fat')}
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        value={editedNutritionPer100.fat || ''}
-                                                        onChange={(e) => handleNutritionPer100Change('fat', e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-line rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-focus"
-                                                        min="0"
-                                                        step="0.1"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="flex items-center gap-1 text-[10px] text-fg-muted mb-0.5">
-                                                        <span
-                                                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                                            style={{ backgroundColor: MACRO_COLORS.carbs }}
-                                                            aria-hidden="true"
-                                                        />
-                                                        {t('macros.carbs')}
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        value={editedNutritionPer100.carbs || ''}
-                                                        onChange={(e) => handleNutritionPer100Change('carbs', e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-line rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-focus"
-                                                        min="0"
-                                                        step="0.1"
-                                                    />
-                                                </div>
+                                                    </div>
+                                                ))}
                                             </div>
-                                            <button
+                                            <Button
                                                 type="button"
+                                                variant="secondary"
+                                                size="sm"
                                                 onClick={() => setIsEditingDetails(false)}
-                                                className="text-sm text-primary hover:text-primary font-medium"
                                             >
                                                 {t('common.done')}
-                                            </button>
+                                            </Button>
                                         </div>
                                     ) : (
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <h3 className="font-medium text-fg">{editedName}</h3>
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <h3 className="type-headline text-fg">{editedName}</h3>
                                                 {selectedFood.brand && (
                                                     <p className="text-sm text-fg-muted">{selectedFood.brand}</p>
                                                 )}
-                                                <p className="text-xs text-fg-subtle mt-1">
+                                                <p className="type-caption mt-1 text-fg-muted tabular-nums">
                                                     {t('foodTracker.entryModal.per100Summary', { calories: Math.round(editedNutritionPer100.calories) })}
                                                     {' · '}{t('macros.proteinShort')} {Math.round(editedNutritionPer100.protein)}
                                                     {' · '}{t('macros.fatShort')} {Math.round(editedNutritionPer100.fat)}
                                                     {' · '}{t('macros.carbsShort')} {Math.round(editedNutritionPer100.carbs)}
                                                 </p>
                                             </div>
-                                            <div className="flex items-center gap-1">
+                                            <div className="-mr-2 -mt-2 flex shrink-0 items-center">
                                                 {selectedFood.source !== 'user' && (
-                                                    <button
-                                                        type="button"
+                                                    <IconButton
+                                                        variant="ghost"
                                                         onClick={() => handleCloneFood(selectedFood)}
-                                                        className="p-1.5 text-fg-subtle hover:text-primary hover:bg-primary-soft rounded-lg transition-colors"
                                                         aria-label={t('foodTracker.entryModal.saveAsOwn')}
                                                         title={t('foodTracker.entryModal.saveAsOwn')}
                                                     >
-                                                        <Bookmark className="w-4 h-4" />
-                                                    </button>
+                                                        <Bookmark className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                                                    </IconButton>
                                                 )}
-                                                <button
-                                                    type="button"
+                                                <IconButton
+                                                    variant="ghost"
                                                     onClick={() => setIsEditingDetails(true)}
-                                                    className="p-1.5 text-fg-subtle hover:text-primary hover:bg-primary-soft rounded-lg transition-colors"
                                                     aria-label={t('common.edit')}
                                                 >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
+                                                    <Pencil className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                                                </IconButton>
                                             </div>
                                         </div>
                                     )}
@@ -656,29 +639,28 @@ export function FoodEntryModal({
                                     onPortionChange={handlePortionChange}
                                 />
 
-                                {/* Meal Type Info */}
-                                <div className="mt-4 p-3 bg-primary-soft rounded-lg">
-                                    <p className="text-sm text-primary">
-                                        {t('foodTracker.entryModal.mealLabel')} <span className="font-medium">{getMealTypeLabel(mealType)}</span>
+                                {/* Meal Type Info — сведение, не действие */}
+                                <div className="mt-4 rounded-tile bg-info-soft px-4 py-3">
+                                    <p className="text-sm text-info-fg">
+                                        {t('foodTracker.entryModal.mealLabel')} <span className="font-semibold">{getMealTypeLabel(mealType)}</span>
                                     </p>
                                 </div>
 
-                                {/* Save Button */}
+                                {/* Save Button — единственное главное действие шторки */}
                                 <div className="mt-6">
-                                    <button
+                                    <Button
                                         type="button"
+                                        size="lg"
+                                        block
                                         onClick={handleSaveEntry}
-                                        disabled={isSaving || !calculatedNutrition}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:bg-line disabled:cursor-not-allowed"
+                                        disabled={!calculatedNutrition}
+                                        isLoading={isSaving}
                                     >
                                         {isSaving ? (
-                                            <>
-                                                <div className="w-5 h-5 border-2 border-surface border-t-transparent rounded-full animate-spin" />
-                                                <span>{t('common.saving')}</span>
-                                            </>
+                                            <span>{t('common.saving')}</span>
                                         ) : (
                                             <>
-                                                <Check className="w-5 h-5" />
+                                                <Check className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
                                                 <span>
                                                     {editingEntry
                                                         ? t('common.save')
@@ -688,7 +670,7 @@ export function FoodEntryModal({
                                                 </span>
                                             </>
                                         )}
-                                    </button>
+                                    </Button>
                                 </div>
                             </>
                         )}

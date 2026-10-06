@@ -38,7 +38,7 @@ describe('FoodEntryModal — цвет нутриента', () => {
         // Карандашей на экране несколько; нужен тот, что в блоке сведений о
         // продукте — он и открывает поля КБЖУ.
         const pencil = container.querySelector<HTMLButtonElement>(
-            '.bg-canvas button[aria-label="Редактировать"]'
+            '[data-testid="entry-food-details"] button[aria-label="Редактировать"]'
         )
         expect(pencil).not.toBeNull()
         fireEvent.click(pencil!)

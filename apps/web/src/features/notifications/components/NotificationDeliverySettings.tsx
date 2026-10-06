@@ -22,43 +22,14 @@ import {
 
 import { t } from '@/shared/i18n'
 import { Button } from '@/shared/components/ui/Button'
+// Тот же переключатель, что во всех настройках: своя копия здесь расходилась
+// с ним дорожкой, размером и цветом выключенного состояния.
+import { Switch } from '@/shared/components/settings/Switch'
 import { messageForOr } from '@/shared/errors/apiErrors'
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
 function hourLabel(hour: number): string {
     return `${String(hour).padStart(2, '0')}:00`
-}
-
-function Toggle({
-    checked,
-    disabled,
-    label,
-    onChange,
-}: {
-    checked: boolean
-    disabled?: boolean
-    label: string
-    onChange: (value: boolean) => void
-}) {
-    return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={checked}
-            aria-label={label}
-            disabled={disabled}
-            onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 before:absolute before:-inset-y-2.5 before:inset-x-0 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
-                checked ? 'bg-primary' : 'bg-line-strong'
-            } ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
-        >
-            <span
-                className={`pointer-events-none inline-block h-4 w-4 translate-y-1 rounded-full bg-surface transition-transform duration-200 ${
-                    checked ? 'translate-x-6' : 'translate-x-1'
-                }`}
-            />
-        </button>
-    )
 }
 
 export function NotificationDeliverySettings() {
@@ -125,7 +96,7 @@ export function NotificationDeliverySettings() {
                             {t('notifications.delivery.emailsExplanation')}
                         </p>
                     </div>
-                    <Toggle
+                    <Switch
                         checked={!prefs.emailUnsubscribed}
                         label={t('notifications.delivery.receiveEmails')}
                         onChange={(enabled) => void save({ ...prefs, emailUnsubscribed: !enabled })}
@@ -194,9 +165,9 @@ export function NotificationDeliverySettings() {
                 <h2 className="mb-3 type-title-3 text-fg">{t('notifications.delivery.whatHeading')}</h2>
                 <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 text-xs font-medium text-fg-subtle">
                     <span />
-                    <span className="w-11 text-center">{t('notifications.delivery.columnHere')}</span>
-                    <span className="w-11 text-center">{t('notifications.delivery.columnEmail')}</span>
-                    <span className="w-11 text-center">Push</span>
+                    <span className="w-12 text-center">{t('notifications.delivery.columnHere')}</span>
+                    <span className="w-12 text-center">{t('notifications.delivery.columnEmail')}</span>
+                    <span className="w-12 text-center">Push</span>
                 </div>
                 {prefs.types.map((setting, index) => (
                     <div
@@ -208,19 +179,19 @@ export function NotificationDeliverySettings() {
                         <span className="text-fg">
                             {TYPE_LABELS[setting.type] ?? setting.type}
                         </span>
-                        <Toggle
+                        <Switch
                             checked
                             disabled
                             label={t('notifications.delivery.inAppLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
                             onChange={() => {}}
                         />
-                        <Toggle
+                        <Switch
                             checked={setting.email && !prefs.emailUnsubscribed}
                             disabled={prefs.emailUnsubscribed}
                             label={t('notifications.delivery.emailLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
                             onChange={(enabled) => setChannel(setting.type, 'email', enabled)}
                         />
-                        <Toggle
+                        <Switch
                             checked={setting.push}
                             label={t('notifications.delivery.pushLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
                             onChange={(enabled) => setChannel(setting.type, 'push', enabled)}

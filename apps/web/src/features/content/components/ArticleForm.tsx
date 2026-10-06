@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { CalendarClock, ImagePlus, X } from 'lucide-react'
+import { Button, IconButton } from '@/shared/components/ui/Button'
+import { cn } from '@/shared/utils/cn'
 import { AudienceSelector } from './AudienceSelector'
 import {
     CATEGORY_LABELS,
@@ -32,6 +35,17 @@ interface ArticleFormProps {
 // ============================================================================
 
 const categories = Object.keys(CATEGORY_LABELS) as ContentCategory[]
+
+/**
+ * Поле по рецепту системы: 48 px, текст 16 px (iOS не масштабирует страницу
+ * при фокусе), поверхность с линией, фокус — кольцом и линией чернилами.
+ */
+const FIELD =
+    'w-full rounded-field border border-line bg-surface px-4 text-base text-fg placeholder:text-fg-subtle ' +
+    'transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30 ' +
+    'disabled:cursor-not-allowed disabled:bg-subtle disabled:text-fg-muted'
+
+const LABEL = 'mb-1.5 block text-sm font-medium text-fg-muted'
 
 // ============================================================================
 // Component
@@ -165,6 +179,7 @@ export function ArticleForm({
     }
 
     const isDraft = !article || article.status === 'draft'
+    const canPublish = !!(article && isDraft && onPublish)
 
     return (
         <div className="space-y-4">
@@ -172,7 +187,7 @@ export function ArticleForm({
             <div>
                 <label
                     htmlFor="article-category"
-                    className="mb-1 block text-sm font-medium text-fg"
+                    className={LABEL}
                 >
                     Категория
                 </label>
@@ -180,7 +195,7 @@ export function ArticleForm({
                     id="article-category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ContentCategory)}
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm text-fg focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
+                    className={cn(FIELD, 'h-12')}
                 >
                     {categories.map((cat) => (
                         <option key={cat} value={cat}>
@@ -194,7 +209,7 @@ export function ArticleForm({
             <div>
                 <label
                     htmlFor="article-title"
-                    className="mb-1 block text-sm font-medium text-fg"
+                    className={LABEL}
                 >
                     Заголовок <span className="text-danger-fg">*</span>
                 </label>
@@ -204,7 +219,7 @@ export function ArticleForm({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Введите заголовок статьи"
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
+                    className={cn(FIELD, 'h-12')}
                 />
             </div>
 
@@ -212,12 +227,12 @@ export function ArticleForm({
             <div>
                 <label
                     htmlFor="article-slug"
-                    className="mb-1 block text-sm font-medium text-fg"
+                    className={LABEL}
                 >
                     Адрес статьи
                 </label>
-                <div className="flex items-center gap-1 text-sm text-fg-muted">
-                    <span>/content/</span>
+                <div className="flex items-center gap-2 text-base text-fg-muted">
+                    <span className="shrink-0">/content/</span>
                     <input
                         id="article-slug"
                         type="text"
@@ -227,10 +242,10 @@ export function ArticleForm({
                         placeholder="сформируется из заголовка"
                         pattern="[a-z0-9]+(-[a-z0-9]+)*"
                         maxLength={80}
-                        className="w-full rounded-lg border border-line px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus disabled:bg-canvas disabled:text-fg-muted"
+                        className={cn(FIELD, 'h-12')}
                     />
                 </div>
-                <p className="mt-1 text-xs text-fg-muted">
+                <p className="mt-1.5 type-caption text-fg-muted">
                     {article?.status === 'published'
                         ? 'Адрес опубликованной статьи не меняется: он уже в ссылках и в поиске.'
                         : 'Латинские буквы, цифры и дефисы. После публикации адрес не меняется.'}
@@ -241,7 +256,7 @@ export function ArticleForm({
             <div>
                 <label
                     htmlFor="article-excerpt"
-                    className="mb-1 block text-sm font-medium text-fg"
+                    className={LABEL}
                 >
                     Краткое описание
                 </label>
@@ -251,15 +266,15 @@ export function ArticleForm({
                     onChange={(e) => setExcerpt(e.target.value)}
                     placeholder="Краткое описание статьи"
                     rows={2}
-                    className="w-full resize-none rounded-lg border border-line px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
+                    className={cn(FIELD, 'resize-none py-3')}
                 />
             </div>
 
             {/* Cover image upload */}
             <div>
-                <label className="mb-1 block text-sm font-medium text-fg">
+                <p className={LABEL}>
                     Обложка
-                </label>
+                </p>
 
                 {coverImageUrl ? (
                     <div className="relative">
@@ -267,45 +282,49 @@ export function ArticleForm({
                         <img
                             src={coverImageUrl}
                             alt="Превью обложки"
-                            className="h-40 w-full rounded-lg border border-line object-cover"
+                            className="h-40 w-full rounded-tile border border-line object-cover"
                             onError={(e) => { e.currentTarget.style.display = 'none' }}
                         />
-                        <button
+                        {/* Кнопки лежат поверх изображения — на подложке
+                            поверхности, чтобы читаться на любой картинке. */}
+                        <Button
                             type="button"
+                            variant="secondary"
+                            size="sm"
                             onClick={() => coverInputRef.current?.click()}
                             disabled={coverUploading}
-                            className="absolute bottom-2 right-2 rounded-lg bg-surface/90 px-3 py-1.5 text-xs font-medium text-fg shadow-sm border border-line hover:bg-surface disabled:opacity-50"
+                            className="absolute bottom-2 right-2 bg-surface hover:bg-surface"
                         >
                             {coverUploading ? 'Загрузка...' : 'Заменить'}
-                        </button>
-                        <button
+                        </Button>
+                        <IconButton
                             type="button"
+                            variant="subtle"
                             onClick={() => setCoverImageUrl('')}
                             disabled={coverUploading}
-                            className="absolute top-2 right-2 rounded-full bg-surface/90 p-1 text-fg-muted shadow-sm border border-line hover:text-danger-fg disabled:opacity-50"
+                            className="absolute right-2 top-2 bg-surface hover:bg-surface hover:text-danger-fg"
                             aria-label="Удалить обложку"
                         >
-                            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
+                            <X className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                        </IconButton>
                     </div>
                 ) : (
                     <button
                         type="button"
                         onClick={() => coverInputRef.current?.click()}
                         disabled={coverUploading}
-                        className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-line py-8 text-sm text-fg-muted hover:border-primary hover:text-primary disabled:opacity-50"
+                        className="flex w-full flex-col items-center justify-center gap-2 rounded-tile border-2 border-dashed border-line py-8 text-[15px] text-fg-muted transition-colors hover:border-line-strong hover:bg-subtle hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                     >
                         {coverUploading ? (
-                            <span>Загрузка...</span>
+                            <span className="flex items-center gap-2">
+                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
+                                Загрузка...
+                            </span>
                         ) : (
                             <>
-                                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
+                                <ImagePlus className="h-7 w-7" strokeWidth={1.6} aria-hidden="true" />
                                 <span>Загрузить изображение обложки</span>
-                                <span className="text-xs text-fg-subtle">JPEG, PNG, WebP · до 10 МБ</span>
+                                <span className="type-caption text-fg-subtle">JPEG, PNG, WebP · до 10 МБ</span>
                             </>
                         )}
                     </button>
@@ -320,7 +339,7 @@ export function ArticleForm({
                 />
 
                 {coverImageError && (
-                    <p className="mt-1 text-xs text-danger-fg">{coverImageError}</p>
+                    <p className="mt-1.5 text-sm text-danger-fg" role="alert">{coverImageError}</p>
                 )}
             </div>
 
@@ -337,7 +356,7 @@ export function ArticleForm({
                 <div>
                     <label
                         htmlFor="article-schedule"
-                        className="mb-1 block text-sm font-medium text-fg"
+                        className={LABEL}
                     >
                         Запланировать публикацию
                     </label>
@@ -346,42 +365,48 @@ export function ArticleForm({
                         type="datetime-local"
                         value={scheduledAt}
                         onChange={(e) => setScheduledAt(e.target.value)}
-                        className="w-full rounded-lg border border-line px-3 py-2 text-sm text-fg focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
+                        className={cn(FIELD, 'h-12 tabular-nums')}
                     />
                 </div>
             )}
 
-            {/* Action buttons */}
+            {/* Action buttons.
+                Одно главное действие: у черновика, который уже сохранён, —
+                «Опубликовать», иначе — сохранение. Остальные — контуром. */}
             <div className="flex flex-wrap gap-2 pt-2">
-                <button
+                <Button
                     type="button"
+                    variant={canPublish ? 'secondary' : 'primary'}
+                    size="lg"
                     onClick={handleSave}
                     disabled={loading || !title.trim()}
-                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                 >
                     {loading ? 'Сохранение...' : isDraft ? 'Сохранить черновик' : 'Сохранить'}
-                </button>
+                </Button>
 
-                {article && isDraft && onPublish && (
-                    <button
+                {canPublish && (
+                    <Button
                         type="button"
+                        variant="primary"
+                        size="lg"
                         onClick={onPublish}
                         disabled={loading}
-                        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                     >
                         Опубликовать
-                    </button>
+                    </Button>
                 )}
 
                 {isDraft && scheduledAt && onSchedule && (
-                    <button
+                    <Button
                         type="button"
+                        variant="secondary"
+                        size="lg"
                         onClick={handleSchedule}
                         disabled={loading}
-                        className="rounded-lg bg-warning px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-warning disabled:opacity-50"
                     >
+                        <CalendarClock className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                         Запланировать
-                    </button>
+                    </Button>
                 )}
             </div>
         </div>

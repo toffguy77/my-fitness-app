@@ -14,7 +14,8 @@
 'use client'
 
 import { useState, useEffect, memo } from 'react'
-import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
+import { ChevronDown, MessageSquare } from 'lucide-react'
+import { cn } from '@/shared/utils/cn'
 import { dashboardApi } from '../api/dashboardApi'
 import type { CuratorFeedback, RatingLevel } from '../types'
 import { t } from '@/shared/i18n'
@@ -32,12 +33,14 @@ export interface CuratorFeedbackSectionProps {
  */
 function getRatingBadge(rating: RatingLevel): { label: string; className: string } {
     switch (rating) {
+        // Оценка — роль состояния, не бренд. «Нужно улучшить» — не ошибка,
+        // а «мимо нормы», поэтому warning, а не danger.
         case 'excellent':
             return { label: t('dashboard.feedback.excellent'), className: 'bg-success-soft text-success-fg' }
         case 'good':
-            return { label: t('dashboard.feedback.good'), className: 'bg-warning-soft text-warning-fg' }
+            return { label: t('dashboard.feedback.good'), className: 'bg-info-soft text-info-fg' }
         case 'needs_improvement':
-            return { label: t('dashboard.feedback.needsWork'), className: 'bg-danger-soft text-danger-fg' }
+            return { label: t('dashboard.feedback.needsWork'), className: 'bg-warning-soft text-warning-fg' }
     }
 }
 
@@ -62,7 +65,7 @@ function getCategoryName(category: string): string {
  */
 export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
     reportId,
-    className = '',
+    className,
 }: CuratorFeedbackSectionProps) {
     const [feedback, setFeedback] = useState<CuratorFeedback | null>(null)
     const [loading, setLoading] = useState(false)
@@ -99,47 +102,53 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
         (cat) => feedback[cat]
     )
 
+    // Отзыв куратора — голос человека, поэтому тёмная поверхность `coach`,
+    // итог недели — цитатой засечками, как в карточке куратора.
     return (
         <section
-            className={`bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
+            className={cn('rounded-card bg-coach p-5 text-on-coach', className)}
             aria-labelledby="curator-feedback-heading"
         >
             {/* Header — clickable to toggle */}
             <button
                 type="button"
                 onClick={() => setExpanded((prev) => !prev)}
-                className="w-full flex items-center justify-between"
+                className="-m-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-tile p-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 aria-expanded={expanded}
                 aria-controls="curator-feedback-content"
             >
-                <div className="flex items-center gap-2">
+                <span className="flex items-center gap-2.5">
                     <MessageSquare
-                        className="w-4 h-4 sm:w-5 sm:h-5 text-primary"
+                        className="h-5 w-5 flex-shrink-0 text-on-coach-muted"
+                        strokeWidth={1.8}
                         aria-hidden="true"
                     />
                     <h2
                         id="curator-feedback-heading"
-                        className="text-base sm:text-lg font-semibold text-fg"
+                        className="type-title-3 text-on-coach"
                     >
                         {t('dashboard.feedback.title')}
                     </h2>
-                </div>
-                {expanded ? (
-                    <ChevronUp className="w-5 h-5 text-fg-subtle" aria-hidden="true" />
-                ) : (
-                    <ChevronDown className="w-5 h-5 text-fg-subtle" aria-hidden="true" />
-                )}
+                </span>
+                <ChevronDown
+                    className={cn(
+                        'h-5 w-5 flex-shrink-0 text-on-coach-muted transition-transform duration-200 ease-standard',
+                        expanded && 'rotate-180'
+                    )}
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                />
             </button>
 
             {/* Collapsible content */}
             {expanded && (
                 <div
                     id="curator-feedback-content"
-                    className="mt-3 sm:mt-4 space-y-3 sm:space-y-4"
+                    className="mt-4 space-y-4"
                 >
                     {/* Category ratings */}
                     {categories.length > 0 && (
-                        <div className="flex flex-wrap gap-2" role="list" aria-label={t('dashboard.feedback.ratingsAria')}>
+                        <div className="flex flex-wrap gap-x-4 gap-y-2" role="list" aria-label={t('dashboard.feedback.ratingsAria')}>
                             {categories.map((cat) => {
                                 const rating = feedback[cat]!
                                 const badge = getRatingBadge(rating.rating)
@@ -149,11 +158,11 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
                                         role="listitem"
                                         className="flex items-center gap-1.5"
                                     >
-                                        <span className="text-xs text-fg-muted">
+                                        <span className="type-caption text-on-coach-muted">
                                             {getCategoryName(cat)}:
                                         </span>
                                         <span
-                                            className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge.className}`}
+                                            className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', badge.className)}
                                         >
                                             {badge.label}
                                         </span>
@@ -163,18 +172,16 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
                         </div>
                     )}
 
-                    {/* Summary */}
-                    <div>
-                        <p className="text-sm text-fg">{feedback.summary}</p>
-                    </div>
+                    {/* Summary — слова куратора цитатой */}
+                    <p className="type-quote text-on-coach">{feedback.summary}</p>
 
                     {/* Recommendations */}
                     {feedback.recommendations && (
-                        <div className="p-3 bg-primary-soft border border-primary/30 rounded-lg">
-                            <p className="text-xs font-medium text-primary mb-1">
+                        <div className="rounded-tile bg-white/10 p-3">
+                            <p className="mb-1 type-overline text-on-coach-muted">
                                 {t('dashboard.feedback.recommendations')}
                             </p>
-                            <p className="text-sm text-primary">
+                            <p className="text-[15px] leading-[22px] text-on-coach">
                                 {feedback.recommendations}
                             </p>
                         </div>

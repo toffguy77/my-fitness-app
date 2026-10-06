@@ -11,7 +11,9 @@ import { cn } from '@/shared/utils/cn'
 import { t } from '@/shared/i18n'
 
 /**
- * Base skeleton component with pulse animation
+ * Base skeleton component with pulse animation.
+ * Рецепт системы: `animate-pulse rounded-tile bg-subtle`; строки текста —
+ * `rounded-full`, чтобы читались как текст, а не как плитка.
  */
 interface SkeletonProps {
     className?: string
@@ -21,13 +23,16 @@ function Skeleton({ className }: SkeletonProps) {
     return (
         <div
             className={cn(
-                'animate-pulse bg-subtle rounded',
+                'animate-pulse rounded-tile bg-subtle',
                 className
             )}
             aria-hidden="true"
         />
     )
 }
+
+/** Карточка-заглушка: та же поверхность, что у карточки экрана, — без тени. */
+const SKELETON_CARD = 'rounded-card border border-line bg-surface p-5'
 
 /**
  * Loading skeleton for ProgressSection
@@ -36,37 +41,35 @@ function Skeleton({ className }: SkeletonProps) {
 export function ProgressSectionSkeleton({ className }: { className?: string }) {
     return (
         <div
-            className={cn('bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
+            className={cn(SKELETON_CARD, className)}
             role="status"
             aria-label={t('dashboard.skeletons.progress')}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <Skeleton className="h-6 w-24" />
-                <Skeleton className="h-8 w-24 rounded-md" />
+            <div className="mb-4 flex items-center justify-between">
+                <Skeleton className="h-6 w-28 rounded-full" />
             </div>
 
             {/* Chart placeholder */}
             <div className="space-y-4">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-32 w-full rounded-lg" />
-                <Skeleton className="h-4 w-48 mx-auto" />
+                <Skeleton className="h-4 w-32 rounded-full" />
+                <Skeleton className="h-32 w-full" />
             </div>
 
             {/* Adherence indicator */}
             <div className="mt-6 space-y-2">
                 <div className="flex justify-between">
-                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-40 rounded-full" />
                     <Skeleton className="h-6 w-20 rounded-full" />
                 </div>
-                <Skeleton className="h-2 w-full rounded-full" />
+                <Skeleton className="h-1.5 w-full rounded-full" />
             </div>
 
             {/* Achievements */}
             <div className="mt-6 space-y-3">
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="h-16 w-full rounded-lg" />
-                <Skeleton className="h-16 w-full rounded-lg" />
+                <Skeleton className="h-3 w-36 rounded-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
             </div>
 
             <span className="sr-only">{t('common.loading')}</span>
@@ -81,23 +84,23 @@ export function ProgressSectionSkeleton({ className }: { className?: string }) {
 export function PhotoUploadSectionSkeleton({ className }: { className?: string }) {
     return (
         <div
-            className={cn('bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
+            className={cn(SKELETON_CARD, className)}
             role="status"
             aria-label={t('dashboard.skeletons.photos')}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <Skeleton className="h-6 w-32" />
+            <div className="mb-4 flex items-center justify-between">
+                <Skeleton className="h-6 w-32 rounded-full" />
             </div>
 
-            {/* Upload button placeholder */}
-            <Skeleton className="h-14 w-full rounded-lg" />
+            {/* Upload area placeholder */}
+            <Skeleton className="h-14 w-full" />
 
             {/* File requirements */}
             <div className="mt-4 space-y-2">
-                <Skeleton className="h-3 w-32" />
-                <Skeleton className="h-3 w-48" />
-                <Skeleton className="h-3 w-40" />
+                <Skeleton className="h-3 w-32 rounded-full" />
+                <Skeleton className="h-3 w-48 rounded-full" />
+                <Skeleton className="h-3 w-40 rounded-full" />
             </div>
 
             <span className="sr-only">{t('common.loading')}</span>
@@ -112,31 +115,34 @@ export function PhotoUploadSectionSkeleton({ className }: { className?: string }
 export function WeeklyPlanSectionSkeleton({ className }: { className?: string }) {
     return (
         <div
-            className={cn('bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
+            className={cn(SKELETON_CARD, className)}
             role="status"
             aria-label={t('dashboard.skeletons.weeklyPlan')}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <Skeleton className="h-6 w-36" />
+            <div className="mb-4 flex items-center justify-between">
+                <Skeleton className="h-6 w-36 rounded-full" />
             </div>
 
             {/* Active indicator */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className="mb-4 flex items-center gap-2">
                 <Skeleton className="h-5 w-5 rounded-full" />
-                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-16 rounded-full" />
             </div>
 
-            {/* Targets */}
-            <div className="space-y-3">
-                <Skeleton className="h-12 w-full rounded-lg" />
-                <Skeleton className="h-12 w-full rounded-lg" />
-                <Skeleton className="h-12 w-full rounded-lg" />
+            {/* Targets — строки списка */}
+            <div className="divide-y divide-line" data-testid="weekly-plan-skeleton-targets">
+                {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center justify-between py-3">
+                        <Skeleton className="h-4 w-20 rounded-full" />
+                        <Skeleton className="h-4 w-16 rounded-full" />
+                    </div>
+                ))}
             </div>
 
             {/* Plan dates */}
             <div className="mt-4">
-                <Skeleton className="h-16 w-full rounded-lg" />
+                <Skeleton className="h-4 w-48 rounded-full" />
             </div>
 
             <span className="sr-only">{t('common.loading')}</span>
@@ -151,32 +157,30 @@ export function WeeklyPlanSectionSkeleton({ className }: { className?: string })
 export function TasksSectionSkeleton({ className }: { className?: string }) {
     return (
         <div
-            className={cn('bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
+            className={cn(SKELETON_CARD, className)}
             role="status"
             aria-label={t('dashboard.skeletons.tasks')}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <Skeleton className="h-6 w-20" />
+            <div className="mb-3 flex items-center justify-between">
+                <Skeleton className="h-6 w-24 rounded-full" />
             </div>
 
             {/* Week indicator */}
-            <Skeleton className="h-4 w-24 mb-3" />
+            <Skeleton className="mb-1 h-3 w-24 rounded-full" />
 
-            {/* Task items */}
-            <div className="space-y-3">
+            {/* Task rows — как в списке задач: отметка, название, подпись */}
+            <div className="divide-y divide-line" data-testid="tasks-skeleton-rows">
                 {[1, 2, 3].map((i) => (
                     <div
                         key={i}
-                        className="flex items-start gap-3 p-3 border border-line rounded-lg"
+                        className="flex min-h-14 items-start gap-3 py-3"
                     >
-                        <Skeleton className="h-5 w-5 rounded-full flex-shrink-0" />
+                        <Skeleton className="h-[22px] w-[22px] flex-shrink-0 rounded-full" />
                         <div className="flex-1 space-y-2">
-                            <Skeleton className="h-4 w-3/4" />
-                            <Skeleton className="h-3 w-full" />
-                            <Skeleton className="h-3 w-24" />
+                            <Skeleton className="h-4 w-3/4 rounded-full" />
+                            <Skeleton className="h-3 w-24 rounded-full" />
                         </div>
-                        <Skeleton className="h-5 w-5 flex-shrink-0" />
                     </div>
                 ))}
             </div>

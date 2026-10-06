@@ -10,6 +10,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { Link2Off, MailCheck } from 'lucide-react'
 
 import { unsubscribeFromEmail } from '@/features/notifications/api/deliveryApi'
 import { AuthShell } from '@/features/auth/components/AuthShell'
@@ -33,10 +34,33 @@ function Unsubscribe() {
 
     const action = cn(buttonBase, buttonVariants.primary, buttonSizes.lg, 'mt-8 w-full')
 
+    // Итог — спокойным пустым состоянием: значок в нейтральном круге над
+    // заголовком. Успех не празднуется зелёным, отказ не пугает красным.
+
     return (
-        <AuthShell centered className="text-center">
+        <AuthShell
+            centered
+            className="text-center"
+            icon={
+                state === 'working' ? undefined : (
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-subtle text-fg-muted" aria-hidden="true">
+                        {state === 'done' ? (
+                            <MailCheck className="h-7 w-7" strokeWidth={1.8} />
+                        ) : (
+                            <Link2Off className="h-7 w-7" strokeWidth={1.8} />
+                        )}
+                    </span>
+                )
+            }
+        >
             {state === 'working' && (
-                <p role="status" className="type-body text-fg-muted">Отписываем...</p>
+                <div role="status" className="flex flex-col items-center gap-4">
+                    <span
+                        className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary"
+                        aria-hidden="true"
+                    />
+                    <p className="type-body text-fg-muted">Отписываем...</p>
+                </div>
             )}
 
             {state === 'done' && (

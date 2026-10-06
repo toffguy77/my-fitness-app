@@ -189,11 +189,9 @@ describe('UnsavedDataNotification', () => {
 
         render(<UnsavedDataNotification />)
 
-        // Click the main retry button (not the individual one)
-        const retryButtons = screen.getAllByText('Повторить')
-        const mainRetryButton = retryButtons.find((btn) =>
-            btn.closest('button[class*="bg-warning"]')
-        )
+        // Общий повтор — единственная кнопка с подписью текстом; у строк —
+        // иконки с aria-label.
+        const mainRetryButton = screen.getByText('Повторить').closest('button')
         await user.click(mainRetryButton!)
 
         await waitFor(() => {
@@ -313,10 +311,9 @@ describe('UnsavedDataNotification', () => {
 
         render(<UnsavedDataNotification />)
 
-        const retryButtons = screen.getAllByText('Повторить')
-        const mainRetryButton = retryButtons.find((btn) =>
-            btn.closest('button[class*="bg-warning"]')
-        )
+        // Общий повтор — единственная кнопка с подписью текстом; у строк —
+        // иконки с aria-label.
+        const mainRetryButton = screen.getByText('Повторить').closest('button')
         await user.click(mainRetryButton!)
 
         await waitFor(() => {

@@ -20,6 +20,7 @@
 import { useState, useRef, ChangeEvent, memo, useCallback, useMemo } from 'react'
 import { Camera, Upload, CheckCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/shared/components/ui/Button'
+import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import { validatePhoto } from '../utils/validation'
 import type { PhotoData } from '../types'
@@ -149,14 +150,14 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
 
     return (
         <section
-            className={`photo-upload-section bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
+            className={cn('photo-upload-section rounded-card border border-line bg-surface p-5 text-fg', className)}
             aria-labelledby="photo-upload-heading"
             aria-describedby={showAttentionIndicator ? "photo-upload-attention-indicator" : undefined}
         >
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="mb-4 flex items-center justify-between gap-2">
                 <h2
                     id="photo-upload-heading"
-                    className="text-base sm:text-lg font-semibold text-fg"
+                    className="type-title-2 text-fg"
                 >
                     {t('dashboard.photo.title')}
                 </h2>
@@ -173,12 +174,12 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
             </div>
 
             {/* Upload area */}
-            <div className="space-y-3 sm:space-y-4" id="photo-upload-content">
+            <div className="space-y-4" id="photo-upload-content">
                 {/* Preview or upload button */}
                 {previewUrl ? (
                     <div className="space-y-3">
                         {/* Thumbnail preview - responsive aspect ratio */}
-                        <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-subtle">
+                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-tile bg-subtle">
                             {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={previewUrl}
@@ -186,8 +187,8 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                                 className="w-full h-full object-cover"
                             />
                             {isUploaded && (
-                                <div className="absolute top-2 right-2 bg-success text-on-primary rounded-full p-1">
-                                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
+                                <div className="absolute right-2 top-2 rounded-full bg-success p-1 text-on-primary">
+                                    <CheckCircle className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
                                     <span className="sr-only">{t('dashboard.photo.uploadedBadge')}</span>
                                 </div>
                             )}
@@ -195,7 +196,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
 
                         {/* Upload info */}
                         {photoData && (
-                            <div className="text-xs sm:text-sm text-fg-muted">
+                            <div className="text-sm text-fg-muted tabular-nums">
                                 <p>
                                     {t('dashboard.photo.uploadedAt', { date: formatDate(new Date(photoData.uploadedAt)) })}
                                 </p>
@@ -203,30 +204,32 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                         )}
 
                         {/* Re-upload button */}
-                        <button
+                        <Button
                             type="button"
+                            variant="secondary"
+                            block
                             onClick={handleUploadClick}
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2 sm:px-4 text-sm font-medium bg-subtle text-fg rounded-lg hover:bg-subtle transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2"
                             aria-label={t('dashboard.photo.replaceAria')}
                         >
-                            <Upload className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
+                            <Upload className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                             <span>{t('dashboard.photo.replace')}</span>
-                        </button>
+                        </Button>
                     </div>
                 ) : (
-                    <div className="text-center py-2 space-y-2">
-                        <Camera className="h-8 w-8 mx-auto text-fg-subtle" aria-hidden="true" />
+                    // Терракота на дашборде одна — у записи еды; фото — контуром.
+                    <div className="flex flex-col items-center gap-3 py-2 text-center">
+                        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                            <Camera className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} />
+                        </span>
                         <p className="text-sm text-fg-muted">{t('dashboard.photo.empty')}</p>
                         <Button
-                            variant="outline"
-                            size="sm"
+                            variant="secondary"
                             onClick={handleUploadClick}
                             disabled={isLoading}
-                            className="text-primary border-primary/30 hover:bg-primary-soft"
                             aria-label={t('dashboard.photo.uploadAria')}
                         >
-                            <Camera className="h-4 w-4 mr-2" aria-hidden="true" />
+                            <Camera className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                             {t('dashboard.photo.upload')}
                         </Button>
                     </div>
@@ -245,22 +248,23 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                 {/* Validation error */}
                 {validationError && (
                     <div
-                        className="flex items-start gap-2 p-3 bg-danger-soft border border-danger/30 rounded-lg"
+                        className="flex items-start gap-2 rounded-tile bg-danger-soft p-3"
                         role="alert"
                         aria-live="polite"
                     >
                         <AlertTriangle
-                            className="w-4 h-4 sm:w-5 sm:h-5 text-danger-fg flex-shrink-0 mt-0.5"
+                            className="mt-0.5 h-4 w-4 flex-shrink-0 text-danger-fg"
+                            strokeWidth={1.8}
                             aria-hidden="true"
                         />
-                        <p className="text-xs sm:text-sm text-danger-fg">{validationError}</p>
+                        <p className="text-sm text-danger-fg">{validationError}</p>
                     </div>
                 )}
 
                 {/* File requirements */}
-                <div className="text-xs text-fg-muted space-y-1">
+                <div className="space-y-0.5 type-caption text-fg-subtle">
                     <p>{t('dashboard.photo.requirements')}</p>
-                    <ul className="list-disc list-inside space-y-0.5 ml-2">
+                    <ul className="ml-2 list-inside list-disc space-y-0.5">
                         <li>{t('dashboard.photo.requirementFormat')}</li>
                         <li>{t('dashboard.photo.requirementSize')}</li>
                     </ul>

@@ -83,18 +83,18 @@ function FoodRow({
                 tabIndex={0}
                 onClick={handleClick}
                 onKeyDown={handleKeyDown}
-                className="flex items-center justify-between px-3 py-3 mx-1 hover:bg-canvas rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+                className="mx-1 flex cursor-pointer items-center justify-between rounded-tile px-3 py-2.5 transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                 aria-label={t('foodTracker.search.itemAria', { name: food.name, serving: servingInfo, calories: Math.round(food.nutritionPer100.calories) })}
             >
-                <div className="flex-1 min-w-0">
-                    <p className="text-fg font-medium truncate">{food.name}</p>
-                    <p className="text-sm text-fg-muted">{servingInfo}</p>
+                <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-fg">{food.name}</p>
+                    <p className="type-caption text-fg-muted tabular-nums">{servingInfo}</p>
                 </div>
                 <div className="ml-4 text-right">
-                    <p className="text-fg font-medium">
+                    <p className="font-semibold text-fg tabular-nums">
                         {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                     </p>
-                    <p className="text-xs text-fg-muted">{t('foodTracker.search.per100')}</p>
+                    <p className="type-caption text-fg-muted">{t('foodTracker.search.per100')}</p>
                 </div>
             </div>
         </div>
@@ -116,7 +116,7 @@ export function VirtualizedFoodList({
     if (foods.length < VIRTUALIZATION_THRESHOLD) {
         return (
             <ul
-                className={`space-y-1 ${className}`}
+                className={`divide-y divide-line ${className}`}
                 role="listbox"
                 aria-label={t('foodTracker.search.listAria')}
             >
@@ -174,18 +174,18 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
             tabIndex={0}
             onClick={handleClick}
             onKeyDown={handleKeyDown}
-            className="flex items-center justify-between px-3 py-3 hover:bg-canvas rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+            className="flex min-h-14 cursor-pointer items-center justify-between rounded-tile px-3 py-2.5 transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             aria-label={t('foodTracker.search.itemAria', { name: food.name, serving: servingInfo, calories: Math.round(food.nutritionPer100.calories) })}
         >
-            <div className="flex-1 min-w-0">
-                <p className="text-fg font-medium truncate">{food.name}</p>
-                <p className="text-sm text-fg-muted">{servingInfo}</p>
+            <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-fg">{food.name}</p>
+                <p className="type-caption text-fg-muted tabular-nums">{servingInfo}</p>
             </div>
             <div className="ml-4 text-right">
-                <p className="text-fg font-medium">
+                <p className="font-semibold text-fg tabular-nums">
                     {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                 </p>
-                <p className="text-xs text-fg-muted">{t('foodTracker.search.per100')}</p>
+                <p className="type-caption text-fg-muted">{t('foodTracker.search.per100')}</p>
             </div>
         </li>
     );

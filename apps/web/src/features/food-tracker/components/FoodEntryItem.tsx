@@ -13,6 +13,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 import type { FoodEntry } from '../types';
 import { t } from '@/shared/i18n';
+import { IconButton } from '@/shared/components/ui/Button';
 
 // ============================================================================
 // Types
@@ -140,32 +141,32 @@ export function FoodEntryItem({
             </div>
 
             {/* Actions and calories */}
-            <div className="flex items-center gap-2 ml-4">
+            <div className="ml-3 flex items-center gap-1">
                 {/* Action buttons (visible on hover) */}
                 {(onEdit || onDelete) && (
                     <div
-                        className={`flex items-center gap-1 transition-opacity group-focus-within:opacity-100 ${showActions ? 'opacity-100' : 'opacity-0'
+                        className={`flex items-center transition-opacity group-focus-within:opacity-100 ${showActions ? 'opacity-100' : 'opacity-0'
                             }`}
                     >
                         {onEdit && (
-                            <button
-                                type="button"
+                            <IconButton
+                                variant="ghost"
                                 onClick={handleEdit}
-                                className="flex h-9 w-9 items-center justify-center rounded-full text-fg-subtle hover:text-primary hover:bg-primary-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                                className="text-fg-subtle hover:text-fg"
                                 aria-label={t('foodTracker.entry.editAria', { name: entry.foodName })}
                             >
-                                <Edit2 className="w-4 h-4" />
-                            </button>
+                                <Edit2 className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                            </IconButton>
                         )}
                         {onDelete && (
-                            <button
-                                type="button"
+                            <IconButton
+                                variant="ghost"
                                 onClick={handleDelete}
-                                className="flex h-9 w-9 items-center justify-center rounded-full text-fg-subtle hover:text-danger-fg hover:bg-danger-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+                                className="text-fg-subtle hover:bg-danger-soft hover:text-danger-fg"
                                 aria-label={t('foodTracker.entry.deleteAria', { name: entry.foodName })}
                             >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                                <Trash2 className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                            </IconButton>
                         )}
                     </div>
                 )}

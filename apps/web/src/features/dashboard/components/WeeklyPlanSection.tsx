@@ -21,6 +21,7 @@ import { memo, useMemo } from 'react'
 import { formatLocalDate } from '@/shared/utils/format'
 import { CheckCircle, Calendar } from 'lucide-react'
 import { Card, CardTitle } from '@/shared/components/ui/Card'
+import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import type { DailyMetrics, WeeklyPlan } from '../types'
 import { AttentionIcon } from './AttentionBadge'
@@ -179,15 +180,14 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
 
     return (
         <Card
-            variant="bordered"
-            className={`weekly-plan-section ${className}`}
+            className={cn('weekly-plan-section', className)}
             aria-labelledby="weekly-plan-heading"
             aria-describedby={showAttentionIndicator ? "weekly-plan-attention-indicator" : undefined}
         >
             <div className="flex items-center justify-between mb-4">
                 <CardTitle
                     id="weekly-plan-heading"
-                    className="text-lg font-semibold text-fg"
+                    className="type-title-2 text-fg"
                 >
                     {t('dashboard.weeklyPlan.title')}
                 </CardTitle>
@@ -203,39 +203,39 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
             </div>
 
             {hasActivePlan && weeklyPlan ? (
-                <div className="space-y-3 sm:space-y-4" role="region" aria-label={t('dashboard.weeklyPlan.activeRegion')} id="weekly-plan-content">
+                <div className="space-y-4" role="region" aria-label={t('dashboard.weeklyPlan.activeRegion')} id="weekly-plan-content">
                     {/* Active indicator */}
                     <div
                         className="flex items-center gap-2 text-success-fg"
                         role="status"
                         aria-label={t('dashboard.weeklyPlan.activeAria')}
                     >
-                        <CheckCircle className="w-5 h-5" aria-hidden="true" />
+                        <CheckCircle className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                         <span className="text-sm font-medium">{t('dashboard.weeklyPlan.active')}</span>
                     </div>
 
                     {/* Targets */}
-                    <div className="space-y-2 sm:space-y-3" role="list" aria-label={t('dashboard.weeklyPlan.goalsAria')}>
+                    <div className="divide-y divide-line border-y border-line" role="list" aria-label={t('dashboard.weeklyPlan.goalsAria')}>
                         {/* Calorie target */}
                         <div
-                            className="flex items-center justify-between p-3 bg-canvas rounded-lg"
+                            className="flex min-h-12 items-center justify-between gap-3 py-2.5"
                             role="listitem"
                             aria-label={t('dashboard.weeklyPlan.caloriesAria', { value: weeklyPlan.caloriesGoal })}
                         >
-                            <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.calories')}</span>
-                            <span className="font-semibold text-fg">
+                            <span className="text-[15px] text-fg-muted">{t('dashboard.weeklyPlan.calories')}</span>
+                            <span className="type-headline text-fg tabular-nums">
                                 {t('dashboard.weeklyPlan.caloriesValue', { value: weeklyPlan.caloriesGoal })}
                             </span>
                         </div>
 
                         {/* Protein target */}
                         <div
-                            className="flex items-center justify-between p-3 bg-canvas rounded-lg"
+                            className="flex min-h-12 items-center justify-between gap-3 py-2.5"
                             role="listitem"
                             aria-label={t('dashboard.weeklyPlan.proteinAria', { value: weeklyPlan.proteinGoal })}
                         >
-                            <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.protein')}</span>
-                            <span className="font-semibold text-fg">
+                            <span className="text-[15px] text-fg-muted">{t('dashboard.weeklyPlan.protein')}</span>
+                            <span className="type-headline text-fg tabular-nums">
                                 {weeklyPlan.proteinGoal} {t('units.gram')}
                             </span>
                         </div>
@@ -243,12 +243,12 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                         {/* Optional: Fat target */}
                         {weeklyPlan.fatGoal !== undefined && (
                             <div
-                                className="flex items-center justify-between p-3 bg-canvas rounded-lg"
+                                className="flex min-h-12 items-center justify-between gap-3 py-2.5"
                                 role="listitem"
                                 aria-label={t('dashboard.weeklyPlan.fatAria', { value: weeklyPlan.fatGoal })}
                             >
-                                <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.fat')}</span>
-                                <span className="font-semibold text-fg">
+                                <span className="text-[15px] text-fg-muted">{t('dashboard.weeklyPlan.fat')}</span>
+                                <span className="type-headline text-fg tabular-nums">
                                     {weeklyPlan.fatGoal} {t('units.gram')}
                                 </span>
                             </div>
@@ -257,12 +257,12 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                         {/* Optional: Carbs target */}
                         {weeklyPlan.carbsGoal !== undefined && (
                             <div
-                                className="flex items-center justify-between p-3 bg-canvas rounded-lg"
+                                className="flex min-h-12 items-center justify-between gap-3 py-2.5"
                                 role="listitem"
                                 aria-label={t('dashboard.weeklyPlan.carbsAria', { value: weeklyPlan.carbsGoal })}
                             >
-                                <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.carbs')}</span>
-                                <span className="font-semibold text-fg">
+                                <span className="text-[15px] text-fg-muted">{t('dashboard.weeklyPlan.carbs')}</span>
+                                <span className="type-headline text-fg tabular-nums">
                                     {weeklyPlan.carbsGoal} {t('units.gram')}
                                 </span>
                             </div>
@@ -271,12 +271,12 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                         {/* Optional: Steps target */}
                         {weeklyPlan.stepsGoal !== undefined && (
                             <div
-                                className="flex items-center justify-between p-3 bg-canvas rounded-lg"
+                                className="flex min-h-12 items-center justify-between gap-3 py-2.5"
                                 role="listitem"
                                 aria-label={t('dashboard.weeklyPlan.stepsAria', { value: weeklyPlan.stepsGoal.toLocaleString('ru-RU') })}
                             >
-                                <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.steps')}</span>
-                                <span className="font-semibold text-fg">
+                                <span className="text-[15px] text-fg-muted">{t('dashboard.weeklyPlan.steps')}</span>
+                                <span className="type-headline text-fg tabular-nums">
                                     {weeklyPlan.stepsGoal.toLocaleString('ru-RU')}
                                 </span>
                             </div>
@@ -285,29 +285,32 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
 
                     {/* Curator comment */}
                     {weeklyPlan.comment && (
+                        // Комментарий — голос куратора: тёмная поверхность и цитата
+                        // засечками, как в карточке куратора.
                         <div
-                            className="p-3 bg-info-soft border border-info/30 rounded-lg"
+                            className="rounded-tile bg-coach p-4 text-on-coach"
                             role="note"
                             aria-label={t('dashboard.weeklyPlan.commentAria')}
                         >
-                            <p className="text-xs font-medium text-info-fg mb-1">{t('dashboard.weeklyPlan.comment')}</p>
-                            <p className="text-sm text-info-fg">{weeklyPlan.comment}</p>
+                            <p className="mb-1.5 type-overline text-on-coach-muted">{t('dashboard.weeklyPlan.comment')}</p>
+                            <p className="type-quote text-on-coach">{weeklyPlan.comment}</p>
                         </div>
                     )}
 
                     {/* Plan dates */}
                     <div
-                        className="flex items-start gap-2 p-3 bg-primary-soft border border-primary/30 rounded-lg"
+                        className="flex items-start gap-2 text-fg-muted"
                         role="note"
                         aria-label={t('dashboard.weeklyPlan.periodAria', { start: formatDate(weeklyPlan.startDate), end: formatDate(weeklyPlan.endDate) })}
                     >
                         <Calendar
-                            className="w-5 h-5 text-primary flex-shrink-0 mt-0.5"
+                            className="mt-0.5 h-4 w-4 flex-shrink-0"
+                            strokeWidth={1.8}
                             aria-hidden="true"
                         />
-                        <div className="text-sm text-primary">
-                            <p className="font-medium">{t('dashboard.weeklyPlan.period')}</p>
-                            <p className="break-words">
+                        <div className="text-sm">
+                            <p className="font-medium text-fg">{t('dashboard.weeklyPlan.period')}</p>
+                            <p className="break-words tabular-nums">
                                 {formatDate(weeklyPlan.startDate)} —{' '}
                                 {formatDate(weeklyPlan.endDate)}
                             </p>
@@ -317,17 +320,17 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
             ) : (
                 /* Placeholder when no active plan */
                 <div
-                    className="flex flex-col items-center justify-center py-6 sm:py-8 text-center"
+                    className="flex flex-col items-center justify-center py-6 text-center"
                     role="status"
                     aria-label={t('dashboard.weeklyPlan.emptyAria')}
                 >
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 rounded-full bg-subtle flex items-center justify-center">
-                        <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-fg-subtle" aria-hidden="true" />
+                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                        <Calendar className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} />
                     </div>
-                    <p className="text-fg-muted text-sm">
+                    <p className="type-title-3 text-fg">
                         {t('dashboard.weeklyPlan.emptyTitle')}
                     </p>
-                    <p className="text-fg-muted text-xs mt-2">
+                    <p className="mt-1 text-sm text-fg-muted">
                         {t('dashboard.weeklyPlan.emptyHint')}
                     </p>
                 </div>

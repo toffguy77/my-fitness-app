@@ -232,8 +232,8 @@ export function DietTab({
                     aria-busy="true"
                 >
                     <div className="flex flex-col items-center gap-2">
-                        <div className="w-6 h-6 border-3 border-primary border-t-transparent rounded-full animate-spin sm:w-8 sm:h-8 sm:border-4" />
-                        <span className="text-xs text-fg-muted sm:text-sm">{t('common.loading')}</span>
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
+                        <span className="text-sm text-fg-muted">{t('common.loading')}</span>
                     </div>
                 </div>
             )}

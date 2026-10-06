@@ -16,6 +16,8 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { useSession } from '@/shared/hooks/useSession'
+import { t } from '@/shared/i18n'
+import { SegmentLoading } from './SegmentLoading'
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const router = useRouter()
@@ -27,15 +29,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         }
     }, [session, router])
 
+    // Пока сессия не известна — тот же спиннер, что у загрузки сегмента:
+    // один вид ожидания на всё приложение.
     if (session !== 'authenticated') {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-canvas" role="status" aria-live="polite">
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
-                    <p className="text-sm text-fg-muted">Загрузка...</p>
-                </div>
-            </div>
-        )
+        return <SegmentLoading label={t('common.loading')} />
     }
 
     return <>{children}</>

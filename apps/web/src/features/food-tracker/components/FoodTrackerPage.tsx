@@ -213,12 +213,12 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                         <div className="flex items-start justify-between gap-2">
                             <div className="flex items-start flex-1 min-w-0">
                                 <AlertTriangle className="mr-2 h-4 w-4 flex-shrink-0 text-danger-fg" aria-hidden="true" />
-                                <p className="text-xs text-danger-fg sm:text-sm">{error.message}</p>
+                                <p className="text-sm text-danger-fg">{error.message}</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={clearError}
-                                className="text-danger-fg hover:text-danger-fg p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded"
+                                className="-my-2.5 -mr-2.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-danger-fg transition-colors hover:bg-danger-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                                 aria-label={t('foodTracker.page.dismissError')}
                             >
                                 <X className="h-4 w-4" aria-hidden="true" />
@@ -260,11 +260,11 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                     aria-live="assertive"
                 >
                     <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs text-danger-fg sm:text-sm">{recommendations.actionError}</p>
+                        <p className="text-sm text-danger-fg">{recommendations.actionError}</p>
                         <button
                             type="button"
                             onClick={recommendations.clearActionError}
-                            className="text-danger-fg hover:text-danger-fg p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded"
+                            className="-my-2.5 -mr-2.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-danger-fg transition-colors hover:bg-danger-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                             aria-label={t('foodTracker.page.dismissError')}
                         >
                             <X className="h-4 w-4" aria-hidden="true" />

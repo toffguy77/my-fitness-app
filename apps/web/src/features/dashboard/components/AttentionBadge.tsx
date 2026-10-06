@@ -43,17 +43,32 @@ export interface AttentionBadgeProps {
 }
 
 /**
- * Get color classes based on urgency level
+ * Цвет — роль состояния, не бренд: терракота принадлежит главному действию
+ * экрана. «Не записано сегодня» сообщает, а не тревожит — `info`; важное —
+ * `warning`; срочное — `danger`. Метка — мягкой подложкой с текстом `-fg`,
+ * точка — сплошной заливкой роли.
  */
-function getColorClasses(urgency: UrgencyLevel): string {
+function getBadgeClasses(urgency: UrgencyLevel): string {
     switch (urgency) {
         case 'critical':
-            return 'bg-danger text-on-primary border-danger';
+            return 'bg-danger-soft text-danger-fg';
         case 'high':
-            return 'bg-warning text-on-primary border-warning';
+            return 'bg-warning-soft text-warning-fg';
         case 'normal':
         default:
-            return 'bg-primary text-on-primary border-primary';
+            return 'bg-info-soft text-info-fg';
+    }
+}
+
+function getDotClasses(urgency: UrgencyLevel): string {
+    switch (urgency) {
+        case 'critical':
+            return 'bg-danger';
+        case 'high':
+            return 'bg-warning';
+        case 'normal':
+        default:
+            return 'bg-info';
     }
 }
 
@@ -70,7 +85,7 @@ export function AttentionBadge({
     announceChanges = false,
     indicatesId,
 }: AttentionBadgeProps) {
-    const colorClasses = getColorClasses(urgency);
+    const colorClasses = getBadgeClasses(urgency);
     const shouldPulse = pulse || urgency === 'critical';
     const previousCountRef = useRef<number | undefined>(count);
 
@@ -106,22 +121,23 @@ export function AttentionBadge({
 
     // Render icon based on urgency level
     const renderIcon = () => {
-        const iconClass = "w-3 h-3";
+        const iconClass = "h-3.5 w-3.5";
         switch (urgency) {
             case 'critical':
-                return <AlertTriangle className={iconClass} aria-hidden="true" />;
+                return <AlertTriangle className={iconClass} strokeWidth={2} aria-hidden="true" />;
             case 'high':
-                return <AlertCircle className={iconClass} aria-hidden="true" />;
+                return <AlertCircle className={iconClass} strokeWidth={2} aria-hidden="true" />;
             case 'normal':
             default:
-                return <Info className={iconClass} aria-hidden="true" />;
+                return <Info className={iconClass} strokeWidth={2} aria-hidden="true" />;
         }
     };
 
     return (
         <span
             className={cn(
-                'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border',
+                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                 colorClasses,
                 shouldPulse && 'animate-pulse',
                 className
@@ -164,7 +180,7 @@ export function AttentionDot({
     announceChanges = false,
     indicatesId,
 }: AttentionDotProps) {
-    const colorClasses = getColorClasses(urgency);
+    const colorClasses = getDotClasses(urgency);
     const shouldPulse = pulse || urgency === 'critical';
 
     // Determine aria-live politeness based on urgency
@@ -230,7 +246,7 @@ export function AttentionIcon({
         ? 'text-danger-fg'
         : urgency === 'high'
             ? 'text-warning-fg'
-            : 'text-primary';
+            : 'text-info-fg';
 
     // Determine aria-live politeness based on urgency
     const ariaLive = announceChanges

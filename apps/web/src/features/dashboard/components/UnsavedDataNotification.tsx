@@ -4,7 +4,7 @@
  */
 
 import { AlertCircle, RefreshCw, X } from 'lucide-react';
-import { Button } from '@/shared/components/ui/Button';
+import { Button, IconButton } from '@/shared/components/ui/Button';
 import { useConfirm } from '@/shared/components/ui';
 import { useUnsavedData } from '../hooks/useUnsavedData';
 import { useDashboardStore } from '../store/dashboardStore';
@@ -96,18 +96,23 @@ export function UnsavedDataNotification() {
         });
     };
 
+    // Панель лежит над экраном — поверхность с `shadow-overlay`; состояние
+    // «не сохранено» — знаком роли warning, текст — чернилами. Терракота на
+    // дашборде одна, у записи еды: повтор — контуром, отказ — без подложки.
     return (
-        <div className="fixed bottom-4 right-4 z-50 max-w-md">
-            <div className="bg-warning-soft border border-warning/30 rounded-lg shadow-lg p-4">
+        <div className="fixed bottom-4 right-4 z-50 w-[calc(100%-2rem)] max-w-md">
+            <div className="rounded-card border border-line bg-surface p-4 text-fg shadow-overlay">
                 <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-warning-fg flex-shrink-0 mt-0.5" />
+                    <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-warning-soft" aria-hidden="true">
+                        <AlertCircle className="h-[18px] w-[18px] text-warning-fg" strokeWidth={1.8} />
+                    </span>
 
-                    <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-warning-fg mb-1">
+                    <div className="min-w-0 flex-1">
+                        <h3 className="type-headline text-fg">
                             {t('dashboard.unsaved.title')}
                         </h3>
 
-                        <p className="text-sm text-warning-fg mb-3">
+                        <p className="mt-0.5 text-sm text-fg-muted tabular-nums">
                             {unsavedCount === 1
                                 ? t('dashboard.unsaved.countOne')
                                 : t('dashboard.unsaved.countMany', { count: unsavedCount })}
@@ -115,11 +120,11 @@ export function UnsavedDataNotification() {
 
                         {/* List of unsaved entries */}
                         {unsavedData.length <= 3 && (
-                            <div className="space-y-2 mb-3">
+                            <ul className="mt-3 divide-y divide-line rounded-tile border border-line">
                                 {unsavedData.map((entry) => (
-                                    <div
+                                    <li
                                         key={entry.date}
-                                        className="flex items-center justify-between text-xs text-warning-fg bg-warning-soft rounded px-2 py-1"
+                                        className="flex min-h-11 items-center justify-between gap-2 pl-3 text-sm text-fg tabular-nums"
                                     >
                                         <span>
                                             {new Date(entry.date).toLocaleDateString('ru-RU', {
@@ -133,40 +138,37 @@ export function UnsavedDataNotification() {
                                             {entry.metric.type === 'workout' && t('dashboard.unsaved.workout')}
                                         </span>
                                         {canRetry(entry.date) && (
-                                            <button
+                                            <IconButton
+                                                variant="ghost"
                                                 onClick={() => handleRetryOne(entry.date)}
                                                 disabled={isRetrying}
-                                                className="text-warning-fg hover:text-warning-fg disabled:opacity-50"
                                                 aria-label={t('dashboard.unsaved.retry')}
                                             >
-                                                <RefreshCw className="h-3 w-3" />
-                                            </button>
+                                                <RefreshCw className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                                            </IconButton>
                                         )}
-                                    </div>
+                                    </li>
                                 ))}
-                            </div>
+                            </ul>
                         )}
 
                         {/* Action buttons */}
-                        <div className="flex gap-2">
+                        <div className="mt-3 flex gap-2">
                             <Button
-                                variant="primary"
-                                size="sm"
+                                variant="secondary"
                                 onClick={handleRetryAll}
                                 isLoading={isRetrying}
                                 disabled={isRetrying}
-                                className="flex-1 bg-warning hover:bg-warning text-on-primary"
+                                className="flex-1"
                             >
-                                <RefreshCw className="h-3 w-3 mr-1" />
+                                {!isRetrying && <RefreshCw className="h-4 w-4" strokeWidth={2} aria-hidden="true" />}
                                 {t('dashboard.unsaved.retry')}
                             </Button>
 
                             <Button
                                 variant="ghost"
-                                size="sm"
                                 onClick={handleDismiss}
                                 disabled={isRetrying}
-                                className="text-warning-fg hover:bg-warning-soft"
                             >
                                 {t('dashboard.unsaved.discard')}
                             </Button>
@@ -174,14 +176,15 @@ export function UnsavedDataNotification() {
                     </div>
 
                     {/* Close button */}
-                    <button
+                    <IconButton
+                        variant="ghost"
                         onClick={handleDismiss}
                         disabled={isRetrying}
-                        className="text-warning-fg hover:text-warning-fg disabled:opacity-50"
+                        className="-mr-2 -mt-2"
                         aria-label={t('common.close')}
                     >
-                        <X className="h-4 w-4" />
-                    </button>
+                        <X className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                    </IconButton>
                 </div>
             </div>
 

@@ -19,7 +19,7 @@
 
 import Link from 'next/link'
 import { t } from '@/shared/i18n'
-import { buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
+import { Button, buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
 import { cn } from '@/shared/utils/cn'
 import { AuthShell } from './AuthShell'
 
@@ -38,13 +38,9 @@ export function MagicLinkFailure({
             </p>
             <div className="mt-8 flex flex-col items-center gap-2">
                 {onRetry && (
-                    <button
-                        type="button"
-                        onClick={onRetry}
-                        className={cn(buttonBase, buttonVariants.primary, buttonSizes.lg, 'w-full')}
-                    >
+                    <Button type="button" size="lg" block onClick={onRetry}>
                         {t('auth.magicLink.consume.retry')}
-                    </button>
+                    </Button>
                 )}
                 <Link
                     href="/auth"

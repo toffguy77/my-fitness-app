@@ -12,6 +12,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { t } from '@/shared/i18n';
+import { Button } from '@/shared/components/ui/Button';
 
 // ============================================================================
 // Types
@@ -254,7 +255,7 @@ export function DatePicker({
                     className="flex h-11 w-11 items-center justify-center rounded-full border border-line hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                     aria-label={t('foodTracker.datePicker.previousDay')}
                 >
-                    <ChevronLeft className="h-5 w-5 text-fg" />
+                    <ChevronLeft className="h-5 w-5 text-fg" strokeWidth={1.8} aria-hidden="true" />
                 </button>
 
                 {/* Date Display */}
@@ -265,7 +266,7 @@ export function DatePicker({
                     aria-label={t('foodTracker.datePicker.openCalendar')}
                     aria-expanded={isCalendarOpen}
                 >
-                    <Calendar className="w-4 h-4 text-fg-muted sm:w-5 sm:h-5" aria-hidden="true" />
+                    <Calendar className="h-5 w-5 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
                     <span className="text-base font-semibold text-fg first-letter:uppercase">{displayDate}</span>
                 </button>
 
@@ -280,7 +281,7 @@ export function DatePicker({
                         }`}
                     aria-label={t('foodTracker.datePicker.nextDay')}
                 >
-                    <ChevronRight className="h-5 w-5" />
+                    <ChevronRight className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                 </button>
             </div>
 
@@ -288,16 +289,16 @@ export function DatePicker({
             {isCalendarOpen && (
                 <div className="absolute top-full left-0 right-0 z-50 mt-2 rounded-card border border-line bg-surface p-4 shadow-overlay">
                     {/* Calendar Header */}
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="mb-3 flex items-center justify-between">
                         <button
                             type="button"
                             onClick={() => navigateCalendarMonth('prev')}
-                            className="p-1 rounded hover:bg-subtle transition-colors touch-manipulation"
+                            className="-m-1 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                             aria-label={t('foodTracker.datePicker.previousMonth')}
                         >
-                            <ChevronLeft className="w-4 h-4 text-fg-muted sm:w-5 sm:h-5" />
+                            <ChevronLeft className="h-5 w-5 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
                         </button>
-                        <span className="text-xs font-medium text-fg sm:text-sm">
+                        <span className="type-headline text-fg tabular-nums">
                             {RUSSIAN_MONTHS_GENITIVE[calendarMonth].charAt(0).toUpperCase() +
                                 RUSSIAN_MONTHS_GENITIVE[calendarMonth].slice(1)}{' '}
                             {calendarYear}
@@ -305,19 +306,19 @@ export function DatePicker({
                         <button
                             type="button"
                             onClick={() => navigateCalendarMonth('next')}
-                            className="p-1 rounded hover:bg-subtle transition-colors touch-manipulation"
+                            className="-m-1 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                             aria-label={t('foodTracker.datePicker.nextMonth')}
                         >
-                            <ChevronRight className="w-4 h-4 text-fg-muted sm:w-5 sm:h-5" />
+                            <ChevronRight className="h-5 w-5 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
                         </button>
                     </div>
 
                     {/* Day Names */}
-                    <div className="grid grid-cols-7 gap-0.5 mb-1.5 sm:gap-1 sm:mb-2">
+                    <div className="mb-1 grid grid-cols-7 gap-1">
                         {RUSSIAN_DAYS_SHORT.map((day) => (
                             <div
                                 key={day}
-                                className="text-center text-[10px] font-medium text-fg-muted py-0.5 sm:text-xs sm:py-1"
+                                className="py-1 text-center text-xs font-medium text-fg-subtle"
                             >
                                 {day}
                             </div>
@@ -325,15 +326,17 @@ export function DatePicker({
                     </div>
 
                     {/* Calendar Days */}
-                    <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+                    <div className="grid grid-cols-7 gap-1">
                         {calendarDays.map((day, index) => {
                             if (day === null) {
-                                return <div key={`empty-${index}`} className="p-1.5 sm:p-2" />;
+                                return <div key={`empty-${index}`} className="h-11" />;
                             }
 
                             const dayDate = new Date(calendarYear, calendarMonth, day);
                             const isSelected = isSameDay(dayDate, selectedDate);
                             const isTodayDate = isToday(dayDate);
+                            // Сегодня — пунктирное кольцо, как в недельных точках:
+                            // отметка места, не оценка и не бренд.
                             const isFuture = preventFutureDates && isFutureDate(dayDate);
 
                             return (
@@ -342,10 +345,10 @@ export function DatePicker({
                                     type="button"
                                     onClick={() => selectDate(day)}
                                     disabled={isFuture}
-                                    className={`flex h-10 w-full items-center justify-center rounded-full text-sm tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation ${isSelected
+                                    className={`flex h-11 w-full items-center justify-center rounded-full text-sm tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation ${isSelected
                                         ? 'bg-fg font-semibold text-fg-inverse'
                                         : isTodayDate
-                                            ? 'font-semibold text-primary ring-1 ring-inset ring-primary'
+                                            ? 'border border-dashed border-line-strong font-semibold text-fg'
                                             : isFuture
                                                 ? 'text-fg-subtle cursor-not-allowed'
                                                 : 'hover:bg-subtle text-fg'
@@ -363,13 +366,15 @@ export function DatePicker({
 
                     {/* Today Button */}
                     {!isToday(selectedDate) && (
-                        <button
+                        <Button
                             type="button"
+                            variant="secondary"
+                            block
                             onClick={goToToday}
-                            className="w-full mt-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-soft rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:mt-4 sm:py-2 sm:text-sm touch-manipulation"
+                            className="mt-3 touch-manipulation"
                         >
                             {t('foodTracker.datePicker.today')}
-                        </button>
+                        </Button>
                     )}
                 </div>
             )}

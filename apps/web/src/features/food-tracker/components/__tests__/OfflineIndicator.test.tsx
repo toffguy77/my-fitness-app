@@ -285,7 +285,7 @@ describe('OfflineIndicator', () => {
     // ============================================================================
 
     describe('Responsive Design', () => {
-        it('has responsive padding classes', () => {
+        it('sits in the content column of the screen', () => {
             mockUseOnlineStatus.mockReturnValue({
                 isOnline: false,
                 isOffline: true,
@@ -295,11 +295,12 @@ describe('OfflineIndicator', () => {
 
             const { container } = render(<OfflineIndicator />);
 
-            const innerDiv = container.querySelector('.max-w-2xl');
-            expect(innerDiv).toHaveClass('px-3', 'sm:px-4');
+            const innerDiv = container.querySelector('.max-w-content');
+            expect(innerDiv).toHaveClass('px-screen-x');
         });
 
-        it('has responsive text size classes', () => {
+        // Отсутствие сети — сведение, а не оценка: роль `info`, не `warning`.
+        it('reports the state with the info role', () => {
             mockUseOnlineStatus.mockReturnValue({
                 isOnline: false,
                 isOffline: true,
@@ -310,7 +311,20 @@ describe('OfflineIndicator', () => {
             render(<OfflineIndicator />);
 
             const message = screen.getByText('Нет подключения к интернету');
-            expect(message).toHaveClass('text-xs', 'sm:text-sm');
+            expect(message).toHaveClass('text-info-fg');
+        });
+
+        it('sync button is a 44 px touch target', () => {
+            mockUseOnlineStatus.mockReturnValue({
+                isOnline: true,
+                isOffline: false,
+                pendingOperationsCount: 3,
+                syncNow: mockSyncNow,
+            });
+
+            render(<OfflineIndicator />);
+
+            expect(screen.getByRole('button', { name: /синхронизировать/i })).toHaveClass('h-11');
         });
 
         it('sync button has touch-manipulation class', () => {

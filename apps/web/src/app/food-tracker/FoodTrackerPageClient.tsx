@@ -12,8 +12,8 @@ export function FoodTrackerPageClient() {
 
     if (session !== 'authenticated') {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-canvas">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+            <div className="flex min-h-screen items-center justify-center bg-canvas">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
             </div>
         );
     }

@@ -224,12 +224,16 @@ describe('WaterTracker', () => {
             expect(container.firstChild).toHaveClass('custom-class');
         });
 
-        it('applies green color to text when goal is reached', () => {
+        // Цвет опознаёт, а не оценивает: выполненная цель называется словом,
+        // число не перекрашивается.
+        it('keeps the count in ink when goal is reached and says so in words', () => {
             const waterLog = createWaterLog({ glasses: 8, goal: 8 });
             render(<WaterTracker waterLog={waterLog} onAddGlass={jest.fn()} />);
 
             const displayText = screen.getByText('8 / 8 стаканов');
-            expect(displayText).toHaveClass('text-success-fg');
+            expect(displayText).toHaveClass('text-fg');
+            expect(displayText).not.toHaveClass('text-success-fg');
+            expect(screen.getByText('Цель достигнута')).toBeInTheDocument();
         });
 
         it('applies default color to text when goal is not reached', () => {
@@ -250,8 +254,7 @@ describe('WaterTracker', () => {
             );
 
             const addButton = screen.getByRole('button', { name: /добавить стакан/i });
-            expect(addButton).toHaveClass('cursor-not-allowed');
-            expect(addButton).toHaveClass('bg-subtle');
+            expect(addButton).toBeDisabled();
         });
     });
 

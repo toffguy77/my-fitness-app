@@ -50,19 +50,20 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
 
     return (
         <div
-            className={`bg-warning-soft border-b border-warning/30 ${className}`}
+            className={`border-b border-line bg-info-soft ${className}`}
             role="alert"
             aria-live="polite"
         >
-            <div className="max-w-2xl mx-auto px-3 py-2 sm:px-4">
-                <div className="flex items-center justify-between gap-2">
+            <div className="mx-auto max-w-content px-screen-x py-1">
+                <div className="flex min-h-11 items-center justify-between gap-2">
                     {/* Status message */}
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
                         <WifiOff
-                            className="w-4 h-4 text-warning-fg flex-shrink-0"
+                            className="h-4 w-4 flex-shrink-0 text-info-fg"
+                            strokeWidth={1.8}
                             aria-hidden="true"
                         />
-                        <span className="text-xs text-warning-fg sm:text-sm truncate">
+                        <span className="truncate text-sm text-info-fg">
                             {isOffline ? (
                                 t('common.offline')
                             ) : pendingOperationsCount > 0 ? (
@@ -79,17 +80,17 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                             type="button"
                             onClick={handleSync}
                             disabled={isSyncing}
-                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-warning-fg bg-warning-soft hover:bg-warning-soft rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-warning disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm touch-manipulation"
+                            className="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-semibold text-info-fg transition-colors hover:bg-surface/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50 touch-manipulation"
                             aria-label={t('foodTracker.offline.syncAria')}
                         >
                             {isSyncing ? (
                                 <>
-                                    <RefreshCw className="w-3 h-3 animate-spin sm:w-4 sm:h-4" aria-hidden="true" />
+                                    <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={1.8} aria-hidden="true" />
                                     <span className="hidden sm:inline">{t('foodTracker.offline.syncing')}</span>
                                 </>
                             ) : (
                                 <>
-                                    <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" aria-hidden="true" />
+                                    <RefreshCw className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                                     <span className="hidden sm:inline">{t('foodTracker.offline.sync')}</span>
                                 </>
                             )}
@@ -99,8 +100,8 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                     {/* Success indicator after sync */}
                     {isOnline && pendingOperationsCount === 0 && !isOffline && (
                         <div className="flex items-center gap-1 text-success-fg">
-                            <Check className="w-3 h-3 sm:w-4 sm:h-4" aria-hidden="true" />
-                            <span className="text-xs sm:text-sm">{t('foodTracker.offline.synced')}</span>
+                            <Check className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                            <span className="text-sm">{t('foodTracker.offline.synced')}</span>
                         </div>
                     )}
                 </div>

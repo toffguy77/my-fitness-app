@@ -9,7 +9,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
 import { providersApi } from '@/features/auth/api/providers'
 import { storeSession, destinationFor } from '@/features/auth/utils/session'
 import { t } from '@/shared/i18n'
@@ -52,7 +51,7 @@ export function OAuthCompleteScreen() {
 
     return (
         <main className="flex min-h-screen items-center justify-center bg-canvas" aria-busy="true">
-            <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
+            <span className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
             <span className="sr-only">{t('auth.oauth.completing')}</span>
         </main>
     )
