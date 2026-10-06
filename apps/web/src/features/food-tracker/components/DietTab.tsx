@@ -10,7 +10,7 @@
 'use client';
 
 import React, { useCallback, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { QuickAddBar, type QuickAddMethod } from '@/shared/components/ui/QuickAdd';
 import { KBZHUSummary } from './KBZHUSummary';
 import { MealSlot } from './MealSlot';
 import { WaterTracker } from './WaterTracker';
@@ -65,6 +65,14 @@ export interface DietTabProps {
 // ============================================================================
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+/** Приём пищи по часу: до 11 — завтрак, до 16 — обед, с 17 до 22 — ужин, иначе перекус. */
+export function mealForHour(hour: number): MealType {
+    if (hour >= 5 && hour < 11) return 'breakfast';
+    if (hour >= 11 && hour < 16) return 'lunch';
+    if (hour >= 17 && hour < 22) return 'dinner';
+    return 'snack';
+}
 
 // ============================================================================
 // Component
@@ -130,6 +138,7 @@ export function DietTab({
     const handleModalClose = useCallback(() => {
         setIsModalOpen(false);
         setEditingEntry(null);
+        setQuickTab(null);
     }, []);
 
     // Handle add water
@@ -137,11 +146,14 @@ export function DietTab({
         addWater(1);
     }, [addWater]);
 
-    // Handle FAB click
-    const handleFabClick = useCallback(() => {
-        // Default to snack for quick add
-        setSelectedMealType('snack');
+    // Быстрый ввод: окно записи открывается сразу на выбранном способе, а
+    // приём пищи угадывается по времени — чаще всего человек записывает то,
+    // что только что съел.
+    const [quickTab, setQuickTab] = useState<EntryMethodTab | null>(null);
+    const handleQuickAdd = useCallback((method: QuickAddMethod) => {
+        setSelectedMealType(mealForHour(new Date().getHours()));
         setEditingEntry(null);
+        setQuickTab(method);
         setIsModalOpen(true);
     }, []);
 
@@ -154,7 +166,7 @@ export function DietTab({
     };
 
     return (
-        <div className={`space-y-3 pb-20 sm:space-y-4 sm:pb-24 ${className}`}>
+        <div className={`space-y-4 pb-28 ${className}`}>
             {/* КБЖУ Summary. Без нормы сводка показывает съеденное числом, а
                 рядом стоит приглашение её посчитать — вместо придуманных цифр. */}
             <KBZHUSummary
@@ -188,32 +200,27 @@ export function DietTab({
                 />
             )}
 
-            {/* Floating Action Button - responsive positioning */}
-            <button
-                type="button"
-                onClick={handleFabClick}
-                // The footer navigation is a fixed 64px bar at the bottom of
-                // every signed-in page. At bottom-4 this button sat entirely
-                // behind it: visible in a screenshot, but every tap landed on
-                // the nav instead.
-                className="fixed bottom-20 right-4 w-12 h-12 bg-primary text-on-primary rounded-full shadow-lg hover:bg-primary-hover active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 flex items-center justify-center z-50 sm:bottom-24 sm:right-6 sm:w-14 sm:h-14 touch-manipulation"
-                aria-label={t('foodTracker.page.addFoodAria')}
-                data-testid="fab-add-food"
+            {/* Быстрый ввод над нижней навигацией: поиск, штрихкод, фото —
+                в одно касание, без выбора приёма пищи и способа. */}
+            <div
+                className="fixed inset-x-0 z-40 mx-auto max-w-md px-screen-x"
+                style={{ bottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px))' }}
+                data-testid="quick-add-bar"
             >
-                <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
+                <QuickAddBar onSelect={handleQuickAdd} />
+            </div>
 
             {/* Food Entry Modal */}
             {/* Keyed on what it is editing: opening the modal remounts it, so
                 its state starts correct instead of being corrected by an
                 effect after the first render. */}
             <FoodEntryModal
-                key={isModalOpen ? (editingEntry?.id ?? `new-${selectedMealType}`) : 'closed'}
+                key={isModalOpen ? (editingEntry?.id ?? `new-${selectedMealType}-${quickTab ?? openEntryOn ?? ''}`) : 'closed'}
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
                 mealType={selectedMealType}
                 editingEntry={editingEntry}
-                initialTab={openEntryOn ?? undefined}
+                initialTab={quickTab ?? openEntryOn ?? undefined}
             />
 
             {/* Loading Overlay */}

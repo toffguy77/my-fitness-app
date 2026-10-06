@@ -7,7 +7,8 @@ export type MacroAmounts = Record<MacroKey, number>
 
 export interface MacroRemainingProps {
     eaten: MacroAmounts
-    goal: MacroAmounts
+    /** Норма по макросу. Нет нормы (или 0) — показывается съеденное, без доли. */
+    goal: Partial<MacroAmounts>
     /**
      * `plain` — колонки без подложки (внутри карточки дашборда);
      * `tiles` — каждая колонка своей плиткой (сводка дневника на фоне экрана).
@@ -35,12 +36,15 @@ export function MacroRemaining({ eaten, goal, variant = 'plain', className }: Ma
             {MACRO_KEYS.map((key) => {
                 const label = LABELS[key]()
                 const e = Math.round(eaten[key])
-                const g = Math.round(goal[key])
+                const g = Math.round(goal[key] ?? 0)
+                const hasGoal = g > 0
                 const left = g - e
-                const over = left < 0
-                const aria = over
-                    ? t('ui.macroRemaining.overAria', { label, over: -left, eaten: e, goal: g })
-                    : t('ui.macroRemaining.aria', { label, left, eaten: e, goal: g })
+                const over = hasGoal && left < 0
+                const aria = !hasGoal
+                    ? t('ui.macroRemaining.noGoalAria', { label, eaten: e })
+                    : over
+                        ? t('ui.macroRemaining.overAria', { label, over: -left, eaten: e, goal: g })
+                        : t('ui.macroRemaining.aria', { label, left, eaten: e, goal: g })
                 return (
                     <div
                         key={key}
@@ -55,17 +59,25 @@ export function MacroRemaining({ eaten, goal, variant = 'plain', className }: Ma
                         </span>
                         <span aria-hidden="true" className="flex items-baseline gap-1">
                             <span className={cn('text-fg', variant === 'tiles' ? 'text-xl leading-6 font-semibold tabular-nums' : 'type-num-l')}>
-                                {over ? `+${-left}` : left}
+                                {!hasGoal ? e : over ? `+${-left}` : left}
                             </span>
                             <span className="text-sm font-medium text-fg">{t('units.gram')}</span>
                         </span>
                         <span aria-hidden="true" className={cn('-mt-1 text-xs', over ? 'font-medium text-warning-fg' : 'text-fg-subtle')}>
-                            {over ? t('ui.macroRemaining.over') : t('ui.macroRemaining.left')}
+                            {!hasGoal ? t('ui.macroRemaining.eaten') : over ? t('ui.macroRemaining.over') : t('ui.macroRemaining.left')}
                         </span>
-                        <ProgressBar value={e} max={g} color={MACRO_COLORS[key]} thickness={variant === 'tiles' ? 3 : 4} label={aria} />
-                        <span aria-hidden="true" className="text-[13px] text-fg-muted tabular-nums">
-                            {t('ui.macroRemaining.ofGoal', { eaten: e, goal: g })}
-                        </span>
+                        {hasGoal ? (
+                            <>
+                                <ProgressBar value={e} max={g} color={MACRO_COLORS[key]} thickness={variant === 'tiles' ? 3 : 4} label={aria} />
+                                <span aria-hidden="true" className="text-[13px] text-fg-muted tabular-nums">
+                                    {t('ui.macroRemaining.ofGoal', { eaten: e, goal: g })}
+                                </span>
+                            </>
+                        ) : (
+                            // Без нормы доли нет: ни полосы, ни «из». Цвет подписи
+                            // по-прежнему опознаёт нутриент.
+                            <span className="sr-only">{aria}</span>
+                        )}
                     </div>
                 )
             })}

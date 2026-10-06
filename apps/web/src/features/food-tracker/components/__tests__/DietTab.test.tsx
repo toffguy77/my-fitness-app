@@ -9,7 +9,7 @@
 import React from 'react';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { DietTab } from '../DietTab';
+import { DietTab, mealForHour } from '../DietTab';
 import { useFoodTrackerStore } from '../../store/foodTrackerStore';
 import { FoodEntry, EntriesByMealType } from '../../types';
 
@@ -24,6 +24,7 @@ jest.mock('../../store/foodTrackerStore', () => ({
 
 // Mock lucide-react icons (all icons used by DietTab and its child components)
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     Plus: () => <span data-testid="plus-icon">+</span>,
     Calculator: () => <span data-testid="calculator-icon">🧮</span>,
     Sunrise: () => <span data-testid="sunrise-icon">☀</span>,
@@ -155,10 +156,12 @@ describe('DietTab', () => {
             expect(screen.getByText('Вода')).toBeInTheDocument();
         });
 
-        it('renders FAB button', () => {
+        it('renders quick add bar with three entry methods', () => {
             render(<DietTab {...createDefaultProps()} />);
-            const fabButton = screen.getByTestId('fab-add-food');
-            expect(fabButton).toBeInTheDocument();
+            expect(screen.getByTestId('quick-add-bar')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Найти продукт' })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Сканировать штрихкод' })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Распознать еду по фото' })).toBeInTheDocument();
         });
     });
 
@@ -253,24 +256,25 @@ describe('DietTab', () => {
         });
     });
 
-    describe('FAB Button', () => {
-        it('opens modal when FAB clicked', async () => {
+    describe('Quick Add Bar', () => {
+        it('opens the entry modal straight away when a method is picked', async () => {
             const user = userEvent.setup();
             render(<DietTab {...createDefaultProps()} />);
 
-            const fabButton = screen.getByTestId('fab-add-food');
-            await user.click(fabButton);
+            await user.click(screen.getByRole('button', { name: 'Найти продукт' }));
 
             await waitFor(() => {
                 expect(screen.getByRole('dialog')).toBeInTheDocument();
             });
         });
 
-        it('has accessible label in Russian', () => {
-            render(<DietTab {...createDefaultProps()} />);
-
-            const fabButton = screen.getByTestId('fab-add-food');
-            expect(fabButton).toHaveAttribute('aria-label', 'Добавить еду');
+        it('guesses the meal from the hour', () => {
+            expect(mealForHour(8)).toBe('breakfast');
+            expect(mealForHour(13)).toBe('lunch');
+            expect(mealForHour(16)).toBe('snack');
+            expect(mealForHour(19)).toBe('dinner');
+            expect(mealForHour(23)).toBe('snack');
+            expect(mealForHour(3)).toBe('snack');
         });
     });
 
@@ -422,8 +426,8 @@ describe('DietTab', () => {
                 />,
             );
 
-            // KBZHUSummary без нормы печатает «съедено / -» и не рисует процент.
-            expect(screen.getByText('1234 / -')).toBeInTheDocument();
+            // KBZHUSummary без нормы говорит «Съедено N ккал» и не рисует долю.
+            expect(screen.getByTestId('kbzhu-calories')).toHaveTextContent('Съедено 1234 ккал');
             expect(screen.queryByText(/^\d+%$/)).not.toBeInTheDocument();
         });
 

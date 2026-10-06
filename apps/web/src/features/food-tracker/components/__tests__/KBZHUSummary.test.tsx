@@ -34,91 +34,65 @@ const createKBZHU = (
 // ============================================================================
 
 describe('KBZHUSummary', () => {
-    describe('Display with Various Values', () => {
-        it('displays all four macro labels in Russian', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = createKBZHU(2000, 150, 80, 250);
+    const target = createKBZHU(2000, 150, 80, 250);
 
-            render(<KBZHUSummary current={current} target={target} />);
-
-            expect(screen.getByText('Ккал')).toBeInTheDocument();
-            expect(screen.getByText('Белки')).toBeInTheDocument();
-            expect(screen.getByText('Жиры')).toBeInTheDocument();
-            expect(screen.getByText('Углеводы')).toBeInTheDocument();
+    describe('Калории', () => {
+        it('говорит фразой: съедено из нормы', () => {
+            render(<KBZHUSummary current={createKBZHU(1500, 100, 60, 180)} target={target} />);
+            expect(screen.getByTestId('kbzhu-calories')).toHaveTextContent('Съедено 1500 из 2000 ккал');
+            expect(screen.getByRole('progressbar', { name: 'Калории: съедено 1500 из 2000' })).toBeInTheDocument();
         });
 
-        it('displays current/target format correctly', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            expect(screen.getByText('1500 / 2000')).toBeInTheDocument();
-            expect(screen.getByText('100 / 150 г')).toBeInTheDocument();
-            expect(screen.getByText('60 / 80 г')).toBeInTheDocument();
-            expect(screen.getByText('180 / 250 г')).toBeInTheDocument();
+        it('округляет до целых', () => {
+            render(<KBZHUSummary current={createKBZHU(1523.6, 99.6, 60, 180)} target={target} />);
+            expect(screen.getByTestId('kbzhu-calories')).toHaveTextContent('Съедено 1524 из 2000 ккал');
+            expect(screen.getByTestId('macro-remaining-protein')).toHaveTextContent('50г');
         });
 
-        it('rounds values to whole numbers for display', () => {
-            const current = createKBZHU(1523.7, 99.5, 60.3, 179.8);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            expect(screen.getByText('1524 / 2000')).toBeInTheDocument();
-            expect(screen.getByText('100 / 150 г')).toBeInTheDocument();
+        it('сверх нормы — отдельная пометка, полоса не перекрашивается', () => {
+            render(<KBZHUSummary current={createKBZHU(2300, 100, 60, 180)} target={target} />);
+            expect(screen.getByRole('status')).toHaveTextContent('Сверх нормы на 300 ккал');
+            expect(screen.getByRole('progressbar', { name: /Калории/ })).toHaveAttribute('aria-valuenow', '2300');
         });
 
-        it('displays zero values correctly', () => {
-            const current = createKBZHU(0, 0, 0, 0);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            expect(screen.getByText('0 / 2000')).toBeInTheDocument();
-            expect(screen.getByText('0 / 150 г')).toBeInTheDocument();
+        it('без нормы — только съеденное, без полосы и без «из»', () => {
+            render(<KBZHUSummary current={createKBZHU(1500, 100, 60, 180)} target={null} />);
+            expect(screen.getByTestId('kbzhu-calories')).toHaveTextContent('Съедено 1500 ккал');
+            expect(screen.queryByText(/из 2000/)).not.toBeInTheDocument();
+            expect(screen.queryAllByRole('progressbar')).toHaveLength(0);
         });
 
-        it('displays header "Дневная норма"', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            expect(screen.getByText('Дневная норма')).toBeInTheDocument();
+        it('нулевая норма — не норма', () => {
+            render(<KBZHUSummary current={createKBZHU(1500, 100, 60, 180)} target={createKBZHU(0, 0, 0, 0)} />);
+            expect(screen.queryAllByRole('progressbar')).toHaveLength(0);
         });
     });
 
-    describe('Missing Target Display', () => {
-        it('displays "-" when target is null', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-
-            render(<KBZHUSummary current={current} target={null} />);
-
-            expect(screen.getByText('1500 / -')).toBeInTheDocument();
-            expect(screen.getByText('100 / - г')).toBeInTheDocument();
+    describe('Макросы', () => {
+        it('показывает остаток в граммах и «съедено из нормы» для каждого', () => {
+            render(<KBZHUSummary current={createKBZHU(1500, 100, 60, 180)} target={target} />);
+            expect(screen.getByText('Белки')).toBeInTheDocument();
+            expect(screen.getByText('Жиры')).toBeInTheDocument();
+            expect(screen.getByText('Углеводы')).toBeInTheDocument();
+            expect(screen.getByTestId('macro-remaining-protein')).toHaveTextContent('50г');
+            expect(screen.getByTestId('macro-remaining-protein')).toHaveTextContent('100 из 150');
+            expect(screen.getByTestId('macro-remaining-fat')).toHaveTextContent('20г');
+            expect(screen.getByTestId('macro-remaining-carbs')).toHaveTextContent('70г');
         });
 
-        it('displays "-" for individual missing target values', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = { calories: 2000, protein: undefined, fat: 80, carbs: undefined };
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            expect(screen.getByText('1500 / 2000')).toBeInTheDocument();
-            expect(screen.getByText('100 / - г')).toBeInTheDocument();
-            expect(screen.getByText('60 / 80 г')).toBeInTheDocument();
-            expect(screen.getByText('180 / - г')).toBeInTheDocument();
+        it('нет нормы по одному макросу — по нему съеденное без полосы', () => {
+            render(<KBZHUSummary current={createKBZHU(1500, 100, 60, 180)} target={{ calories: 2000, fat: 80 }} />);
+            expect(screen.getByTestId('macro-remaining-protein')).toHaveTextContent('100г');
+            expect(screen.getByTestId('macro-remaining-protein')).toHaveTextContent('съедено');
+            expect(screen.getByTestId('macro-remaining-fat')).toHaveTextContent('20г');
+            // калории и жиры
+            expect(screen.getAllByRole('progressbar')).toHaveLength(2);
         });
 
-        it('displays "-" when target value is 0', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = createKBZHU(0, 150, 0, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            expect(screen.getByText('1500 / -')).toBeInTheDocument();
-            expect(screen.getByText('60 / - г')).toBeInTheDocument();
+        it('сверх нормы по макросу — превышение со знаком плюс', () => {
+            render(<KBZHUSummary current={createKBZHU(1500, 170, 60, 180)} target={target} />);
+            expect(screen.getByTestId('macro-remaining-protein')).toHaveTextContent('+20г');
+            expect(screen.getByTestId('macro-remaining-protein')).toHaveTextContent('сверх нормы');
         });
     });
 
@@ -189,144 +163,28 @@ describe('KBZHUSummary', () => {
         });
     });
 
-    describe('Exceeding Target Indicator', () => {
-        it('shows exceeding indicator (↑) when current exceeds target', () => {
-            const current = createKBZHU(2200, 160, 90, 280);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            // Should show exceeding indicators
-            const exceedingIndicators = screen.getAllByText('↑');
-            expect(exceedingIndicators.length).toBeGreaterThan(0);
-        });
-
-        it('does not show exceeding indicator when at or below target', () => {
-            const current = createKBZHU(1800, 140, 70, 230);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            expect(screen.queryByText('↑')).not.toBeInTheDocument();
-        });
-
-        it('applies red text color when exceeding target', () => {
-            const current = createKBZHU(2200, 100, 60, 180);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
-
-            // Check for red text on exceeding values
-            const redText = container.querySelectorAll('.text-danger-fg');
-            expect(redText.length).toBeGreaterThan(0);
-        });
-    });
-
-    describe('Progress Bar Behavior', () => {
-        it('caps progress bar width at 100% even when exceeding', () => {
-            const current = createKBZHU(3000, 200, 120, 400); // 150% of targets
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
-
-            // Progress bars should have max width of 100%
-            const progressBars = container.querySelectorAll('[role="progressbar"]');
-            progressBars.forEach((bar) => {
-                expect(bar).toHaveAttribute('aria-valuenow');
-                const value = parseInt(bar.getAttribute('aria-valuenow') || '0', 10);
-                expect(value).toBeLessThanOrEqual(100);
-            });
-        });
-
-        it('shows 0% progress when no target is set', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-
-            const { container } = render(<KBZHUSummary current={current} target={null} />);
-
-            const progressBars = container.querySelectorAll('[role="progressbar"]');
-            progressBars.forEach((bar) => {
-                expect(bar).toHaveAttribute('aria-valuenow', '0');
-            });
-        });
-    });
-
-    describe('Percentage Display', () => {
-        it('displays percentage when target is set', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            // Should show percentage values (use getAllByText since some percentages may be the same)
-            const percentages75 = screen.getAllByText('75%');
-            expect(percentages75.length).toBeGreaterThan(0); // 1500/2000 and 60/80 both = 75%
-            expect(screen.getByText('67%')).toBeInTheDocument(); // 100/150
-            expect(screen.getByText('72%')).toBeInTheDocument(); // 180/250
-        });
-
-        it('does not display percentage when target is missing', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-
-            render(<KBZHUSummary current={current} target={null} />);
-
-            // Should not show any percentage values
-            expect(screen.queryByText('%')).not.toBeInTheDocument();
-        });
-    });
-
-    describe('Accessibility', () => {
-        it('has proper section aria-label', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
+    describe('Доступность', () => {
+        it('является областью с названием', () => {
+            render(<KBZHUSummary current={createKBZHU(1500, 100, 60, 180)} target={target} />);
             expect(screen.getByRole('region', { name: 'Сводка КБЖУ за день' })).toBeInTheDocument();
+            expect(screen.getByText('Дневная норма')).toBeInTheDocument();
         });
 
-        it('has proper progressbar roles with aria attributes', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            const progressBars = screen.getAllByRole('progressbar');
-            expect(progressBars).toHaveLength(4);
-
-            progressBars.forEach((bar) => {
+        it('называет каждую полосу', () => {
+            render(<KBZHUSummary current={createKBZHU(1500, 100, 60, 180)} target={target} />);
+            const bars = screen.getAllByRole('progressbar');
+            expect(bars).toHaveLength(4);
+            bars.forEach((bar) => {
                 expect(bar).toHaveAttribute('aria-valuemin', '0');
-                expect(bar).toHaveAttribute('aria-valuemax', '100');
-                expect(bar).toHaveAttribute('aria-valuenow');
                 expect(bar).toHaveAttribute('aria-label');
             });
+            expect(screen.getByRole('progressbar', { name: 'Белки: осталось 50 г, съедено 100 из 150 г' })).toBeInTheDocument();
         });
 
-        it('has descriptive aria-labels for each macro', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            render(<KBZHUSummary current={current} target={target} />);
-
-            expect(screen.getByLabelText(/Ккал прогресс/)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Белки прогресс/)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Жиры прогресс/)).toBeInTheDocument();
-            expect(screen.getByLabelText(/Углеводы прогресс/)).toBeInTheDocument();
-        });
-    });
-
-    describe('Custom className', () => {
         it('applies custom className to container', () => {
-            const current = createKBZHU(1500, 100, 60, 180);
-            const target = createKBZHU(2000, 150, 80, 250);
-
             const { container } = render(
-                <KBZHUSummary
-                    current={current}
-                    target={target}
-                    className="custom-class"
-                />
+                <KBZHUSummary current={createKBZHU(1500, 100, 60, 180)} target={target} className="custom-class" />
             );
-
             expect(container.firstChild).toHaveClass('custom-class');
         });
     });

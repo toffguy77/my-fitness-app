@@ -33,6 +33,7 @@ jest.mock('@/shared/hooks/useCurrentUser', () => ({
 }))
 
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
   ArrowLeft: () => <span data-testid="arrow-left" />,
 }))
 

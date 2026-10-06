@@ -94,7 +94,7 @@ export function FoodTrackerTabs({
 
     return (
         <div className={`w-full ${className}`} role="tablist" aria-label={t('foodTracker.tabs2.aria')}>
-            <div className="flex bg-subtle rounded-lg p-0.5 sm:p-1">
+            <div className="flex gap-6 border-b border-line">
                 {TABS.map((tab, index) => {
                     const isActive = activeTab === tab.id;
 
@@ -112,9 +112,12 @@ export function FoodTrackerTabs({
                             tabIndex={isActive ? 0 : -1}
                             onClick={() => handleTabClick(tab.id)}
                             onKeyDown={(e) => handleKeyDown(e, index)}
-                            className={`flex-1 py-2 px-3 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:py-2.5 sm:px-4 sm:text-sm touch-manipulation ${isActive
-                                ? 'bg-surface text-fg shadow-sm'
-                                : 'text-fg-muted hover:text-fg hover:bg-canvas'
+                            // Вкладки — подчёркиванием, как оглавление: на экране
+                            // уже есть заливки карточек, и ещё одна «таблетка»
+                            // спорила бы с ними за внимание.
+                            className={`-mb-px h-11 border-b-2 text-base transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation ${isActive
+                                ? 'border-line-strong font-semibold text-fg'
+                                : 'border-transparent font-medium text-fg-subtle hover:text-fg'
                                 }`}
                         >
                             {tab.label}

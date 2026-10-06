@@ -15,6 +15,7 @@ jest.mock('../../store/dashboardStore');
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     ChevronLeft: () => <div data-testid="chevron-left" />,
     ChevronRight: () => <div data-testid="chevron-right" />,
 }));

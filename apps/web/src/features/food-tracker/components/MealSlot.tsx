@@ -15,6 +15,7 @@ import type { MealType, FoodEntry, KBZHU } from '../types';
 import { getMealSlotLabel, calculateSlotSubtotal, getFirstEntryTime } from '../utils/mealSlotUtils';
 import { FoodEntryItem } from './FoodEntryItem';
 import { t } from '@/shared/i18n';
+import { IconButton } from '@/shared/components/ui/Button';
 import { MACRO_COLORS } from '@/shared/constants/macros';
 
 // ============================================================================
@@ -93,10 +94,8 @@ function MacroSubtotal({
 
 function SubtotalDisplay({ subtotal }: SubtotalDisplayProps) {
     return (
-        <div className="flex flex-wrap items-center gap-2 text-[10px] text-fg-muted mt-2 pt-2 border-t border-line sm:gap-3 sm:text-xs">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line py-2.5 text-[13px] text-fg-muted tabular-nums">
             <span className="font-medium">{t('foodTracker.mealSlot.subtotal')}</span>
-            <span>{Math.round(subtotal.calories)} {t('units.kcal')}</span>
-            <span className="text-fg-subtle hidden sm:inline">|</span>
             {/* Подытог приёма пищи — то, что новичок видит чаще кольца, и до
                 этого он был целиком серым. Цвет опознаёт нутриент и ничего не
                 утверждает о норме, поэтому уместен и здесь, где нормы нет. */}
@@ -144,37 +143,43 @@ export function MealSlot({
     // Check if slot has entries
     const hasEntries = entries.length > 0;
 
+    // Лента дня: точка и линия слева, время, название засечками, калории
+    // приёма справа. Пустой приём — пунктирная точка: «ещё впереди».
     return (
         <section
-            className={`bg-surface rounded-xl shadow-sm border border-line overflow-hidden ${className}`}
+            className={`relative pl-7 ${className}`}
             aria-label={t('foodTracker.mealSlot.aria', { label })}
+            data-meal={mealType}
         >
-            {/* Header - responsive padding */}
-            <div className="flex items-center justify-between px-3 py-2.5 bg-canvas border-b border-line sm:px-4 sm:py-3">
-                <div className="flex items-center gap-2 sm:gap-3">
-                    <MealIcon mealType={mealType} className="text-fg-muted w-4 h-4 sm:w-5 sm:h-5" />
-                    <div>
-                        <h3 className="text-xs font-semibold text-fg sm:text-sm">{label}</h3>
-                        {firstTime && (
-                            <p className="text-[10px] text-fg-muted sm:text-xs">{firstTime}</p>
-                        )}
-                    </div>
-                </div>
-                <button
-                    type="button"
+            <span aria-hidden="true" className="absolute bottom-0 left-[5px] top-4 w-px bg-line" />
+            <span
+                aria-hidden="true"
+                className={`absolute left-0 top-2 h-[11px] w-[11px] rounded-full border-2 bg-canvas ${hasEntries ? 'border-fg' : 'border-dashed border-primary'}`}
+            />
+
+            <div className="flex items-center gap-2.5">
+                <MealIcon mealType={mealType} className="h-4 w-4 shrink-0 text-fg-subtle" />
+                {firstTime && (
+                    <span className="text-[13px] font-semibold text-fg-subtle tabular-nums">{firstTime}</span>
+                )}
+                <h3 className="type-title-3 flex-1 text-fg">{label}</h3>
+                {hasEntries && (
+                    <span className="text-[15px] font-semibold text-fg tabular-nums">
+                        {Math.round(subtotal.calories)} {t('units.kcal')}
+                    </span>
+                )}
+                <IconButton
+                    variant="secondary"
                     onClick={() => onAddEntry(mealType)}
-                    className="p-1.5 rounded-full bg-primary text-on-primary hover:bg-primary active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:p-2 touch-manipulation"
                     aria-label={t('foodTracker.mealSlot.addAria', { label })}
                 >
-                    <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </button>
+                    <Plus className="h-4 w-4" strokeWidth={2.2} />
+                </IconButton>
             </div>
 
-            {/* Content - responsive padding */}
-            <div className="px-3 py-2 sm:px-4">
+            <div className="mt-2 pb-5">
                 {hasEntries ? (
-                    <>
-                        {/* Entry list */}
+                    <div className="rounded-card border border-line bg-surface px-4">
                         <div className="divide-y divide-line">
                             {entries.map((entry) => (
                                 <FoodEntryItem
@@ -186,24 +191,17 @@ export function MealSlot({
                                 />
                             ))}
                         </div>
-
-                        {/* Subtotals - responsive text */}
                         <SubtotalDisplay subtotal={subtotal} />
-                    </>
-                ) : (
-                    /* Empty state */
-                    <div className="py-4 text-center sm:py-6">
-                        <p className="text-xs text-fg-subtle sm:text-sm">
-                            {t('foodTracker.mealSlot.empty')}
-                        </p>
-                        <button
-                            type="button"
-                            onClick={() => onAddEntry(mealType)}
-                            className="mt-1.5 text-xs text-primary hover:text-primary font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
-                        >
-                            {t('foodTracker.mealSlot.addFood')}
-                        </button>
                     </div>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => onAddEntry(mealType)}
+                        className="flex min-h-12 w-full items-center justify-between rounded-card border border-dashed border-line px-4 text-left transition-colors hover:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    >
+                        <span className="text-sm text-fg-subtle">{t('foodTracker.mealSlot.empty')}</span>
+                        <span className="text-sm font-semibold text-primary">{t('foodTracker.mealSlot.addFood')}</span>
+                    </button>
                 )}
             </div>
         </section>

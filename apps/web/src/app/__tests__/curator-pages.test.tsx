@@ -37,6 +37,7 @@ jest.mock('next/image', () => ({
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     ArrowLeft: () => <div data-testid="arrow-left">Back</div>,
     MessageCircle: () => <div>MessageCircle</div>,
     Loader2: (props: Record<string, unknown>) => <div data-testid="loader" className={String(props.className ?? '')}>Loading</div>,

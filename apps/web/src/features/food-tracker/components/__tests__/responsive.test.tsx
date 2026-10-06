@@ -64,46 +64,22 @@ const mockWaterLog: WaterLog = {
 // ============================================================================
 
 describe('KBZHUSummary Responsive Design', () => {
-    it('renders with responsive padding classes', () => {
-        const { container } = render(
-            <KBZHUSummary current={mockKBZHU} target={mockTargetGoals} />
-        );
-
-        const section = container.querySelector('section');
-        expect(section).toHaveClass('p-3', 'sm:p-4');
-    });
-
-    it('renders header with responsive text size', () => {
+    it('lays the three macros out as tiles in one row on every width', () => {
         render(<KBZHUSummary current={mockKBZHU} target={mockTargetGoals} />);
 
-        const header = screen.getByText('Дневная норма');
-        expect(header).toHaveClass('text-sm', 'sm:text-base');
+        const tiles = ['protein', 'fat', 'carbs'].map((key) => screen.getByTestId(`macro-remaining-${key}`));
+        expect(tiles[0].parentElement).toHaveClass('grid-cols-3');
+        tiles.forEach((tile) => expect(tile).toHaveClass('rounded-tile'));
     });
 
-    it('renders macro grid with responsive columns', () => {
-        const { container } = render(
-            <KBZHUSummary current={mockKBZHU} target={mockTargetGoals} />
-        );
-
-        const grid = container.querySelector('.grid');
-        expect(grid).toHaveClass('grid-cols-2', 'md:grid-cols-4');
+    it('states calories as a sentence in the serif title style', () => {
+        render(<KBZHUSummary current={mockKBZHU} target={mockTargetGoals} />);
+        expect(screen.getByTestId('kbzhu-calories')).toHaveClass('type-title-3');
     });
 
-    it('renders progress bars with responsive height', () => {
-        const { container } = render(
-            <KBZHUSummary current={mockKBZHU} target={mockTargetGoals} />
-        );
-
-        const progressBars = container.querySelectorAll('[role="progressbar"]');
-        progressBars.forEach((bar) => {
-            expect(bar).toHaveClass('h-1.5', 'sm:h-2');
-        });
-    });
-
-    it('renders all four macros with Russian labels', () => {
+    it('renders all macros with Russian labels', () => {
         render(<KBZHUSummary current={mockKBZHU} target={mockTargetGoals} />);
 
-        expect(screen.getByText('Ккал')).toBeInTheDocument();
         expect(screen.getByText('Белки')).toBeInTheDocument();
         expect(screen.getByText('Жиры')).toBeInTheDocument();
         expect(screen.getByText('Углеводы')).toBeInTheDocument();
@@ -121,46 +97,25 @@ describe('MealSlot Responsive Design', () => {
         onAddEntry: jest.fn(),
     };
 
-    it('renders with responsive header padding', () => {
-        const { container } = render(<MealSlot {...defaultProps} />);
-
-        const header = container.querySelector('.bg-canvas');
-        expect(header).toHaveClass('px-3', 'py-2.5', 'sm:px-4', 'sm:py-3');
-    });
-
-    it('renders add button with responsive size', () => {
+    it('gives the add button a full 44 px touch target', () => {
         render(<MealSlot {...defaultProps} />);
-
-        const addButton = screen.getByRole('button', { name: /добавить в завтрак/i });
-        expect(addButton).toHaveClass('p-1.5', 'sm:p-2');
+        expect(screen.getByRole('button', { name: /добавить в завтрак/i })).toHaveClass('h-11', 'w-11');
     });
 
-    it('renders meal label with responsive text size', () => {
+    it('titles the meal in the serif style', () => {
         render(<MealSlot {...defaultProps} />);
-
-        const label = screen.getByText('Завтрак');
-        expect(label).toHaveClass('text-xs', 'sm:text-sm');
+        expect(screen.getByRole('heading', { name: 'Завтрак' })).toHaveClass('type-title-3');
     });
 
-    it('renders food entry with responsive padding', () => {
-        const { container } = render(<MealSlot {...defaultProps} />);
-
-        const entryItem = container.querySelector('[role="button"]');
-        expect(entryItem).toHaveClass('py-3', 'px-2');
+    it('marks an empty meal with a dashed timeline dot and an inviting row', () => {
+        const { container } = render(<MealSlot {...defaultProps} entries={[]} />);
+        expect(container.querySelector('.border-dashed')).not.toBeNull();
+        expect(screen.getByText('Добавить еду')).toBeInTheDocument();
     });
 
-    it('renders empty state with responsive text', () => {
-        render(<MealSlot {...defaultProps} entries={[]} />);
-
-        const emptyText = screen.getByText('Нет записей');
-        expect(emptyText).toHaveClass('text-xs', 'sm:text-sm');
-    });
-
-    it('renders subtotal with responsive text size', () => {
-        const { container } = render(<MealSlot {...defaultProps} />);
-
-        const subtotal = container.querySelector('.border-t');
-        expect(subtotal).toHaveClass('text-[10px]', 'sm:text-xs');
+    it('shows the subtotal under the entries', () => {
+        render(<MealSlot {...defaultProps} />);
+        expect(screen.getByText('Итого:')).toBeInTheDocument();
     });
 });
 
@@ -219,32 +174,10 @@ describe('DatePicker Responsive Design', () => {
         onDateChange: jest.fn(),
     };
 
-    it('renders with responsive container padding', () => {
-        const { container } = render(<DatePicker {...defaultProps} />);
-
-        const dateContainer = container.querySelector('.bg-surface');
-        expect(dateContainer).toHaveClass('p-1.5', 'sm:p-2');
-    });
-
-    it('renders navigation buttons with responsive size', () => {
+    it('gives day navigation buttons a full 44 px touch target', () => {
         render(<DatePicker {...defaultProps} />);
-
-        const prevButton = screen.getByRole('button', { name: /предыдущий день/i });
-        expect(prevButton).toHaveClass('p-1.5', 'sm:p-2');
-    });
-
-    it('renders date text with responsive size', () => {
-        const { container } = render(<DatePicker {...defaultProps} />);
-
-        const dateText = container.querySelector('.font-medium');
-        expect(dateText).toHaveClass('text-sm', 'sm:text-base');
-    });
-
-    it('renders calendar icon with responsive size', () => {
-        const { container } = render(<DatePicker {...defaultProps} />);
-
-        const calendarIcon = container.querySelector('.text-fg-muted');
-        expect(calendarIcon).toHaveClass('w-4', 'h-4', 'sm:w-5', 'sm:h-5');
+        expect(screen.getByRole('button', { name: /предыдущий день/i })).toHaveClass('h-11', 'w-11');
+        expect(screen.getByRole('button', { name: /следующий день/i })).toHaveClass('h-11', 'w-11');
     });
 });
 
@@ -258,25 +191,10 @@ describe('FoodTrackerTabs Responsive Design', () => {
         onTabChange: jest.fn(),
     };
 
-    it('renders with responsive container padding', () => {
-        const { container } = render(<FoodTrackerTabs {...defaultProps} />);
-
-        const tabContainer = container.querySelector('.bg-subtle');
-        expect(tabContainer).toHaveClass('p-0.5', 'sm:p-1');
-    });
-
-    it('renders tabs with responsive padding', () => {
+    it('underlines the active tab instead of filling it', () => {
         render(<FoodTrackerTabs {...defaultProps} />);
-
-        const dietTab = screen.getByRole('tab', { name: /рацион/i });
-        expect(dietTab).toHaveClass('py-2', 'px-3', 'sm:py-2.5', 'sm:px-4');
-    });
-
-    it('renders tab text with responsive size', () => {
-        render(<FoodTrackerTabs {...defaultProps} />);
-
-        const dietTab = screen.getByRole('tab', { name: /рацион/i });
-        expect(dietTab).toHaveClass('text-xs', 'sm:text-sm');
+        expect(screen.getByRole('tab', { name: 'Рацион' })).toHaveClass('border-line-strong');
+        expect(screen.getByRole('tab', { name: 'Рекомендации' })).toHaveClass('border-transparent');
     });
 
     it('renders both tabs with Russian labels', () => {
@@ -670,7 +588,8 @@ describe('Accessibility Features', () => {
         progressBars.forEach((bar) => {
             expect(bar).toHaveAttribute('aria-valuenow');
             expect(bar).toHaveAttribute('aria-valuemin', '0');
-            expect(bar).toHaveAttribute('aria-valuemax', '100');
+            expect(bar).toHaveAttribute('aria-valuemax');
+            expect(bar).toHaveAttribute('aria-label');
         });
     });
 

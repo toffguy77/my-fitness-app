@@ -11,6 +11,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { AlertTriangle, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { DatePicker } from './DatePicker';
 import { FoodTrackerTabs } from './FoodTrackerTabs';
@@ -148,7 +149,9 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
             )}
 
             {/* Main content - responsive container */}
-            <div className="mx-auto px-3 py-3 space-y-3 sm:px-4 sm:py-4 sm:space-y-4 md:max-w-2xl lg:max-w-4xl xl:max-w-5xl">
+            <div className="mx-auto max-w-content space-y-4 px-screen-x py-5 lg:max-w-4xl">
+                <h1 className="type-title-1 text-fg">{t('foodTracker.page.heading')}</h1>
+
                 {/* Date Picker */}
                 <DatePicker
                     selectedDate={selectedDate}
@@ -203,13 +206,13 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                 {/* Error display - responsive positioning */}
                 {error && (
                     <div
-                        className="fixed bottom-20 left-3 right-3 max-w-sm mx-auto bg-danger-soft border border-danger/30 rounded-lg p-3 shadow-lg sm:bottom-20 sm:left-4 sm:right-4 sm:max-w-md sm:p-4 z-40"
+                        className="fixed bottom-20 left-3 right-3 max-w-sm mx-auto bg-surface border border-danger/30 rounded-tile p-3 shadow-overlay sm:bottom-20 sm:left-4 sm:right-4 sm:max-w-md sm:p-4 z-40"
                         role="alert"
                         aria-live="assertive"
                     >
                         <div className="flex items-start justify-between gap-2">
                             <div className="flex items-start flex-1 min-w-0">
-                                <span className="text-danger-fg mr-2 flex-shrink-0" aria-hidden="true">⚠️</span>
+                                <AlertTriangle className="mr-2 h-4 w-4 flex-shrink-0 text-danger-fg" aria-hidden="true" />
                                 <p className="text-xs text-danger-fg sm:text-sm">{error.message}</p>
                             </div>
                             <button
@@ -218,7 +221,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                                 className="text-danger-fg hover:text-danger-fg p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded"
                                 aria-label={t('foodTracker.page.dismissError')}
                             >
-                                ✕
+                                <X className="h-4 w-4" aria-hidden="true" />
                             </button>
                         </div>
                     </div>
@@ -252,7 +255,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
             {/* Сохранение или добавление не удалось: прежнее состояние осталось видимым. */}
             {recommendations.actionError && (
                 <div
-                    className="fixed bottom-20 left-3 right-3 max-w-sm mx-auto bg-danger-soft border border-danger/30 rounded-lg p-3 shadow-lg sm:left-4 sm:right-4 sm:max-w-md sm:p-4 z-40"
+                    className="fixed bottom-20 left-3 right-3 max-w-sm mx-auto bg-surface border border-danger/30 rounded-tile p-3 shadow-overlay sm:left-4 sm:right-4 sm:max-w-md sm:p-4 z-40"
                     role="alert"
                     aria-live="assertive"
                 >
@@ -264,7 +267,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                             className="text-danger-fg hover:text-danger-fg p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded"
                             aria-label={t('foodTracker.page.dismissError')}
                         >
-                            ✕
+                            <X className="h-4 w-4" aria-hidden="true" />
                         </button>
                     </div>
                 </div>

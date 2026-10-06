@@ -246,27 +246,27 @@ export function DatePicker({
     return (
         <div className={`relative ${className}`}>
             {/* Date Display and Navigation */}
-            <div className="flex items-center justify-between bg-surface rounded-lg shadow-sm border border-line p-1.5 sm:p-2">
+            <div className="flex items-center justify-between gap-2">
                 {/* Previous Day Button */}
                 <button
                     type="button"
                     onClick={goToPreviousDay}
-                    className="p-1.5 rounded-full hover:bg-subtle transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:p-2 touch-manipulation"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-line hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                     aria-label={t('foodTracker.datePicker.previousDay')}
                 >
-                    <ChevronLeft className="w-4 h-4 text-fg-muted sm:w-5 sm:h-5" />
+                    <ChevronLeft className="h-5 w-5 text-fg" />
                 </button>
 
                 {/* Date Display */}
                 <button
                     type="button"
                     onClick={toggleCalendar}
-                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-canvas transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:gap-2 sm:px-4 sm:py-2 touch-manipulation"
+                    className="flex h-11 items-center gap-2 rounded-full px-4 hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                     aria-label={t('foodTracker.datePicker.openCalendar')}
                     aria-expanded={isCalendarOpen}
                 >
                     <Calendar className="w-4 h-4 text-fg-muted sm:w-5 sm:h-5" aria-hidden="true" />
-                    <span className="text-sm font-medium text-fg sm:text-base">{displayDate}</span>
+                    <span className="text-base font-semibold text-fg first-letter:uppercase">{displayDate}</span>
                 </button>
 
                 {/* Next Day Button */}
@@ -274,19 +274,19 @@ export function DatePicker({
                     type="button"
                     onClick={goToNextDay}
                     disabled={isNextDisabled}
-                    className={`p-1.5 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:p-2 touch-manipulation ${isNextDisabled
-                        ? 'text-fg-subtle cursor-not-allowed'
-                        : 'hover:bg-subtle text-fg-muted'
+                    className={`flex h-11 w-11 items-center justify-center rounded-full border border-line transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation ${isNextDisabled
+                        ? 'text-fg-subtle opacity-40 cursor-not-allowed'
+                        : 'hover:bg-surface text-fg'
                         }`}
                     aria-label={t('foodTracker.datePicker.nextDay')}
                 >
-                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <ChevronRight className="h-5 w-5" />
                 </button>
             </div>
 
             {/* Calendar Dropdown */}
             {isCalendarOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-surface rounded-lg shadow-lg border border-line p-3 z-50 sm:p-4">
+                <div className="absolute top-full left-0 right-0 z-50 mt-2 rounded-card border border-line bg-surface p-4 shadow-overlay">
                     {/* Calendar Header */}
                     <div className="flex items-center justify-between mb-3 sm:mb-4">
                         <button
@@ -342,10 +342,10 @@ export function DatePicker({
                                     type="button"
                                     onClick={() => selectDate(day)}
                                     disabled={isFuture}
-                                    className={`p-1.5 text-xs rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:p-2 sm:text-sm touch-manipulation ${isSelected
-                                        ? 'bg-primary text-on-primary'
+                                    className={`flex h-10 w-full items-center justify-center rounded-full text-sm tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation ${isSelected
+                                        ? 'bg-fg font-semibold text-fg-inverse'
                                         : isTodayDate
-                                            ? 'bg-primary-soft text-primary'
+                                            ? 'font-semibold text-primary ring-1 ring-inset ring-primary'
                                             : isFuture
                                                 ? 'text-fg-subtle cursor-not-allowed'
                                                 : 'hover:bg-subtle text-fg'

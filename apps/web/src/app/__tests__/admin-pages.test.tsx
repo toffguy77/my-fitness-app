@@ -18,6 +18,7 @@ jest.mock('next/navigation', () => ({
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     Loader2: () => <div data-testid="loader">Loading</div>,
     ArrowLeft: () => <div data-testid="arrow-left">Back</div>,
 }))

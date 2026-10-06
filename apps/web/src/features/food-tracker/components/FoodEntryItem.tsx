@@ -120,16 +120,22 @@ export function FoodEntryItem({
             onKeyDown={handleKeyDown}
             onMouseEnter={() => setShowActions(true)}
             onMouseLeave={() => setShowActions(false)}
-            className={`group flex items-center justify-between py-3 px-2 hover:bg-canvas rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus ${className}`}
+            className={`group -mx-2 flex min-h-14 items-center justify-between rounded-tile px-2 py-2.5 cursor-pointer transition-colors hover:bg-subtle/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus ${className}`}
             aria-label={ariaLabel}
         >
             {/* Food info */}
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-fg truncate">
+                <p className="truncate text-base font-medium text-fg">
                     {entry.foodName}
                 </p>
-                <p className="text-xs text-fg-muted">
+                <p className="text-[13px] text-fg-muted tabular-nums">
                     {portionDisplay}
+                    <span aria-hidden="true">
+                        {' · '}
+                        {t('macros.proteinShort')} {Math.round(entry.nutrition.protein)}{' '}
+                        {t('macros.fatShort')} {Math.round(entry.nutrition.fat)}{' '}
+                        {t('macros.carbsShort')} {Math.round(entry.nutrition.carbs)}
+                    </span>
                 </p>
             </div>
 
@@ -138,14 +144,14 @@ export function FoodEntryItem({
                 {/* Action buttons (visible on hover) */}
                 {(onEdit || onDelete) && (
                     <div
-                        className={`flex items-center gap-1 transition-opacity ${showActions ? 'opacity-100' : 'opacity-0'
+                        className={`flex items-center gap-1 transition-opacity group-focus-within:opacity-100 ${showActions ? 'opacity-100' : 'opacity-0'
                             }`}
                     >
                         {onEdit && (
                             <button
                                 type="button"
                                 onClick={handleEdit}
-                                className="p-1.5 rounded-full text-fg-subtle hover:text-primary hover:bg-primary-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                                className="flex h-9 w-9 items-center justify-center rounded-full text-fg-subtle hover:text-primary hover:bg-primary-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                 aria-label={t('foodTracker.entry.editAria', { name: entry.foodName })}
                             >
                                 <Edit2 className="w-4 h-4" />
@@ -155,7 +161,7 @@ export function FoodEntryItem({
                             <button
                                 type="button"
                                 onClick={handleDelete}
-                                className="p-1.5 rounded-full text-fg-subtle hover:text-danger-fg hover:bg-danger-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+                                className="flex h-9 w-9 items-center justify-center rounded-full text-fg-subtle hover:text-danger-fg hover:bg-danger-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
                                 aria-label={t('foodTracker.entry.deleteAria', { name: entry.foodName })}
                             >
                                 <Trash2 className="w-4 h-4" />
@@ -165,8 +171,8 @@ export function FoodEntryItem({
                 )}
 
                 {/* Calories */}
-                <div className="text-right min-w-[70px]">
-                    <p className="text-sm font-semibold text-fg">
+                <div className="min-w-[64px] text-right">
+                    <p className="text-[15px] font-medium text-fg-muted tabular-nums">
                         {caloriesDisplay}
                     </p>
                 </div>

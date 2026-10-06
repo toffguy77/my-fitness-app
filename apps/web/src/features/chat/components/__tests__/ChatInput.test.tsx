@@ -3,6 +3,7 @@ import { ChatInput } from '../ChatInput'
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     Paperclip: (props: Record<string, unknown>) => <svg data-testid="paperclip-icon" {...props} />,
     ArrowUp: (props: Record<string, unknown>) => <svg data-testid="arrow-up-icon" {...props} />,
     X: (props: Record<string, unknown>) => <svg data-testid="x-icon" {...props} />,

@@ -90,7 +90,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
             ref={ref}
             type={type}
             className={cn(
-                'inline-flex shrink-0 items-center justify-center rounded-full transition-colors duration-150',
+                'inline-flex shrink-0 items-center justify-center rounded-full transition-colors duration-150 touch-manipulation',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
                 'disabled:pointer-events-none disabled:opacity-50',
                 size === 'md' ? 'h-11 w-11' : 'h-12 w-12',
