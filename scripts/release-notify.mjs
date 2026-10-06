@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Posts the release notes of a merged release PR to the team's Telegram group
- * (topic «Analytics» of «Burcev Team»), once the release is live on prod.
+ * (topic «Releases» of «Burcev Team»), once the release is live on prod.
  *
  * The audience is everyone in the group, not only developers, so the message
  * is not the PR body: that is written for whoever reviews the merge — migration

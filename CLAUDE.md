@@ -217,7 +217,7 @@ A release PR into `main` needs a `## Что нового` section in its body, w
 for the whole team — no migration numbers, package versions or PR references.
 After the merge, `.github/workflows/release-notify.yml` waits until prod's
 `/ready` reports the merged commit, then posts that section to the team group
-(topic «Analytics»). Without the section the workflow fails instead of posting
+(topic «Releases»). Without the section the workflow fails instead of posting
 the technical body. Preview: `node scripts/release-notify.mjs <PR> --dry-run`.
 
 ## Служебные учётки

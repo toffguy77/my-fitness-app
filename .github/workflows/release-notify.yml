@@ -1,6 +1,6 @@
 name: Release Notes
 
-# Tells the team in Telegram («Burcev Team», topic «Analytics») what a release
+# Tells the team in Telegram («Burcev Team», topic «Releases») what a release
 # brought, once it is live on prod. The text is the release PR's
 # `## Что нового` section — written for everyone in the group, not the
 # technical body. Details: scripts/release-notify.mjs.
@@ -48,7 +48,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           RELEASE_NOTIFY_CHAT_ID: '-1003276858677'
-          RELEASE_NOTIFY_THREAD_ID: '48'
+          RELEASE_NOTIFY_THREAD_ID: '36'
           WAIT_TIMEOUT_MIN: '90'
           PR: ${{ github.event.pull_request.number || inputs.pr }}
           WAIT: ${{ github.event_name == 'pull_request' || inputs.wait }}
