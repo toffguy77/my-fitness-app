@@ -139,7 +139,7 @@ describe('CalendarNavigator', () => {
 
             // Find the button for day 15 (Monday)
             const dayButton = screen.getByLabelText(/Понедельник, 15/);
-            expect(dayButton).toHaveClass('bg-blue-500', 'text-white');
+            expect(dayButton).toHaveClass('bg-primary', 'text-on-primary');
             expect(dayButton).toHaveAttribute('aria-checked', 'true');
         });
 
@@ -397,10 +397,10 @@ describe('CalendarNavigator', () => {
             render(<CalendarNavigator />);
 
             const prevButton = screen.getByLabelText('Предыдущая неделя');
-            expect(prevButton).toHaveClass('focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500');
+            expect(prevButton).toHaveClass('focus:outline-none', 'focus:ring-2', 'focus:ring-focus');
 
             const dayButton = screen.getByLabelText(/Понедельник, 15/);
-            expect(dayButton).toHaveClass('focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500');
+            expect(dayButton).toHaveClass('focus:outline-none', 'focus:ring-2', 'focus:ring-focus');
         });
 
         it('sets aria-pressed on selected day', () => {

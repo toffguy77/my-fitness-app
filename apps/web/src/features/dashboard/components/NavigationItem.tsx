@@ -31,17 +31,17 @@ export const NavigationItem = forwardRef<HTMLButtonElement, NavigationItemProps>
         }
 
         // Base styles for all states
-        const baseStyles = 'flex flex-col items-center justify-center gap-1 px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 rounded-lg'
+        const baseStyles = 'flex flex-col items-center justify-center gap-1 px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded-lg'
 
         // Active state: accent color and bold text
         const activeStyles = isActive
-            ? 'text-blue-600'
-            : 'text-gray-600'
+            ? 'text-primary'
+            : 'text-fg-muted'
 
         // Disabled state: reduced opacity and grey color
         const disabledStyles = isDisabled
-            ? 'opacity-40 text-gray-400 cursor-not-allowed'
-            : 'cursor-pointer hover:bg-gray-100'
+            ? 'opacity-40 text-fg-subtle cursor-not-allowed'
+            : 'cursor-pointer hover:bg-subtle'
 
         // Icon size
         const iconSize = 24
@@ -69,7 +69,7 @@ export const NavigationItem = forwardRef<HTMLButtonElement, NavigationItemProps>
                         )}
                     />
                     {badge != null && badge > 0 && (
-                        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
+                        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-medium text-on-primary">
                             {badge > 99 ? '99+' : badge}
                         </span>
                     )}

@@ -57,15 +57,15 @@ export function OAuthEmailScreen() {
     }
 
     return (
-        <main className="flex min-h-screen flex-col justify-center bg-gray-50 px-6">
-            <div className="mx-auto w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                <h1 className="text-lg font-semibold text-gray-900">{t('auth.oauth.emailTitle')}</h1>
-                <p className="mt-2 text-sm text-gray-600">
+        <main className="flex min-h-screen flex-col justify-center bg-canvas px-6">
+            <div className="mx-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-sm">
+                <h1 className="text-lg font-semibold text-fg">{t('auth.oauth.emailTitle')}</h1>
+                <p className="mt-2 text-sm text-fg-muted">
                     {t('auth.oauth.emailHint', { provider: providerLabel(provider) })}
                 </p>
 
                 <form onSubmit={handleSubmit} className="mt-6">
-                    <label htmlFor="oauth-email" className="block text-sm font-medium text-gray-900">
+                    <label htmlFor="oauth-email" className="block text-sm font-medium text-fg">
                         Email
                     </label>
                     <input
@@ -75,13 +75,13 @@ export function OAuthEmailScreen() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="user@example.com"
                         autoComplete="email"
-                        className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600"
+                        className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-focus"
                     />
 
                     <button
                         type="submit"
                         disabled={!email || isSubmitting}
-                        className="mt-4 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                        className="mt-4 w-full rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                     >
                         {isSubmitting ? t('auth.oauth.continuing') : t('auth.oauth.continueAction')}
                     </button>

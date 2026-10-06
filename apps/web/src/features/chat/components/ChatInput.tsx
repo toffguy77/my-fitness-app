@@ -124,18 +124,18 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
     const canSend = selectedFile !== null || text.trim().length > 0
 
     return (
-        <div className="border-t border-gray-200 bg-white px-4 py-3">
+        <div className="border-t border-line bg-surface px-4 py-3">
             {/* Selected file preview */}
             {selectedFile && (
-                <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-gray-50 rounded-lg">
-                    <Paperclip className="w-4 h-4 text-gray-400 shrink-0" />
-                    <span className="text-sm text-gray-700 truncate flex-1">
+                <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-canvas rounded-lg">
+                    <Paperclip className="w-4 h-4 text-fg-subtle shrink-0" />
+                    <span className="text-sm text-fg truncate flex-1">
                         {selectedFile.name}
                     </span>
                     <button
                         type="button"
                         onClick={handleCancelFile}
-                        className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="p-0.5 text-fg-subtle hover:text-fg-muted transition-colors"
                         aria-label={t('chat.cancelFile')}
                     >
                         <X className="w-4 h-4" />
@@ -149,7 +149,7 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
                 <button
                     type="button"
                     onClick={handleAttachClick}
-                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+                    className="p-2 text-fg-subtle hover:text-fg-muted transition-colors rounded-full hover:bg-subtle"
                     aria-label={t('chat.attachFile')}
                 >
                     <Paperclip className="w-5 h-5" />
@@ -172,7 +172,7 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
                     onKeyDown={handleKeyDown}
                     placeholder={t('chat.messagePlaceholder')}
                     disabled={isSending}
-                    className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+                    className="flex-1 rounded-full border border-line px-4 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-focus disabled:opacity-50"
                 />
 
                 {/* Send button */}
@@ -180,7 +180,7 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
                     type="button"
                     onClick={handleSend}
                     disabled={!canSend || isSending}
-                    className="p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 rounded-full bg-primary text-on-primary hover:bg-primary disabled:bg-line disabled:cursor-not-allowed transition-colors"
                     aria-label={t('chat.send')}
                 >
                     <ArrowUp className="w-5 h-5" />

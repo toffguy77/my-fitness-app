@@ -197,9 +197,9 @@ export function ChatTab({
         <div className={`flex flex-col h-full ${className}`}>
             {/* Curator Status */}
             {!curatorAvailable && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 border-b border-yellow-200">
-                    <Clock className="w-4 h-4 text-yellow-600" />
-                    <span className="text-sm text-yellow-700">
+                <div className="flex items-center gap-2 px-4 py-2 bg-warning-soft border-b border-warning/30">
+                    <Clock className="w-4 h-4 text-warning-fg" />
+                    <span className="text-sm text-warning-fg">
                         {t('foodTracker.chat.responseTime', { minutes: estimatedResponseTime })}
                     </span>
                 </div>
@@ -230,7 +230,7 @@ export function ChatTab({
                         <button
                             type="button"
                             onClick={handleRemovePhoto}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-danger text-on-primary rounded-full flex items-center justify-center hover:bg-danger transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
                             aria-label={t('foodTracker.chat.removePhoto')}
                         >
                             ×
@@ -240,12 +240,12 @@ export function ChatTab({
             )}
 
             {/* Input Area */}
-            <div className="p-4 border-t border-gray-200">
+            <div className="p-4 border-t border-line">
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
                         onClick={handlePhotoSelect}
-                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="p-2 text-fg-muted hover:text-fg hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         aria-label={t('foodTracker.chat.attachPhoto')}
                     >
                         <ImageIcon className="w-6 h-6" />
@@ -257,7 +257,7 @@ export function ChatTab({
                         onChange={handleInputChange}
                         onKeyDown={handleKeyPress}
                         placeholder={t('foodTracker.chat.inputPlaceholder')}
-                        className="flex-1 px-4 py-2 bg-gray-100 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+                        className="flex-1 px-4 py-2 bg-subtle rounded-xl text-fg placeholder-fg-muted focus:outline-none focus:ring-2 focus:ring-focus focus:bg-surface transition-colors"
                         aria-label={t('foodTracker.chat.message')}
                         disabled={isSending}
                     />
@@ -265,7 +265,7 @@ export function ChatTab({
                         type="button"
                         onClick={handleSendMessage}
                         disabled={isSending || (!inputValue.trim() && !selectedPhoto)}
-                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        className="p-2 bg-primary text-on-primary rounded-lg hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:bg-line disabled:cursor-not-allowed"
                         aria-label={t('foodTracker.chat.send')}
                     >
                         <Send className="w-6 h-6" />
@@ -303,19 +303,19 @@ function MessageBubble({ message, onSelectSuggestion }: MessageBubbleProps) {
         <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
             <div
                 className={`max-w-[80%] ${isSystem
-                        ? 'bg-gray-100 text-gray-600 text-center w-full rounded-lg'
+                        ? 'bg-subtle text-fg-muted text-center w-full rounded-lg'
                         : isUser
-                            ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
-                            : 'bg-gray-100 text-gray-900 rounded-2xl rounded-bl-md'
+                            ? 'bg-primary text-on-primary rounded-2xl rounded-br-md'
+                            : 'bg-subtle text-fg rounded-2xl rounded-bl-md'
                     } px-4 py-3`}
             >
                 {/* Avatar for curator */}
                 {message.type === 'curator' && (
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                            <Bot className="w-4 h-4 text-white" />
+                        <div className="w-6 h-6 bg-success rounded-full flex items-center justify-center">
+                            <Bot className="w-4 h-4 text-on-primary" />
                         </div>
-                        <span className="text-sm font-medium text-gray-700">{t('foodTracker.chat.curator')}</span>
+                        <span className="text-sm font-medium text-fg">{t('foodTracker.chat.curator')}</span>
                     </div>
                 )}
 
@@ -335,19 +335,19 @@ function MessageBubble({ message, onSelectSuggestion }: MessageBubbleProps) {
                 {/* Suggestions */}
                 {message.suggestions && message.suggestions.length > 0 && (
                     <div className="mt-3 space-y-2">
-                        <p className="text-sm text-gray-500">{t('foodTracker.chat.suggestions')}</p>
+                        <p className="text-sm text-fg-muted">{t('foodTracker.chat.suggestions')}</p>
                         {message.suggestions.map(food => (
                             <button
                                 key={food.id}
                                 type="button"
                                 onClick={() => onSelectSuggestion(food)}
-                                className="w-full flex items-center justify-between p-2 bg-white rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                className="w-full flex items-center justify-between p-2 bg-surface rounded-lg hover:bg-canvas transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                             >
                                 <div className="flex items-center gap-2">
-                                    <Plus className="w-4 h-4 text-blue-500" />
-                                    <span className="text-gray-900">{food.name}</span>
+                                    <Plus className="w-4 h-4 text-primary" />
+                                    <span className="text-fg">{food.name}</span>
                                 </div>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-fg-muted">
                                     {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                                 </span>
                             </button>
@@ -357,7 +357,7 @@ function MessageBubble({ message, onSelectSuggestion }: MessageBubbleProps) {
 
                 {/* Timestamp */}
                 {!isSystem && (
-                    <p className={`text-xs mt-1 ${isUser ? 'text-blue-200' : 'text-gray-400'}`}>
+                    <p className={`text-xs mt-1 ${isUser ? 'text-primary' : 'text-fg-subtle'}`}>
                         {message.timestamp.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                 )}

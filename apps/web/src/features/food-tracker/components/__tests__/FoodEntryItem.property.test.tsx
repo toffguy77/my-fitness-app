@@ -112,7 +112,7 @@ describe('FoodEntryItem Property Tests', () => {
                     const { container } = render(<FoodEntryItem entry={entry} />);
 
                     // Food name should be displayed
-                    const nameElement = container.querySelector('.text-gray-900');
+                    const nameElement = container.querySelector('.text-fg');
                     expect(nameElement).toBeInTheDocument();
                     expect(nameElement?.textContent).toContain(entry.foodName);
 

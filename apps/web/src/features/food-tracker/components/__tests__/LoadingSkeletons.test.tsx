@@ -39,10 +39,10 @@ describe('LoadingSkeletons', () => {
             expect(container.firstElementChild).toHaveClass('animate-pulse');
         });
 
-        it('has bg-gray-200 class', () => {
+        it('has bg-subtle class', () => {
             const { container } = render(<Skeleton />);
 
-            expect(container.firstElementChild).toHaveClass('bg-gray-200');
+            expect(container.firstElementChild).toHaveClass('bg-subtle');
         });
 
         it('is hidden from screen readers with aria-hidden', () => {
@@ -97,7 +97,7 @@ describe('LoadingSkeletons', () => {
         it('renders a card with border', () => {
             const { container } = render(<MealSlotSkeleton />);
 
-            expect(container.firstElementChild).toHaveClass('border', 'border-gray-200');
+            expect(container.firstElementChild).toHaveClass('border', 'border-line');
         });
     });
 
@@ -179,7 +179,7 @@ describe('LoadingSkeletons', () => {
             const { container } = render(<FoodTrackerPageSkeleton />);
 
             // 4 meal slots + 1 KBZHU summary + 1 water tracker = 6 direct card children
-            const cards = container.querySelectorAll('.border-gray-200');
+            const cards = container.querySelectorAll('.border-line');
             expect(cards.length).toBeGreaterThanOrEqual(5);
         });
     });
@@ -194,7 +194,7 @@ describe('LoadingSkeletons', () => {
         it('renders 3 recommendation card skeletons', () => {
             const { container } = render(<RecommendationsSkeleton />);
 
-            const cards = container.querySelectorAll('.border-gray-200');
+            const cards = container.querySelectorAll('.border-line');
             expect(cards).toHaveLength(3);
         });
 

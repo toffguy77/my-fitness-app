@@ -54,6 +54,7 @@ COPY packages/types/package.json ./packages/types/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/utils/package.json ./packages/utils/
 COPY packages/config/package.json ./packages/config/
+COPY packages/design-tokens/package.json ./packages/design-tokens/
 
 # Install all dependencies (workspaces require dev deps for build)
 RUN npm ci --ignore-scripts && \

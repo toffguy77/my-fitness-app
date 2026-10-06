@@ -155,7 +155,7 @@ export function BarcodeTab({
         <div className={`flex flex-col h-full ${className}`}>
             {/* Camera / Scanner Area — min-h ensures the container never
                 collapses even when all children are absolutely positioned. */}
-            <div className="relative flex-1 bg-gray-900 rounded-xl overflow-hidden mb-4 min-h-[280px]">
+            <div className="relative flex-1 bg-black rounded-xl overflow-hidden mb-4 min-h-[280px]">
                 {/* Persistent scanner div — always in DOM, absolute so it
                     doesn't affect layout. html5-qrcode needs real dimensions
                     when scanner.start() is called (during 'starting' state). */}
@@ -166,7 +166,7 @@ export function BarcodeTab({
                     <button
                         type="button"
                         onClick={handleStopCamera}
-                        className="absolute top-2 right-2 z-20 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        className="absolute top-2 right-2 z-20 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-surface"
                         aria-label={t('foodTracker.barcode.stopCamera')}
                     >
                         <CameraOff className="w-5 h-5" />
@@ -175,11 +175,11 @@ export function BarcodeTab({
 
                 {/* Opaque overlay for non-scanning states */}
                 {scannerStatus !== 'scanning' && (
-                    <div className="absolute inset-0 z-10 bg-gray-900 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="absolute inset-0 z-10 bg-black flex flex-col items-center justify-center p-6 text-center">
                         {scannerStatus === 'idle' && (
                             <>
-                                <Camera className="w-16 h-16 text-gray-400 mb-4" />
-                                <p className="text-gray-400 mb-6">
+                                <Camera className="w-16 h-16 text-white/70 mb-4" />
+                                <p className="text-white/80 mb-6">
                                     {t('foodTracker.barcode.prompt')}
                                 </p>
                                 <div className="flex flex-col gap-3 w-full max-w-xs">
@@ -187,7 +187,7 @@ export function BarcodeTab({
                                     <button
                                         type="button"
                                         onClick={handleStartCamera}
-                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                     >
                                         <Camera className="w-5 h-5" />
                                         <span>{t('foodTracker.barcode.scanWithCamera')}</span>
@@ -197,7 +197,7 @@ export function BarcodeTab({
                                         <button
                                             type="button"
                                             onClick={handleCameraCapture}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/15 text-white rounded-xl hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                         >
                                             <ImageIcon className="w-5 h-5" />
                                             <span>{t('foodTracker.barcode.photo')}</span>
@@ -206,7 +206,7 @@ export function BarcodeTab({
                                         <button
                                             type="button"
                                             onClick={handleGallerySelect}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/15 text-white rounded-xl hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                         >
                                             <Upload className="w-5 h-5" />
                                             <span>{t('foodTracker.barcode.gallery')}</span>
@@ -218,8 +218,8 @@ export function BarcodeTab({
 
                         {scannerStatus === 'starting' && (
                             <>
-                                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-                                <p className="text-gray-400">
+                                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                                <p className="text-white/80">
                                     {t('foodTracker.barcode.starting')}
                                 </p>
                             </>
@@ -227,15 +227,15 @@ export function BarcodeTab({
 
                         {scannerStatus === 'error' && (
                             <>
-                                <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
-                                <p className="text-red-400 mb-4">
+                                <AlertCircle className="w-16 h-16 text-danger-fg mb-4" />
+                                <p className="text-danger-fg mb-4">
                                     {lookupError || t('foodTracker.barcode.cameraFailed')}
                                 </p>
                                 <div className="flex flex-col gap-3 w-full max-w-xs">
                                     <button
                                         type="button"
                                         onClick={handleStartCamera}
-                                        className="flex items-center justify-center gap-2 px-4 py-3 text-blue-400 hover:text-blue-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                        className="flex items-center justify-center gap-2 px-4 py-3 text-primary hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                     >
                                         <RefreshCw className="w-4 h-4" />
                                         <span>{t('foodTracker.barcode.tryAgain')}</span>
@@ -244,7 +244,7 @@ export function BarcodeTab({
                                         <button
                                             type="button"
                                             onClick={handleCameraCapture}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/15 text-white rounded-xl hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                         >
                                             <ImageIcon className="w-5 h-5" />
                                             <span>{t('foodTracker.barcode.photo')}</span>
@@ -252,7 +252,7 @@ export function BarcodeTab({
                                         <button
                                             type="button"
                                             onClick={handleGallerySelect}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/15 text-white rounded-xl hover:bg-white/25 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                         >
                                             <Upload className="w-5 h-5" />
                                             <span>{t('foodTracker.barcode.gallery')}</span>
@@ -272,14 +272,14 @@ export function BarcodeTab({
                         type="text"
                         name="barcode"
                         placeholder={t('foodTracker.barcode.manualPlaceholder')}
-                        className="flex-1 px-4 py-3 bg-gray-100 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+                        className="flex-1 px-4 py-3 bg-subtle rounded-xl text-fg placeholder-fg-muted focus:outline-none focus:ring-2 focus:ring-focus focus:bg-surface transition-colors"
                         aria-label={t('foodTracker.barcode.label')}
                         pattern="[0-9]{8,14}"
                         title={t('foodTracker.barcode.lengthHint')}
                     />
                     <button
                         type="submit"
-                        className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="px-4 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         aria-label={t('foodTracker.barcode.findAria')}
                     >
                         {t('foodTracker.barcode.find')}
@@ -289,26 +289,26 @@ export function BarcodeTab({
 
             {/* Lookup Status */}
             {isLookingUp && (
-                <div className="flex items-center justify-center gap-3 p-4 bg-gray-100 rounded-xl mb-4">
-                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-gray-600">{t('foodTracker.barcode.looking', { suffix: scannedBarcode ? ` (${scannedBarcode})` : '' })}</span>
+                <div className="flex items-center justify-center gap-3 p-4 bg-subtle rounded-xl mb-4">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-fg-muted">{t('foodTracker.barcode.looking', { suffix: scannedBarcode ? ` (${scannedBarcode})` : '' })}</span>
                 </div>
             )}
 
             {/* Scanned Product */}
             {scannedProduct && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-xl mb-4">
+                <div className="p-4 bg-success-soft border border-success/30 rounded-xl mb-4">
                     <div className="flex items-start gap-3">
-                        <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
+                        <CheckCircle className="w-6 h-6 text-success-fg flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
-                            <h3 className="font-medium text-gray-900">{scannedProduct.name}</h3>
+                            <h3 className="font-medium text-fg">{scannedProduct.name}</h3>
                             {scannedProduct.brand && (
-                                <p className="text-sm text-gray-500">{scannedProduct.brand}</p>
+                                <p className="text-sm text-fg-muted">{scannedProduct.brand}</p>
                             )}
                             {scannedBarcode && (
-                                <p className="text-xs text-gray-400 mt-1">{t('foodTracker.barcode.withValue', { code: scannedBarcode })}</p>
+                                <p className="text-xs text-fg-subtle mt-1">{t('foodTracker.barcode.withValue', { code: scannedBarcode })}</p>
                             )}
-                            <div className="mt-2 text-sm text-gray-600">
+                            <div className="mt-2 text-sm text-fg-muted">
                                 <p>{t('foodTracker.barcode.per100')}</p>
                                 <p>
                                     {Math.round(scannedProduct.nutritionPer100.calories)} {t('units.kcal')} •{' '}
@@ -323,14 +323,14 @@ export function BarcodeTab({
                         <button
                             type="button"
                             onClick={handleSelectProduct}
-                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+                            className="flex-1 px-4 py-2 bg-success text-on-primary rounded-lg hover:bg-success transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-success"
                         >
                             {t('common.add')}
                         </button>
                         <button
                             type="button"
                             onClick={handleResetScan}
-                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                            className="px-4 py-2 text-fg-muted hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                             {t('foodTracker.barcode.scanAnother')}
                         </button>
@@ -340,13 +340,13 @@ export function BarcodeTab({
 
             {/* Lookup Error */}
             {lookupError && !scannedProduct && scannerStatus !== 'error' && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl mb-4">
+                <div className="p-4 bg-danger-soft border border-danger/30 rounded-xl mb-4">
                     <div className="flex items-start gap-3">
-                        <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
+                        <AlertCircle className="w-6 h-6 text-danger-fg flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
-                            <p className="text-red-700">{lookupError}</p>
+                            <p className="text-danger-fg">{lookupError}</p>
                             {scannedBarcode && (
-                                <p className="text-sm text-red-500 mt-1">
+                                <p className="text-sm text-danger-fg mt-1">
                                     {t('foodTracker.barcode.withValue', { code: scannedBarcode })}
                                 </p>
                             )}
@@ -357,7 +357,7 @@ export function BarcodeTab({
                             <button
                                 type="button"
                                 onClick={handleManualEntry}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                             >
                                 <Plus className="w-4 h-4" />
                                 <span>{t('foodTracker.entryModal.enterManually')}</span>
@@ -366,7 +366,7 @@ export function BarcodeTab({
                         <button
                             type="button"
                             onClick={handleResetScan}
-                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                            className="px-4 py-2 text-fg-muted hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                             {t('foodTracker.barcode.scanAnother')}
                         </button>
@@ -376,13 +376,13 @@ export function BarcodeTab({
 
             {/* Manual Entry Option (always visible at bottom when no scan result) */}
             {onManualEntry && !scannedProduct && !lookupError && (
-                <div className="pt-4 border-t border-gray-200 mt-auto">
+                <div className="pt-4 border-t border-line mt-auto">
                     <button
                         type="button"
                         onClick={handleManualEntry}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-fg hover:bg-canvas rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
-                        <Plus className="w-5 h-5 text-gray-400" />
+                        <Plus className="w-5 h-5 text-fg-subtle" />
                         <span>{t('foodTracker.entryModal.enterManually')}</span>
                     </button>
                 </div>

@@ -24,8 +24,8 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+            <div className="flex items-center justify-center min-h-screen bg-canvas">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
         )
     }
@@ -39,14 +39,14 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
                 {/* Back to profile */}
                 <Link
                     href="/profile"
-                    className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700"
+                    className="mb-6 inline-flex items-center gap-1 text-sm text-fg-muted transition-colors hover:text-fg"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     {t('settings.backToProfile')}
                 </Link>
 
                 {/* Page title */}
-                <h1 className="mb-8 text-2xl font-bold text-gray-900">{title}</h1>
+                <h1 className="mb-8 text-2xl font-bold text-fg">{title}</h1>
 
                 {/* Page content */}
                 {children(settingsHook)}

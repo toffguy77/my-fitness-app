@@ -9,7 +9,7 @@ export default function CuratorChatListPage() {
 
     return (
         <div className="px-4 py-6">
-            <h1 className="text-xl font-semibold text-gray-900 mb-4">{t('curator.navigation.chatsHeading')}</h1>
+            <h1 className="text-xl font-semibold text-fg mb-4">{t('curator.navigation.chatsHeading')}</h1>
             <ConversationList
                 onSelectConversation={(conv) =>
                     router.push(`/curator/chat/${conv.participant.id}`)

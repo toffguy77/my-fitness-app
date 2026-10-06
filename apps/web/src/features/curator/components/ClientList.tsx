@@ -35,20 +35,20 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             </div>
         )
     }
 
     if (error) {
         return (
-            <p className="py-8 text-center text-sm text-red-500">{error}</p>
+            <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
         )
     }
 
     if (clients.length === 0) {
         return (
-            <p className="py-8 text-center text-sm text-gray-500">
+            <p className="py-8 text-center text-sm text-fg-muted">
                 {t('curator.list.empty')}
             </p>
         )
@@ -79,7 +79,7 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
         <div className="space-y-6">
             {needsAttention.length > 0 && (
                 <section>
-                    <h2 className="text-sm font-semibold text-red-600 mb-2">
+                    <h2 className="text-sm font-semibold text-danger-fg mb-2">
                         {t('curator.list.needAttention')}
                     </h2>
                     <div className="space-y-3">
@@ -93,7 +93,7 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
             {rest.length > 0 && (
                 <section>
                     {needsAttention.length > 0 && (
-                        <h2 className="text-sm font-semibold text-gray-500 mb-2">
+                        <h2 className="text-sm font-semibold text-fg-muted mb-2">
                             {t('curator.list.others')}
                         </h2>
                     )}

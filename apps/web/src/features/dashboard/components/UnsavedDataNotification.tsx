@@ -98,16 +98,16 @@ export function UnsavedDataNotification() {
 
     return (
         <div className="fixed bottom-4 right-4 z-50 max-w-md">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg p-4">
+            <div className="bg-warning-soft border border-warning/30 rounded-lg shadow-lg p-4">
                 <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="h-5 w-5 text-warning-fg flex-shrink-0 mt-0.5" />
 
                     <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-yellow-900 mb-1">
+                        <h3 className="text-sm font-semibold text-warning-fg mb-1">
                             {t('dashboard.unsaved.title')}
                         </h3>
 
-                        <p className="text-sm text-yellow-800 mb-3">
+                        <p className="text-sm text-warning-fg mb-3">
                             {unsavedCount === 1
                                 ? t('dashboard.unsaved.countOne')
                                 : t('dashboard.unsaved.countMany', { count: unsavedCount })}
@@ -119,7 +119,7 @@ export function UnsavedDataNotification() {
                                 {unsavedData.map((entry) => (
                                     <div
                                         key={entry.date}
-                                        className="flex items-center justify-between text-xs text-yellow-700 bg-yellow-100 rounded px-2 py-1"
+                                        className="flex items-center justify-between text-xs text-warning-fg bg-warning-soft rounded px-2 py-1"
                                     >
                                         <span>
                                             {new Date(entry.date).toLocaleDateString('ru-RU', {
@@ -136,7 +136,7 @@ export function UnsavedDataNotification() {
                                             <button
                                                 onClick={() => handleRetryOne(entry.date)}
                                                 disabled={isRetrying}
-                                                className="text-yellow-600 hover:text-yellow-800 disabled:opacity-50"
+                                                className="text-warning-fg hover:text-warning-fg disabled:opacity-50"
                                                 aria-label={t('dashboard.unsaved.retry')}
                                             >
                                                 <RefreshCw className="h-3 w-3" />
@@ -155,7 +155,7 @@ export function UnsavedDataNotification() {
                                 onClick={handleRetryAll}
                                 isLoading={isRetrying}
                                 disabled={isRetrying}
-                                className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white"
+                                className="flex-1 bg-warning hover:bg-warning text-on-primary"
                             >
                                 <RefreshCw className="h-3 w-3 mr-1" />
                                 {t('dashboard.unsaved.retry')}
@@ -166,7 +166,7 @@ export function UnsavedDataNotification() {
                                 size="sm"
                                 onClick={handleDismiss}
                                 disabled={isRetrying}
-                                className="text-yellow-700 hover:bg-yellow-100"
+                                className="text-warning-fg hover:bg-warning-soft"
                             >
                                 {t('dashboard.unsaved.discard')}
                             </Button>
@@ -177,7 +177,7 @@ export function UnsavedDataNotification() {
                     <button
                         onClick={handleDismiss}
                         disabled={isRetrying}
-                        className="text-yellow-600 hover:text-yellow-800 disabled:opacity-50"
+                        className="text-warning-fg hover:text-warning-fg disabled:opacity-50"
                         aria-label={t('common.close')}
                     >
                         <X className="h-4 w-4" />

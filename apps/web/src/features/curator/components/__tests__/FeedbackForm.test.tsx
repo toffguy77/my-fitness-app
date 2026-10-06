@@ -122,7 +122,7 @@ describe('FeedbackForm', () => {
         const excellentButtons = screen.getAllByRole('button', { name: 'Отлично' })
         await user.click(excellentButtons[0])
 
-        expect(excellentButtons[0].className).toContain('bg-green-500')
+        expect(excellentButtons[0].className).toContain('bg-success')
     })
 
     it('allows photo checkbox to be toggled', async () => {

@@ -58,7 +58,7 @@ export function FileAttachment({ attachment }: FileAttachmentProps) {
                     className="max-w-[240px] max-h-[240px] rounded-lg object-cover"
                     loading="lazy"
                 />
-                <span className="text-xs text-gray-500 mt-1 block">
+                <span className="text-xs text-fg-muted mt-1 block">
                     {attachment.file_name} ({formatFileSize(attachment.file_size)})
                 </span>
             </a>
@@ -70,12 +70,12 @@ export function FileAttachment({ attachment }: FileAttachmentProps) {
             href={attachment.file_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors max-w-[280px]"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-subtle hover:bg-subtle transition-colors max-w-[280px]"
         >
-            <FileDown className="w-5 h-5 text-gray-500 shrink-0" />
+            <FileDown className="w-5 h-5 text-fg-muted shrink-0" />
             <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-900 truncate">{attachment.file_name}</p>
-                <p className="text-xs text-gray-500">{formatFileSize(attachment.file_size)}</p>
+                <p className="text-sm text-fg truncate">{attachment.file_name}</p>
+                <p className="text-xs text-fg-muted">{formatFileSize(attachment.file_size)}</p>
             </div>
         </a>
     )

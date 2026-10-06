@@ -9,7 +9,7 @@ export interface LogoProps {
 export const Logo: React.FC<LogoProps> = ({
     width = 200,
     height = 60,
-    className = 'text-gray-900'
+    className = 'text-fg'
 }) => {
     return (
         <svg

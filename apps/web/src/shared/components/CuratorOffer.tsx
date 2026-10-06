@@ -91,41 +91,41 @@ export function CuratorOffer({
     return (
         <section
             className={cn(
-                'rounded-xl border border-gray-100 bg-white shadow-sm',
+                'rounded-xl border border-line bg-surface shadow-sm',
                 compact ? 'p-4' : 'p-6',
                 className
             )}
             data-testid="curator-offer"
             aria-label={title}
         >
-            <h2 className={cn('font-semibold text-gray-900', compact ? 'text-sm' : 'text-lg')}>
+            <h2 className={cn('font-semibold text-fg', compact ? 'text-sm' : 'text-lg')}>
                 {title}
             </h2>
-            <p className={cn('mt-1 text-gray-600', compact ? 'text-xs' : 'text-sm')}>{lead}</p>
+            <p className={cn('mt-1 text-fg-muted', compact ? 'text-xs' : 'text-sm')}>{lead}</p>
 
             {expired && expiresAt && (
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-fg-subtle">
                     {t('dashboard.curatorOffer.expiredOn', { date: expiresAt })}
                 </p>
             )}
 
             {!compact && (
                 <>
-                    <ul className="mt-4 space-y-2 text-sm text-gray-700">
+                    <ul className="mt-4 space-y-2 text-sm text-fg">
                         <li className="flex items-center gap-2">
-                            <MessageCircle className="h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                            <MessageCircle className="h-4 w-4 flex-shrink-0 text-fg-subtle" aria-hidden="true" />
                             {t('dashboard.curatorOffer.benefitChat')}
                         </li>
                         <li className="flex items-center gap-2">
-                            <ClipboardList className="h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                            <ClipboardList className="h-4 w-4 flex-shrink-0 text-fg-subtle" aria-hidden="true" />
                             {t('dashboard.curatorOffer.benefitPlan')}
                         </li>
                         <li className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                            <FileText className="h-4 w-4 flex-shrink-0 text-fg-subtle" aria-hidden="true" />
                             {t('dashboard.curatorOffer.benefitReview')}
                         </li>
                     </ul>
-                    <p className="mt-3 text-xs text-gray-500">
+                    <p className="mt-3 text-xs text-fg-muted">
                         {t('dashboard.curatorOffer.freeNote')}
                     </p>
                 </>
@@ -136,7 +136,7 @@ export function CuratorOffer({
                     type="button"
                     onClick={handleRequest}
                     disabled={sending || sent}
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:bg-primary-hover disabled:opacity-60"
                 >
                     {sent ? t('dashboard.curatorOffer.requested') : action}
                 </button>
@@ -145,7 +145,7 @@ export function CuratorOffer({
                     какое из двух обязательство — неизвестно. */}
                 <Link
                     href="/pricing"
-                    className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary"
                 >
                     {t('dashboard.curatorOffer.pricing')}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />

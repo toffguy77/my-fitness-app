@@ -96,23 +96,23 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
     }
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40">
-            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-20 shadow-xl animate-in slide-in-from-bottom">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-scrim">
+            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-surface p-5 pb-20 shadow-xl animate-in slide-in-from-bottom">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-semibold text-gray-900">{isEdit ? t('curator.task.editHeading') : t('curator.task.newHeading')}</h2>
-                    <button type="button" onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
+                    <h2 className="text-base font-semibold text-fg">{isEdit ? t('curator.task.editHeading') : t('curator.task.newHeading')}</h2>
+                    <button type="button" onClick={onClose} className="p-1 text-fg-subtle hover:text-fg-muted">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.name')}</label>
+                        <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.name')}</label>
                         <input
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                             required
                             placeholder={t('curator.task.namePlaceholder')}
                         />
@@ -120,12 +120,12 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.type')}</label>
+                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.type')}</label>
                             <select
                                 value={type}
                                 onChange={(e) => setType(e.target.value as TaskType)}
                                 disabled={isEdit}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
+                                className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus disabled:opacity-60"
                             >
                                 {TYPE_OPTIONS.map((opt) => (
                                     <option key={opt.value} value={opt.value}>
@@ -135,35 +135,35 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.deadline')}</label>
+                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.deadline')}</label>
                             <input
                                 type="date"
                                 value={deadline}
                                 onChange={(e) => setDeadline(e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                                 required
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.description')}</label>
+                        <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.description')}</label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={2}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                             placeholder={t('curator.task.descriptionPlaceholder')}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.recurrence')}</label>
+                        <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.recurrence')}</label>
                         <select
                             value={recurrence}
                             onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)}
                             disabled={isEdit}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
+                            className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus disabled:opacity-60"
                         >
                             {RECURRENCE_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
@@ -175,7 +175,7 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
 
                     {recurrence === 'weekly' && (
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.weekdays')}</label>
+                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.task.weekdays')}</label>
                             <div className="flex gap-1.5">
                                 {WEEKDAYS.map((day) => (
                                     <button
@@ -185,8 +185,8 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
                                         className={cn(
                                             'flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium transition-colors',
                                             recurrenceDays.includes(day.value)
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                                                ? 'bg-primary text-on-primary'
+                                                : 'bg-subtle text-fg-muted hover:bg-subtle',
                                         )}
                                     >
                                         {day.label}
@@ -196,12 +196,12 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
                         </div>
                     )}
 
-                    {error && <p className="text-xs text-red-500">{error}</p>}
+                    {error && <p className="text-xs text-danger-fg">{error}</p>}
 
                     <button
                         type="submit"
                         disabled={saving}
-                        className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                        className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-on-primary hover:bg-primary-hover disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                     >
                         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                         {isEdit ? t('common.save') : t('curator.task.create')}

@@ -117,12 +117,12 @@ export default function ChatPage() {
         </div>
     ) : noConversation ? (
         <div className="flex flex-col items-center justify-center px-4 py-20">
-            <p className="text-gray-500">{t('chat.noCurator')}</p>
+            <p className="text-fg-muted">{t('chat.noCurator')}</p>
         </div>
     ) : (
         <div className="flex flex-col" style={{ height: 'calc(100dvh - 8rem - env(safe-area-inset-bottom, 0px))' }}>
             {conversation && (
-                <div className="px-4 py-3 border-b border-gray-200 bg-white">
+                <div className="px-4 py-3 border-b border-line bg-surface">
                     <h2 className="text-lg font-medium">{conversation.participant.name}</h2>
                 </div>
             )}

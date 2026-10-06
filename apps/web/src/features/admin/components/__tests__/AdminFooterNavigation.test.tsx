@@ -59,10 +59,10 @@ describe('AdminFooterNavigation', () => {
         render(<AdminFooterNavigation activeItem="chats" />)
 
         const chatsBtn = screen.getByTestId('nav-item-chats')
-        expect(chatsBtn.className).toContain('text-blue-600')
+        expect(chatsBtn.className).toContain('text-primary')
 
         const dashboardBtn = screen.getByTestId('nav-item-dashboard')
-        expect(dashboardBtn.className).toContain('text-gray-600')
+        expect(dashboardBtn.className).toContain('text-fg-muted')
     })
 
     it('calls onNavigate and router.push on click', () => {

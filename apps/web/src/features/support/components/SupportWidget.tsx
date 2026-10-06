@@ -121,7 +121,7 @@ export function SupportWidget() {
                 type="button"
                 onClick={handleOpen}
                 aria-expanded={false}
-                className="fixed bottom-6 right-6 z-40 inline-flex h-12 items-center justify-center rounded-full bg-blue-600 px-5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                className="fixed bottom-6 right-6 z-40 inline-flex h-12 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-on-primary shadow-lg transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
                 {t('supportWidget.openButton')}
             </button>
@@ -132,21 +132,21 @@ export function SupportWidget() {
         <div
             role="dialog"
             aria-label={t('supportWidget.title')}
-            className="fixed bottom-6 right-6 z-40 flex w-[calc(100vw-3rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl"
+            className="fixed bottom-6 right-6 z-40 flex w-[calc(100vw-3rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl"
         >
-            <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-                <h2 className="text-sm font-semibold text-gray-900">{t('supportWidget.title')}</h2>
+            <header className="flex items-center justify-between border-b border-line px-4 py-3">
+                <h2 className="text-sm font-semibold text-fg">{t('supportWidget.title')}</h2>
                 <button
                     type="button"
                     onClick={handleClose}
                     aria-label={t('supportWidget.closeButton')}
-                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    className="rounded p-1 text-fg-subtle hover:bg-subtle hover:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
                     ×
                 </button>
             </header>
 
-            <p className="px-4 pt-3 text-xs text-gray-500">{t('supportWidget.hint')}</p>
+            <p className="px-4 pt-3 text-xs text-fg-muted">{t('supportWidget.hint')}</p>
 
             <div
                 role="log"
@@ -155,11 +155,11 @@ export function SupportWidget() {
                 className="max-h-64 flex-1 space-y-2 overflow-y-auto px-4 py-3"
             >
                 {messages.length === 0 ? (
-                    <p className="text-sm text-gray-500">{t('supportWidget.emptyTranscript')}</p>
+                    <p className="text-sm text-fg-muted">{t('supportWidget.emptyTranscript')}</p>
                 ) : (
                     messages.map((message: WidgetMessage) => (
-                        <p key={message.id} className="text-sm text-gray-800">
-                            <span className="font-medium text-gray-500">{authorLabel(message.author)}: </span>
+                        <p key={message.id} className="text-sm text-fg">
+                            <span className="font-medium text-fg-muted">{authorLabel(message.author)}: </span>
                             {message.text}
                         </p>
                     ))
@@ -167,7 +167,7 @@ export function SupportWidget() {
             </div>
 
             {error && (
-                <p role="alert" className="mx-4 mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p role="alert" className="mx-4 mb-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger-fg">
                     {error}
                     <button type="button" onClick={clearError} className="ml-2 underline">
                         {t('common.close')}
@@ -175,7 +175,7 @@ export function SupportWidget() {
                 </p>
             )}
 
-            <form onSubmit={handleSend} className="border-t border-gray-200 px-4 py-3">
+            <form onSubmit={handleSend} className="border-t border-line px-4 py-3">
                 <label htmlFor="support-widget-question" className="sr-only">
                     {t('supportWidget.questionLabel')}
                 </label>
@@ -187,7 +187,7 @@ export function SupportWidget() {
                     placeholder={t('supportWidget.questionPlaceholder')}
                     rows={2}
                     disabled={!token}
-                    className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    className="w-full resize-none rounded-lg border border-line px-3 py-2 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 />
                 <div className="mt-2 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
@@ -195,16 +195,16 @@ export function SupportWidget() {
                             type="button"
                             onClick={() => void callHuman()}
                             disabled={!token}
-                            className="text-xs font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                            className="text-xs font-medium text-fg-muted hover:text-fg disabled:opacity-50"
                         >
                             {t('supportWidget.callHuman')}
                         </button>
-                        <SupportLink className="text-xs text-blue-600 hover:underline" />
+                        <SupportLink className="text-xs text-primary hover:underline" />
                     </div>
                     <button
                         type="submit"
                         disabled={!question.trim() || sending || !token}
-                        className="inline-flex h-8 items-center justify-center rounded-lg bg-blue-600 px-4 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                        className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-xs font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                     >
                         {sending ? t('supportWidget.sending') : t('supportWidget.send')}
                     </button>
@@ -212,11 +212,11 @@ export function SupportWidget() {
             </form>
 
             {askedOnce && !showContactForm && !contactSaved && (
-                <div className="border-t border-gray-200 px-4 py-2">
+                <div className="border-t border-line px-4 py-2">
                     <button
                         type="button"
                         onClick={() => setContactRequested(true)}
-                        className="text-xs font-medium text-blue-600 hover:underline"
+                        className="text-xs font-medium text-primary hover:underline"
                     >
                         {t('supportWidget.saveConversation')}
                     </button>
@@ -233,7 +233,7 @@ export function SupportWidget() {
             )}
 
             {contactSaved && (
-                <p className="border-t border-gray-200 px-4 py-3 text-sm text-green-700">
+                <p className="border-t border-line px-4 py-3 text-sm text-success-fg">
                     {t('supportWidget.contactSaved')}
                 </p>
             )}
@@ -263,14 +263,14 @@ function ContactForm({
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-3 border-t border-gray-200 px-4 py-3">
+        <form onSubmit={handleSubmit} className="space-y-3 border-t border-line px-4 py-3">
             <div>
-                <h3 className="text-sm font-semibold text-gray-900">{t('supportWidget.contactTitle')}</h3>
-                <p className="mt-1 text-xs text-gray-600">{t('supportWidget.contactHint')}</p>
+                <h3 className="text-sm font-semibold text-fg">{t('supportWidget.contactTitle')}</h3>
+                <p className="mt-1 text-xs text-fg-muted">{t('supportWidget.contactHint')}</p>
             </div>
 
             <div>
-                <label htmlFor="support-widget-email" className="block text-xs font-medium text-gray-900">
+                <label htmlFor="support-widget-email" className="block text-xs font-medium text-fg">
                     {t('supportWidget.emailLabel')}
                 </label>
                 <input
@@ -280,7 +280,7 @@ function ContactForm({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('supportWidget.emailPlaceholder')}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                    className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm text-fg"
                 />
             </div>
 
@@ -290,25 +290,25 @@ function ContactForm({
                         type="checkbox"
                         checked={dataConsent}
                         onChange={(e) => setDataConsent(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+                        className="mt-0.5 h-4 w-4 rounded border-line text-primary"
                     />
-                    <span className="text-xs text-gray-600">{t('supportWidget.consentData')}</span>
+                    <span className="text-xs text-fg-muted">{t('supportWidget.consentData')}</span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-2">
                     <input
                         type="checkbox"
                         checked={contactConsent}
                         onChange={(e) => setContactConsent(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+                        className="mt-0.5 h-4 w-4 rounded border-line text-primary"
                     />
-                    <span className="text-xs text-gray-600">{t('supportWidget.consentContact')}</span>
+                    <span className="text-xs text-fg-muted">{t('supportWidget.consentContact')}</span>
                 </label>
             </div>
 
             <button
                 type="submit"
                 disabled={!email || !dataConsent || saving}
-                className="w-full rounded-lg border border-blue-600 py-2 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50 disabled:opacity-50"
+                className="w-full rounded-lg border border-primary py-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft disabled:opacity-50"
             >
                 {saving ? t('supportWidget.contactSaving') : t('supportWidget.contactSubmit')}
             </button>

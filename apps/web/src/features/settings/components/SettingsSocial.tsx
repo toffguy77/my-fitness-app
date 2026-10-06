@@ -52,7 +52,7 @@ function SocialForm({ profile, onSave }: {
             <button
                 onClick={handleSave}
                 disabled={saving}
-                className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-white font-medium transition-colors hover:bg-blue-700 disabled:opacity-50"
+                className="mt-8 w-full rounded-lg bg-primary py-3 text-on-primary font-medium transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
                 {saving ? t('settings.checking') : t('settings.save')}
             </button>

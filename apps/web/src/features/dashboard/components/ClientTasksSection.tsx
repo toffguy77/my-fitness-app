@@ -73,15 +73,15 @@ function getDeadlineColor(deadline: string): string {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
     const deadlineDate = new Date(deadline)
-    if (isNaN(deadlineDate.getTime())) return 'text-gray-500'
+    if (isNaN(deadlineDate.getTime())) return 'text-fg-muted'
     deadlineDate.setHours(0, 0, 0, 0)
 
     const diffMs = deadlineDate.getTime() - now.getTime()
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
 
-    if (diffDays < 0) return 'text-red-600'
-    if (diffDays === 0) return 'text-yellow-600'
-    return 'text-gray-500'
+    if (diffDays < 0) return 'text-danger-fg'
+    if (diffDays === 0) return 'text-warning-fg'
+    return 'text-fg-muted'
 }
 
 function formatDeadline(deadline: string): string {
@@ -145,14 +145,14 @@ function MiniCalendar({
                 const scheduled = isScheduled(day.dayOfWeek)
                 return (
                     <div key={day.date} className="flex flex-col items-center gap-0.5">
-                        <span className="text-[9px] text-gray-400">{day.label}</span>
+                        <span className="text-[9px] text-fg-subtle">{day.label}</span>
                         <div
                             className={`h-3 w-3 rounded-full ${
                                 day.filled
-                                    ? 'bg-green-500'
+                                    ? 'bg-success'
                                     : scheduled
-                                      ? 'border-2 border-green-400 bg-transparent'
-                                      : 'bg-gray-200'
+                                      ? 'border-2 border-success bg-transparent'
+                                      : 'bg-subtle'
                             }`}
                         />
                     </div>
@@ -287,12 +287,12 @@ export const ClientTasksSection = memo(function ClientTasksSection({
     return (
         <section
             ref={sectionRef}
-            className={`bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
+            className={`bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
             aria-labelledby="client-tasks-heading"
         >
             <h2
                 id="client-tasks-heading"
-                className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4"
+                className="text-base sm:text-lg font-semibold text-fg mb-3 sm:mb-4"
             >
                 {t('dashboard.tasks.fromCurator')}
             </h2>
@@ -310,14 +310,14 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                             role="listitem"
                             className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-all ${
                                 flashId === task.id
-                                    ? 'ring-2 ring-blue-400 ring-offset-1'
+                                    ? 'ring-2 ring-focus ring-offset-1'
                                     : ''
                             } ${
                                 isOverdue
-                                    ? 'border-l-4 border-l-red-500 border-red-200 bg-red-50'
+                                    ? 'border-l-4 border-l-danger border-danger/30 bg-danger-soft'
                                     : isCompleted
-                                      ? 'border-green-200 bg-green-50'
-                                      : 'border-gray-100 bg-white shadow-sm'
+                                      ? 'border-success/30 bg-success-soft'
+                                      : 'border-line bg-surface shadow-sm'
                             }`}
                             aria-label={t('dashboard.tasks.clientTaskAria', {
                                 type: TYPE_LABELS[task.type],
@@ -336,8 +336,8 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 disabled={isCompleted}
                                 className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                                     isCompleted
-                                        ? 'bg-green-500 border-green-500 cursor-default'
-                                        : 'border-gray-300 hover:border-green-400 cursor-pointer'
+                                        ? 'bg-success border-success cursor-default'
+                                        : 'border-line hover:border-success cursor-pointer'
                                 }`}
                                 aria-label={
                                     isCompleted
@@ -347,7 +347,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                             >
                                 {isCompleted && (
                                     <Check
-                                        className="w-3 h-3 text-white"
+                                        className="w-3 h-3 text-on-primary"
                                         aria-hidden="true"
                                     />
                                 )}
@@ -356,18 +356,18 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                             {/* Task type icon */}
                             <div className={`flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center ${
                                 isCompleted
-                                    ? 'bg-green-100'
+                                    ? 'bg-success-soft'
                                     : isOverdue
-                                      ? 'bg-red-100'
-                                      : 'bg-gray-100'
+                                      ? 'bg-danger-soft'
+                                      : 'bg-subtle'
                             }`}>
                                 <Icon
                                     className={`w-4 h-4 ${
                                         isCompleted
-                                            ? 'text-green-600'
+                                            ? 'text-success-fg'
                                             : isOverdue
-                                              ? 'text-red-500'
-                                              : 'text-gray-600'
+                                              ? 'text-danger-fg'
+                                              : 'text-fg-muted'
                                     }`}
                                     aria-hidden="true"
                                 />
@@ -378,8 +378,8 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 <h4
                                     className={`text-sm font-semibold ${
                                         isCompleted
-                                            ? 'text-green-900 line-through'
-                                            : 'text-gray-900'
+                                            ? 'text-success-fg line-through'
+                                            : 'text-fg'
                                     }`}
                                 >
                                     {task.title}
@@ -387,7 +387,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
 
                                 {/* Type label + deadline */}
                                 <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs text-gray-400">
+                                    <span className="text-xs text-fg-subtle">
                                         {TYPE_LABELS[task.type]}
                                     </span>
                                     <span className={`text-xs ${getDeadlineColor(task.deadline)}`}>
@@ -396,7 +396,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 </div>
 
                                 {task.description && (
-                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                    <p className="text-xs text-fg-muted mt-1 line-clamp-2">
                                         {task.description}
                                     </p>
                                 )}
@@ -417,23 +417,23 @@ export const ClientTasksSection = memo(function ClientTasksSection({
 
             {/* Workout dialog for Direction 1: task completion → feature sync */}
             {workoutTaskId !== null && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={handleWorkoutCancel}>
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-scrim" onClick={handleWorkoutCancel}>
                     <div
-                        className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4"
+                        className="bg-surface w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 font-semibold text-gray-900">
+                            <div className="flex items-center gap-2 font-semibold text-fg">
                                 <Dumbbell className="h-5 w-5" />
                                 {t('dashboard.tasks.typeWorkout')}
                             </div>
-                            <button type="button" onClick={handleWorkoutCancel} className="text-gray-400 hover:text-gray-600">
+                            <button type="button" onClick={handleWorkoutCancel} className="text-fg-subtle hover:text-fg-muted">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
 
                         <div className="space-y-2">
-                            <span className="text-sm font-medium text-gray-700">{t('dashboard.tasks.workoutType')}</span>
+                            <span className="text-sm font-medium text-fg">{t('dashboard.tasks.workoutType')}</span>
                             <div className="grid grid-cols-2 gap-2">
                                 {WORKOUT_TYPES.map((type) => (
                                     <button
@@ -443,8 +443,8 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                         className={cn(
                                             'px-3 py-2 text-sm rounded-lg border transition-colors',
                                             workoutType === type
-                                                ? 'bg-blue-100 border-blue-300 text-blue-700'
-                                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                                ? 'bg-primary-soft border-primary/30 text-primary'
+                                                : 'bg-surface border-line text-fg hover:bg-canvas'
                                         )}
                                     >
                                         {workoutTypeLabel(type)}
@@ -454,7 +454,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                         </div>
 
                         <div className="space-y-1">
-                            <span className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                            <span className="text-sm font-medium text-fg flex items-center gap-1">
                                 <Clock className="h-3.5 w-3.5" />
                                 {t('dashboard.tasks.durationLabel')}
                             </span>
@@ -465,7 +465,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 placeholder="45"
                                 value={workoutDuration}
                                 onChange={(e) => setWorkoutDuration(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-focus"
                             />
                         </div>
 
@@ -474,7 +474,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 type="button"
                                 onClick={handleWorkoutComplete}
                                 disabled={!workoutType || workoutSaving}
-                                className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="flex-1 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-lg hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 <Check className="h-4 w-4" />
                                 {t('common.save')}
@@ -483,7 +483,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 type="button"
                                 onClick={handleWorkoutCancel}
                                 disabled={workoutSaving}
-                                className="px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+                                className="px-4 py-2.5 border border-line text-fg text-sm font-medium rounded-lg hover:bg-canvas"
                             >
                                 {t('common.cancel')}
                             </button>

@@ -66,12 +66,12 @@ export default function ForgotPasswordPage() {
 
     if (isSubmitted) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+            <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
                 <Card className="w-full max-w-md p-8">
                     <div className="text-center space-y-4">
-                        <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                        <div className="mx-auto w-16 h-16 bg-success-soft rounded-full flex items-center justify-center">
                             <svg
-                                className="w-8 h-8 text-green-600"
+                                className="w-8 h-8 text-success-fg"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -85,13 +85,13 @@ export default function ForgotPasswordPage() {
                             </svg>
                         </div>
 
-                        <h1 className="text-2xl font-bold text-gray-900">Проверьте почту</h1>
+                        <h1 className="text-2xl font-bold text-fg">Проверьте почту</h1>
 
-                        <p className="text-gray-600">
+                        <p className="text-fg-muted">
                             Если аккаунт с адресом <strong>{email}</strong> существует, вы получите инструкции по сбросу пароля.
                         </p>
 
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-fg-muted">
                             Не получили письмо? Проверьте папку "Спам" или попробуйте снова.
                         </p>
 
@@ -120,16 +120,16 @@ export default function ForgotPasswordPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
             <Card className="w-full max-w-md p-8">
                 <div className="space-y-6">
                     <div className="text-center space-y-4">
                         <div className="flex justify-center">
-                            <Logo width={160} height={48} className="text-gray-900" />
+                            <Logo width={160} height={48} className="text-fg" />
                         </div>
                         <div className="space-y-2">
-                            <h1 className="text-2xl font-bold text-gray-900">Забыли пароль?</h1>
-                            <p className="text-gray-600">
+                            <h1 className="text-2xl font-bold text-fg">Забыли пароль?</h1>
+                            <p className="text-fg-muted">
                                 Введите ваш email и мы отправим инструкции по сбросу пароля.
                             </p>
                         </div>
@@ -137,7 +137,7 @@ export default function ForgotPasswordPage() {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                            <label htmlFor="email" className="block text-sm font-medium text-fg mb-1">
                                 Email адрес
                             </label>
                             <Input
@@ -164,7 +164,7 @@ export default function ForgotPasswordPage() {
                     <div className="text-center">
                         <Link
                             href="/auth"
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            className="text-sm text-primary hover:text-primary font-medium"
                         >
                             ← Вернуться к входу
                         </Link>

@@ -1,1 +1,69 @@
 @import "tailwindcss";
+
+/*
+ * Дизайн-система BURCEV. Значения — только в packages/design-tokens/tokens/*.json;
+ * здесь подключаются собранные из них переменные и тема Tailwind.
+ * Правила: docs/design-system/README.md.
+ */
+@import "@burcev/design-tokens/tokens.css";
+@import "@burcev/design-tokens/tailwind.css";
+
+/*
+ * Тёмная тема — по системной настройке, а [data-theme] на <html> её
+ * переопределяет. Цвета компонентов от темы не зависят: роли (bg-surface,
+ * text-fg) переключаются переменными, поэтому `dark:` в разметке не нужен.
+ * Вариант оставлен для редких случаев вроде смены картинки.
+ */
+@custom-variant dark {
+    @media (prefers-color-scheme: dark) {
+        &:where(:root:not([data-theme="light"]) *) {
+            @slot;
+        }
+    }
+    &:where([data-theme="dark"], [data-theme="dark"] *) {
+        @slot;
+    }
+}
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        background-color: var(--ds-color-bg-canvas);
+        color: var(--ds-color-fg-default);
+        font-family: var(--ds-font-family-sans);
+        font-size: var(--ds-type-body-size);
+        line-height: var(--ds-type-body-line);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--ds-color-focus);
+        outline-offset: 2px;
+    }
+
+    ::selection {
+        background-color: var(--ds-color-primary-soft);
+    }
+
+    /* Ползунки, флажки и радиокнопки окрашиваются брендом без отдельного стиля. */
+    :root {
+        accent-color: var(--ds-color-primary-default);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

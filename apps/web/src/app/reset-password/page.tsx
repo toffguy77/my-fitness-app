@@ -114,11 +114,11 @@ function ResetPasswordContent() {
     // Loading state
     if (isValidating) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+            <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
                 <Card className="w-full max-w-md p-8">
                     <div className="text-center space-y-4">
-                        <div className="animate-spin mx-auto w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full" />
-                        <p className="text-gray-600">Проверка ссылки...</p>
+                        <div className="animate-spin mx-auto w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
+                        <p className="text-fg-muted">Проверка ссылки...</p>
                     </div>
                 </Card>
             </div>
@@ -128,12 +128,12 @@ function ResetPasswordContent() {
     // Invalid token
     if (!isTokenValid) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+            <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
                 <Card className="w-full max-w-md p-8">
                     <div className="text-center space-y-4">
-                        <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                        <div className="mx-auto w-16 h-16 bg-danger-soft rounded-full flex items-center justify-center">
                             <svg
-                                className="w-8 h-8 text-red-600"
+                                className="w-8 h-8 text-danger-fg"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -147,9 +147,9 @@ function ResetPasswordContent() {
                             </svg>
                         </div>
 
-                        <h1 className="text-2xl font-bold text-gray-900">Неверная ссылка</h1>
+                        <h1 className="text-2xl font-bold text-fg">Неверная ссылка</h1>
 
-                        <p className="text-gray-600">{tokenError}</p>
+                        <p className="text-fg-muted">{tokenError}</p>
 
                         <div className="pt-4 space-y-2">
                             <Link href="/forgot-password" className="block">
@@ -171,12 +171,12 @@ function ResetPasswordContent() {
     // Success state
     if (isSuccess) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+            <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
                 <Card className="w-full max-w-md p-8">
                     <div className="text-center space-y-4">
-                        <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                        <div className="mx-auto w-16 h-16 bg-success-soft rounded-full flex items-center justify-center">
                             <svg
-                                className="w-8 h-8 text-green-600"
+                                className="w-8 h-8 text-success-fg"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -190,13 +190,13 @@ function ResetPasswordContent() {
                             </svg>
                         </div>
 
-                        <h1 className="text-2xl font-bold text-gray-900">Пароль успешно изменен!</h1>
+                        <h1 className="text-2xl font-bold text-fg">Пароль успешно изменен!</h1>
 
-                        <p className="text-gray-600">
+                        <p className="text-fg-muted">
                             Ваш пароль был успешно изменен. Теперь вы можете войти с новым паролем.
                         </p>
 
-                        <p className="text-sm text-gray-500">Перенаправление на страницу входа...</p>
+                        <p className="text-sm text-fg-muted">Перенаправление на страницу входа...</p>
                     </div>
                 </Card>
             </div>
@@ -205,22 +205,22 @@ function ResetPasswordContent() {
 
     // Reset form
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
             <Card className="w-full max-w-md p-8">
                 <div className="space-y-6">
                     <div className="text-center space-y-4">
                         <div className="flex justify-center">
-                            <Logo width={160} height={48} className="text-gray-900" />
+                            <Logo width={160} height={48} className="text-fg" />
                         </div>
                         <div className="space-y-2">
-                            <h1 className="text-2xl font-bold text-gray-900">Сброс пароля</h1>
-                            <p className="text-gray-600">Введите новый пароль.</p>
+                            <h1 className="text-2xl font-bold text-fg">Сброс пароля</h1>
+                            <p className="text-fg-muted">Введите новый пароль.</p>
                         </div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                            <label htmlFor="password" className="block text-sm font-medium text-fg mb-1">
                                 Новый пароль
                             </label>
                             <PasswordInput
@@ -242,7 +242,7 @@ function ResetPasswordContent() {
                         <div>
                             <label
                                 htmlFor="confirmPassword"
-                                className="block text-sm font-medium text-gray-700 mb-1"
+                                className="block text-sm font-medium text-fg mb-1"
                             >
                                 Подтвердите пароль
                             </label>
@@ -268,7 +268,7 @@ function ResetPasswordContent() {
                     <div className="text-center">
                         <Link
                             href="/auth"
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            className="text-sm text-primary hover:text-primary font-medium"
                         >
                             ← Вернуться к входу
                         </Link>
@@ -282,8 +282,8 @@ function ResetPasswordContent() {
 export default function ResetPasswordPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full" />
+            <div className="min-h-screen flex items-center justify-center bg-canvas">
+                <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
             </div>
         }>
             <ResetPasswordContent />

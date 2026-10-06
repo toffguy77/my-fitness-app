@@ -103,8 +103,8 @@ export default function CalculatorPage() {
         <main className="mx-auto max-w-3xl px-4 py-8">
             <JsonLd data={faqJsonLd} />
 
-            <h1 className="text-3xl font-bold text-gray-900">Калькулятор КБЖУ онлайн</h1>
-            <p className="mt-3 text-gray-600">
+            <h1 className="text-3xl font-bold text-fg">Калькулятор КБЖУ онлайн</h1>
+            <p className="mt-3 text-fg-muted">
                 Рассчитайте дневную норму калорий, белков, жиров и углеводов под свою цель —
                 снижение веса, поддержание или набор массы. Расчёт бесплатный и не требует
                 регистрации.
@@ -114,10 +114,10 @@ export default function CalculatorPage() {
                 <KbzhuCalculator />
             </div>
 
-            <article data-testid="calculator-explained" className="mt-12 space-y-8 text-gray-800">
+            <article data-testid="calculator-explained" className="mt-12 space-y-8 text-fg">
                 {SECTIONS.map((section) => (
                     <section key={section.title}>
-                        <h2 className="text-xl font-semibold text-gray-900">{section.title}</h2>
+                        <h2 className="text-xl font-semibold text-fg">{section.title}</h2>
                         {section.paragraphs.map((paragraph) => (
                             <p key={paragraph} className="mt-3 leading-relaxed">
                                 {paragraph}
@@ -128,24 +128,24 @@ export default function CalculatorPage() {
             </article>
 
             <section data-testid="calculator-faq" className="mt-12">
-                <h2 className="text-xl font-semibold text-gray-900">Вопросы и ответы</h2>
-                <div className="mt-4 divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white">
+                <h2 className="text-xl font-semibold text-fg">Вопросы и ответы</h2>
+                <div className="mt-4 divide-y divide-line rounded-xl border border-line bg-surface">
                     {FAQ.map(({ question, answer }) => (
                         <details key={question} className="group p-4">
-                            <summary className="cursor-pointer font-medium text-gray-900">{question}</summary>
-                            <p className="mt-2 text-gray-700">{answer}</p>
+                            <summary className="cursor-pointer font-medium text-fg">{question}</summary>
+                            <p className="mt-2 text-fg">{answer}</p>
                         </details>
                     ))}
                 </div>
             </section>
 
-            <p className="mt-10 text-sm text-gray-600">
+            <p className="mt-10 text-sm text-fg-muted">
                 Хотите, чтобы норму вели и поправляли за вас?{' '}
-                <Link href="/pricing" className="font-medium text-blue-700 hover:underline">
+                <Link href="/pricing" className="font-medium text-primary hover:underline">
                     Посмотрите тарифы
                 </Link>
                 {' · '}
-                <Link href="/content" className="font-medium text-blue-700 hover:underline">
+                <Link href="/content" className="font-medium text-primary hover:underline">
                     Статьи о питании
                 </Link>
             </p>

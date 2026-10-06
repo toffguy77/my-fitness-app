@@ -14,6 +14,7 @@ import type { KBZHU } from '../types';
 import { getPercentage } from '../utils/kbzhuCalculator';
 import { MACRO_COLORS } from '@/shared/constants/macros';
 import { t } from '@/shared/i18n';
+import { color } from '@burcev/design-tokens';
 
 // ============================================================================
 // Types
@@ -52,10 +53,11 @@ interface MacroItemProps {
 /**
  * Macro configuration with Russian labels
  */
-// Калории — не нутриент, и опознавать их цветом нечем: это сумма остальных.
-// Поэтому у них нейтральная заливка. Раньше здесь стоял `bg-orange-500`, и он
-// читался как оценка, хотя ничего не оценивал.
-const CALORIES_COLOR = '#6b7280'; // gray-500
+// Калории — не нутриент, и опознавать их цветом нутриента нечем: это сумма
+// остальных. Их цвет — бренд (color.primary), постоянный при любой доле от
+// нормы: он обозначает «энергию дня», а не оценку. Раньше здесь стоял
+// `bg-yellow-500`, и он читался как оценка, хотя ничего не оценивал.
+const CALORIES_COLOR = color.primary;
 
 const MACRO_CONFIG = [
     { key: 'calories' as const, label: t('macros.calories'), unit: '', color: CALORIES_COLOR },
@@ -85,14 +87,14 @@ function MacroItem({ label, current, target, unit, color }: MacroItemProps) {
         <div className="flex flex-col gap-1 sm:gap-1.5">
             {/* Label and values */}
             <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-700 sm:text-sm">{label}</span>
+                <span className="text-xs font-medium text-fg sm:text-sm">{label}</span>
                 <span
-                    className={`text-xs font-semibold sm:text-sm ${isExceeding ? 'text-red-600' : 'text-gray-900'}`}
+                    className={`text-xs font-semibold sm:text-sm ${isExceeding ? 'text-danger-fg' : 'text-fg'}`}
                     aria-label={t('foodTracker.summary.valueAria', { label, current: currentDisplay, target: targetDisplay, unit: unit ? ` ${unit}` : '' })}
                 >
                     {displayText}
                     {isExceeding && (
-                        <span className="ml-1 text-red-500" aria-label={t('foodTracker.summary.over')}>
+                        <span className="ml-1 text-danger-fg" aria-label={t('foodTracker.summary.over')}>
                             ↑
                         </span>
                     )}
@@ -101,7 +103,7 @@ function MacroItem({ label, current, target, unit, color }: MacroItemProps) {
 
             {/* Progress bar */}
             <div
-                className="h-1.5 bg-gray-200 rounded-full overflow-hidden sm:h-2"
+                className="h-1.5 bg-subtle rounded-full overflow-hidden sm:h-2"
                 role="progressbar"
                 aria-valuenow={hasTarget ? Math.min(percentage, 100) : 0}
                 aria-valuemin={0}
@@ -124,7 +126,7 @@ function MacroItem({ label, current, target, unit, color }: MacroItemProps) {
             {/* Percentage display */}
             {hasTarget && (
                 <span
-                    className={`text-[10px] sm:text-xs ${isExceeding ? 'text-red-500' : 'text-gray-500'}`}
+                    className={`text-[10px] sm:text-xs ${isExceeding ? 'text-danger-fg' : 'text-fg-muted'}`}
                     aria-hidden="true"
                 >
                     {percentage}%
@@ -159,11 +161,11 @@ export function KBZHUSummary({
 
     return (
         <section
-            className={`bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 ${className}`}
+            className={`bg-surface rounded-xl shadow-sm border border-line p-3 sm:p-4 ${className}`}
             aria-label={t('foodTracker.summary.aria')}
         >
             {/* Header */}
-            <h2 className="text-sm font-semibold text-gray-900 mb-3 sm:text-base sm:mb-4">
+            <h2 className="text-sm font-semibold text-fg mb-3 sm:text-base sm:mb-4">
                 {t('foodTracker.summary.dailyTarget')}
             </h2>
 
@@ -183,7 +185,7 @@ export function KBZHUSummary({
 
             {/* Source label */}
             {source && (
-                <p className="mt-2 text-xs text-gray-400">
+                <p className="mt-2 text-xs text-fg-subtle">
                     {source === 'calculated' ? t('foodTracker.summary.calculated') : t('foodTracker.summary.curatorPlan')}
                     {workoutBonus ? t('foodTracker.summary.workoutBonus', { calories: Math.round(workoutBonus) }) : ''}
                 </p>

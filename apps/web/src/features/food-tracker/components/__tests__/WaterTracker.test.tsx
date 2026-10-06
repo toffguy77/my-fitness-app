@@ -229,7 +229,7 @@ describe('WaterTracker', () => {
             render(<WaterTracker waterLog={waterLog} onAddGlass={jest.fn()} />);
 
             const displayText = screen.getByText('8 / 8 стаканов');
-            expect(displayText).toHaveClass('text-green-600');
+            expect(displayText).toHaveClass('text-success-fg');
         });
 
         it('applies default color to text when goal is not reached', () => {
@@ -237,7 +237,7 @@ describe('WaterTracker', () => {
             render(<WaterTracker waterLog={waterLog} onAddGlass={jest.fn()} />);
 
             const displayText = screen.getByText('5 / 8 стаканов');
-            expect(displayText).toHaveClass('text-gray-900');
+            expect(displayText).toHaveClass('text-fg');
         });
 
         it('applies loading styles to button when loading', () => {
@@ -251,7 +251,7 @@ describe('WaterTracker', () => {
 
             const addButton = screen.getByRole('button', { name: /добавить стакан/i });
             expect(addButton).toHaveClass('cursor-not-allowed');
-            expect(addButton).toHaveClass('bg-gray-100');
+            expect(addButton).toHaveClass('bg-subtle');
         });
     });
 

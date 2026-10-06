@@ -192,7 +192,7 @@ describe('UnsavedDataNotification', () => {
         // Click the main retry button (not the individual one)
         const retryButtons = screen.getAllByText('Повторить')
         const mainRetryButton = retryButtons.find((btn) =>
-            btn.closest('button[class*="bg-yellow-600"]')
+            btn.closest('button[class*="bg-warning"]')
         )
         await user.click(mainRetryButton!)
 
@@ -315,7 +315,7 @@ describe('UnsavedDataNotification', () => {
 
         const retryButtons = screen.getAllByText('Повторить')
         const mainRetryButton = retryButtons.find((btn) =>
-            btn.closest('button[class*="bg-yellow-600"]')
+            btn.closest('button[class*="bg-warning"]')
         )
         await user.click(mainRetryButton!)
 

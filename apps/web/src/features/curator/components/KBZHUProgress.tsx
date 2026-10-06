@@ -10,9 +10,9 @@ export interface KBZHUProgressProps {
 }
 
 function getProgressColor(percentage: number): string {
-    if (percentage >= 80 && percentage <= 120) return 'bg-green-500'
-    if ((percentage >= 50 && percentage < 80) || (percentage > 120 && percentage <= 150)) return 'bg-yellow-500'
-    return 'bg-red-500'
+    if (percentage >= 80 && percentage <= 120) return 'bg-success'
+    if ((percentage >= 50 && percentage < 80) || (percentage > 120 && percentage <= 150)) return 'bg-warning'
+    return 'bg-danger'
 }
 
 export function KBZHUProgress({ label, value, target, compact = false }: KBZHUProgressProps) {
@@ -26,14 +26,14 @@ export function KBZHUProgress({ label, value, target, compact = false }: KBZHUPr
                 'flex items-center justify-between',
                 compact ? 'text-xs' : 'text-sm'
             )}>
-                <span className="text-gray-600">{label}</span>
-                <span className="text-gray-900 font-medium">
+                <span className="text-fg-muted">{label}</span>
+                <span className="text-fg font-medium">
                     {Math.round(value)} / {Math.round(target)}{' '}
-                    <span className="text-gray-400">({percentage}%)</span>
+                    <span className="text-fg-subtle">({percentage}%)</span>
                 </span>
             </div>
             <div className={cn(
-                'w-full rounded-full bg-gray-200',
+                'w-full rounded-full bg-subtle',
                 compact ? 'h-1.5' : 'h-2'
             )}>
                 <div

@@ -79,7 +79,7 @@ function NutrientCheckbox({
 
     return (
         <label
-            className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+            className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-canvas cursor-pointer transition-colors"
             htmlFor={`nutrient-${nutrient.id}`}
         >
             <input
@@ -87,10 +87,10 @@ function NutrientCheckbox({
                 id={`nutrient-${nutrient.id}`}
                 checked={isSelected}
                 onChange={handleChange}
-                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                className="w-5 h-5 rounded border-line text-primary focus:ring-focus focus:ring-2 cursor-pointer"
             />
-            <span className="text-sm text-gray-900 flex-1">{nutrient.name}</span>
-            <span className="text-xs text-gray-500">{unitLabel(nutrient.unit)}</span>
+            <span className="text-sm text-fg flex-1">{nutrient.name}</span>
+            <span className="text-xs text-fg-muted">{unitLabel(nutrient.unit)}</span>
         </label>
     );
 }
@@ -121,27 +121,27 @@ function CategorySection({
     const noneSelected = selectedCount === 0;
 
     return (
-        <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="border border-line rounded-xl overflow-hidden">
             {/* Category Header */}
             <button
                 type="button"
                 onClick={onToggleExpand}
-                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset"
+                className="w-full flex items-center justify-between px-4 py-3 bg-canvas hover:bg-subtle transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset"
                 aria-expanded={isExpanded}
                 aria-controls={`category-${category}-content`}
             >
                 <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">
+                    <span className="font-medium text-fg">
                         {CATEGORY_LABELS[category]}
                     </span>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-fg-muted">
                         ({selectedCount} / {nutrients.length})
                     </span>
                 </div>
                 {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-500" />
+                    <ChevronUp className="w-5 h-5 text-fg-muted" />
                 ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                    <ChevronDown className="w-5 h-5 text-fg-muted" />
                 )}
             </button>
 
@@ -152,22 +152,22 @@ function CategorySection({
                     className="px-4 py-3 space-y-2"
                 >
                     {/* Select All / Deselect All */}
-                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                    <div className="flex items-center gap-2 pb-2 border-b border-line">
                         <button
                             type="button"
                             onClick={onSelectAll}
                             disabled={allSelected}
-                            className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed focus:outline-none focus-visible:underline"
+                            className="text-sm text-primary hover:text-primary disabled:text-fg-subtle disabled:cursor-not-allowed focus:outline-none focus-visible:underline"
                             aria-label={t('foodTracker.configureNutrients.selectAllAria', { category: CATEGORY_LABELS[category] })}
                         >
                             {t('foodTracker.configureNutrients.selectAll')}
                         </button>
-                        <span className="text-gray-300">|</span>
+                        <span className="text-fg-subtle">|</span>
                         <button
                             type="button"
                             onClick={onDeselectAll}
                             disabled={noneSelected}
-                            className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed focus:outline-none focus-visible:underline"
+                            className="text-sm text-primary hover:text-primary disabled:text-fg-subtle disabled:cursor-not-allowed focus:outline-none focus-visible:underline"
                             aria-label={t('foodTracker.configureNutrients.clearAria', { category: CATEGORY_LABELS[category] })}
                         >
                             {t('foodTracker.configureNutrients.clear')}
@@ -335,30 +335,30 @@ export function ConfigureNutrientsModal({
 
     return (
         <div
-            className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/50 ${className}`}
+            className={`fixed inset-0 z-[60] flex items-center justify-center bg-scrim ${className}`}
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
             aria-labelledby="configure-nutrients-title"
         >
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col mx-4">
+            <div className="bg-surface rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col mx-4">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-line">
                     <div>
                         <h2
                             id="configure-nutrients-title"
-                            className="text-lg font-semibold text-gray-900"
+                            className="text-lg font-semibold text-fg"
                         >
                             {t('foodTracker.configureNutrients.title')}
                         </h2>
-                        <p className="text-sm text-gray-500 mt-0.5">
+                        <p className="text-sm text-fg-muted mt-0.5">
                             {t('foodTracker.configureNutrients.selectedCount', { selected: totalSelected, total: totalNutrients })}
                         </p>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="p-2 text-fg-subtle hover:text-fg-muted hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         aria-label={t('common.close')}
                     >
                         <X className="w-5 h-5" />
@@ -388,18 +388,18 @@ export function ConfigureNutrientsModal({
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-line">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="px-4 py-2 text-sm font-medium text-fg hover:text-fg hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                         {t('common.cancel')}
                     </button>
                     <button
                         type="button"
                         onClick={handleSave}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-on-primary bg-primary hover:bg-primary-hover rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                     >
                         <Check className="w-4 h-4" />
                         {t('common.save')}

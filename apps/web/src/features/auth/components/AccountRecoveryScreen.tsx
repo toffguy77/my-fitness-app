@@ -42,22 +42,22 @@ export function AccountRecoveryScreen({
     }
 
     return (
-        <main className="flex min-h-screen flex-col justify-center bg-gray-50 px-6">
+        <main className="flex min-h-screen flex-col justify-center bg-canvas px-6">
             <div
-                className="mx-auto w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+                className="mx-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-sm"
                 data-testid="account-recovery"
             >
-                <h1 className="text-lg font-semibold text-gray-900">{t('auth.recovery.title')}</h1>
-                <p className="mt-2 text-sm text-gray-600">
+                <h1 className="text-lg font-semibold text-fg">{t('auth.recovery.title')}</h1>
+                <p className="mt-2 text-sm text-fg-muted">
                     {t('auth.recovery.body')}{' '}
-                    <span className="font-medium text-gray-900">{formatDate(scheduledFor)}</span>.{' '}
+                    <span className="font-medium text-fg">{formatDate(scheduledFor)}</span>.{' '}
                     {t('auth.recovery.reassurance')}
                 </p>
 
                 <button
                     onClick={handleCancel}
                     disabled={busy}
-                    className="mt-6 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                    className="mt-6 w-full rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                 >
                     {busy ? t('auth.recovery.cancelling') : t('auth.recovery.cancel')}
                 </button>
@@ -69,7 +69,7 @@ export function AccountRecoveryScreen({
                         onDismiss()
                         router.push('/dashboard')
                     }}
-                    className="mt-3 w-full text-sm text-gray-600 hover:text-gray-900"
+                    className="mt-3 w-full text-sm text-fg-muted hover:text-fg"
                 >
                     {t('auth.recovery.continueAnyway')}
                 </button>

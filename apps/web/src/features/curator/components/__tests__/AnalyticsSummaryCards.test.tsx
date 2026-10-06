@@ -76,7 +76,7 @@ describe('AnalyticsSummaryCards', () => {
             <AnalyticsSummaryCards analytics={{ ...baseAnalytics, avg_kbzhu_percent: 100 }} />
         )
         const kbzhuValue = screen.getByText('100%')
-        expect(kbzhuValue.className).toContain('text-green-600')
+        expect(kbzhuValue.className).toContain('text-success-fg')
     })
 
     it('applies yellow color for kbzhu between 70-89', () => {
@@ -84,7 +84,7 @@ describe('AnalyticsSummaryCards', () => {
             <AnalyticsSummaryCards analytics={{ ...baseAnalytics, avg_kbzhu_percent: 80 }} />
         )
         const kbzhuValue = screen.getByText('80%')
-        expect(kbzhuValue.className).toContain('text-yellow-600')
+        expect(kbzhuValue.className).toContain('text-warning-fg')
     })
 
     it('applies red color for kbzhu below 70', () => {
@@ -92,6 +92,6 @@ describe('AnalyticsSummaryCards', () => {
             <AnalyticsSummaryCards analytics={{ ...baseAnalytics, avg_kbzhu_percent: 60 }} />
         )
         const kbzhuValue = screen.getByText('60%')
-        expect(kbzhuValue.className).toContain('text-red-600')
+        expect(kbzhuValue.className).toContain('text-danger-fg')
     })
 })

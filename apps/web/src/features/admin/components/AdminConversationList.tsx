@@ -32,17 +32,17 @@ export function AdminConversationList() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             </div>
         )
     }
 
     if (error) {
-        return <p className="py-8 text-center text-sm text-red-500">{error}</p>
+        return <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
     }
 
     if (conversations.length === 0) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('admin.chats.empty')}</p>
+        return <p className="py-8 text-center text-sm text-fg-muted">{t('admin.chats.empty')}</p>
     }
 
     return (
@@ -53,20 +53,20 @@ export function AdminConversationList() {
                     type="button"
                     onClick={() => router.push(`/admin/chats/${conv.id}`)}
                     className={cn(
-                        'w-full rounded-xl bg-white p-4 shadow-sm border border-gray-100',
+                        'w-full rounded-xl bg-surface p-4 shadow-sm border border-line',
                         'text-left transition-shadow hover:shadow-md',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2'
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2'
                     )}
                 >
                     <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-fg">
                             {conv.client_name} — {conv.curator_name}
                         </p>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-fg-subtle">
                             {new Date(conv.updated_at).toLocaleDateString('ru-RU')}
                         </span>
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-fg-muted">
                         {t('admin.chats.messageCount', { count: conv.message_count })}
                     </p>
                 </button>

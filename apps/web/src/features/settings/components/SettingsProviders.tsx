@@ -69,7 +69,7 @@ export function SettingsProviders() {
     }
 
     if (loading) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('settings.loading')}</p>
+        return <p className="py-8 text-center text-sm text-fg-muted">{t('settings.loading')}</p>
     }
 
     const unlinked = available.filter(
@@ -78,13 +78,13 @@ export function SettingsProviders() {
 
     return (
         <section>
-            <h2 className="text-sm font-bold text-gray-900">{t('settings.providers.heading')}</h2>
-            <p className="mt-1 text-sm text-gray-600">
+            <h2 className="text-sm font-bold text-fg">{t('settings.providers.heading')}</h2>
+            <p className="mt-1 text-sm text-fg-muted">
                 {t('settings.providers.explanation')}
             </p>
 
             {linked.length === 0 && unlinked.length === 0 && (
-                <p className="mt-4 text-sm text-gray-500">
+                <p className="mt-4 text-sm text-fg-muted">
                     {t('settings.providers.unavailable')}
                 </p>
             )}
@@ -93,17 +93,17 @@ export function SettingsProviders() {
                 {linked.map((item) => (
                     <li
                         key={item.provider}
-                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3"
+                        className="flex items-center justify-between rounded-lg border border-line bg-surface px-4 py-3"
                     >
                         <div>
-                            <p className="text-sm font-medium text-gray-900">
+                            <p className="text-sm font-medium text-fg">
                                 {providerLabel(item.provider)}
                             </p>
-                            {item.email && <p className="text-xs text-gray-500">{item.email}</p>}
+                            {item.email && <p className="text-xs text-fg-muted">{item.email}</p>}
                             {isOnlyWayIn(item.provider) && (
-                                <p className="mt-1 text-xs text-gray-500">
+                                <p className="mt-1 text-xs text-fg-muted">
                                     {t('settings.providers.onlyWayInBefore')}{' '}
-                                    <a href="/forgot-password" className="text-blue-600 hover:underline">
+                                    <a href="/forgot-password" className="text-primary hover:underline">
                                         {t('settings.providers.setPassword')}
                                     </a>
                                     {t('settings.providers.onlyWayInAfter')}
@@ -113,7 +113,7 @@ export function SettingsProviders() {
                         <button
                             onClick={() => handleUnlink(item.provider)}
                             disabled={busy === item.provider || isOnlyWayIn(item.provider)}
-                            className="text-sm font-medium text-red-500 transition-colors hover:text-red-600 disabled:text-gray-300"
+                            className="text-sm font-medium text-danger-fg transition-colors hover:text-danger-fg disabled:text-fg-subtle"
                         >
                             {t('settings.providers.unlink')}
                         </button>
@@ -123,12 +123,12 @@ export function SettingsProviders() {
                 {unlinked.map((provider) => (
                     <li
                         key={provider}
-                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3"
+                        className="flex items-center justify-between rounded-lg border border-line bg-surface px-4 py-3"
                     >
-                        <p className="text-sm font-medium text-gray-900">{providerLabel(provider)}</p>
+                        <p className="text-sm font-medium text-fg">{providerLabel(provider)}</p>
                         <a
                             href={providersApi.startUrl(provider)}
-                            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                            className="text-sm font-medium text-primary hover:text-primary"
                         >
                             {t('settings.providers.link')}
                         </a>

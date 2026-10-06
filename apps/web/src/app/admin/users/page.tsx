@@ -6,7 +6,7 @@ import { t } from '@/shared/i18n'
 export default function AdminUsersPage() {
     return (
         <div className="px-4 py-6">
-            <h1 className="text-xl font-semibold text-gray-900 mb-4">{t('admin.users.heading')}</h1>
+            <h1 className="text-xl font-semibold text-fg mb-4">{t('admin.users.heading')}</h1>
             <UserList />
         </div>
     )

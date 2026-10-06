@@ -18,39 +18,39 @@ export function PushSection() {
     if (state === 'unknown') return null
 
     return (
-        <div className="rounded-2xl bg-white p-4 shadow-sm" data-testid="push-section">
-            <p className="mb-1 text-sm font-medium text-gray-500">{t('notifications.push.heading')}</p>
+        <div className="rounded-2xl bg-surface p-4 shadow-sm" data-testid="push-section">
+            <p className="mb-1 text-sm font-medium text-fg-muted">{t('notifications.push.heading')}</p>
 
-            {error && <p className="py-2 text-sm text-red-500">{error}</p>}
+            {error && <p className="py-2 text-sm text-danger-fg">{error}</p>}
 
             {state === 'unsupported' && (
-                <p className="py-2 text-sm text-gray-500">
+                <p className="py-2 text-sm text-fg-muted">
                     {t('notifications.push.unsupported')}
                 </p>
             )}
 
             {state === 'needs-install' && (
-                <p className="py-2 text-sm text-gray-500">
+                <p className="py-2 text-sm text-fg-muted">
                     {t('notifications.push.iosHint')}
                 </p>
             )}
 
             {state === 'denied' && (
-                <p className="py-2 text-sm text-gray-500">
+                <p className="py-2 text-sm text-fg-muted">
                     {t('notifications.push.denied')}
                 </p>
             )}
 
             {state === 'available' && (
                 <div className="py-2">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-fg-muted">
                         {t('notifications.push.offer')}
                     </p>
                     <button
                         type="button"
                         disabled={busy}
                         onClick={() => void enable()}
-                        className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                        className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                     >
                         {busy ? t('notifications.push.enabling') : t('notifications.push.enable')}
                     </button>
@@ -59,14 +59,14 @@ export function PushSection() {
 
             {state === 'subscribed' && (
                 <div className="flex items-center justify-between py-2">
-                    <p className="pr-4 text-sm text-gray-500">
+                    <p className="pr-4 text-sm text-fg-muted">
                         {t('notifications.push.enabled')}
                     </p>
                     <button
                         type="button"
                         disabled={busy}
                         onClick={() => void disable()}
-                        className="shrink-0 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                        className="shrink-0 text-sm text-fg-muted hover:text-fg disabled:opacity-50"
                     >
                         {busy ? t('notifications.push.disabling') : t('notifications.push.disable')}
                     </button>

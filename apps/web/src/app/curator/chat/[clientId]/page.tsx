@@ -80,16 +80,16 @@ export default function CuratorChatPage() {
     return (
         <div className="flex flex-col h-[calc(100vh-8rem)]">
             {/* Header with back button and client name */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-surface">
                 <button
                     type="button"
                     onClick={() => router.push('/curator/chat')}
-                    className="p-1 text-gray-600 hover:text-gray-900 transition-colors"
+                    className="p-1 text-fg-muted hover:text-fg transition-colors"
                     aria-label={t('curator.navigation.backToChats')}
                 >
                     <ArrowLeft className="w-5 h-5" />
                 </button>
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2 className="text-lg font-medium text-fg">
                     {conversation?.participant.name ?? t('common.loading')}
                 </h2>
             </div>

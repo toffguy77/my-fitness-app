@@ -187,7 +187,7 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
             <div className="flex items-center justify-between mb-4">
                 <CardTitle
                     id="weekly-plan-heading"
-                    className="text-lg font-semibold text-gray-900"
+                    className="text-lg font-semibold text-fg"
                 >
                     {t('dashboard.weeklyPlan.title')}
                 </CardTitle>
@@ -206,7 +206,7 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                 <div className="space-y-3 sm:space-y-4" role="region" aria-label={t('dashboard.weeklyPlan.activeRegion')} id="weekly-plan-content">
                     {/* Active indicator */}
                     <div
-                        className="flex items-center gap-2 text-green-600"
+                        className="flex items-center gap-2 text-success-fg"
                         role="status"
                         aria-label={t('dashboard.weeklyPlan.activeAria')}
                     >
@@ -218,24 +218,24 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                     <div className="space-y-2 sm:space-y-3" role="list" aria-label={t('dashboard.weeklyPlan.goalsAria')}>
                         {/* Calorie target */}
                         <div
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                            className="flex items-center justify-between p-3 bg-canvas rounded-lg"
                             role="listitem"
                             aria-label={t('dashboard.weeklyPlan.caloriesAria', { value: weeklyPlan.caloriesGoal })}
                         >
-                            <span className="text-sm font-medium text-gray-700">{t('dashboard.weeklyPlan.calories')}</span>
-                            <span className="font-semibold text-gray-900">
+                            <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.calories')}</span>
+                            <span className="font-semibold text-fg">
                                 {t('dashboard.weeklyPlan.caloriesValue', { value: weeklyPlan.caloriesGoal })}
                             </span>
                         </div>
 
                         {/* Protein target */}
                         <div
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                            className="flex items-center justify-between p-3 bg-canvas rounded-lg"
                             role="listitem"
                             aria-label={t('dashboard.weeklyPlan.proteinAria', { value: weeklyPlan.proteinGoal })}
                         >
-                            <span className="text-sm font-medium text-gray-700">{t('dashboard.weeklyPlan.protein')}</span>
-                            <span className="font-semibold text-gray-900">
+                            <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.protein')}</span>
+                            <span className="font-semibold text-fg">
                                 {weeklyPlan.proteinGoal} {t('units.gram')}
                             </span>
                         </div>
@@ -243,12 +243,12 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                         {/* Optional: Fat target */}
                         {weeklyPlan.fatGoal !== undefined && (
                             <div
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                                className="flex items-center justify-between p-3 bg-canvas rounded-lg"
                                 role="listitem"
                                 aria-label={t('dashboard.weeklyPlan.fatAria', { value: weeklyPlan.fatGoal })}
                             >
-                                <span className="text-sm font-medium text-gray-700">{t('dashboard.weeklyPlan.fat')}</span>
-                                <span className="font-semibold text-gray-900">
+                                <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.fat')}</span>
+                                <span className="font-semibold text-fg">
                                     {weeklyPlan.fatGoal} {t('units.gram')}
                                 </span>
                             </div>
@@ -257,12 +257,12 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                         {/* Optional: Carbs target */}
                         {weeklyPlan.carbsGoal !== undefined && (
                             <div
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                                className="flex items-center justify-between p-3 bg-canvas rounded-lg"
                                 role="listitem"
                                 aria-label={t('dashboard.weeklyPlan.carbsAria', { value: weeklyPlan.carbsGoal })}
                             >
-                                <span className="text-sm font-medium text-gray-700">{t('dashboard.weeklyPlan.carbs')}</span>
-                                <span className="font-semibold text-gray-900">
+                                <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.carbs')}</span>
+                                <span className="font-semibold text-fg">
                                     {weeklyPlan.carbsGoal} {t('units.gram')}
                                 </span>
                             </div>
@@ -271,12 +271,12 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                         {/* Optional: Steps target */}
                         {weeklyPlan.stepsGoal !== undefined && (
                             <div
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                                className="flex items-center justify-between p-3 bg-canvas rounded-lg"
                                 role="listitem"
                                 aria-label={t('dashboard.weeklyPlan.stepsAria', { value: weeklyPlan.stepsGoal.toLocaleString('ru-RU') })}
                             >
-                                <span className="text-sm font-medium text-gray-700">{t('dashboard.weeklyPlan.steps')}</span>
-                                <span className="font-semibold text-gray-900">
+                                <span className="text-sm font-medium text-fg">{t('dashboard.weeklyPlan.steps')}</span>
+                                <span className="font-semibold text-fg">
                                     {weeklyPlan.stepsGoal.toLocaleString('ru-RU')}
                                 </span>
                             </div>
@@ -286,26 +286,26 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                     {/* Curator comment */}
                     {weeklyPlan.comment && (
                         <div
-                            className="p-3 bg-purple-50 border border-purple-200 rounded-lg"
+                            className="p-3 bg-info-soft border border-info/30 rounded-lg"
                             role="note"
                             aria-label={t('dashboard.weeklyPlan.commentAria')}
                         >
-                            <p className="text-xs font-medium text-purple-800 mb-1">{t('dashboard.weeklyPlan.comment')}</p>
-                            <p className="text-sm text-purple-700">{weeklyPlan.comment}</p>
+                            <p className="text-xs font-medium text-info-fg mb-1">{t('dashboard.weeklyPlan.comment')}</p>
+                            <p className="text-sm text-info-fg">{weeklyPlan.comment}</p>
                         </div>
                     )}
 
                     {/* Plan dates */}
                     <div
-                        className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg"
+                        className="flex items-start gap-2 p-3 bg-primary-soft border border-primary/30 rounded-lg"
                         role="note"
                         aria-label={t('dashboard.weeklyPlan.periodAria', { start: formatDate(weeklyPlan.startDate), end: formatDate(weeklyPlan.endDate) })}
                     >
                         <Calendar
-                            className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                            className="w-5 h-5 text-primary flex-shrink-0 mt-0.5"
                             aria-hidden="true"
                         />
-                        <div className="text-sm text-blue-800">
+                        <div className="text-sm text-primary">
                             <p className="font-medium">{t('dashboard.weeklyPlan.period')}</p>
                             <p className="break-words">
                                 {formatDate(weeklyPlan.startDate)} —{' '}
@@ -321,13 +321,13 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                     role="status"
                     aria-label={t('dashboard.weeklyPlan.emptyAria')}
                 >
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                        <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" aria-hidden="true" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 rounded-full bg-subtle flex items-center justify-center">
+                        <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-fg-subtle" aria-hidden="true" />
                     </div>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-fg-muted text-sm">
                         {t('dashboard.weeklyPlan.emptyTitle')}
                     </p>
-                    <p className="text-gray-500 text-xs mt-2">
+                    <p className="text-fg-muted text-xs mt-2">
                         {t('dashboard.weeklyPlan.emptyHint')}
                     </p>
                 </div>

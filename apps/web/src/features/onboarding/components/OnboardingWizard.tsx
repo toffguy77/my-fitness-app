@@ -173,7 +173,7 @@ export function OnboardingWizard() {
     const isLastStep = currentStep === totalSteps - 1
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-canvas">
             <div className="mx-auto max-w-md px-4 pb-8 pt-12">
                 {/* Step indicator */}
                 <div className="mb-8">
@@ -181,7 +181,7 @@ export function OnboardingWizard() {
                 </div>
 
                 {/* Step title */}
-                <h2 className="mb-6 text-center text-xl font-bold text-gray-900">
+                <h2 className="mb-6 text-center text-xl font-bold text-fg">
                     {stepTitles()[currentStep]}
                 </h2>
 
@@ -208,7 +208,7 @@ export function OnboardingWizard() {
                         <div className="flex flex-col gap-6">
                             {/* Birth date */}
                             <div>
-                                <label htmlFor="birth-date" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <label htmlFor="birth-date" className="mb-1.5 block text-sm font-medium text-fg">
                                     {t('onboarding.birthDate')}
                                 </label>
                                 <input
@@ -216,13 +216,13 @@ export function OnboardingWizard() {
                                     type="date"
                                     value={birthDate}
                                     onChange={(e) => setBirthDate(e.target.value)}
-                                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-xl border border-line px-4 py-3 text-fg transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
                                 />
                             </div>
 
                             {/* Sex */}
                             <fieldset>
-                                <legend className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <legend className="mb-1.5 block text-sm font-medium text-fg">
                                     {t('onboarding.sex')}
                                 </legend>
                                 <div className="flex gap-3">
@@ -230,8 +230,8 @@ export function OnboardingWizard() {
                                         className={cn(
                                             'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-sm font-medium transition-colors',
                                             biologicalSex === 'male'
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                                ? 'border-primary bg-primary-soft text-primary'
+                                                : 'border-line text-fg hover:border-line'
                                         )}
                                     >
                                         <input
@@ -248,8 +248,8 @@ export function OnboardingWizard() {
                                         className={cn(
                                             'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-sm font-medium transition-colors',
                                             biologicalSex === 'female'
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                                ? 'border-primary bg-primary-soft text-primary'
+                                                : 'border-line text-fg hover:border-line'
                                         )}
                                     >
                                         <input
@@ -267,7 +267,7 @@ export function OnboardingWizard() {
 
                             {/* Current weight */}
                             <div>
-                                <label htmlFor="current-weight" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <label htmlFor="current-weight" className="mb-1.5 block text-sm font-medium text-fg">
                                     {t('onboarding.currentWeight', {
                                         unit: units === 'metric' ? t('onboarding.unitKg') : t('onboarding.unitLbs'),
                                     })}
@@ -281,13 +281,13 @@ export function OnboardingWizard() {
                                     value={currentWeight}
                                     onChange={(e) => setCurrentWeight(e.target.value)}
                                     placeholder={units === 'metric' ? '70' : '154'}
-                                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-xl border border-line px-4 py-3 text-fg transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
                                 />
                             </div>
 
                             {/* Height */}
                             <div>
-                                <label htmlFor="height-input" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <label htmlFor="height-input" className="mb-1.5 block text-sm font-medium text-fg">
                                     {t('onboarding.height', {
                                         unit: units === 'metric' ? t('onboarding.unitCm') : t('onboarding.unitIn'),
                                     })}
@@ -301,20 +301,20 @@ export function OnboardingWizard() {
                                     value={height}
                                     onChange={(e) => setHeight(e.target.value)}
                                     placeholder={units === 'metric' ? '175' : '69'}
-                                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-xl border border-line px-4 py-3 text-fg transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
                                 />
                             </div>
 
                             {/* Activity level */}
                             <div>
-                                <label htmlFor="activity-level" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <label htmlFor="activity-level" className="mb-1.5 block text-sm font-medium text-fg">
                                     {t('onboarding.activityLevel')}
                                 </label>
                                 <select
                                     id="activity-level"
                                     value={activityLevel}
                                     onChange={(e) => setActivityLevel(e.target.value as typeof activityLevel)}
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-xl border border-line bg-surface px-4 py-3 text-fg transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
                                 >
                                     {activityLevels.map((level) => (
                                         <option key={level} value={level}>
@@ -326,7 +326,7 @@ export function OnboardingWizard() {
 
                             {/* Goal */}
                             <fieldset>
-                                <legend className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <legend className="mb-1.5 block text-sm font-medium text-fg">
                                     {t('onboarding.goalLabel')}
                                 </legend>
                                 <div className="flex gap-3">
@@ -336,8 +336,8 @@ export function OnboardingWizard() {
                                             className={cn(
                                                 'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium transition-colors',
                                                 fitnessGoal === goal
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                                    ? 'border-primary bg-primary-soft text-primary'
+                                                    : 'border-line text-fg hover:border-line'
                                             )}
                                         >
                                             <input
@@ -354,7 +354,7 @@ export function OnboardingWizard() {
                                 </div>
                             </fieldset>
 
-                            <p className="text-center text-xs text-gray-400">
+                            <p className="text-center text-xs text-fg-subtle">
                                 {t('onboarding.allOptional')}
                             </p>
                         </div>
@@ -369,8 +369,8 @@ export function OnboardingWizard() {
                         disabled={saving}
                         onClick={handleNext}
                         className={cn(
-                            'w-full rounded-xl bg-blue-600 py-3 font-medium text-white transition-colors',
-                            'hover:bg-blue-700',
+                            'w-full rounded-xl bg-primary py-3 font-medium text-on-primary transition-colors',
+                            'hover:bg-primary-hover',
                             'disabled:pointer-events-none disabled:opacity-50'
                         )}
                     >
@@ -408,7 +408,7 @@ export function OnboardingWizard() {
                         type="button"
                         disabled={saving}
                         onClick={handleSkip}
-                        className="py-2 text-center text-sm text-gray-500 transition-colors hover:text-gray-700 disabled:pointer-events-none disabled:opacity-50"
+                        className="py-2 text-center text-sm text-fg-muted transition-colors hover:text-fg disabled:pointer-events-none disabled:opacity-50"
                     >
                         {t('onboarding.skip')}
                     </button>

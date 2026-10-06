@@ -32,11 +32,11 @@ function Toggle({
             disabled={disabled}
             onClick={() => onChange(!checked)}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-                checked ? 'bg-blue-600' : 'bg-gray-200'
+                checked ? 'bg-primary' : 'bg-subtle'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
             <span
-                className={`pointer-events-none inline-block h-4 w-4 translate-y-1 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                className={`pointer-events-none inline-block h-4 w-4 translate-y-1 rounded-full bg-surface shadow-sm transition-transform duration-200 ${
                     checked ? 'translate-x-6' : 'translate-x-1'
                 }`}
             />
@@ -105,7 +105,7 @@ export function SettingsNotifications() {
     if (loading) {
         return (
             <div className="flex justify-center py-12">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
         )
     }
@@ -115,11 +115,11 @@ export function SettingsNotifications() {
     return (
         <div className="space-y-6">
             {/* Do Not Disturb */}
-            <div className="bg-white rounded-2xl shadow-sm p-4">
+            <div className="bg-surface rounded-2xl shadow-sm p-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-gray-900 font-medium">{t('settings.notifications.doNotDisturb')}</p>
-                        <p className="text-sm text-gray-500 mt-0.5">
+                        <p className="text-fg font-medium">{t('settings.notifications.doNotDisturb')}</p>
+                        <p className="text-sm text-fg-muted mt-0.5">
                             {t('settings.notifications.doNotDisturbHint')}
                         </p>
                     </div>
@@ -128,17 +128,17 @@ export function SettingsNotifications() {
             </div>
 
             {/* Category toggles */}
-            <div className="bg-white rounded-2xl shadow-sm p-4">
-                <p className="text-sm font-medium text-gray-500 mb-3">{t('settings.notifications.categories')}</p>
+            <div className="bg-surface rounded-2xl shadow-sm p-4">
+                <p className="text-sm font-medium text-fg-muted mb-3">{t('settings.notifications.categories')}</p>
                 <div className="space-y-0">
                     {categories.map(([key, label], index) => (
                         <div
                             key={key}
                             className={`flex items-center justify-between py-3 ${
-                                index < categories.length - 1 ? 'border-b border-gray-100' : ''
+                                index < categories.length - 1 ? 'border-b border-line' : ''
                             }`}
                         >
-                            <span className={`text-gray-900 ${muted ? 'opacity-50' : ''}`}>
+                            <span className={`text-fg ${muted ? 'opacity-50' : ''}`}>
                                 {label}
                             </span>
                             <Toggle

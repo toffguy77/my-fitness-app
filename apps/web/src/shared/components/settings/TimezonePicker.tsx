@@ -45,7 +45,7 @@ export function TimezoneSelector({ value, onChange, disabled }: TimezoneSelector
 
     return (
         <div className="w-full">
-            <h3 className="mb-3 text-sm font-bold text-gray-900">Часовой пояс</h3>
+            <h3 className="mb-3 text-sm font-bold text-fg">Часовой пояс</h3>
             <div className="relative" ref={containerRef}>
                 <button
                     type="button"
@@ -53,21 +53,21 @@ export function TimezoneSelector({ value, onChange, disabled }: TimezoneSelector
                     onClick={() => setIsOpen((o) => !o)}
                     className={cn(
                         'flex w-full items-center justify-between rounded-xl px-4 py-3 text-left font-medium transition-colors',
-                        'bg-gray-100 text-gray-700',
+                        'bg-subtle text-fg',
                         'disabled:pointer-events-none disabled:opacity-50'
                     )}
                 >
                     {selectedLabel}
                     <ChevronDown
                         className={cn(
-                            'h-4 w-4 text-gray-500 transition-transform',
+                            'h-4 w-4 text-fg-muted transition-transform',
                             isOpen && 'rotate-180'
                         )}
                     />
                 </button>
 
                 {isOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 z-50 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+                    <div className="absolute top-full left-0 right-0 mt-1 z-50 max-h-64 overflow-y-auto rounded-xl border border-line bg-surface shadow-lg">
                         {timezones.map((tz) => {
                             const isActive = value === tz.value
                             return (
@@ -81,8 +81,8 @@ export function TimezoneSelector({ value, onChange, disabled }: TimezoneSelector
                                     className={cn(
                                         'flex w-full items-center px-4 py-3 text-left text-sm font-medium transition-colors',
                                         isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-gray-700 hover:bg-gray-100'
+                                            ? 'bg-primary text-on-primary'
+                                            : 'text-fg hover:bg-subtle'
                                     )}
                                 >
                                     {tz.label}

@@ -53,46 +53,46 @@ export function FoodEntryCard({ metadata }: FoodEntryCardProps) {
     const data = metadata as unknown as FoodEntryMetadata
 
     return (
-        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 min-w-[200px] max-w-[280px]">
+        <div className="rounded-lg bg-success-soft border border-success/30 p-3 min-w-[200px] max-w-[280px]">
             <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-semibold text-emerald-900">
+                <span className="text-sm font-semibold text-success-fg">
                     {data.food_name ?? t('chat.product')}
                 </span>
                 {data.meal_type && (
-                    <span className="text-xs text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">
+                    <span className="text-xs text-success-fg bg-success-soft px-1.5 py-0.5 rounded">
                         {getMealLabel(data.meal_type)}
                     </span>
                 )}
             </div>
 
             {data.weight != null && (
-                <p className="text-xs text-emerald-700 mb-2">{t('chat.weightGrams', { weight: data.weight })}</p>
+                <p className="text-xs text-success-fg mb-2">{t('chat.weightGrams', { weight: data.weight })}</p>
             )}
 
             <div className="flex items-center gap-3 text-xs">
                 <div className="text-center">
-                    <span className="block font-medium text-gray-900">
+                    <span className="block font-medium text-fg">
                         {data.calories ?? 0}
                     </span>
-                    <span className="text-gray-500">{t('units.kcal')}</span>
+                    <span className="text-fg-muted">{t('units.kcal')}</span>
                 </div>
                 <div className="text-center">
-                    <span className="block font-medium text-gray-900">
+                    <span className="block font-medium text-fg">
                         {data.protein ?? 0}
                     </span>
-                    <span className="text-gray-500">{t('macros.proteinShort')}</span>
+                    <span className="text-fg-muted">{t('macros.proteinShort')}</span>
                 </div>
                 <div className="text-center">
-                    <span className="block font-medium text-gray-900">
+                    <span className="block font-medium text-fg">
                         {data.fat ?? 0}
                     </span>
-                    <span className="text-gray-500">{t('macros.fatShort')}</span>
+                    <span className="text-fg-muted">{t('macros.fatShort')}</span>
                 </div>
                 <div className="text-center">
-                    <span className="block font-medium text-gray-900">
+                    <span className="block font-medium text-fg">
                         {data.carbs ?? 0}
                     </span>
-                    <span className="text-gray-500">{t('macros.carbsShort')}</span>
+                    <span className="text-fg-muted">{t('macros.carbsShort')}</span>
                 </div>
             </div>
         </div>

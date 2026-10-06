@@ -126,7 +126,7 @@ describe('ClientTasksSection', () => {
 
             await waitFor(() => {
                 const taskItem = screen.getByRole('listitem')
-                expect(taskItem.className).toContain('border-l-red-500')
+                expect(taskItem.className).toContain('border-l-danger')
             })
         })
 
@@ -138,7 +138,7 @@ describe('ClientTasksSection', () => {
 
             await waitFor(() => {
                 const taskItem = screen.getByRole('listitem')
-                expect(taskItem.className).toContain('bg-green-50')
+                expect(taskItem.className).toContain('bg-success-soft')
             })
         })
 
@@ -157,7 +157,7 @@ describe('ClientTasksSection', () => {
 
             await waitFor(() => {
                 const taskItem = screen.getByRole('listitem')
-                expect(taskItem.className).toContain('bg-green-50')
+                expect(taskItem.className).toContain('bg-success-soft')
             })
 
             // Checkbox should be disabled

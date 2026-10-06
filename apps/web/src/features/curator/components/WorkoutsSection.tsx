@@ -31,13 +31,13 @@ export function WorkoutsSection({ days }: WorkoutsSectionProps) {
     )
 
     return (
-        <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+        <section className="rounded-xl bg-surface p-4 shadow-sm border border-line">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                    <Dumbbell className="h-4 w-4 text-orange-500" />
-                    <h2 className="text-sm font-semibold text-gray-900">{t('curator.workouts.heading')}</h2>
+                    <Dumbbell className="h-4 w-4 text-warning-fg" />
+                    <h2 className="text-sm font-semibold text-fg">{t('curator.workouts.heading')}</h2>
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-fg-muted">
                     {t('curator.workouts.countOfDays', { done: totalWorkouts, total: workoutData.length })}
                     {totalDuration > 0 && t('curator.workouts.totalDuration', { minutes: totalDuration })}
                 </span>
@@ -53,13 +53,13 @@ export function WorkoutsSection({ days }: WorkoutsSectionProps) {
                                 className={cn(
                                     'mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-xs',
                                     done
-                                        ? 'bg-orange-100 text-orange-600'
-                                        : 'bg-gray-50 text-gray-300'
+                                        ? 'bg-warning-soft text-warning-fg'
+                                        : 'bg-canvas text-fg-subtle'
                                 )}
                             >
                                 {done ? <Check className="h-4 w-4" /> : <Minus className="h-3 w-3" />}
                             </div>
-                            <p className="text-[10px] text-gray-400 mt-1">{d.shortLabel}</p>
+                            <p className="text-[10px] text-fg-subtle mt-1">{d.shortLabel}</p>
                         </div>
                     )
                 })}
@@ -69,8 +69,8 @@ export function WorkoutsSection({ days }: WorkoutsSectionProps) {
             <div className="space-y-1.5">
                 {workoutData.filter(d => d.workout?.completed).map((d) => (
                     <div key={d.date} className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600">{d.label}</span>
-                        <span className="text-gray-900 font-medium">
+                        <span className="text-fg-muted">{d.label}</span>
+                        <span className="text-fg font-medium">
                             {d.workout!.type ? workoutTypeLabel(d.workout!.type) : t('curator.workouts.fallbackType')}
                             {d.workout!.duration > 0 && t('curator.workouts.duration', { minutes: d.workout!.duration })}
                         </span>

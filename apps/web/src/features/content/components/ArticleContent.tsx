@@ -37,29 +37,29 @@ export function ArticleContent({ article, byline, children }: ArticleContentProp
             <div className="mb-4 flex items-center gap-3">
                 <Link
                     href="/content"
-                    className="inline-flex items-center gap-1 text-sm text-blue-600"
+                    className="inline-flex items-center gap-1 text-sm text-primary"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Назад
                 </Link>
 
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-medium text-primary">
                     {CATEGORY_LABELS[article.category] ?? article.category}
                 </span>
             </div>
 
-            <h1 className="mb-3 text-2xl font-bold text-gray-900">
+            <h1 className="mb-3 text-2xl font-bold text-fg">
                 {article.title}
             </h1>
 
-            <div className="mb-5 space-y-2 text-sm text-gray-500">
+            <div className="mb-5 space-y-2 text-sm text-fg-muted">
                 {byline}
                 {publishedDate && <p>{publishedDate}</p>}
             </div>
 
-            <hr className="mb-6 border-gray-200" />
+            <hr className="mb-6 border-line" />
 
-            <div className="prose max-w-none text-gray-800 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_p]:mb-3 [&_p]:leading-relaxed [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_a]:text-blue-600 [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-gray-600 [&_blockquote]:mb-3 [&_img]:rounded-lg [&_img]:my-4 [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded [&_pre]:bg-gray-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_table]:w-full [&_table]:mb-3 [&_th]:border [&_th]:border-gray-300 [&_th]:px-3 [&_th]:py-1 [&_th]:bg-gray-50 [&_td]:border [&_td]:border-gray-300 [&_td]:px-3 [&_td]:py-1">
+            <div className="prose max-w-none text-fg [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_p]:mb-3 [&_p]:leading-relaxed [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-line [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-fg-muted [&_blockquote]:mb-3 [&_img]:rounded-lg [&_img]:my-4 [&_code]:bg-subtle [&_code]:px-1 [&_code]:rounded [&_pre]:bg-subtle [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_table]:w-full [&_table]:mb-3 [&_th]:border [&_th]:border-line [&_th]:px-3 [&_th]:py-1 [&_th]:bg-canvas [&_td]:border [&_td]:border-line [&_td]:px-3 [&_td]:py-1">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {article.body ?? ''}
                 </ReactMarkdown>

@@ -21,6 +21,7 @@ import { apiClient } from '@/shared/utils/api-client'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { AXIS_STYLE, GRID_STROKE, chartColor } from '@/shared/charts/chartTheme'
 
 interface WeightTrendPoint {
     date: Date
@@ -33,8 +34,6 @@ export interface WeightSectionProps {
 }
 
 const CHART_HEIGHT = 160
-const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
-const GRID_STROKE = '#f0f0f0'
 
 function WeightTooltip({ active, payload, label }: {
     active?: boolean
@@ -43,10 +42,10 @@ function WeightTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
-            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+        <div className="rounded-lg border border-line bg-surface px-3 py-2 shadow-sm">
+            <p className="text-xs font-medium text-fg mb-1">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
-                <p key={entry.name} className="text-xs text-gray-600">
+                <p key={entry.name} className="text-xs text-fg-muted">
                     <span
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
@@ -89,12 +88,12 @@ const WeightTrendChart = memo(function WeightTrendChart({
                     <XAxis
                         dataKey="label"
                         tick={AXIS_STYLE}
-                        stroke="#e5e7eb"
+                        stroke={chartColor.line}
                         tickLine={false}
                     />
                     <YAxis
                         tick={AXIS_STYLE}
-                        stroke="#e5e7eb"
+                        stroke={chartColor.line}
                         tickLine={false}
                         width={50}
                         domain={[
@@ -112,13 +111,13 @@ const WeightTrendChart = memo(function WeightTrendChart({
                     {targetWeight != null && (
                         <ReferenceLine
                             y={targetWeight}
-                            stroke="#22c55e"
+                            stroke={chartColor.success}
                             strokeDasharray="6 3"
                             strokeWidth={1}
                             label={{
                                 value: t('dashboard.weightSection.targetWithValue', { weight: targetWeight }),
                                 position: 'right',
-                                fill: '#22c55e',
+                                fill: chartColor['success-fg'],
                                 fontSize: 11,
                             }}
                         />
@@ -126,22 +125,22 @@ const WeightTrendChart = memo(function WeightTrendChart({
                     <Line
                         type="monotone"
                         dataKey="weight"
-                        stroke="#3b82f6"
+                        stroke={chartColor.fg}
                         strokeWidth={2}
-                        dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }}
+                        dot={{ r: 3, fill: chartColor.fg, strokeWidth: 0 }}
                         connectNulls
                         name="weight"
                     />
                 </LineChart>
             </ResponsiveContainer>
-            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+            <div className="flex items-center gap-4 mt-2 text-xs text-fg-muted">
                 <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-4 border-t-2 border-blue-500" />
+                    <span className="inline-block w-4 border-t-2 border-primary" />
                     {t('dashboard.weightSection.weightLabel')}
                 </span>
                 {targetWeight != null && (
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 border-t-2 border-dashed border-green-500" />
+                        <span className="inline-block w-4 border-t-2 border-dashed border-success" />
                         {t('dashboard.weightSection.targetLabel')}
                     </span>
                 )}
@@ -281,7 +280,7 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">{t('dashboard.weight.title')}</CardTitle>
+                        <CardTitle className="text-lg font-semibold text-fg">{t('dashboard.weight.title')}</CardTitle>
                         {showAttention && (
                             <AttentionBadge urgency="normal" ariaLabel={t('dashboard.weight.noneToday')} />
                         )}
@@ -330,52 +329,52 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                         <div className="text-center">
                             {isWeightLogged ? (
                                 <div className="space-y-1.5">
-                                    <div className="text-4xl font-bold text-gray-900">
+                                    <div className="text-4xl font-bold text-fg">
                                         {formatWeight(currentWeight)}
-                                        <span className="text-lg text-gray-500 ml-1">{t('dashboard.weight.kg')}</span>
+                                        <span className="text-lg text-fg-muted ml-1">{t('dashboard.weight.kg')}</span>
                                     </div>
-                                    <div className="flex items-center justify-center gap-2 text-green-600">
+                                    <div className="flex items-center justify-center gap-2 text-success-fg">
                                         <Check className="h-4 w-4" aria-hidden="true" />
                                         <span className="text-sm font-medium">{t('dashboard.weightSection.recorded')}</span>
                                     </div>
                                     {weightChange !== null && (
                                         <div className={cn(
                                             'flex items-center justify-center gap-1 text-sm',
-                                            weightChange > 0 ? 'text-red-600' : weightChange < 0 ? 'text-green-600' : 'text-gray-600',
+                                            weightChange > 0 ? 'text-danger-fg' : weightChange < 0 ? 'text-success-fg' : 'text-fg-muted',
                                         )}>
                                             {weightChange > 0 ? <TrendingUp className="h-4 w-4" /> : weightChange < 0 ? <TrendingDown className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
                                             <span>{t('dashboard.weightSection.changeSinceYesterday', { sign: weightChange > 0 ? '+' : '', amount: formatWeight(Math.abs(weightChange)) })}</span>
                                         </div>
                                     )}
                                     {targetWeight != null && distanceToTarget != null && (
-                                        <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
-                                            <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
+                                        <div className="flex items-center justify-center gap-1.5 text-xs text-fg-muted">
+                                            <Target className="h-3.5 w-3.5 text-success-fg" aria-hidden="true" />
                                             <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
                                             {Math.abs(distanceToTarget) >= 0.1 ? (
-                                                <span className={distanceToTarget > 0 ? 'text-amber-600' : 'text-green-600'}>
+                                                <span className={distanceToTarget > 0 ? 'text-warning-fg' : 'text-success-fg'}>
                                                     ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} {t('dashboard.weight.kg')})
                                                 </span>
                                             ) : (
-                                                <span className="text-green-600 font-medium">{t('dashboard.weight.targetReached')}</span>
+                                                <span className="text-success-fg font-medium">{t('dashboard.weight.targetReached')}</span>
                                             )}
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="space-y-2 py-2">
-                                    <p className="text-sm text-gray-500">{t('dashboard.workout.empty')}</p>
+                                    <p className="text-sm text-fg-muted">{t('dashboard.workout.empty')}</p>
                                     {previousWeight && (
-                                        <p className="text-xs text-gray-400">{t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}</p>
+                                        <p className="text-xs text-fg-subtle">{t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}</p>
                                     )}
                                     {targetWeight != null && (
-                                        <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
-                                            <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
+                                        <div className="flex items-center justify-center gap-1.5 text-xs text-fg-muted">
+                                            <Target className="h-3.5 w-3.5 text-success-fg" aria-hidden="true" />
                                             <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
                                         </div>
                                     )}
                                     <Button
                                         variant="outline" size="sm" onClick={handleQuickAdd}
-                                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                        className="text-primary border-primary/30 hover:bg-primary-soft"
                                     >
                                         <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
                                         {t('common.add')}
@@ -392,7 +391,7 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                                     <div className="text-center mt-1">
                                         <span className={cn(
                                             'text-xs font-medium',
-                                            trendChange < 0 ? 'text-green-600' : trendChange > 0 ? 'text-orange-600' : 'text-gray-500',
+                                            trendChange < 0 ? 'text-success-fg' : trendChange > 0 ? 'text-warning-fg' : 'text-fg-muted',
                                         )}>
                                             {t('dashboard.weightSection.trend', { sign: trendChange < 0 ? '' : '+', amount: trendChange.toFixed(1) })}
                                         </span>

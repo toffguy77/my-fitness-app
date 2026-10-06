@@ -1,4 +1,4 @@
-import { MACRO_COLORS, MACRO_KEYS, macroColor } from '../macros'
+import { MACRO_COLORS, MACRO_KEYS, MACRO_TEXT_COLORS, macroColor } from '../macros'
 
 describe('цвет нутриента', () => {
     it('объявлен для каждого из трёх нутриентов', () => {
@@ -8,11 +8,13 @@ describe('цвет нутриента', () => {
         })
     })
 
-    // Значение должно годиться и для `stroke` в SVG, и для `backgroundColor`:
-    // класс Tailwind не годится ни для первого, ни для сверки в тестах.
-    it('задан шестнадцатеричным значением', () => {
+    // Значение должно годиться и для `stroke` в SVG, и для `backgroundColor`,
+    // и переключаться с темой: это CSS-переменная роли из дизайн-токенов, а не
+    // литерал, объявленный здесь второй раз.
+    it('задан ролью дизайн-системы', () => {
         MACRO_KEYS.forEach((key) => {
-            expect(MACRO_COLORS[key]).toMatch(/^#[0-9a-f]{6}$/)
+            expect(MACRO_COLORS[key]).toBe(`var(--ds-color-macro-${key})`)
+            expect(MACRO_TEXT_COLORS[key]).toBe(`var(--ds-color-macro-${key}-fg)`)
         })
     })
 

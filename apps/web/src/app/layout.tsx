@@ -8,12 +8,23 @@ import { CookieConsent } from '@/shared/components/CookieConsent'
 import { ServiceWorkerCleanup } from '@/shared/components/ServiceWorkerCleanup'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { GlobalErrorHandlers } from '@/shared/components/GlobalErrorHandlers'
+// Шрифты дизайн-системы — свои копии, без запроса к Google Fonts: кириллица,
+// курсив Literata для голоса куратора, и ни одного стороннего хоста в CSP.
+import '@fontsource-variable/golos-text'
+import '@fontsource-variable/literata/wght.css'
+import '@fontsource-variable/literata/wght-italic.css'
 import './globals.css'
+import { color } from '@burcev/design-tokens'
 
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
-    themeColor: '#000000',
+    // Совпадает с фоном экрана темы (color.bg.canvas), чтобы полоса браузера
+    // и системная строка не отличались от страницы.
+    themeColor: [
+        { media: '(prefers-color-scheme: light)', color: '#F6F1E8' },
+        { media: '(prefers-color-scheme: dark)', color: '#14110D' },
+    ],
 }
 
 export const metadata: Metadata = {
@@ -84,22 +95,25 @@ export default async function RootLayout({
                     position="top-center"
                     toastOptions={{
                         duration: 3000,
+                        // Уведомления говорят голосом системы — той же
+                        // тёмной плашкой, что и подсказки куратора.
                         style: {
-                            background: '#363636',
-                            color: '#fff',
+                            background: color.coach,
+                            color: color['on-coach'],
+                            borderRadius: 'var(--ds-radius-m)',
                         },
                         success: {
                             duration: 3000,
                             iconTheme: {
-                                primary: '#10b981',
-                                secondary: '#fff',
+                                primary: color.success,
+                                secondary: color['on-coach'],
                             },
                         },
                         error: {
                             duration: 4000,
                             iconTheme: {
-                                primary: '#ef4444',
-                                secondary: '#fff',
+                                primary: color.danger,
+                                secondary: color['on-coach'],
                             },
                         },
                     }}

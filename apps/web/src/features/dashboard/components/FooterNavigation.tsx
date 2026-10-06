@@ -54,7 +54,7 @@ export function FooterNavigation({
 
     return (
         <nav
-            className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-gray-200 bg-white px-2"
+            className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-line bg-surface px-2"
             style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
             data-testid="footer-navigation"
             aria-label={t('dashboard.navigation.aria')}

@@ -162,8 +162,8 @@ export function GuestOnboarding() {
             <div className="mt-8 flex-1">
                 {state.step === GUEST_STEPS.goal && (
                     <section>
-                        <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.goalTitle')}</h1>
-                        <p className="mt-2 text-sm text-gray-600">
+                        <h1 className="text-xl font-bold text-fg">{t('onboarding.guest.goalTitle')}</h1>
+                        <p className="mt-2 text-sm text-fg-muted">
                             {t('onboarding.guest.goalHint')}
                         </p>
                         <div className="mt-6 space-y-3">
@@ -174,14 +174,14 @@ export function GuestOnboarding() {
                                     aria-pressed={state.goal === goal}
                                     className={`w-full rounded-lg border px-4 py-4 text-left transition-colors ${
                                         state.goal === goal
-                                            ? 'border-blue-600 bg-blue-50'
-                                            : 'border-gray-300 bg-white hover:bg-gray-50'
+                                            ? 'border-primary bg-primary-soft'
+                                            : 'border-line bg-surface hover:bg-canvas'
                                     }`}
                                 >
-                                    <span className="block text-sm font-medium text-gray-900">
+                                    <span className="block text-sm font-medium text-fg">
                                         {t(`onboarding.guestGoal.${goal}`)}
                                     </span>
-                                    <span className="block text-xs text-gray-500">
+                                    <span className="block text-xs text-fg-muted">
                                         {t(`onboarding.guestGoalHint.${goal}`)}
                                     </span>
                                 </button>
@@ -192,13 +192,13 @@ export function GuestOnboarding() {
 
                 {state.step === GUEST_STEPS.body && (
                     <section>
-                        <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.bodyTitle')}</h1>
-                        <p className="mt-2 text-sm text-gray-600">
+                        <h1 className="text-xl font-bold text-fg">{t('onboarding.guest.bodyTitle')}</h1>
+                        <p className="mt-2 text-sm text-fg-muted">
                             {t('onboarding.guest.bodyHint')}
                         </p>
 
                         <fieldset className="mt-6">
-                            <legend className="text-sm font-medium text-gray-900">{t('onboarding.sex')}</legend>
+                            <legend className="text-sm font-medium text-fg">{t('onboarding.sex')}</legend>
                             <div className="mt-2 grid grid-cols-2 gap-3">
                                 {sexes.map((sex) => (
                                     <button
@@ -207,8 +207,8 @@ export function GuestOnboarding() {
                                         aria-pressed={state.sex === sex}
                                         className={`rounded-lg border py-3 text-sm transition-colors ${
                                             state.sex === sex
-                                                ? 'border-blue-600 bg-blue-50 text-gray-900'
-                                                : 'border-gray-300 bg-white text-gray-900 hover:bg-gray-50'
+                                                ? 'border-primary bg-primary-soft text-fg'
+                                                : 'border-line bg-surface text-fg hover:bg-canvas'
                                         }`}
                                     >
                                         {sex === 'female' ? t('onboarding.female') : t('onboarding.male')}
@@ -219,7 +219,7 @@ export function GuestOnboarding() {
 
                         <div className="mt-6 space-y-4">
                             <div>
-                                <label htmlFor="guest-birth" className="block text-sm font-medium text-gray-900">
+                                <label htmlFor="guest-birth" className="block text-sm font-medium text-fg">
                                     {t('onboarding.birthDate')}
                                 </label>
                                 <input
@@ -227,11 +227,11 @@ export function GuestOnboarding() {
                                     type="date"
                                     value={state.birthDate}
                                     onChange={(e) => state.setBirthDate(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+                                    className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm text-fg"
                                 />
                             </div>
                             <div>
-                                <label htmlFor="guest-height" className="block text-sm font-medium text-gray-900">
+                                <label htmlFor="guest-height" className="block text-sm font-medium text-fg">
                                     {t('onboarding.guest.heightCm')}
                                 </label>
                                 <input
@@ -241,11 +241,11 @@ export function GuestOnboarding() {
                                     value={state.heightCm}
                                     onChange={(e) => state.setHeightCm(e.target.value)}
                                     placeholder="170"
-                                    className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+                                    className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm text-fg"
                                 />
                             </div>
                             <div>
-                                <label htmlFor="guest-weight" className="block text-sm font-medium text-gray-900">
+                                <label htmlFor="guest-weight" className="block text-sm font-medium text-fg">
                                     {t('onboarding.guest.weightKg')}
                                 </label>
                                 <input
@@ -255,7 +255,7 @@ export function GuestOnboarding() {
                                     value={state.weightKg}
                                     onChange={(e) => state.setWeightKg(e.target.value)}
                                     placeholder="65"
-                                    className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+                                    className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm text-fg"
                                 />
                             </div>
                         </div>
@@ -264,8 +264,8 @@ export function GuestOnboarding() {
 
                 {state.step === GUEST_STEPS.activity && (
                     <section>
-                        <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.activityTitle')}</h1>
-                        <p className="mt-2 text-sm text-gray-600">{t('onboarding.guest.activityHint')}</p>
+                        <h1 className="text-xl font-bold text-fg">{t('onboarding.guest.activityTitle')}</h1>
+                        <p className="mt-2 text-sm text-fg-muted">{t('onboarding.guest.activityHint')}</p>
                         <div className="mt-6 space-y-3">
                             {activityLevels.map((level) => (
                                 <button
@@ -274,14 +274,14 @@ export function GuestOnboarding() {
                                     aria-pressed={state.activityLevel === level}
                                     className={`w-full rounded-lg border px-4 py-4 text-left transition-colors ${
                                         state.activityLevel === level
-                                            ? 'border-blue-600 bg-blue-50'
-                                            : 'border-gray-300 bg-white hover:bg-gray-50'
+                                            ? 'border-primary bg-primary-soft'
+                                            : 'border-line bg-surface hover:bg-canvas'
                                     }`}
                                 >
-                                    <span className="block text-sm font-medium text-gray-900">
+                                    <span className="block text-sm font-medium text-fg">
                                         {t(`onboarding.activity.${level}`)}
                                     </span>
-                                    <span className="block text-xs text-gray-500">
+                                    <span className="block text-xs text-fg-muted">
                                         {t(`onboarding.activityHint.${level}`)}
                                     </span>
                                 </button>
@@ -320,7 +320,7 @@ export function GuestOnboarding() {
                             recordStep(state.step + 1)
                         }}
                         disabled={!canContinue() || calculating}
-                        className="flex w-full items-center justify-center rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                        className="flex w-full items-center justify-center rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                     >
                         {calculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {state.step === GUEST_STEPS.activity
@@ -331,7 +331,7 @@ export function GuestOnboarding() {
                     {state.step > GUEST_STEPS.goal && (
                         <button
                             onClick={state.back}
-                            className="w-full text-sm text-gray-600 hover:text-gray-900"
+                            className="w-full text-sm text-fg-muted hover:text-fg"
                         >
                             {t('onboarding.guest.back')}
                         </button>
@@ -339,9 +339,9 @@ export function GuestOnboarding() {
                 </div>
             )}
 
-            <p className="mt-8 text-center text-sm text-gray-600">
+            <p className="mt-8 text-center text-sm text-fg-muted">
                 {t('onboarding.guest.haveAccount')}{' '}
-                <a href="/auth" className="text-blue-600 hover:underline">
+                <a href="/auth" className="text-primary hover:underline">
                     {t('onboarding.guest.signIn')}
                 </a>
             </p>
@@ -371,26 +371,26 @@ function GuestResultView({
 
     return (
         <section>
-            <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.resultTitle')}</h1>
-            <p className="mt-2 text-sm text-gray-600">
+            <h1 className="text-xl font-bold text-fg">{t('onboarding.guest.resultTitle')}</h1>
+            <p className="mt-2 text-sm text-fg-muted">
                 {t('onboarding.guest.resultHint')}
             </p>
 
-            <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 text-center">
-                <p className="text-sm text-gray-600">{t('onboarding.guest.calories')}</p>
-                <p className="text-4xl font-bold text-gray-900" data-testid="guest-calories">
+            <div className="mt-6 rounded-xl border border-line bg-surface p-6 text-center">
+                <p className="text-sm text-fg-muted">{t('onboarding.guest.calories')}</p>
+                <p className="text-4xl font-bold text-fg" data-testid="guest-calories">
                     {Math.round(result.calories)}
                 </p>
-                <p className="text-sm text-gray-600">{t('onboarding.guest.kcalPerDay')}</p>
+                <p className="text-sm text-fg-muted">{t('onboarding.guest.kcalPerDay')}</p>
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-3">
                 {macros.map((macro) => (
-                    <div key={macro.label} className="rounded-lg border border-gray-200 bg-white p-3 text-center">
-                        <p className="text-xs text-gray-600">{macro.label}</p>
-                        <p className="text-lg font-semibold text-gray-900">
+                    <div key={macro.label} className="rounded-lg border border-line bg-surface p-3 text-center">
+                        <p className="text-xs text-fg-muted">{macro.label}</p>
+                        <p className="text-lg font-semibold text-fg">
                             {macro.value}
-                            <span className="text-xs font-normal text-gray-500">
+                            <span className="text-xs font-normal text-fg-muted">
                                 {' '}
                                 {t('onboarding.guest.gram')}
                             </span>
@@ -399,7 +399,7 @@ function GuestResultView({
                 ))}
             </div>
 
-            <p className="mt-4 text-sm text-gray-600">
+            <p className="mt-4 text-sm text-fg-muted">
                 {t('onboarding.guest.water', { glasses: result.water_glasses })}
             </p>
 
@@ -407,7 +407,7 @@ function GuestResultView({
 
             <button
                 onClick={onSave}
-                className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                className="mt-8 w-full rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
             >
                 {t('onboarding.guest.saveResult')}
             </button>
@@ -469,7 +469,7 @@ function GuestResultCapture() {
         // (contactConsent) — without it, createLead still saves the lead, but
         // nothing sends anything.
         return (
-            <p className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+            <p className="mt-6 rounded-lg border border-success/30 bg-success-soft p-4 text-sm text-success-fg">
                 {contactConsent
                     ? t('onboarding.guest.resultCapture.successWithReminder')
                     : t('onboarding.guest.resultCapture.success')}
@@ -478,11 +478,11 @@ function GuestResultCapture() {
     }
 
     return (
-        <div className="mt-6 space-y-4 rounded-lg border border-gray-200 bg-white p-4">
-            <p className="text-sm text-gray-600">{t('onboarding.guest.resultCapture.hint')}</p>
+        <div className="mt-6 space-y-4 rounded-lg border border-line bg-surface p-4">
+            <p className="text-sm text-fg-muted">{t('onboarding.guest.resultCapture.hint')}</p>
 
             <div>
-                <label htmlFor="guest-result-email" className="block text-sm font-medium text-gray-900">
+                <label htmlFor="guest-result-email" className="block text-sm font-medium text-fg">
                     {t('onboarding.guest.resultCapture.emailLabel')}
                 </label>
                 <input
@@ -492,7 +492,7 @@ function GuestResultCapture() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('onboarding.guest.resultCapture.emailPlaceholder')}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+                    className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm text-fg"
                 />
             </div>
 
@@ -505,25 +505,25 @@ function GuestResultCapture() {
                         type="checkbox"
                         checked={dataConsent}
                         onChange={(e) => setDataConsent(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                        className="mt-1 h-4 w-4 rounded border-line text-primary"
                     />
-                    <span className="text-sm text-gray-600">{t('onboarding.guest.consent')}</span>
+                    <span className="text-sm text-fg-muted">{t('onboarding.guest.consent')}</span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-3">
                     <input
                         type="checkbox"
                         checked={contactConsent}
                         onChange={(e) => setContactConsent(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                        className="mt-1 h-4 w-4 rounded border-line text-primary"
                     />
-                    <span className="text-sm text-gray-600">{t('onboarding.guest.reminder')}</span>
+                    <span className="text-sm text-fg-muted">{t('onboarding.guest.reminder')}</span>
                 </label>
             </div>
 
             <button
                 onClick={handleSend}
                 disabled={!email || !dataConsent || saving}
-                className="w-full rounded-lg border border-blue-600 py-3 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 disabled:opacity-50"
+                className="w-full rounded-lg border border-primary py-3 text-sm font-medium text-primary transition-colors hover:bg-primary-soft disabled:opacity-50"
             >
                 {saving
                     ? t('onboarding.guest.resultCapture.sending')
@@ -594,14 +594,14 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
 
     return (
         <section>
-            <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.saveTitle')}</h1>
-            <p className="mt-2 text-sm text-gray-600">
+            <h1 className="text-xl font-bold text-fg">{t('onboarding.guest.saveTitle')}</h1>
+            <p className="mt-2 text-sm text-fg-muted">
                 {t('onboarding.guest.saveHint')}
             </p>
 
             <div className="mt-6 space-y-4">
                 <div>
-                    <label htmlFor="guest-email" className="block text-sm font-medium text-gray-900">
+                    <label htmlFor="guest-email" className="block text-sm font-medium text-fg">
                         Email
                     </label>
                     <input
@@ -611,11 +611,11 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="user@example.com"
-                        className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+                        className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm text-fg"
                     />
                 </div>
                 <div>
-                    <label htmlFor="guest-name" className="block text-sm font-medium text-gray-900">
+                    <label htmlFor="guest-name" className="block text-sm font-medium text-fg">
                         {t('onboarding.guest.nameOptional')}
                     </label>
                     <input
@@ -624,7 +624,7 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                         autoComplete="given-name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+                        className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm text-fg"
                     />
                 </div>
             </div>
@@ -637,9 +637,9 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                         type="checkbox"
                         checked={dataConsent}
                         onChange={(e) => setDataConsent(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                        className="mt-1 h-4 w-4 rounded border-line text-primary"
                     />
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-fg-muted">
                         {t('onboarding.guest.consent')}
                     </span>
                 </label>
@@ -648,9 +648,9 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                         type="checkbox"
                         checked={contactConsent}
                         onChange={(e) => setContactConsent(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                        className="mt-1 h-4 w-4 rounded border-line text-primary"
                     />
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-fg-muted">
                         {t('onboarding.guest.reminder')}
                     </span>
                 </label>
@@ -659,12 +659,12 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
             <button
                 onClick={handleSave}
                 disabled={!email || !dataConsent || saving}
-                className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                className="mt-8 w-full rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
                 {saving ? t('onboarding.guest.saving') : t('onboarding.guest.saveAndContinue')}
             </button>
 
-            <button onClick={onSkip} className="mt-3 w-full text-sm text-gray-600 hover:text-gray-900">
+            <button onClick={onSkip} className="mt-3 w-full text-sm text-fg-muted hover:text-fg">
                 {t('onboarding.guest.continueWithoutSaving')}
             </button>
         </section>

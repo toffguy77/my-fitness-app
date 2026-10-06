@@ -11,12 +11,12 @@ export interface FeedCardProps {
 }
 
 const CATEGORY_COLORS: Record<ContentCategory, string> = {
-    nutrition: 'bg-blue-100 text-blue-700',
-    training: 'bg-purple-100 text-purple-700',
-    recipes: 'bg-orange-100 text-orange-700',
-    health: 'bg-green-100 text-green-700',
-    motivation: 'bg-pink-100 text-pink-700',
-    general: 'bg-gray-100 text-gray-700',
+    nutrition: 'bg-primary-soft text-primary',
+    training: 'bg-info-soft text-info-fg',
+    recipes: 'bg-warning-soft text-warning-fg',
+    health: 'bg-success-soft text-success-fg',
+    motivation: 'bg-danger-soft text-danger-fg',
+    general: 'bg-subtle text-fg',
 }
 
 function formatDate(dateStr?: string): string {
@@ -43,7 +43,7 @@ export function FeedCard({ article }: FeedCardProps) {
     return (
         <Link
             href={articlePath(article)}
-            className="block rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+            className="block rounded-xl bg-surface shadow-sm border border-line overflow-hidden transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
         >
             {article.cover_image_url && isTrustedImageUrl(article.cover_image_url) && (
                 <div className="relative w-full aspect-[16/9]">
@@ -67,16 +67,16 @@ export function FeedCard({ article }: FeedCardProps) {
                     {CATEGORY_LABELS[article.category]}
                 </span>
 
-                <h3 className="text-sm font-bold text-gray-900 line-clamp-2">
+                <h3 className="text-sm font-bold text-fg line-clamp-2">
                     {article.title}
                 </h3>
 
-                <p className="text-xs text-gray-500 line-clamp-3">
+                <p className="text-xs text-fg-muted line-clamp-3">
                     {article.excerpt}
                 </p>
 
                 {article.published_at && (
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-fg-subtle">
                         {formatDate(article.published_at)}
                     </p>
                 )}

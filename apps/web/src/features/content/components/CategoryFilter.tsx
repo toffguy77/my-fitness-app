@@ -20,8 +20,8 @@ export function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {
                 className={cn(
                     'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                     selected === null
-                        ? 'bg-gray-900 text-white'
-                        : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                        ? 'bg-fg text-fg-inverse'
+                        : 'border border-line text-fg-muted hover:bg-canvas'
                 )}
             >
                 Все
@@ -34,8 +34,8 @@ export function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {
                     className={cn(
                         'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                         selected === cat
-                            ? 'bg-gray-900 text-white'
-                            : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                            ? 'bg-fg text-fg-inverse'
+                            : 'border border-line text-fg-muted hover:bg-canvas'
                     )}
                 >
                     {CATEGORY_LABELS[cat]}

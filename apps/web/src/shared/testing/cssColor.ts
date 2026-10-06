@@ -10,6 +10,8 @@
  * тестов — это те же четыре объявления цвета, от которых мы и уходим.
  */
 export function hexToRgb(hex: string): string {
+    // Цвет роли дизайн-системы — `var(--ds-…)`: jsdom отдаёт его как есть.
+    if (!hex.startsWith('#')) return hex
     const value = Number.parseInt(hex.slice(1), 16)
     const red = Math.floor(value / 65536)
     const green = Math.floor(value / 256) % 256

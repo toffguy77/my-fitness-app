@@ -44,8 +44,8 @@ export default function ProfilePage() {
 
     if (loading || !profile) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            <div className="flex items-center justify-center min-h-screen bg-canvas">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-line-strong" />
             </div>
         )
     }
@@ -65,28 +65,28 @@ export default function ProfilePage() {
                         className="w-24 h-24 rounded-full object-cover"
                     />
                 ) : (
-                    <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl font-semibold">
+                    <div className="w-24 h-24 rounded-full bg-primary-soft flex items-center justify-center text-primary text-3xl font-semibold">
                         {initial}
                     </div>
                 )}
                 {profile.name && (
-                    <p className="mt-3 text-xl font-semibold text-gray-900">{profile.name}</p>
+                    <p className="mt-3 text-xl font-semibold text-fg">{profile.name}</p>
                 )}
-                <p className="mt-1 text-sm text-gray-500">{profile.email}</p>
+                <p className="mt-1 text-sm text-fg-muted">{profile.email}</p>
             </div>
 
             {/* Menu list */}
-            <div className="bg-white rounded-2xl shadow-sm p-2 mb-8">
+            <div className="bg-surface rounded-2xl shadow-sm p-2 mb-8">
                 {menuItems.map((item, index) => (
                     <Link
                         key={item.href}
                         href={item.href}
                         className={`flex items-center justify-between py-3 px-4${
-                            index < menuItems.length - 1 ? ' border-b border-gray-100' : ''
+                            index < menuItems.length - 1 ? ' border-b border-line' : ''
                         }`}
                     >
-                        <span className="text-gray-900">{item.label}</span>
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-gray-400">
+                        <span className="text-fg">{item.label}</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-fg-subtle">
                             <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </Link>
@@ -96,7 +96,7 @@ export default function ProfilePage() {
             {/* Logout button */}
             <button
                 onClick={handleLogout}
-                className="w-full py-3 text-red-500 text-center font-medium"
+                className="w-full py-3 text-danger-fg text-center font-medium"
             >
                 Выйти из аккаунта
             </button>

@@ -20,6 +20,7 @@ import { useDashboardStore } from '../store/dashboardStore';
 import { useRovingTabIndex } from '../hooks/useKeyboardNavigation';
 import { formatLocalDate } from '@/shared/utils/format';
 import { t } from '@/shared/i18n'
+import { color } from '@burcev/design-tokens';
 
 /**
  * Day names in Russian (short form)
@@ -145,8 +146,8 @@ const ProgressRing = memo(function ProgressRing({
     completedCount,
     isSelected,
 }: ProgressRingProps) {
-    const filledColor = isSelected ? 'white' : '#22c55e';
-    const emptyColor = isSelected ? 'rgba(255,255,255,0.3)' : '#e5e7eb';
+    const filledColor = isSelected ? color['fg-inverse'] : color.success;
+    const emptyColor = isSelected ? 'color-mix(in srgb, var(--ds-color-fg-inverse) 30%, transparent)' : color.track;
 
     return (
         <svg
@@ -208,12 +209,12 @@ const DayButton = memo(function DayButton({
             className={`
                 relative flex flex-col items-center justify-center p-2 rounded-lg
                 transition-all duration-200
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2
                 ${isSelected
-                    ? 'bg-blue-500 text-white shadow-md'
-                    : 'bg-white hover:bg-gray-50 text-gray-700'
+                    ? 'bg-primary text-on-primary shadow-md'
+                    : 'bg-surface hover:bg-canvas text-fg'
                 }
-                ${isToday && !isSelected ? 'ring-2 ring-blue-300' : ''}
+                ${isToday && !isSelected ? 'ring-2 ring-focus' : ''}
             `}
             aria-label={`${DAY_NAMES_FULL[dayOfWeek]}, ${formatDayNumber(date)}, ${completionSummary}`}
             aria-current={isToday ? 'date' : undefined}
@@ -321,22 +322,22 @@ export const CalendarNavigator = memo(function CalendarNavigator({
             <div className="flex items-center justify-between mb-4">
                 <button
                     onClick={handlePrevWeek}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="p-2 rounded-lg hover:bg-subtle transition-colors focus:outline-none focus:ring-2 focus:ring-focus"
                     aria-label={t('dashboard.calendar.previousWeek')}
                 >
-                    <ChevronLeft className="w-5 h-5 text-gray-600" />
+                    <ChevronLeft className="w-5 h-5 text-fg-muted" />
                 </button>
 
-                <div className="text-sm font-medium text-gray-700">
+                <div className="text-sm font-medium text-fg">
                     {weekRangeDisplay}
                 </div>
 
                 <button
                     onClick={handleNextWeek}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="p-2 rounded-lg hover:bg-subtle transition-colors focus:outline-none focus:ring-2 focus:ring-focus"
                     aria-label={t('dashboard.calendar.nextWeek')}
                 >
-                    <ChevronRight className="w-5 h-5 text-gray-600" />
+                    <ChevronRight className="w-5 h-5 text-fg-muted" />
                 </button>
             </div>
 
@@ -372,7 +373,7 @@ export const CalendarNavigator = memo(function CalendarNavigator({
                 <div className="mt-4">
                     <button
                         onClick={handleSubmitReport}
-                        className="w-full py-3 px-4 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 animate-pulse"
+                        className="w-full py-3 px-4 bg-primary text-on-primary font-medium rounded-lg hover:bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 animate-pulse"
                         aria-label={t('dashboard.calendar.sendReportAria')}
                     >
                         {t('dashboard.calendar.sendReport')}

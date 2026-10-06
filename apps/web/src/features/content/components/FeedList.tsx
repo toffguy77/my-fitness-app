@@ -107,18 +107,18 @@ export function FeedList({ initialArticles, initialTotal }: FeedListProps = {}) 
             <CategoryFilter selected={category} onSelect={handleCategoryChange} />
 
             {error && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div className="rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-fg">
                     {error}
                 </div>
             )}
 
             {loading ? (
                 <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-line-strong" />
                 </div>
             ) : articles.length === 0 ? (
                 <div className="text-center py-12">
-                    <p className="text-sm text-gray-500">Пока нет контента</p>
+                    <p className="text-sm text-fg-muted">Пока нет контента</p>
                 </div>
             ) : (
                 <>
@@ -134,7 +134,7 @@ export function FeedList({ initialArticles, initialTotal }: FeedListProps = {}) 
                                 type="button"
                                 onClick={handleLoadMore}
                                 disabled={loadingMore}
-                                className="rounded-lg bg-gray-100 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                                className="rounded-lg bg-subtle px-5 py-2 text-sm font-medium text-fg hover:bg-subtle transition-colors disabled:opacity-50"
                             >
                                 {loadingMore ? 'Загрузка...' : 'Загрузить ещё'}
                             </button>

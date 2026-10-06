@@ -23,20 +23,20 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center gap-1 text-xs text-fg-muted hover:text-fg transition-colors"
             >
                 {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                 {t('curator.info.more')}
             </button>
 
             {open && (
-                <div className="mt-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-600 space-y-1.5">
+                <div className="mt-2 rounded-lg bg-canvas p-3 text-xs text-fg-muted space-y-1.5">
                     <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <span><span className="text-gray-400">ID:</span> {detail.id}</span>
+                        <span><span className="text-fg-subtle">ID:</span> {detail.id}</span>
                         {detail.email && (
                             <span>
-                                <span className="text-gray-400">Email:</span>{' '}
-                                <a href={`mailto:${detail.email}`} className="text-blue-600 hover:underline">
+                                <span className="text-fg-subtle">Email:</span>{' '}
+                                <a href={`mailto:${detail.email}`} className="text-primary hover:underline">
                                     {detail.email}
                                 </a>
                             </span>
@@ -44,15 +44,15 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
                     </div>
                     <div className="flex flex-wrap gap-x-6 gap-y-1">
                         {hasHeight && (
-                            <span><span className="text-gray-400">{t('curator.info.height')}</span> {t('curator.info.heightValue', { value: detail.height ?? '' })}</span>
+                            <span><span className="text-fg-subtle">{t('curator.info.height')}</span> {t('curator.info.heightValue', { value: detail.height ?? '' })}</span>
                         )}
                         {hasWeight && (
-                            <span><span className="text-gray-400">{t('curator.info.weight')}</span> {t('curator.card.kilograms', { value: detail.last_weight ?? '' })}</span>
+                            <span><span className="text-fg-subtle">{t('curator.info.weight')}</span> {t('curator.card.kilograms', { value: detail.last_weight ?? '' })}</span>
                         )}
                     </div>
                     {hasTimezone && (
                         <div>
-                            <span className="text-gray-400">{t('curator.info.timezone')}</span> {detail.timezone}
+                            <span className="text-fg-subtle">{t('curator.info.timezone')}</span> {detail.timezone}
                         </div>
                     )}
                     {(hasTelegram || hasInstagram) && (
@@ -62,7 +62,7 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
                                     href={`https://t.me/${detail.telegram_username}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                                    className="inline-flex items-center gap-1 text-primary hover:underline"
                                 >
                                     <Send className="h-3 w-3" />
                                     @{detail.telegram_username}
@@ -73,7 +73,7 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
                                     href={`https://instagram.com/${detail.instagram_username}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-pink-600 hover:underline"
+                                    className="inline-flex items-center gap-1 text-danger-fg hover:underline"
                                 >
                                     <Instagram className="h-3 w-3" />
                                     @{detail.instagram_username}

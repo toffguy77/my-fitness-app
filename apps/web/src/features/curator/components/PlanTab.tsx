@@ -86,23 +86,23 @@ export function PlanTab({ clientId }: PlanTabProps) {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             </div>
         )
     }
 
     if (error) {
-        return <p className="py-8 text-center text-sm text-red-500">{error}</p>
+        return <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
     }
 
     return (
         <div className="space-y-4">
             {activePlan ? (
-                <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line">
                     <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-gray-900">{t('curator.plan.current')}</h3>
+                        <h3 className="text-sm font-semibold text-fg">{t('curator.plan.current')}</h3>
                         <div className="flex items-center gap-2 shrink-0">
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary-soft text-primary">
                                 {t('curator.plan.active')}
                             </span>
                             <button
@@ -111,7 +111,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                                     setEditingPlan(activePlan)
                                     setShowForm(true)
                                 }}
-                                className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                                className="p-1 text-fg-subtle hover:text-primary transition-colors"
                                 aria-label={t('curator.plan.editAria')}
                             >
                                 <Pencil className="h-3.5 w-3.5" />
@@ -126,7 +126,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                                         onConfirm: () => handleDelete(activePlan.id),
                                     })
                                 }}
-                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                className="p-1 text-fg-subtle hover:text-danger-fg transition-colors"
                                 aria-label={t('curator.plan.deleteAria')}
                             >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -135,42 +135,42 @@ export function PlanTab({ clientId }: PlanTabProps) {
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-center text-xs mt-3">
                         <div>
-                            <p className="text-gray-500">{t('macros.calories')}</p>
-                            <p className="font-semibold text-gray-900">{Math.round(activePlan.calories)}</p>
+                            <p className="text-fg-muted">{t('macros.calories')}</p>
+                            <p className="font-semibold text-fg">{Math.round(activePlan.calories)}</p>
                         </div>
                         <div>
-                            <p className="text-gray-500">{t('macros.protein')}</p>
-                            <p className="font-semibold text-gray-900">{Math.round(activePlan.protein)}</p>
+                            <p className="text-fg-muted">{t('macros.protein')}</p>
+                            <p className="font-semibold text-fg">{Math.round(activePlan.protein)}</p>
                         </div>
                         <div>
-                            <p className="text-gray-500">{t('macros.fat')}</p>
-                            <p className="font-semibold text-gray-900">{Math.round(activePlan.fat)}</p>
+                            <p className="text-fg-muted">{t('macros.fat')}</p>
+                            <p className="font-semibold text-fg">{Math.round(activePlan.fat)}</p>
                         </div>
                         <div>
-                            <p className="text-gray-500">{t('macros.carbs')}</p>
-                            <p className="font-semibold text-gray-900">{Math.round(activePlan.carbs)}</p>
+                            <p className="text-fg-muted">{t('macros.carbs')}</p>
+                            <p className="font-semibold text-fg">{Math.round(activePlan.carbs)}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-gray-400">{t('curator.plan.period')}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-fg-subtle">{t('curator.plan.period')}</span>
+                        <span className="text-xs text-fg-muted">
                             {formatDateRu(activePlan.start_date)} — {formatDateRu(activePlan.end_date)}
                         </span>
                     </div>
                     {activePlan.comment && (
-                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{activePlan.comment}</p>
+                        <p className="mt-1 text-xs text-fg-muted line-clamp-2">{activePlan.comment}</p>
                     )}
                 </div>
             ) : (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center sm:py-8">
-                    <p className="text-sm text-gray-400">{t('curator.plan.none')}</p>
+                <div className="rounded-xl border-2 border-dashed border-line py-6 text-center sm:py-8">
+                    <p className="text-sm text-fg-subtle">{t('curator.plan.none')}</p>
                     <button
                         type="button"
                         onClick={() => {
                             setEditingPlan(undefined)
                             setShowForm(true)
                         }}
-                        className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
+                        className="mt-1.5 text-xs text-primary hover:text-primary font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
                     >
                         {t('curator.plan.create')}
                     </button>
@@ -184,7 +184,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                     setEditingPlan(undefined)
                     setShowForm(true)
                 }}
-                className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:bottom-24 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
+                className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg hover:bg-primary-hover active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:bottom-24 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
                 aria-label={t('curator.plan.createAria')}
             >
                 <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -195,7 +195,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                     <button
                         type="button"
                         onClick={() => setShowHistory(!showHistory)}
-                        className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
+                        className="flex items-center gap-1.5 text-sm font-medium text-fg hover:text-fg"
                     >
                         <ChevronDown
                             className={cn('h-4 w-4 transition-transform', showHistory && 'rotate-180')}
@@ -207,14 +207,14 @@ export function PlanTab({ clientId }: PlanTabProps) {
                             {pastPlans.map((plan) => (
                                 <div
                                     key={plan.id}
-                                    className="rounded-lg bg-gray-50 p-3 border border-gray-100 text-xs"
+                                    className="rounded-lg bg-canvas p-3 border border-line text-xs"
                                 >
                                     <div className="flex items-center justify-between mb-1">
-                                        <span className="text-gray-600">
+                                        <span className="text-fg-muted">
                                             {formatDateRu(plan.start_date)} — {formatDateRu(plan.end_date)}
                                         </span>
                                     </div>
-                                    <p className="text-gray-900">
+                                    <p className="text-fg">
                                         {t('curator.plan.macrosInline', {
                                             calories: Math.round(plan.calories),
                                             protein: Math.round(plan.protein),
@@ -223,7 +223,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                                         })}
                                     </p>
                                     {plan.comment && (
-                                        <p className="mt-1 text-gray-500 italic">{plan.comment}</p>
+                                        <p className="mt-1 text-fg-muted italic">{plan.comment}</p>
                                     )}
                                 </div>
                             ))}

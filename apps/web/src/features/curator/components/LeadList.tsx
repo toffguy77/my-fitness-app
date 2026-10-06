@@ -137,7 +137,7 @@ export function LeadList() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             </div>
         )
     }
@@ -145,8 +145,8 @@ export function LeadList() {
     return (
         <div>
             <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-sm text-gray-600">{t('curator.leads.total', { count: total })}</p>
-                <label className="flex items-center gap-2 text-sm text-gray-600">
+                <p className="text-sm text-fg-muted">{t('curator.leads.total', { count: total })}</p>
+                <label className="flex items-center gap-2 text-sm text-fg-muted">
                     <input
                         type="checkbox"
                         checked={includeHandled}
@@ -157,7 +157,7 @@ export function LeadList() {
             </div>
 
             {leads.length === 0 ? (
-                <p className="py-8 text-center text-sm text-gray-500">{t('curator.leads.empty')}</p>
+                <p className="py-8 text-center text-sm text-fg-muted">{t('curator.leads.empty')}</p>
             ) : (
                 <ul className="space-y-3">
                     {/* Server order, not re-sorted: this is what makes it a queue
@@ -166,37 +166,37 @@ export function LeadList() {
                     {leads.map((lead) => (
                         <li
                             key={lead.id}
-                            className="rounded-xl border border-gray-200 bg-white p-4"
+                            className="rounded-xl border border-line bg-surface p-4"
                             data-testid="lead-card"
                         >
                             <div className="flex items-start justify-between gap-3">
                                 <div>
-                                    <p className="text-sm font-semibold text-gray-900">
+                                    <p className="text-sm font-semibold text-fg">
                                         {lead.name || t('curator.leads.noName')}
                                     </p>
                                     {/* Identifies who this is about, regardless of
                                         consent — withheld consent hides the ability
                                         to write to them, not who they are. */}
-                                    <p className="text-sm text-gray-700">{lead.email}</p>
+                                    <p className="text-sm text-fg">{lead.email}</p>
                                 </div>
                                 {lead.handled_at ? (
-                                    <span className="text-xs text-gray-500">{t('curator.leads.handled')}</span>
+                                    <span className="text-xs text-fg-muted">{t('curator.leads.handled')}</span>
                                 ) : (
                                     <button
                                         onClick={() => handleMarkHandled(lead)}
                                         disabled={busy === lead.id}
-                                        className="text-sm font-medium text-blue-600 hover:text-blue-700 disabled:text-gray-300"
+                                        className="text-sm font-medium text-primary hover:text-primary disabled:text-fg-subtle"
                                     >
                                         {t('curator.leads.markHandled')}
                                     </button>
                                 )}
                             </div>
 
-                            <p className="mt-2 text-xs text-gray-600">
+                            <p className="mt-2 text-xs text-fg-muted">
                                 {t('curator.leads.stoppedAt', { step: stepLabels[lead.last_step] ?? lead.last_step })}
                             </p>
 
-                            <p className="mt-1 text-xs text-gray-600">
+                            <p className="mt-1 text-xs text-fg-muted">
                                 {[
                                     lead.parameters.goal && goalLabels[lead.parameters.goal],
                                     lead.parameters.height_cm && t('curator.leads.heightCm', { value: lead.parameters.height_cm }),
@@ -207,7 +207,7 @@ export function LeadList() {
                                     .join(' · ') || t('curator.leads.noParameters')}
                             </p>
 
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-1 text-xs text-fg-muted">
                                 {ageLabel(lead.age_days)}
                                 {lead.reminder_sent && ` · ${t('curator.leads.reminderSent')}`}
                             </p>
@@ -217,7 +217,7 @@ export function LeadList() {
                                 каналы приводят тех, кто доходит», — раньше
                                 ответа не имел: браузер писал сюда
                                 document.referrer, пустой при прямом заходе. */}
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-1 text-xs text-fg-muted">
                                 {campaignOf(lead) ?? t('curator.leads.noCampaign')}
                             </p>
 
@@ -227,7 +227,7 @@ export function LeadList() {
                                 disabled one, which would read as a temporary
                                 obstacle rather than a rule. */}
                             {!lead.contact_allowed && (
-                                <p className="mt-2 text-xs font-medium text-amber-600">
+                                <p className="mt-2 text-xs font-medium text-warning-fg">
                                     {t('curator.leads.noConsent')}
                                 </p>
                             )}
@@ -236,7 +236,7 @@ export function LeadList() {
                                 {lead.contact_allowed && (
                                     <a
                                         href={`mailto:${lead.email}`}
-                                        className="text-sm text-blue-600 hover:underline"
+                                        className="text-sm text-primary hover:underline"
                                     >
                                         {t('curator.leads.write')}
                                     </a>
@@ -254,7 +254,7 @@ export function LeadList() {
                                 {lead.conversation_id && (
                                     <Link
                                         href={`/curator/support?conversation=${lead.conversation_id}`}
-                                        className="text-sm text-blue-600 hover:underline"
+                                        className="text-sm text-primary hover:underline"
                                     >
                                         {t('curator.leads.openConversation')}
                                     </Link>

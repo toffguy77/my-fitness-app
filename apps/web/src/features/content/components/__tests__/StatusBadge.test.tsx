@@ -22,22 +22,22 @@ describe('StatusBadge', () => {
     it('applies correct styling for draft status', () => {
         render(<StatusBadge status="draft" />);
         const badge = screen.getByText('Черновик');
-        expect(badge.className).toContain('bg-gray-100');
-        expect(badge.className).toContain('text-gray-700');
+        expect(badge.className).toContain('bg-subtle');
+        expect(badge.className).toContain('text-fg');
     });
 
     it('applies correct styling for scheduled status', () => {
         render(<StatusBadge status="scheduled" />);
         const badge = screen.getByText('Запланирован');
-        expect(badge.className).toContain('bg-amber-100');
-        expect(badge.className).toContain('text-amber-700');
+        expect(badge.className).toContain('bg-warning-soft');
+        expect(badge.className).toContain('text-warning-fg');
     });
 
     it('applies correct styling for published status', () => {
         render(<StatusBadge status="published" />);
         const badge = screen.getByText('Опубликован');
-        expect(badge.className).toContain('bg-green-100');
-        expect(badge.className).toContain('text-green-700');
+        expect(badge.className).toContain('bg-success-soft');
+        expect(badge.className).toContain('text-success-fg');
     });
 
     it('falls back gracefully for unknown status values', () => {

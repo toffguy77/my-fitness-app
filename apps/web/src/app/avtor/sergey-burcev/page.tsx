@@ -59,23 +59,23 @@ export default async function AuthorPage() {
         <main className="mx-auto max-w-3xl px-4 py-8">
             <JsonLd data={profileJsonLd} />
 
-            <h1 className="mb-4 text-2xl font-bold text-gray-900">{EXPERT_AUTHOR.name}</h1>
+            <h1 className="mb-4 text-2xl font-bold text-fg">{EXPERT_AUTHOR.name}</h1>
             <ArticleAuthor author={EXPERT_AUTHOR} />
 
             {articles.length > 0 && (
                 <section className="mt-10">
-                    <h2 className="mb-4 text-lg font-semibold text-gray-900">Статьи</h2>
+                    <h2 className="mb-4 text-lg font-semibold text-fg">Статьи</h2>
                     <ul className="space-y-3">
                         {articles.map((article) => (
                             <li key={article.id}>
                                 <Link
                                     href={articlePath(article)}
-                                    className="font-medium text-blue-700 hover:underline"
+                                    className="font-medium text-primary hover:underline"
                                 >
                                     {article.title}
                                 </Link>
                                 {article.excerpt && (
-                                    <p className="text-sm text-gray-500">{article.excerpt}</p>
+                                    <p className="text-sm text-fg-muted">{article.excerpt}</p>
                                 )}
                             </li>
                         ))}

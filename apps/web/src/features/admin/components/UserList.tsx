@@ -17,9 +17,9 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-    client: 'bg-gray-100 text-gray-700',
-    coordinator: 'bg-blue-100 text-blue-700',
-    super_admin: 'bg-purple-100 text-purple-700',
+    client: 'bg-subtle text-fg',
+    coordinator: 'bg-primary-soft text-primary',
+    super_admin: 'bg-info-soft text-info-fg',
 }
 
 const PAGE_SIZE = 50
@@ -63,13 +63,13 @@ export function UserList() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             </div>
         )
     }
 
     if (error) {
-        return <p className="py-8 text-center text-sm text-red-500">{error}</p>
+        return <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
     }
 
     const filtered = users.filter((u) => {
@@ -85,19 +85,19 @@ export function UserList() {
             {/* Search and filter */}
             <div className="flex gap-2">
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
                     <input
                         type="text"
                         placeholder={t('admin.users.searchPlaceholder')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded-lg border border-line py-2 pl-9 pr-3 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                     />
                 </div>
                 <select
                     value={roleFilter}
                     onChange={(e) => setRoleFilter(e.target.value)}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                 >
                     <option value="all">{t('admin.users.allRoles')}</option>
                     <option value="client">{t('admin.users.clients')}</option>
@@ -106,11 +106,11 @@ export function UserList() {
                 </select>
             </div>
 
-            <p className="text-xs text-gray-500">{t('admin.users.countOf', { shown: filtered.length, total: users.length })}</p>
+            <p className="text-xs text-fg-muted">{t('admin.users.countOf', { shown: filtered.length, total: users.length })}</p>
 
             {/* User list */}
             {filtered.length === 0 ? (
-                <p className="py-8 text-center text-sm text-gray-500">{t('admin.users.notFound')}</p>
+                <p className="py-8 text-center text-sm text-fg-muted">{t('admin.users.notFound')}</p>
             ) : (
                 <div className="space-y-2">
                     {filtered.map((user) => {
@@ -127,9 +127,9 @@ export function UserList() {
                                 type="button"
                                 onClick={() => router.push(`/admin/users/${user.id}`)}
                                 className={cn(
-                                    'w-full rounded-xl bg-white p-4 shadow-sm border border-gray-100',
+                                    'w-full rounded-xl bg-surface p-4 shadow-sm border border-line',
                                     'text-left transition-shadow hover:shadow-md',
-                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2'
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2'
                                 )}
                             >
                                 <div className="flex items-center gap-3">
@@ -142,30 +142,30 @@ export function UserList() {
                                             className="h-10 w-10 rounded-full object-cover"
                                         />
                                     ) : (
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
                                             {initials || '?'}
                                         </div>
                                     )}
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-gray-900 truncate">
+                                        <p className="text-sm font-semibold text-fg truncate">
                                             {user.name || user.email}
                                         </p>
-                                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                        <p className="text-xs text-fg-muted truncate">{user.email}</p>
                                     </div>
                                     <span className={cn(
                                         'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                                        ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-700'
+                                        ROLE_COLORS[user.role] || 'bg-subtle text-fg'
                                     )}>
                                         {ROLE_LABELS[user.role] || user.role}
                                     </span>
                                 </div>
                                 {user.curator_name && (
-                                    <p className="mt-2 text-xs text-gray-500">
+                                    <p className="mt-2 text-xs text-fg-muted">
                                         {t('admin.users.curatorOf', { name: user.curator_name })}
                                     </p>
                                 )}
                                 {user.role === 'coordinator' && user.client_count > 0 && (
-                                    <p className="mt-2 text-xs text-gray-500">
+                                    <p className="mt-2 text-xs text-fg-muted">
                                         {t('admin.users.clientCount', { count: user.client_count })}
                                     </p>
                                 )}
@@ -177,14 +177,14 @@ export function UserList() {
 
             {users.length < total && (
                 <div className="mt-6 text-center">
-                    <p className="mb-2 text-xs text-gray-500">
+                    <p className="mb-2 text-xs text-fg-muted">
                         {t('admin.users.shownOf', { shown: users.length, total })}
                     </p>
                     <button
                         type="button"
                         onClick={loadMore}
                         disabled={loadingMore}
-                        className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+                        className="rounded-md border border-line px-4 py-2 text-sm hover:bg-canvas disabled:opacity-50"
                     >
                         {loadingMore ? t('admin.users.loadingMore') : t('admin.users.showMore')}
                     </button>

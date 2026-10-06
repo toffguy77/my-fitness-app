@@ -113,8 +113,8 @@ export function MagicLinkConsume({ token }: { token: string }) {
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-center gap-2" aria-busy="true">
-            <h1 className="text-lg font-semibold text-gray-900">{t('auth.magicLink.consume.title')}</h1>
-            <p role="status" className="text-sm text-gray-600">
+            <h1 className="text-lg font-semibold text-fg">{t('auth.magicLink.consume.title')}</h1>
+            <p role="status" className="text-sm text-fg-muted">
                 {t('auth.magicLink.consume.loading')}
             </p>
         </main>

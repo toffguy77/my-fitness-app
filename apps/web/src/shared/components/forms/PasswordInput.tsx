@@ -31,12 +31,12 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
                 return { label: '', color: '', width: '0%' }
             }
             if (metCount <= 3) {
-                return { label: 'Слабый', color: 'bg-red-500', width: '33%' }
+                return { label: 'Слабый', color: 'bg-danger', width: '33%' }
             }
             if (metCount <= 5) {
-                return { label: 'Средний', color: 'bg-yellow-500', width: '66%' }
+                return { label: 'Средний', color: 'bg-warning', width: '66%' }
             }
-            return { label: 'Сильный', color: 'bg-green-500', width: '100%' }
+            return { label: 'Сильный', color: 'bg-success', width: '100%' }
         }
 
         const strength = showStrengthIndicator ? getStrength() : null
@@ -55,7 +55,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg focus:outline-none"
                         aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
                     >
                         {showPassword ? (
@@ -68,13 +68,13 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
 
                 {showStrengthIndicator && strength && strength.label && (
                     <div className="space-y-1">
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-2 bg-subtle rounded-full overflow-hidden">
                             <div
                                 className={`h-full transition-all duration-300 ${strength.color}`}
                                 style={{ width: strength.width }}
                             />
                         </div>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-fg-muted">
                             Надежность пароля: <span className="font-medium">{strength.label}</span>
                         </p>
                     </div>
@@ -89,7 +89,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
                 */}
                 {showRequirements && current.length > 0 && (
                     <div className="space-y-2 text-sm" data-testid="password-checklist">
-                        <p className="font-medium text-gray-700">{t('auth.validation.mustContain')}</p>
+                        <p className="font-medium text-fg">{t('auth.validation.mustContain')}</p>
                         <ul className="space-y-1">
                             {PASSWORD_RULES.map((rule, index) => (
                                 <RequirementItem
@@ -119,11 +119,11 @@ function RequirementItem({ id, met, text }: RequirementItemProps) {
     return (
         <li className="flex items-center gap-2" data-testid={`password-rule-${id}`} data-met={met}>
             {met ? (
-                <Check className="h-4 w-4 text-green-600" aria-label="Требование выполнено" />
+                <Check className="h-4 w-4 text-success-fg" aria-label="Требование выполнено" />
             ) : (
-                <X className="h-4 w-4 text-gray-400" aria-label="Требование не выполнено" />
+                <X className="h-4 w-4 text-fg-subtle" aria-label="Требование не выполнено" />
             )}
-            <span className={met ? 'text-green-700' : 'text-gray-600'}>{text}</span>
+            <span className={met ? 'text-success-fg' : 'text-fg-muted'}>{text}</span>
         </li>
     )
 }

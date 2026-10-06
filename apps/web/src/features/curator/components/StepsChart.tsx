@@ -10,9 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import type { DayDetail } from '../types'
 
 import { t } from '@/shared/i18n'
+import { AXIS_STYLE, GRID_STROKE, chartColor } from '@/shared/charts/chartTheme'
 const CHART_HEIGHT = 160
-const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
-const GRID_STROKE = '#f0f0f0'
 
 interface StepsChartProps {
     days: DayDetail[]
@@ -26,10 +25,10 @@ function StepsTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
-            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+        <div className="rounded-lg border border-line bg-surface px-3 py-2 shadow-sm">
+            <p className="text-xs font-medium text-fg mb-1">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
-                <p key={entry.name} className="text-xs text-gray-600">
+                <p key={entry.name} className="text-xs text-fg-muted">
                     <span
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
@@ -60,8 +59,8 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
         <Card variant="bordered">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900">{t('curator.charts.stepsHeading')}</CardTitle>
-                    <span className="text-sm font-semibold text-gray-900">
+                    <CardTitle className="text-lg font-semibold text-fg">{t('curator.charts.stepsHeading')}</CardTitle>
+                    <span className="text-sm font-semibold text-fg">
                         {latestSteps.toLocaleString('ru-RU')}
                     </span>
                 </div>
@@ -73,12 +72,12 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
                         <XAxis
                             dataKey="label"
                             tick={AXIS_STYLE}
-                            stroke="#e5e7eb"
+                            stroke={chartColor.line}
                             tickLine={false}
                         />
                         <YAxis
                             tick={AXIS_STYLE}
-                            stroke="#e5e7eb"
+                            stroke={chartColor.line}
                             tickLine={false}
                             width={50}
                             tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
@@ -87,13 +86,13 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
                         {stepsGoal != null && stepsGoal > 0 && (
                             <ReferenceLine
                                 y={stepsGoal}
-                                stroke="#22c55e"
+                                stroke={chartColor.success}
                                 strokeDasharray="6 3"
                                 strokeWidth={1}
                                 label={{
                                     value: t('curator.charts.stepsGoal', { value: (stepsGoal / 1000).toFixed(0) }),
                                     position: 'right',
-                                    fill: '#22c55e',
+                                    fill: chartColor.success,
                                     fontSize: 11,
                                 }}
                             />
@@ -102,7 +101,7 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
                             {stepsData.map((d) => (
                                 <Cell
                                     key={d.date}
-                                    fill={stepsGoal != null && d.steps >= stepsGoal ? '#22c55e' : '#86efac'}
+                                    fill={stepsGoal != null && d.steps >= stepsGoal ? chartColor.success : chartColor['success-soft']}
                                 />
                             ))}
                         </Bar>

@@ -26,14 +26,14 @@ describe('Logo', () => {
     it('applies default className', () => {
         const { container } = render(<Logo />)
         const svg = container.querySelector('svg')
-        expect(svg).toHaveClass('text-gray-900')
+        expect(svg).toHaveClass('text-fg')
     })
 
     it('applies custom className', () => {
-        const { container } = render(<Logo className="text-blue-500" />)
+        const { container } = render(<Logo className="text-primary" />)
         const svg = container.querySelector('svg')
-        expect(svg).toHaveClass('text-blue-500')
-        expect(svg).not.toHaveClass('text-gray-900')
+        expect(svg).toHaveClass('text-primary')
+        expect(svg).not.toHaveClass('text-fg')
     })
 
     it('renders the BURCEV text', () => {

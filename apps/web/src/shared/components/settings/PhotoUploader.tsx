@@ -63,8 +63,8 @@ export function PhotoUploader({
                         className="h-full w-full object-cover"
                     />
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-blue-100">
-                        <span className="text-4xl font-semibold text-blue-600">
+                    <div className="flex h-full w-full items-center justify-center bg-primary-soft">
+                        <span className="text-4xl font-semibold text-primary">
                             {initial}
                         </span>
                     </div>
@@ -72,7 +72,7 @@ export function PhotoUploader({
             </div>
 
             {/* Helper text */}
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-center text-sm text-fg-muted">
                 Редактирование фото профиля
             </p>
 
@@ -82,8 +82,8 @@ export function PhotoUploader({
                 disabled={busy}
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
-                    'mx-auto w-full max-w-xs rounded-xl bg-blue-600 px-6 py-3 text-center font-medium text-white transition-colors',
-                    'hover:bg-blue-700',
+                    'mx-auto w-full max-w-xs rounded-xl bg-primary px-6 py-3 text-center font-medium text-on-primary transition-colors',
+                    'hover:bg-primary-hover',
                     'disabled:pointer-events-none disabled:opacity-50'
                 )}
             >
@@ -133,7 +133,7 @@ export function PhotoUploader({
                     type="button"
                     disabled={busy}
                     onClick={handleRemove}
-                    className="text-sm text-gray-500 underline transition-colors hover:text-gray-700 disabled:pointer-events-none disabled:opacity-50"
+                    className="text-sm text-fg-muted underline transition-colors hover:text-fg disabled:pointer-events-none disabled:opacity-50"
                 >
                     Удалить фото
                 </button>

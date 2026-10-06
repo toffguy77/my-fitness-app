@@ -136,7 +136,7 @@ export function LoginFormWithLogging({ onSubmit }: LoginFormProps) {
                     aria-invalid={!!errors.email}
                 />
                 {errors.email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                    <p className="mt-1 text-sm text-danger-fg">{errors.email}</p>
                 )}
             </div>
 
@@ -152,7 +152,7 @@ export function LoginFormWithLogging({ onSubmit }: LoginFormProps) {
                     aria-invalid={!!errors.password}
                 />
                 {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                    <p className="mt-1 text-sm text-danger-fg">{errors.password}</p>
                 )}
             </div>
 

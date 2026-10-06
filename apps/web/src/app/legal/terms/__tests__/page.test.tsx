@@ -130,7 +130,7 @@ describe('TermsPage', () => {
         const { container } = render(<TermsPage />);
 
         expect(container.querySelector('.min-h-screen')).toBeInTheDocument();
-        expect(container.querySelector('.bg-white')).toBeInTheDocument();
+        expect(container.querySelector('.bg-surface')).toBeInTheDocument();
         expect(container.querySelector('.rounded-lg')).toBeInTheDocument();
     });
 });

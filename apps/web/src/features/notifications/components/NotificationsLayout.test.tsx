@@ -225,7 +225,7 @@ describe('NotificationsLayout', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const title = screen.getByRole('heading', { name: /уведомления/i });
-            expect(title).toHaveClass('text-gray-900'); // High contrast text
+            expect(title).toHaveClass('text-fg'); // High contrast text
         });
     });
 
@@ -234,21 +234,21 @@ describe('NotificationsLayout', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const layout = screen.getByTestId('notifications-layout');
-            expect(layout).toHaveClass('bg-gray-50');
+            expect(layout).toHaveClass('bg-canvas');
         });
 
         it('applies white background and border to header', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const header = screen.getByRole('banner');
-            expect(header).toHaveClass('bg-white', 'border-b', 'border-gray-200');
+            expect(header).toHaveClass('bg-surface', 'border-b', 'border-line');
         });
 
         it('applies hover styles to settings button', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const settingsButton = screen.getByRole('button', { name: /notification settings/i });
-            expect(settingsButton).toHaveClass('hover:text-gray-900', 'hover:bg-gray-100');
+            expect(settingsButton).toHaveClass('hover:text-fg', 'hover:bg-subtle');
         });
 
         it('applies transition to settings button', () => {

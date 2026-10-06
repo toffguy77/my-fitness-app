@@ -248,7 +248,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
+                        <CardTitle className="text-lg font-semibold text-fg">
                             {t('dashboard.workout.title')}
                         </CardTitle>
                         {showAttentionIndicator && (
@@ -276,7 +276,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                     <div className="text-center space-y-4" role="region" aria-label={t('dashboard.workout.infoAria')}>
                         {/* Completion indicator */}
                         <div
-                            className="flex items-center justify-center gap-2 text-green-600"
+                            className="flex items-center justify-center gap-2 text-success-fg"
                             role="status"
                             aria-label={t('dashboard.workout.doneAria')}
                         >
@@ -287,21 +287,21 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                         {/* Workout details */}
                         <div className="space-y-1">
                             {(workout.types ?? (workout.type ? [workout.type] : [])).map(workoutType => (
-                                <div key={workoutType} className="flex items-center justify-center gap-2 text-gray-700"
+                                <div key={workoutType} className="flex items-center justify-center gap-2 text-fg"
                                     aria-label={t('dashboard.workout.typeAria', { type: workoutTypeLabel(workoutType) })}>
                                     <Dumbbell className="h-4 w-4" aria-hidden="true" />
                                     <span className="font-medium">{workoutTypeLabel(workoutType)}</span>
                                     {workout.typeDurations?.[workoutType] && (
                                         <>
-                                            <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
-                                            <span className="text-sm text-gray-500">{formatDuration(workout.typeDurations[workoutType])}</span>
+                                            <Clock className="h-4 w-4 text-fg-muted" aria-hidden="true" />
+                                            <span className="text-sm text-fg-muted">{formatDuration(workout.typeDurations[workoutType])}</span>
                                         </>
                                     )}
                                 </div>
                             ))}
                             {/* Fallback: single duration for legacy records without per-type durations */}
                             {!workout.typeDurations && workout.duration && (
-                                <div className="flex items-center justify-center gap-2 text-gray-600" aria-label={t('dashboard.workout.durationAria', { duration: formatDuration(workout.duration) })}>
+                                <div className="flex items-center justify-center gap-2 text-fg-muted" aria-label={t('dashboard.workout.durationAria', { duration: formatDuration(workout.duration) })}>
                                     <Clock className="h-4 w-4" aria-hidden="true" />
                                     <span className="text-sm">{formatDuration(workout.duration)}</span>
                                 </div>
@@ -314,7 +314,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                 variant="outline"
                                 size="sm"
                                 onClick={handleQuickAdd}
-                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                className="text-primary border-primary/30 hover:bg-primary-soft"
                                 aria-label={t('dashboard.workout.change')}
                             >
                                 {t('dashboard.workout.changeShort')}
@@ -324,7 +324,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                 size="sm"
                                 onClick={handleMarkNotCompleted}
                                 isLoading={isSaving}
-                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                className="text-danger-fg border-danger/30 hover:bg-danger-soft"
                                 aria-label={t('dashboard.workout.cancelAria')}
                             >
                                 <X className="h-4 w-4 mr-1" aria-hidden="true" />
@@ -335,13 +335,13 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                 ) : (
                     /* Empty state */
                     <div className="text-center py-2 space-y-2" role="status" aria-label={t('dashboard.workout.emptyAria')}>
-                        <Dumbbell className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">{t('dashboard.workout.empty')}</p>
+                        <Dumbbell className="h-8 w-8 mx-auto text-fg-subtle" aria-hidden="true" />
+                        <p className="text-sm text-fg-muted">{t('dashboard.workout.empty')}</p>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleQuickAdd}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            className="text-primary border-primary/30 hover:bg-primary-soft"
                             aria-label={t('dashboard.workout.add')}
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -352,15 +352,15 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
 
                 {/* Workout dialog */}
                 {isDialogOpen && (
-                    <div className="space-y-4 p-4 bg-gray-50 rounded-lg border" role="dialog" aria-labelledby="workout-dialog-title">
-                        <div id="workout-dialog-title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <div className="space-y-4 p-4 bg-canvas rounded-lg border" role="dialog" aria-labelledby="workout-dialog-title">
+                        <div id="workout-dialog-title" className="flex items-center gap-2 text-sm font-medium text-fg">
                             <Dumbbell className="h-4 w-4" aria-hidden="true" />
                             <span>{t('dashboard.workout.add')}</span>
                         </div>
 
                         {/* Workout type selection (multi-select) */}
                         <div className="space-y-2">
-                            <label id="workout-type-label" className="text-sm font-medium text-gray-700">
+                            <label id="workout-type-label" className="text-sm font-medium text-fg">
                                 {t('dashboard.workout.typeLabel')}
                             </label>
                             <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="workout-type-label">
@@ -374,8 +374,8 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                         className={cn(
                                             'px-3 py-2 text-sm rounded-lg border transition-colors',
                                             selectedTypes.includes(type)
-                                                ? 'bg-blue-100 border-blue-300 text-blue-700'
-                                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                                ? 'bg-primary-soft border-primary/30 text-primary'
+                                                : 'bg-surface border-line text-fg hover:bg-canvas'
                                         )}
                                         aria-label={t('dashboard.workout.typeAria', { type: workoutTypeLabel(type) })}
                                     >
@@ -404,12 +404,12 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                         {/* Per-type duration inputs */}
                         {selectedTypes.length > 0 && (
                             <div className="space-y-2">
-                                <span className="text-sm font-medium text-gray-700">{t('dashboard.workout.durationLabel')}</span>
+                                <span className="text-sm font-medium text-fg">{t('dashboard.workout.durationLabel')}</span>
                                 {selectedTypes.map(type => {
                                     const displayName = type === OTHER_TYPE ? (customType || workoutTypeLabel(OTHER_TYPE)) : workoutTypeLabel(type)
                                     return (
                                         <div key={type} className="flex items-center gap-2">
-                                            <span className="text-sm text-gray-600 min-w-[7rem] shrink-0">{displayName}:</span>
+                                            <span className="text-sm text-fg-muted min-w-[7rem] shrink-0">{displayName}:</span>
                                             <Input
                                                 type="number"
                                                 min="1"
@@ -428,7 +428,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
 
                         {/* Error message */}
                         {validationError && (
-                            <p id="workout-error" className="text-sm text-red-600" role="alert" aria-live="polite">
+                            <p id="workout-error" className="text-sm text-danger-fg" role="alert" aria-live="polite">
                                 {validationError}
                             </p>
                         )}
@@ -462,7 +462,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
 
                 {/* Helper text */}
                 {!isDialogOpen && (
-                    <div className="text-xs text-gray-400 text-center">
+                    <div className="text-xs text-fg-subtle text-center">
                         {t('dashboard.workout.hint')}
                     </div>
                 )}

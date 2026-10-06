@@ -25,7 +25,7 @@ export function ConsentSection({ consents, setConsents, error }: ConsentSectionP
 
     return (
         <div className="mt-6 space-y-3">
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-fg">
                 {t('auth.consent.intro')}
             </p>
 
@@ -38,7 +38,7 @@ export function ConsentSection({ consents, setConsents, error }: ConsentSectionP
                         {t('auth.consent.accept')}{' '}
                         <Link
                             href="/legal/terms"
-                            className="text-blue-600 hover:underline"
+                            className="text-primary hover:underline"
                             target="_blank"
                         >
                             {t('auth.consent.offer')}
@@ -57,7 +57,7 @@ export function ConsentSection({ consents, setConsents, error }: ConsentSectionP
                         {t('auth.consent.accept')}{' '}
                         <Link
                             href="/legal/privacy"
-                            className="text-blue-600 hover:underline"
+                            className="text-primary hover:underline"
                             target="_blank"
                         >
                             {t('auth.consent.privacy')}
@@ -89,12 +89,12 @@ export function ConsentSection({ consents, setConsents, error }: ConsentSectionP
             />
 
             {error && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-sm text-danger-fg" role="alert">
                     {error}
                 </p>
             )}
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-fg-muted">
                 {t('auth.consent.requiredNote')}
             </p>
         </div>

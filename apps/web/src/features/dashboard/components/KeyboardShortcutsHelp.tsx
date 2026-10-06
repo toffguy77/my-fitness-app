@@ -154,7 +154,7 @@ export function KeyboardShortcutsHelp() {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-4 right-4 p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 z-50"
+                className="fixed bottom-4 right-4 p-3 bg-fg text-fg-inverse rounded-full shadow-lg hover:bg-fg/90 focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 z-50"
                 aria-label={t('dashboard.shortcuts.showAria')}
                 title={t('dashboard.shortcuts.showTitle')}
             >
@@ -169,7 +169,7 @@ export function KeyboardShortcutsHelp() {
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black bg-opacity-50 z-50"
+                className="fixed inset-0 bg-scrim z-50"
                 onClick={() => setIsOpen(false)}
                 aria-hidden="true"
             />
@@ -181,24 +181,24 @@ export function KeyboardShortcutsHelp() {
                 aria-modal="true"
                 aria-labelledby="keyboard-shortcuts-title"
             >
-                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+                <div className="bg-surface rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
                     {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b">
                         <div className="flex items-center gap-3">
-                            <Keyboard className="h-6 w-6 text-gray-700" />
+                            <Keyboard className="h-6 w-6 text-fg" />
                             <h2
                                 id="keyboard-shortcuts-title"
-                                className="text-xl font-semibold text-gray-900"
+                                className="text-xl font-semibold text-fg"
                             >
                                 {t('dashboard.shortcuts.title')}
                             </h2>
                         </div>
                         <button
                             onClick={() => setIsOpen(false)}
-                            className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="p-2 rounded-lg hover:bg-subtle focus:outline-none focus:ring-2 focus:ring-focus"
                             aria-label={t('common.close')}
                         >
-                            <X className="h-5 w-5 text-gray-500" />
+                            <X className="h-5 w-5 text-fg-muted" />
                         </button>
                     </div>
 
@@ -207,7 +207,7 @@ export function KeyboardShortcutsHelp() {
                         <div className="space-y-6">
                             {Object.entries(groupedShortcuts).map(([category, shortcuts]) => (
                                 <div key={category}>
-                                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+                                    <h3 className="text-sm font-semibold text-fg uppercase tracking-wide mb-3">
                                         {category}
                                     </h3>
                                     <div className="space-y-2">
@@ -216,17 +216,17 @@ export function KeyboardShortcutsHelp() {
                                                 key={index}
                                                 className="flex items-center justify-between py-2"
                                             >
-                                                <span className="text-sm text-gray-600">
+                                                <span className="text-sm text-fg-muted">
                                                     {shortcut.description}
                                                 </span>
                                                 <div className="flex items-center gap-1">
                                                     {shortcut.keys.map((key, keyIndex) => (
                                                         <span key={keyIndex} className="flex items-center gap-1">
-                                                            <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded">
+                                                            <kbd className="px-2 py-1 text-xs font-semibold text-fg bg-subtle border border-line rounded">
                                                                 {key}
                                                             </kbd>
                                                             {keyIndex < shortcut.keys.length - 1 && (
-                                                                <span className="text-gray-400">+</span>
+                                                                <span className="text-fg-subtle">+</span>
                                                             )}
                                                         </span>
                                                     ))}
@@ -240,8 +240,8 @@ export function KeyboardShortcutsHelp() {
                     </div>
 
                     {/* Footer */}
-                    <div className="p-6 border-t bg-gray-50">
-                        <p className="text-sm text-gray-600 text-center">
+                    <div className="p-6 border-t bg-canvas">
+                        <p className="text-sm text-fg-muted text-center">
                             {t('dashboard.shortcuts.pressHint', { key: '?' })}
                         </p>
                     </div>

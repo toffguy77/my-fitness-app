@@ -172,7 +172,7 @@ export function ArticleForm({
             <div>
                 <label
                     htmlFor="article-category"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1 block text-sm font-medium text-fg"
                 >
                     Категория
                 </label>
@@ -180,7 +180,7 @@ export function ArticleForm({
                     id="article-category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ContentCategory)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm text-fg focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
                 >
                     {categories.map((cat) => (
                         <option key={cat} value={cat}>
@@ -194,9 +194,9 @@ export function ArticleForm({
             <div>
                 <label
                     htmlFor="article-title"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1 block text-sm font-medium text-fg"
                 >
-                    Заголовок <span className="text-red-500">*</span>
+                    Заголовок <span className="text-danger-fg">*</span>
                 </label>
                 <input
                     id="article-title"
@@ -204,7 +204,7 @@ export function ArticleForm({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Введите заголовок статьи"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
                 />
             </div>
 
@@ -212,11 +212,11 @@ export function ArticleForm({
             <div>
                 <label
                     htmlFor="article-slug"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1 block text-sm font-medium text-fg"
                 >
                     Адрес статьи
                 </label>
-                <div className="flex items-center gap-1 text-sm text-gray-500">
+                <div className="flex items-center gap-1 text-sm text-fg-muted">
                     <span>/content/</span>
                     <input
                         id="article-slug"
@@ -227,10 +227,10 @@ export function ArticleForm({
                         placeholder="сформируется из заголовка"
                         pattern="[a-z0-9]+(-[a-z0-9]+)*"
                         maxLength={80}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                        className="w-full rounded-lg border border-line px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus disabled:bg-canvas disabled:text-fg-muted"
                     />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-fg-muted">
                     {article?.status === 'published'
                         ? 'Адрес опубликованной статьи не меняется: он уже в ссылках и в поиске.'
                         : 'Латинские буквы, цифры и дефисы. После публикации адрес не меняется.'}
@@ -241,7 +241,7 @@ export function ArticleForm({
             <div>
                 <label
                     htmlFor="article-excerpt"
-                    className="mb-1 block text-sm font-medium text-gray-700"
+                    className="mb-1 block text-sm font-medium text-fg"
                 >
                     Краткое описание
                 </label>
@@ -251,13 +251,13 @@ export function ArticleForm({
                     onChange={(e) => setExcerpt(e.target.value)}
                     placeholder="Краткое описание статьи"
                     rows={2}
-                    className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full resize-none rounded-lg border border-line px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
                 />
             </div>
 
             {/* Cover image upload */}
             <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="mb-1 block text-sm font-medium text-fg">
                     Обложка
                 </label>
 
@@ -267,14 +267,14 @@ export function ArticleForm({
                         <img
                             src={coverImageUrl}
                             alt="Превью обложки"
-                            className="h-40 w-full rounded-lg border border-gray-200 object-cover"
+                            className="h-40 w-full rounded-lg border border-line object-cover"
                             onError={(e) => { e.currentTarget.style.display = 'none' }}
                         />
                         <button
                             type="button"
                             onClick={() => coverInputRef.current?.click()}
                             disabled={coverUploading}
-                            className="absolute bottom-2 right-2 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm border border-gray-200 hover:bg-white disabled:opacity-50"
+                            className="absolute bottom-2 right-2 rounded-lg bg-surface/90 px-3 py-1.5 text-xs font-medium text-fg shadow-sm border border-line hover:bg-surface disabled:opacity-50"
                         >
                             {coverUploading ? 'Загрузка...' : 'Заменить'}
                         </button>
@@ -282,7 +282,7 @@ export function ArticleForm({
                             type="button"
                             onClick={() => setCoverImageUrl('')}
                             disabled={coverUploading}
-                            className="absolute top-2 right-2 rounded-full bg-white/90 p-1 text-gray-500 shadow-sm border border-gray-200 hover:text-red-600 disabled:opacity-50"
+                            className="absolute top-2 right-2 rounded-full bg-surface/90 p-1 text-fg-muted shadow-sm border border-line hover:text-danger-fg disabled:opacity-50"
                             aria-label="Удалить обложку"
                         >
                             <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -295,7 +295,7 @@ export function ArticleForm({
                         type="button"
                         onClick={() => coverInputRef.current?.click()}
                         disabled={coverUploading}
-                        className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 py-8 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50"
+                        className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-line py-8 text-sm text-fg-muted hover:border-primary hover:text-primary disabled:opacity-50"
                     >
                         {coverUploading ? (
                             <span>Загрузка...</span>
@@ -305,7 +305,7 @@ export function ArticleForm({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                                 <span>Загрузить изображение обложки</span>
-                                <span className="text-xs text-gray-400">JPEG, PNG, WebP · до 10 МБ</span>
+                                <span className="text-xs text-fg-subtle">JPEG, PNG, WebP · до 10 МБ</span>
                             </>
                         )}
                     </button>
@@ -320,7 +320,7 @@ export function ArticleForm({
                 />
 
                 {coverImageError && (
-                    <p className="mt-1 text-xs text-red-600">{coverImageError}</p>
+                    <p className="mt-1 text-xs text-danger-fg">{coverImageError}</p>
                 )}
             </div>
 
@@ -337,7 +337,7 @@ export function ArticleForm({
                 <div>
                     <label
                         htmlFor="article-schedule"
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="mb-1 block text-sm font-medium text-fg"
                     >
                         Запланировать публикацию
                     </label>
@@ -346,7 +346,7 @@ export function ArticleForm({
                         type="datetime-local"
                         value={scheduledAt}
                         onChange={(e) => setScheduledAt(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded-lg border border-line px-3 py-2 text-sm text-fg focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
                     />
                 </div>
             )}
@@ -357,7 +357,7 @@ export function ArticleForm({
                     type="button"
                     onClick={handleSave}
                     disabled={loading || !title.trim()}
-                    className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                 >
                     {loading ? 'Сохранение...' : isDraft ? 'Сохранить черновик' : 'Сохранить'}
                 </button>
@@ -367,7 +367,7 @@ export function ArticleForm({
                         type="button"
                         onClick={onPublish}
                         disabled={loading}
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                     >
                         Опубликовать
                     </button>
@@ -378,7 +378,7 @@ export function ArticleForm({
                         type="button"
                         onClick={handleSchedule}
                         disabled={loading}
-                        className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+                        className="rounded-lg bg-warning px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-warning disabled:opacity-50"
                     >
                         Запланировать
                     </button>

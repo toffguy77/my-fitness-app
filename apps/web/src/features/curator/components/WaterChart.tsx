@@ -10,9 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import type { DayDetail } from '../types'
 
 import { t } from '@/shared/i18n'
+import { AXIS_STYLE, GRID_STROKE, chartColor } from '@/shared/charts/chartTheme'
 const CHART_HEIGHT = 160
-const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
-const GRID_STROKE = '#f0f0f0'
 
 interface WaterChartProps {
     days: DayDetail[]
@@ -25,10 +24,10 @@ function WaterTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
-            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+        <div className="rounded-lg border border-line bg-surface px-3 py-2 shadow-sm">
+            <p className="text-xs font-medium text-fg mb-1">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
-                <p key={entry.name} className="text-xs text-gray-600">
+                <p key={entry.name} className="text-xs text-fg-muted">
                     <span
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
@@ -61,8 +60,8 @@ export function WaterChart({ days }: WaterChartProps) {
         <Card variant="bordered">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900">{t('curator.charts.waterHeading')}</CardTitle>
-                    <span className="text-sm font-semibold text-gray-900">
+                    <CardTitle className="text-lg font-semibold text-fg">{t('curator.charts.waterHeading')}</CardTitle>
+                    <span className="text-sm font-semibold text-fg">
                         {latestGlasses}/{waterGoal}
                     </span>
                 </div>
@@ -74,12 +73,12 @@ export function WaterChart({ days }: WaterChartProps) {
                         <XAxis
                             dataKey="label"
                             tick={AXIS_STYLE}
-                            stroke="#e5e7eb"
+                            stroke={chartColor.line}
                             tickLine={false}
                         />
                         <YAxis
                             tick={AXIS_STYLE}
-                            stroke="#e5e7eb"
+                            stroke={chartColor.line}
                             tickLine={false}
                             width={50}
                             allowDecimals={false}
@@ -88,13 +87,13 @@ export function WaterChart({ days }: WaterChartProps) {
                         {waterGoal > 0 && (
                             <ReferenceLine
                                 y={waterGoal}
-                                stroke="#60a5fa"
+                                stroke={chartColor.water}
                                 strokeDasharray="6 3"
                                 strokeWidth={1}
                                 label={{
                                     value: t('curator.charts.waterGoal', { value: waterGoal }),
                                     position: 'right',
-                                    fill: '#60a5fa',
+                                    fill: chartColor.water,
                                     fontSize: 11,
                                 }}
                             />
@@ -103,7 +102,7 @@ export function WaterChart({ days }: WaterChartProps) {
                             {waterData.map((d) => (
                                 <Cell
                                     key={d.date}
-                                    fill={d.glasses >= d.goal ? '#3b82f6' : '#93c5fd'}
+                                    fill={d.glasses >= d.goal ? chartColor.water : chartColor.track}
                                 />
                             ))}
                         </Bar>

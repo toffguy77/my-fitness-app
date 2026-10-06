@@ -156,7 +156,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <p className="text-gray-400 text-sm">{t('chat.loadingChats')}</p>
+                <p className="text-fg-subtle text-sm">{t('chat.loadingChats')}</p>
             </div>
         )
     }
@@ -164,19 +164,19 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
     if (sorted.length === 0) {
         return (
             <div className="flex items-center justify-center py-12">
-                <p className="text-gray-400 text-sm">{t('chat.noChats')}</p>
+                <p className="text-fg-subtle text-sm">{t('chat.noChats')}</p>
             </div>
         )
     }
 
     return (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-line">
             {sorted.map((conv) => (
                 <li key={conv.id}>
                     <button
                         type="button"
                         onClick={() => onSelectConversation(conv)}
-                        className="flex items-center gap-3 w-full px-2 py-3 hover:bg-gray-50 transition-colors text-left rounded-lg"
+                        className="flex items-center gap-3 w-full px-2 py-3 hover:bg-canvas transition-colors text-left rounded-lg"
                     >
                         {/* Avatar */}
                         {conv.participant.avatar_url ? (
@@ -187,8 +187,8 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
                                 className="w-11 h-11 rounded-full object-cover shrink-0"
                             />
                         ) : (
-                            <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                                <span className="text-sm font-medium text-blue-700">
+                            <div className="w-11 h-11 rounded-full bg-primary-soft flex items-center justify-center shrink-0">
+                                <span className="text-sm font-medium text-primary">
                                     {getInitials(conv.participant.name)}
                                 </span>
                             </div>
@@ -197,21 +197,21 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-900 truncate">
+                                <span className="text-sm font-medium text-fg truncate">
                                     {conv.participant.name}
                                 </span>
                                 {conv.last_message && (
-                                    <span className="text-xs text-gray-400 shrink-0 ml-2">
+                                    <span className="text-xs text-fg-subtle shrink-0 ml-2">
                                         {formatRelativeTime(conv.last_message.created_at)}
                                     </span>
                                 )}
                             </div>
                             <div className="flex items-center justify-between mt-0.5">
-                                <p className="text-sm text-gray-500 truncate">
+                                <p className="text-sm text-fg-muted truncate">
                                     {getPreview(conv)}
                                 </p>
                                 {conv.unread_count > 0 && (
-                                    <span className="ml-2 shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-medium">
+                                    <span className="ml-2 shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-danger text-on-primary text-xs font-medium">
                                         {conv.unread_count}
                                     </span>
                                 )}

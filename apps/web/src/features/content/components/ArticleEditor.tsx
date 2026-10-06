@@ -70,7 +70,7 @@ const TOOLBAR_ITEMS: { action: ToolbarAction; label: string; icon: string }[] = 
 // ============================================================================
 
 const PROSE_CLASSES =
-    'prose max-w-none text-gray-800 text-sm [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_p]:mb-3 [&_p]:leading-relaxed [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_a]:text-blue-600 [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-gray-600 [&_blockquote]:mb-3 [&_img]:rounded-lg [&_img]:my-4 [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded [&_pre]:bg-gray-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_table]:w-full [&_table]:mb-3 [&_th]:border [&_th]:border-gray-300 [&_th]:px-3 [&_th]:py-1 [&_th]:bg-gray-50 [&_td]:border [&_td]:border-gray-300 [&_td]:px-3 [&_td]:py-1'
+    'prose max-w-none text-fg text-sm [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_p]:mb-3 [&_p]:leading-relaxed [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-line [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-fg-muted [&_blockquote]:mb-3 [&_img]:rounded-lg [&_img]:my-4 [&_code]:bg-subtle [&_code]:px-1 [&_code]:rounded [&_pre]:bg-subtle [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_table]:w-full [&_table]:mb-3 [&_th]:border [&_th]:border-line [&_th]:px-3 [&_th]:py-1 [&_th]:bg-canvas [&_td]:border [&_td]:border-line [&_td]:px-3 [&_td]:py-1'
 
 // ============================================================================
 // Component
@@ -240,7 +240,7 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
         return (
             <div className="flex items-center justify-center py-20">
                 <svg
-                    className="h-6 w-6 animate-spin text-blue-600"
+                    className="h-6 w-6 animate-spin text-primary"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -265,21 +265,21 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
 
     return (
         <div
-            className={`space-y-6 ${isDragging ? 'rounded-xl ring-2 ring-blue-400 ring-offset-2' : ''}`}
+            className={`space-y-6 ${isDragging ? 'rounded-xl ring-2 ring-focus ring-offset-2' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
             {/* Drag & drop overlay */}
             {isDragging && (
-                <div className="rounded-lg border-2 border-dashed border-blue-400 bg-blue-50 p-8 text-center text-sm text-blue-600">
+                <div className="rounded-lg border-2 border-dashed border-primary bg-primary-soft p-8 text-center text-sm text-primary">
                     Перетащите .md файл сюда
                 </div>
             )}
 
             {/* Error banner */}
             {error && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div className="rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-fg">
                     {error}
                 </div>
             )}
@@ -296,8 +296,8 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
             </div>
 
             {/* Article form (metadata + actions) */}
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-                <h2 className="mb-4 text-sm font-semibold text-gray-900">
+            <div className="rounded-lg border border-line bg-surface p-4">
+                <h2 className="mb-4 text-sm font-semibold text-fg">
                     Настройки статьи
                 </h2>
                 <ArticleForm
@@ -311,14 +311,14 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
             </div>
 
             {/* Mobile tab toggle */}
-            <div className="flex gap-1 rounded-lg bg-gray-100 p-1 md:hidden">
+            <div className="flex gap-1 rounded-lg bg-subtle p-1 md:hidden">
                 <button
                     type="button"
                     onClick={() => setActiveTab('editor')}
                     className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                         activeTab === 'editor'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500'
+                            ? 'bg-surface text-fg shadow-sm'
+                            : 'text-fg-muted'
                     }`}
                 >
                     Редактор
@@ -328,8 +328,8 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
                     onClick={() => setActiveTab('preview')}
                     className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                         activeTab === 'preview'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500'
+                            ? 'bg-surface text-fg shadow-sm'
+                            : 'text-fg-muted'
                     }`}
                 >
                     Превью
@@ -345,14 +345,14 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
                     }`}
                 >
                     {/* Toolbar */}
-                    <div className="flex gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1">
+                    <div className="flex gap-1 rounded-lg border border-line bg-canvas p-1">
                         {TOOLBAR_ITEMS.map((item) => (
                             <button
                                 key={item.action}
                                 type="button"
                                 onClick={() => handleToolbar(item.action)}
                                 title={item.label}
-                                className="rounded px-2 py-1 text-sm font-medium text-gray-600 transition-colors hover:bg-white hover:text-gray-900"
+                                className="rounded px-2 py-1 text-sm font-medium text-fg-muted transition-colors hover:bg-surface hover:text-fg"
                             >
                                 {item.icon}
                             </button>
@@ -365,17 +365,17 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
                         value={body}
                         onChange={(e) => setBody(e.target.value)}
                         placeholder="Напишите статью в формате Markdown..."
-                        className="h-96 w-full resize-y rounded-lg border border-gray-300 p-3 font-mono text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="h-96 w-full resize-y rounded-lg border border-line p-3 font-mono text-sm text-fg placeholder:text-fg-subtle focus:border-primary focus:outline-none focus:ring-1 focus:ring-focus"
                     />
                 </div>
 
                 {/* Preview panel */}
                 <div
-                    className={`min-h-[24rem] rounded-lg border border-gray-200 p-4 ${
+                    className={`min-h-[24rem] rounded-lg border border-line p-4 ${
                         activeTab !== 'preview' ? 'hidden md:block' : ''
                     }`}
                 >
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wider text-fg-subtle">
                         Превью
                     </p>
                     {body.trim() ? (
@@ -385,7 +385,7 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
                             </ReactMarkdown>
                         </div>
                     ) : (
-                        <p className="py-8 text-center text-sm text-gray-400">
+                        <p className="py-8 text-center text-sm text-fg-subtle">
                             Начните писать, чтобы увидеть превью
                         </p>
                     )}

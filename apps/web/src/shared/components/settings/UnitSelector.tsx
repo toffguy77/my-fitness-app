@@ -16,7 +16,7 @@ const units = [
 export function UnitSelector({ value, onChange, disabled }: UnitSelectorProps) {
     return (
         <div className="w-full">
-            <h3 className="mb-3 text-sm font-bold text-gray-900">Единицы измерения</h3>
+            <h3 className="mb-3 text-sm font-bold text-fg">Единицы измерения</h3>
             <div className="flex flex-col gap-2">
                 {units.map((unit) => {
                     const isActive = value === unit.value
@@ -31,8 +31,8 @@ export function UnitSelector({ value, onChange, disabled }: UnitSelectorProps) {
                                 'flex w-full items-center rounded-xl px-4 py-3 text-left font-medium transition-colors',
                                 'disabled:pointer-events-none disabled:opacity-50',
                                 isActive
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700'
+                                    ? 'bg-primary text-on-primary'
+                                    : 'bg-subtle text-fg'
                             )}
                         >
                             {unit.label}

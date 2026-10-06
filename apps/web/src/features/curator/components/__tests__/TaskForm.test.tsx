@@ -196,15 +196,15 @@ describe('TaskForm', () => {
         const mondayBtn = screen.getByText('Пн')
 
         // Initially should have the unselected style
-        expect(mondayBtn).toHaveClass('bg-gray-100')
+        expect(mondayBtn).toHaveClass('bg-subtle')
 
         // Click to select
         await user.click(mondayBtn)
-        expect(mondayBtn).toHaveClass('bg-blue-600')
+        expect(mondayBtn).toHaveClass('bg-primary')
 
         // Click again to deselect
         await user.click(mondayBtn)
-        expect(mondayBtn).toHaveClass('bg-gray-100')
+        expect(mondayBtn).toHaveClass('bg-subtle')
     })
 
     it('sends recurrence_days only when recurrence is weekly', async () => {

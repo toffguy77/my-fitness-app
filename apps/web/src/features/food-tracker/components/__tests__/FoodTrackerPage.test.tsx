@@ -325,7 +325,7 @@ describe('FoodTrackerPage', () => {
 
             const rootElement = container.firstChild;
             expect(rootElement).toHaveClass('custom-class');
-            expect(rootElement).toHaveClass('bg-gray-50');
+            expect(rootElement).toHaveClass('bg-canvas');
         });
     });
 

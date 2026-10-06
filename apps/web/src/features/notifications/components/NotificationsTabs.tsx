@@ -77,7 +77,7 @@ export function NotificationsTabs({
             role="tablist"
             aria-label="Notification categories"
             className={cn(
-                'flex border-b border-gray-200',
+                'flex border-b border-line',
                 // Responsive container (Requirement 6.1, 6.2, 6.3)
                 'overflow-x-auto',           // Mobile: allow horizontal scroll if needed
                 'sm:overflow-x-visible',     // Tablet+: no scroll needed
@@ -108,17 +108,17 @@ export function NotificationsTabs({
                             'md:px-8 md:py-4 md:text-base', // Desktop: optimal spacing
                             // Enhanced focus-visible styles (Requirement 6.4, 6.7)
                             'focus:outline-none',
-                            'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
-                            'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_white,0_0_0_4px_#3b82f6]',
+                            'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
+                            'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--ds-color-bg-surface),0_0_0_4px_var(--ds-color-focus)]',
                             'focus-visible:z-10',
                             // Desktop hover states (Requirement 6.3)
-                            'md:hover:text-gray-700',
+                            'md:hover:text-fg',
                             // Minimum touch target (Requirement 6.4)
                             'min-h-[44px]',
                             // High contrast for active state (Requirement 6.6)
                             isActive
-                                ? 'text-blue-600 border-b-2 border-blue-600'
-                                : 'text-gray-600 border-b-2 border-transparent'
+                                ? 'text-primary border-b-2 border-primary'
+                                : 'text-fg-muted border-b-2 border-transparent'
                         )}
                     >
                         <span className="flex items-center gap-2">
@@ -134,8 +134,8 @@ export function NotificationsTabs({
                                         'md:min-w-[24px] md:h-6 md:px-2.5 md:text-sm', // Desktop
                                         // High contrast colors (Requirement 6.6)
                                         isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-200 text-gray-700'
+                                            ? 'bg-primary text-on-primary'
+                                            : 'bg-subtle text-fg'
                                     )}
                                     aria-label={`${unreadCount} unread notifications`}
                                     role="status"

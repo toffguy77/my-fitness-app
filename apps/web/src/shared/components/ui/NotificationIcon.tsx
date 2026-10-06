@@ -10,15 +10,15 @@ export interface NotificationIconProps {
 
 export const NotificationIcon = forwardRef<HTMLButtonElement, NotificationIconProps>(
     ({ count = 0, onClick, className }, ref) => {
-        const baseStyles = 'relative inline-flex items-center justify-center rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600'
-        const interactiveStyles = onClick ? 'cursor-pointer hover:bg-gray-100' : ''
+        const baseStyles = 'relative inline-flex items-center justify-center rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus'
+        const interactiveStyles = onClick ? 'cursor-pointer hover:bg-subtle' : ''
 
         const content = (
             <>
-                <Bell className="h-6 w-6 text-gray-700" aria-hidden="true" />
+                <Bell className="h-6 w-6 text-fg" aria-hidden="true" />
                 {count > 0 && (
                     <span
-                        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white"
+                        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-xs font-bold text-on-primary"
                         data-testid="notification-badge"
                         aria-label={`${count} unread notifications`}
                     >

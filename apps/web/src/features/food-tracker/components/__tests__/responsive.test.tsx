@@ -124,7 +124,7 @@ describe('MealSlot Responsive Design', () => {
     it('renders with responsive header padding', () => {
         const { container } = render(<MealSlot {...defaultProps} />);
 
-        const header = container.querySelector('.bg-gray-50');
+        const header = container.querySelector('.bg-canvas');
         expect(header).toHaveClass('px-3', 'py-2.5', 'sm:px-4', 'sm:py-3');
     });
 
@@ -222,7 +222,7 @@ describe('DatePicker Responsive Design', () => {
     it('renders with responsive container padding', () => {
         const { container } = render(<DatePicker {...defaultProps} />);
 
-        const dateContainer = container.querySelector('.bg-white');
+        const dateContainer = container.querySelector('.bg-surface');
         expect(dateContainer).toHaveClass('p-1.5', 'sm:p-2');
     });
 
@@ -243,7 +243,7 @@ describe('DatePicker Responsive Design', () => {
     it('renders calendar icon with responsive size', () => {
         const { container } = render(<DatePicker {...defaultProps} />);
 
-        const calendarIcon = container.querySelector('.text-gray-500');
+        const calendarIcon = container.querySelector('.text-fg-muted');
         expect(calendarIcon).toHaveClass('w-4', 'h-4', 'sm:w-5', 'sm:h-5');
     });
 });
@@ -261,7 +261,7 @@ describe('FoodTrackerTabs Responsive Design', () => {
     it('renders with responsive container padding', () => {
         const { container } = render(<FoodTrackerTabs {...defaultProps} />);
 
-        const tabContainer = container.querySelector('.bg-gray-100');
+        const tabContainer = container.querySelector('.bg-subtle');
         expect(tabContainer).toHaveClass('p-0.5', 'sm:p-1');
     });
 

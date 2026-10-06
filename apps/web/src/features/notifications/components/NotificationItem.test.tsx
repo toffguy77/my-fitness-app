@@ -48,16 +48,16 @@ describe('NotificationItem', () => {
 
                     // Unread notifications should have blue background
                     const notificationElement = container.firstChild as HTMLElement;
-                    expect(notificationElement).toHaveClass('bg-blue-50');
+                    expect(notificationElement).toHaveClass('bg-primary-soft');
 
                     // Title should be bold/semibold for unread - use querySelector to avoid text matching issues
                     const titleElement = notificationElement.querySelector('h3');
                     expect(titleElement).toHaveClass('font-semibold');
-                    expect(titleElement).toHaveClass('text-gray-900');
+                    expect(titleElement).toHaveClass('text-fg');
 
                     // Content should have appropriate styling
                     const contentElement = notificationElement.querySelector('p');
-                    expect(contentElement).toHaveClass('text-gray-700');
+                    expect(contentElement).toHaveClass('text-fg');
 
                     // Should have unread indicator dot
                     const unreadDot = notificationElement.querySelector('[role="presentation"]');
@@ -90,11 +90,11 @@ describe('NotificationItem', () => {
                     // Title should be normal weight for read - use querySelector to avoid text matching issues
                     const titleElement = notificationElement.querySelector('h3');
                     expect(titleElement).toHaveClass('font-normal');
-                    expect(titleElement).toHaveClass('text-gray-700');
+                    expect(titleElement).toHaveClass('text-fg');
 
                     // Content should have muted styling
                     const contentElement = notificationElement.querySelector('p');
-                    expect(contentElement).toHaveClass('text-gray-500');
+                    expect(contentElement).toHaveClass('text-fg-muted');
 
                     // Should NOT have unread indicator dot
                     const unreadDot = notificationElement.querySelector('[role="presentation"]');
@@ -181,7 +181,7 @@ describe('NotificationItem', () => {
 
             // Check unread styling
             const notificationElement = container.firstChild as HTMLElement;
-            expect(notificationElement).toHaveClass('bg-blue-50');
+            expect(notificationElement).toHaveClass('bg-primary-soft');
 
             // Check title is bold
             const title = screen.getByText('New feedback from trainer');
@@ -603,7 +603,7 @@ describe('Responsive Design', () => {
         expect(notificationElement).toHaveClass('md:p-5');
 
         // Desktop: hover states (unread notifications have blue hover)
-        expect(notificationElement).toHaveClass('md:hover:bg-blue-200');
+        expect(notificationElement).toHaveClass('md:hover:bg-primary-soft');
 
         // Title: desktop font size
         const titleElement = notificationElement.querySelector('h3');

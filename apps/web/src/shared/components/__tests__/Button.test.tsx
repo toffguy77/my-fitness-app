@@ -12,31 +12,31 @@ describe('Button', () => {
     it('applies primary variant classes by default', () => {
         render(<Button>Primary</Button>)
         const button = screen.getByRole('button')
-        expect(button.className).toContain('bg-blue-600')
+        expect(button.className).toContain('bg-primary')
     })
 
     it('applies secondary variant classes', () => {
         render(<Button variant="secondary">Secondary</Button>)
         const button = screen.getByRole('button')
-        expect(button.className).toContain('bg-gray-200')
+        expect(button.className).toContain('bg-subtle')
     })
 
     it('applies outline variant classes', () => {
         render(<Button variant="outline">Outline</Button>)
         const button = screen.getByRole('button')
-        expect(button.className).toContain('border-gray-300')
+        expect(button.className).toContain('border-line')
     })
 
     it('applies ghost variant classes', () => {
         render(<Button variant="ghost">Ghost</Button>)
         const button = screen.getByRole('button')
-        expect(button.className).toContain('hover:bg-gray-100')
+        expect(button.className).toContain('hover:bg-subtle')
     })
 
     it('applies danger variant classes', () => {
         render(<Button variant="danger">Delete</Button>)
         const button = screen.getByRole('button')
-        expect(button.className).toContain('bg-red-600')
+        expect(button.className).toContain('bg-danger')
     })
 
     it('applies small size classes', () => {

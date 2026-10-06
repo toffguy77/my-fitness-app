@@ -121,7 +121,7 @@ describe('NotificationIcon', () => {
 
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
-                expect(icon).toHaveClass('text-gray-600');
+                expect(icon).toHaveClass('text-fg-muted');
                 expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
             });
 
@@ -132,7 +132,7 @@ describe('NotificationIcon', () => {
 
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
-                expect(icon).toHaveClass('text-gray-600');
+                expect(icon).toHaveClass('text-fg-muted');
                 expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
             });
 
@@ -143,7 +143,7 @@ describe('NotificationIcon', () => {
 
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
-                expect(icon).toHaveClass('text-gray-600');
+                expect(icon).toHaveClass('text-fg-muted');
                 expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
             });
 
@@ -154,7 +154,7 @@ describe('NotificationIcon', () => {
 
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
-                expect(icon).toHaveClass('text-gray-600');
+                expect(icon).toHaveClass('text-fg-muted');
                 expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
             });
 
@@ -165,7 +165,7 @@ describe('NotificationIcon', () => {
 
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
-                expect(icon).toHaveClass('text-gray-600');
+                expect(icon).toHaveClass('text-fg-muted');
                 expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
             });
 
@@ -176,7 +176,7 @@ describe('NotificationIcon', () => {
 
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
-                expect(icon).toHaveClass('text-gray-600');
+                expect(icon).toHaveClass('text-fg-muted');
                 expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
             });
         });
@@ -268,7 +268,7 @@ describe('NotificationIcon', () => {
 
                 const imgContainer = container.querySelector('.relative.rounded-full');
                 expect(imgContainer).toBeInTheDocument();
-                expect(imgContainer).toHaveClass('overflow-hidden', 'bg-gray-100');
+                expect(imgContainer).toHaveClass('overflow-hidden', 'bg-subtle');
                 expect(imgContainer).toHaveClass('h-8', 'w-8', 'sm:h-10', 'sm:w-10', 'md:h-12', 'md:w-12');
             });
         });
@@ -285,7 +285,7 @@ describe('NotificationIcon', () => {
                     'items-center',
                     'justify-center',
                     'rounded-full',
-                    'bg-gray-100'
+                    'bg-subtle'
                 );
                 // Responsive sizing
                 expect(iconContainer).toHaveClass('h-8', 'w-8', 'sm:h-10', 'sm:w-10', 'md:h-12', 'md:w-12');
@@ -315,12 +315,12 @@ describe('NotificationIcon', () => {
 
             it('merges custom className with default classes', () => {
                 const { container } = render(
-                    <NotificationIcon type="achievement" className="bg-blue-100" />
+                    <NotificationIcon type="achievement" className="bg-primary-soft" />
                 );
 
                 const iconContainer = container.querySelector('[aria-hidden="true"]');
                 // Should have both default and custom classes
-                expect(iconContainer).toHaveClass('flex', 'bg-blue-100');
+                expect(iconContainer).toHaveClass('flex', 'bg-primary-soft');
                 // Responsive sizing
                 expect(iconContainer).toHaveClass('h-8', 'w-8', 'sm:h-10', 'sm:w-10', 'md:h-12', 'md:w-12');
             });

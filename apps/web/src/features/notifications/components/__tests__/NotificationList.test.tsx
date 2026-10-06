@@ -521,7 +521,7 @@ describe('Responsive Design', () => {
         expect(errorContainer).toHaveClass('md:px-8');
 
         // Error icon: responsive sizing
-        const errorIcon = container.querySelector('svg.text-red-500');
+        const errorIcon = container.querySelector('svg.text-danger-fg');
         expect(errorIcon).toHaveClass('h-10');
         expect(errorIcon).toHaveClass('w-10');
         expect(errorIcon).toHaveClass('sm:h-11');
@@ -564,7 +564,7 @@ describe('Responsive Design', () => {
         expect(emptyContainer).toHaveClass('md:px-8');
 
         // Empty icon: responsive sizing
-        const emptyIcon = container.querySelector('svg.text-gray-400');
+        const emptyIcon = container.querySelector('svg.text-fg-subtle');
         expect(emptyIcon).toHaveClass('h-12');
         expect(emptyIcon).toHaveClass('w-12');
         expect(emptyIcon).toHaveClass('sm:h-14');
@@ -642,7 +642,7 @@ describe('Error Handling', () => {
                 />
             );
 
-            const errorIcon = container.querySelector('svg.text-red-500');
+            const errorIcon = container.querySelector('svg.text-danger-fg');
             expect(errorIcon).toBeInTheDocument();
             expect(errorIcon).toHaveAttribute('aria-hidden', 'true');
         });
@@ -697,7 +697,7 @@ describe('Error Handling', () => {
             // Check for focus-visible classes
             expect(retryButton).toHaveClass('focus:outline-none');
             expect(retryButton).toHaveClass('focus-visible:ring-2');
-            expect(retryButton).toHaveClass('focus-visible:ring-blue-500');
+            expect(retryButton).toHaveClass('focus-visible:ring-focus');
         });
 
         it('should have minimum touch target size for accessibility', () => {
@@ -851,7 +851,7 @@ describe('Error Handling', () => {
             );
 
             const errorMessage = screen.getByText(/custom error message/i);
-            expect(errorMessage).toHaveClass('text-gray-600');
+            expect(errorMessage).toHaveClass('text-fg-muted');
             expect(errorMessage).toHaveClass('text-center');
             expect(errorMessage).toHaveClass('max-w-md');
         });
@@ -868,7 +868,7 @@ describe('Error Handling', () => {
 
             const errorTitle = screen.getByText(/ошибка загрузки уведомлений/i);
             expect(errorTitle).toHaveClass('font-semibold');
-            expect(errorTitle).toHaveClass('text-gray-900');
+            expect(errorTitle).toHaveClass('text-fg');
         });
 
         it('should apply responsive text sizing to error messages', () => {

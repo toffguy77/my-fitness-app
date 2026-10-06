@@ -95,7 +95,7 @@ export function PricingRequestForm() {
 
     if (sent) {
         return (
-            <p className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800" role="status">
+            <p className="rounded-lg bg-success-soft px-4 py-3 text-sm text-success-fg" role="status">
                 {t('pricing.sent')}
             </p>
         )
@@ -104,10 +104,10 @@ export function PricingRequestForm() {
     if (user) {
         return (
             <div className="space-y-3">
-                <h3 className="text-base font-semibold text-gray-900">{t('pricing.formTitle')}</h3>
-                <p className="text-sm text-gray-600">{t('pricing.formLead')}</p>
+                <h3 className="text-base font-semibold text-fg">{t('pricing.formTitle')}</h3>
+                <p className="text-sm text-fg-muted">{t('pricing.formLead')}</p>
                 {error && (
-                    <p className="text-sm text-red-600" role="alert">
+                    <p className="text-sm text-danger-fg" role="alert">
                         {error}
                     </p>
                 )}
@@ -115,7 +115,7 @@ export function PricingRequestForm() {
                     type="button"
                     onClick={handleSignedInRequest}
                     disabled={sending}
-                    className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:bg-primary-hover disabled:opacity-60"
                 >
                     {sending ? t('pricing.submitting') : t('pricing.submit')}
                 </button>
@@ -125,22 +125,22 @@ export function PricingRequestForm() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-3" noValidate>
-            <h3 className="text-base font-semibold text-gray-900">{t('pricing.formTitle')}</h3>
-            <p className="text-sm text-gray-600">{t('pricing.formLead')}</p>
+            <h3 className="text-base font-semibold text-fg">{t('pricing.formTitle')}</h3>
+            <p className="text-sm text-fg-muted">{t('pricing.formLead')}</p>
 
             <label className="block space-y-1">
-                <span className="text-xs font-medium text-gray-500">{t('pricing.emailLabel')}</span>
+                <span className="text-xs font-medium text-fg-muted">{t('pricing.emailLabel')}</span>
                 <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('pricing.emailPlaceholder')}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
                     autoComplete="email"
                 />
             </label>
 
-            <label className="flex items-start gap-2 text-sm text-gray-600">
+            <label className="flex items-start gap-2 text-sm text-fg-muted">
                 <input
                     type="checkbox"
                     checked={consent}
@@ -149,14 +149,14 @@ export function PricingRequestForm() {
                 />
                 <span>
                     {t('pricing.consent')}{' '}
-                    <Link href="/legal/privacy" className="text-blue-600 underline">
+                    <Link href="/legal/privacy" className="text-primary underline">
                         {t('pricing.privacyLink')}
                     </Link>
                 </span>
             </label>
 
             {error && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-sm text-danger-fg" role="alert">
                     {error}
                 </p>
             )}
@@ -164,7 +164,7 @@ export function PricingRequestForm() {
             <button
                 type="submit"
                 disabled={sending}
-                className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:bg-primary-hover disabled:opacity-60"
             >
                 {sending ? t('pricing.submitting') : t('pricing.submit')}
             </button>

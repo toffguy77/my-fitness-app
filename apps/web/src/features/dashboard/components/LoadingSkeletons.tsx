@@ -21,7 +21,7 @@ function Skeleton({ className }: SkeletonProps) {
     return (
         <div
             className={cn(
-                'animate-pulse bg-gray-200 rounded',
+                'animate-pulse bg-subtle rounded',
                 className
             )}
             aria-hidden="true"
@@ -36,7 +36,7 @@ function Skeleton({ className }: SkeletonProps) {
 export function ProgressSectionSkeleton({ className }: { className?: string }) {
     return (
         <div
-            className={cn('bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
+            className={cn('bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
             role="status"
             aria-label={t('dashboard.skeletons.progress')}
         >
@@ -81,7 +81,7 @@ export function ProgressSectionSkeleton({ className }: { className?: string }) {
 export function PhotoUploadSectionSkeleton({ className }: { className?: string }) {
     return (
         <div
-            className={cn('bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
+            className={cn('bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
             role="status"
             aria-label={t('dashboard.skeletons.photos')}
         >
@@ -112,7 +112,7 @@ export function PhotoUploadSectionSkeleton({ className }: { className?: string }
 export function WeeklyPlanSectionSkeleton({ className }: { className?: string }) {
     return (
         <div
-            className={cn('bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
+            className={cn('bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
             role="status"
             aria-label={t('dashboard.skeletons.weeklyPlan')}
         >
@@ -151,7 +151,7 @@ export function WeeklyPlanSectionSkeleton({ className }: { className?: string })
 export function TasksSectionSkeleton({ className }: { className?: string }) {
     return (
         <div
-            className={cn('bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
+            className={cn('bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
             role="status"
             aria-label={t('dashboard.skeletons.tasks')}
         >
@@ -168,7 +168,7 @@ export function TasksSectionSkeleton({ className }: { className?: string }) {
                 {[1, 2, 3].map((i) => (
                     <div
                         key={i}
-                        className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg"
+                        className="flex items-start gap-3 p-3 border border-line rounded-lg"
                     >
                         <Skeleton className="h-5 w-5 rounded-full flex-shrink-0" />
                         <div className="flex-1 space-y-2">

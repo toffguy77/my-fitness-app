@@ -60,19 +60,19 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             </div>
         )
     }
 
     if (error) {
-        return <p className="py-8 text-center text-sm text-red-500">{error}</p>
+        return <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
     }
 
     if (messages.length === 0) {
         return (
             <div className="flex items-center justify-center h-full">
-                <p className="text-gray-400 text-sm">{t('admin.chats.noMessages')}</p>
+                <p className="text-fg-subtle text-sm">{t('admin.chats.noMessages')}</p>
             </div>
         )
     }
@@ -85,7 +85,7 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
                         type="button"
                         onClick={handleLoadMore}
                         disabled={loadingMore}
-                        className="text-sm text-blue-500 hover:text-blue-600 disabled:text-gray-300 transition-colors"
+                        className="text-sm text-primary hover:text-primary disabled:text-fg-subtle transition-colors"
                     >
                         {loadingMore ? t('common.loading') : t('admin.chats.loadMore')}
                     </button>
@@ -96,8 +96,8 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
                 {messages.map((msg) => (
                     <div key={msg.id} className="space-y-0.5">
                         <div className="flex items-baseline gap-2">
-                            <span className="text-xs font-semibold text-gray-700">{msg.sender_name}</span>
-                            <span className="text-[10px] text-gray-400">
+                            <span className="text-xs font-semibold text-fg">{msg.sender_name}</span>
+                            <span className="text-[10px] text-fg-subtle">
                                 {new Date(msg.created_at).toLocaleString('ru-RU', {
                                     day: '2-digit',
                                     month: '2-digit',
@@ -108,12 +108,12 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
                         </div>
                         <div className={cn(
                             'inline-block rounded-lg px-3 py-2 text-sm max-w-[85%]',
-                            'bg-gray-100 text-gray-900'
+                            'bg-subtle text-fg'
                         )}>
                             {msg.type === 'food_entry' ? (
-                                <span className="italic text-gray-600">{msg.content || t('admin.chats.foodEntry')}</span>
+                                <span className="italic text-fg-muted">{msg.content || t('admin.chats.foodEntry')}</span>
                             ) : (
-                                msg.content || <span className="text-gray-400">{t('admin.chats.attachment')}</span>
+                                msg.content || <span className="text-fg-subtle">{t('admin.chats.attachment')}</span>
                             )}
                         </div>
                     </div>

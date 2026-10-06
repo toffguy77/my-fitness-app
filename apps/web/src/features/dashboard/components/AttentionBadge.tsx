@@ -48,12 +48,12 @@ export interface AttentionBadgeProps {
 function getColorClasses(urgency: UrgencyLevel): string {
     switch (urgency) {
         case 'critical':
-            return 'bg-red-500 text-white border-red-600';
+            return 'bg-danger text-on-primary border-danger';
         case 'high':
-            return 'bg-orange-500 text-white border-orange-600';
+            return 'bg-warning text-on-primary border-warning';
         case 'normal':
         default:
-            return 'bg-blue-500 text-white border-blue-600';
+            return 'bg-primary text-on-primary border-primary';
     }
 }
 
@@ -227,10 +227,10 @@ export function AttentionIcon({
     };
 
     const colorClasses = urgency === 'critical'
-        ? 'text-red-500'
+        ? 'text-danger-fg'
         : urgency === 'high'
-            ? 'text-orange-500'
-            : 'text-blue-500';
+            ? 'text-warning-fg'
+            : 'text-primary';
 
     // Determine aria-live politeness based on urgency
     const ariaLive = announceChanges

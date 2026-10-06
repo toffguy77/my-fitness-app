@@ -38,8 +38,8 @@ export const metadata: Metadata = {
 
 function Item({ children }: { children: React.ReactNode }) {
     return (
-        <li className="flex items-start gap-2 text-sm text-gray-700">
-            <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" aria-hidden="true" />
+        <li className="flex items-start gap-2 text-sm text-fg">
+            <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-success-fg" aria-hidden="true" />
             <span>{children}</span>
         </li>
     )
@@ -57,16 +57,16 @@ export default async function PricingPage({
     const weeklyPhotosEnabled = resolvedFeatures.weekly_photos === true
 
     return (
-        <div className="min-h-screen bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-canvas px-4 py-12 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-4xl space-y-6">
                 <header className="space-y-2">
-                    <h1 className="text-3xl font-bold text-gray-900">{t('pricing.title')}</h1>
-                    <p className="text-gray-600">{t('pricing.lead')}</p>
+                    <h1 className="text-3xl font-bold text-fg">{t('pricing.title')}</h1>
+                    <p className="text-fg-muted">{t('pricing.lead')}</p>
                 </header>
 
                 <div className="grid gap-6 md:grid-cols-2">
-                    <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-900">
+                    <section className="rounded-xl border border-line bg-surface p-6 shadow-sm">
+                        <h2 className="text-lg font-semibold text-fg">
                             {t('pricing.freeTitle')}
                         </h2>
                         <ul className="mt-4 space-y-2">
@@ -79,15 +79,15 @@ export default async function PricingPage({
                         </ul>
                     </section>
 
-                    <section className="rounded-xl border-2 border-blue-100 bg-white p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-900">
+                    <section className="rounded-xl border-2 border-primary/30 bg-surface p-6 shadow-sm">
+                        <h2 className="text-lg font-semibold text-fg">
                             {t('pricing.paidTitle')}
                         </h2>
                         <p className="mt-2">
-                            <span className="text-3xl font-bold text-gray-900">
+                            <span className="text-3xl font-bold text-fg">
                                 {t('pricing.paidPrice')}
                             </span>{' '}
-                            <span className="text-sm text-gray-500">{t('pricing.paidPeriod')}</span>
+                            <span className="text-sm text-fg-muted">{t('pricing.paidPeriod')}</span>
                         </p>
                         <ul className="mt-4 space-y-2">
                             <Item>{t('pricing.paidChat')}</Item>
@@ -95,22 +95,22 @@ export default async function PricingPage({
                             <Item>{t('pricing.paidReview')}</Item>
                             {weeklyPhotosEnabled && <Item>{t('pricing.paidPhotos')}</Item>}
                         </ul>
-                        <p className="mt-4 text-xs text-gray-500">{t('pricing.refund')}</p>
+                        <p className="mt-4 text-xs text-fg-muted">{t('pricing.refund')}</p>
                         <Link
                             href="/legal/terms"
-                            className="mt-2 inline-block text-xs text-blue-600 underline"
+                            className="mt-2 inline-block text-xs text-primary underline"
                         >
                             {t('pricing.termsLink')}
                         </Link>
                     </section>
                 </div>
 
-                <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                <section className="rounded-xl border border-line bg-surface p-6 shadow-sm">
                     <PricingRequestForm />
                 </section>
 
-                <footer className="border-t border-gray-200 pt-6">
-                    <SellerLine className="text-xs text-gray-400" />
+                <footer className="border-t border-line pt-6">
+                    <SellerLine className="text-xs text-fg-subtle" />
                 </footer>
             </div>
         </div>

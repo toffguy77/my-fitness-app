@@ -196,7 +196,7 @@ export function DietTab({
                 // every signed-in page. At bottom-4 this button sat entirely
                 // behind it: visible in a screenshot, but every tap landed on
                 // the nav instead.
-                className="fixed bottom-20 right-4 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex items-center justify-center z-50 sm:bottom-24 sm:right-6 sm:w-14 sm:h-14 touch-manipulation"
+                className="fixed bottom-20 right-4 w-12 h-12 bg-primary text-on-primary rounded-full shadow-lg hover:bg-primary-hover active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 flex items-center justify-center z-50 sm:bottom-24 sm:right-6 sm:w-14 sm:h-14 touch-manipulation"
                 aria-label={t('foodTracker.page.addFoodAria')}
                 data-testid="fab-add-food"
             >
@@ -219,13 +219,13 @@ export function DietTab({
             {/* Loading Overlay */}
             {isLoading && (
                 <div
-                    className="fixed inset-0 bg-white/50 flex items-center justify-center z-40"
+                    className="fixed inset-0 bg-surface/50 flex items-center justify-center z-40"
                     aria-live="polite"
                     aria-busy="true"
                 >
                     <div className="flex flex-col items-center gap-2">
-                        <div className="w-6 h-6 border-3 border-blue-600 border-t-transparent rounded-full animate-spin sm:w-8 sm:h-8 sm:border-4" />
-                        <span className="text-xs text-gray-600 sm:text-sm">{t('common.loading')}</span>
+                        <div className="w-6 h-6 border-3 border-primary border-t-transparent rounded-full animate-spin sm:w-8 sm:h-8 sm:border-4" />
+                        <span className="text-xs text-fg-muted sm:text-sm">{t('common.loading')}</span>
                     </div>
                 </div>
             )}

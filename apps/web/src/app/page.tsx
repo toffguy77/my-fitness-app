@@ -69,27 +69,27 @@ export default async function Home({
             <AuthRedirect />
             <TrackView event={EVENTS.landingViewed} />
             <TrackScrollDepth />
-            <div className="min-h-screen bg-white">
+            <div className="min-h-screen bg-surface">
                 {/* Шапка: только логотип и два действия — вход и регистрация,
                     оба без прокрутки. Герой (h1, основное действие) — уже
                     внутри <main>, не здесь: иначе обход по ориентирам минует
                     и главный заголовок, и главную кнопку. */}
-                <header className="relative bg-gradient-to-b from-blue-50 to-white">
+                <header className="relative bg-gradient-to-b from-primary-soft to-surface">
                     <nav
                         aria-label={t('landing.nav.ariaLabel')}
                         className="relative mx-auto flex max-w-5xl items-center justify-between px-6 py-8"
                     >
-                        <Logo width={140} height={42} className="text-gray-900" />
+                        <Logo width={140} height={42} className="text-fg" />
                         <div className="flex items-center gap-6">
                             <Link
                                 href="/auth"
-                                className="text-sm font-medium text-gray-700 hover:text-gray-900"
+                                className="text-sm font-medium text-fg hover:text-fg"
                             >
                                 {t('landing.nav.signIn')}
                             </Link>
                             <Link
                                 href="/auth?mode=register"
-                                className="inline-flex h-10 items-center justify-center rounded-lg bg-blue-600 px-5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                                className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-5 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
                             >
                                 {t('landing.nav.register')}
                             </Link>
@@ -100,24 +100,24 @@ export default async function Home({
                 <main>
                     {/* Герой: расчёт остаётся основным действием — он не требует аккаунта. */}
                     <div className="relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-emerald-50" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary-soft via-surface to-success-soft" />
                         <div className="relative mx-auto max-w-5xl px-6 pt-8 pb-24 text-center">
-                            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
+                            <h1 className="text-4xl font-extrabold tracking-tight text-fg sm:text-5xl md:text-6xl">
                                 {t('landing.hero.title')}
                             </h1>
-                            <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600 sm:text-xl">
+                            <p className="mx-auto mt-6 max-w-2xl text-lg text-fg-muted sm:text-xl">
                                 {t('landing.hero.subtitle')}
                             </p>
                             <div className="mt-10 flex flex-col items-center gap-4">
                                 <Link
                                     href="/onboarding"
-                                    className="inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                                    className="inline-flex h-12 items-center justify-center rounded-lg bg-primary px-8 text-lg font-medium text-on-primary transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                                 >
                                     {t('landing.hero.cta')}
                                 </Link>
                                 <Link
                                     href="/auth"
-                                    className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                                    className="text-sm font-medium text-fg-muted hover:text-fg"
                                 >
                                     {t('landing.hero.haveAccount')}
                                 </Link>
@@ -130,7 +130,7 @@ export default async function Home({
                         photoFood рендерится только когда API подтвердил
                         способность. */}
                     <section className="mx-auto max-w-5xl px-6 py-20">
-                        <h2 className="text-center text-3xl font-bold text-gray-900">
+                        <h2 className="text-center text-3xl font-bold text-fg">
                             {t('landing.claims.heading')}
                         </h2>
                         <div className="mt-12 grid gap-8 sm:grid-cols-2">
@@ -156,23 +156,23 @@ export default async function Home({
                     </section>
 
                     {/* Куратор — апселл вторым экраном, без цены и без обещания сроков. */}
-                    <section className="bg-gray-50 px-6 py-20">
+                    <section className="bg-canvas px-6 py-20">
                         <div className="mx-auto max-w-3xl text-center">
-                            <h2 className="text-3xl font-bold text-gray-900">
+                            <h2 className="text-3xl font-bold text-fg">
                                 {t('landing.curator.heading')}
                             </h2>
-                            <p className="mt-4 text-lg text-gray-600">
+                            <p className="mt-4 text-lg text-fg-muted">
                                 {t('landing.curator.description')}
                             </p>
                             {/* Граница названа прямо, цена — нет: она живёт на
                                 одной странице, и повторённое число расходится с
                                 ней, после чего непонятно, какое обязательство. */}
-                            <p className="mt-4 text-base font-medium text-gray-900">
+                            <p className="mt-4 text-base font-medium text-fg">
                                 {t('landing.curator.boundary')}
                             </p>
                             <Link
                                 href="/pricing"
-                                className="mt-3 inline-block text-base font-semibold text-blue-600 underline hover:text-blue-700"
+                                className="mt-3 inline-block text-base font-semibold text-primary underline hover:text-primary"
                             >
                                 {t('landing.curator.pricingLink')}
                             </Link>
@@ -189,10 +189,10 @@ export default async function Home({
                                 {socialProof.map((item) => (
                                     <blockquote
                                         key={item.id}
-                                        className="rounded-xl border border-gray-200 p-6"
+                                        className="rounded-xl border border-line p-6"
                                     >
-                                        <p className="text-gray-700">{item.quote}</p>
-                                        <footer className="mt-4 text-sm text-gray-500">
+                                        <p className="text-fg">{item.quote}</p>
+                                        <footer className="mt-4 text-sm text-fg-muted">
                                             {item.name}
                                         </footer>
                                     </blockquote>
@@ -207,19 +207,19 @@ export default async function Home({
                             data-testid="landing-cta"
                             className="mx-auto max-w-2xl text-center"
                         >
-                            <h2 className="text-3xl font-bold text-gray-900">
+                            <h2 className="text-3xl font-bold text-fg">
                                 {t('landing.cta.heading')}
                             </h2>
                             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
                                 <Link
                                     href="/auth"
-                                    className="inline-flex h-12 items-center justify-center rounded-lg border border-gray-300 px-8 text-lg font-medium text-gray-900 transition-colors hover:bg-gray-50"
+                                    className="inline-flex h-12 items-center justify-center rounded-lg border border-line px-8 text-lg font-medium text-fg transition-colors hover:bg-canvas"
                                 >
                                     {t('landing.cta.signIn')}
                                 </Link>
                                 <Link
                                     href="/auth?mode=register"
-                                    className="inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                                    className="inline-flex h-12 items-center justify-center rounded-lg bg-primary px-8 text-lg font-medium text-on-primary transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                                 >
                                     {t('landing.cta.register')}
                                 </Link>
@@ -228,32 +228,32 @@ export default async function Home({
                     </section>
                 </main>
 
-                <footer className="border-t border-gray-200 px-6 py-8">
+                <footer className="border-t border-line px-6 py-8">
                     <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 sm:flex-row sm:justify-between">
-                        <Logo width={120} height={36} className="text-gray-400" />
+                        <Logo width={120} height={36} className="text-fg-subtle" />
                         <nav
                             aria-label={t('landing.footer.ariaLabel')}
-                            className="flex gap-6 text-sm text-gray-500"
+                            className="flex gap-6 text-sm text-fg-muted"
                         >
-                            <SupportLink className="hover:text-gray-700" />
-                            <Link href="/kalkulyator-kbzhu" className="hover:text-gray-700">
+                            <SupportLink className="hover:text-fg" />
+                            <Link href="/kalkulyator-kbzhu" className="hover:text-fg">
                                 {t('landing.footer.calculator')}
                             </Link>
-                            <Link href="/content" className="hover:text-gray-700">
+                            <Link href="/content" className="hover:text-fg">
                                 {t('landing.footer.articles')}
                             </Link>
-                            <Link href="/legal/terms" className="hover:text-gray-700">
+                            <Link href="/legal/terms" className="hover:text-fg">
                                 {t('landing.footer.terms')}
                             </Link>
-                            <Link href="/legal/privacy" className="hover:text-gray-700">
+                            <Link href="/legal/privacy" className="hover:text-fg">
                                 {t('landing.footer.privacy')}
                             </Link>
                         </nav>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-fg-subtle">
                             {new Date().getFullYear()} BURCEV
                         </p>
                     </div>
-                    <SellerLine className="mx-auto mt-4 max-w-5xl text-center text-xs text-gray-400 sm:text-left" />
+                    <SellerLine className="mx-auto mt-4 max-w-5xl text-center text-xs text-fg-subtle sm:text-left" />
                 </footer>
             </div>
 
@@ -267,9 +267,9 @@ export default async function Home({
 
 function ClaimCard({ title, description }: { title: string; description: string }) {
     return (
-        <div className="rounded-xl border border-gray-200 p-6 transition-shadow hover:shadow-md">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            <p className="mt-2 text-gray-600">{description}</p>
+        <div className="rounded-xl border border-line p-6 transition-shadow hover:shadow-md">
+            <h3 className="text-lg font-semibold text-fg">{title}</h3>
+            <p className="mt-2 text-fg-muted">{description}</p>
         </div>
     )
 }

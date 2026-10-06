@@ -92,7 +92,7 @@ const SegmentedRing = memo(function SegmentedRing({
                     stroke="currentColor"
                     strokeWidth={strokeWidth}
                     fill="none"
-                    className="text-gray-100"
+                    className="text-on-coach"
                 />
                 {/* Colored segments */}
                 {segments.map((seg, i) => {
@@ -154,7 +154,7 @@ const MacroProgressBar = memo(function MacroProgressBar({
     return (
         <div className={cn('space-y-1', className)}>
             <div className="flex items-center justify-between text-sm">
-                <span className="font-medium text-gray-700 flex items-center gap-1.5">
+                <span className="font-medium text-fg flex items-center gap-1.5">
                     <span
                         className="w-2 h-2 rounded-full flex-shrink-0"
                         style={{ backgroundColor: color }}
@@ -164,12 +164,12 @@ const MacroProgressBar = memo(function MacroProgressBar({
                 </span>
                 <span className={cn(
                     'font-semibold',
-                    isOverGoal ? 'text-orange-600' : 'text-gray-900'
+                    isOverGoal ? 'text-warning-fg' : 'text-fg'
                 )}>
                     {current}{unit} / {goal}{unit}
                 </span>
             </div>
-            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-subtle rounded-full overflow-hidden">
                 {/* Заливка окрашена цветом своего нутриента, а не общим синим:
                     цвет опознаёт нутриент. Превышение нормы сообщается
                     выделением числа выше, а не перекрашиванием полосы — иначе
@@ -184,7 +184,7 @@ const MacroProgressBar = memo(function MacroProgressBar({
                     aria-label={t('dashboard.nutrition.valueAria', { label, current, goal, unit })}
                 />
             </div>
-            <div className="text-xs text-gray-500 text-right">
+            <div className="text-xs text-fg-muted text-right">
                 {percentage.toFixed(1)}%
             </div>
         </div>
@@ -214,8 +214,8 @@ const MacroAmount = memo(function MacroAmount({
                 style={{ backgroundColor: color }}
                 aria-hidden="true"
             />
-            <span className="text-gray-500">{label}</span>
-            <span className="font-semibold text-gray-900">
+            <span className="text-fg-muted">{label}</span>
+            <span className="font-semibold text-fg">
                 {value}{t('units.gram')}
             </span>
         </div>
@@ -303,7 +303,7 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
+                        <CardTitle className="text-lg font-semibold text-fg">
                             {t('dashboard.nutrition.title')}
                         </CardTitle>
                         {showAttentionIndicator && (
@@ -341,15 +341,15 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                                 {/* Калории без цветовой оценки доли от нормы: она
                                     сообщается процентом ниже и пометкой о
                                     превышении. */}
-                                <div className="text-base font-bold text-gray-900" data-testid="calorie-value">
+                                <div className="text-base font-bold text-fg" data-testid="calorie-value">
                                     {nutrition.calories}
                                 </div>
-                                <div className="text-xs text-gray-500 leading-tight">
+                                <div className="text-xs text-fg-muted leading-tight">
                                     {t('dashboard.nutrition.ofCalories', { calories: goals.caloriesGoal })}
                                 </div>
                                 <div className={cn(
                                     'text-xs font-medium',
-                                    isOverCalorieGoal ? 'text-orange-600' : 'text-gray-600'
+                                    isOverCalorieGoal ? 'text-warning-fg' : 'text-fg-muted'
                                 )}>
                                     {caloriesPercentage.toFixed(1)}%
                                 </div>
@@ -360,13 +360,13 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                     <div className="space-y-2">
                         <div className="text-center">
                             <div
-                                className="text-base font-bold text-gray-900"
+                                className="text-base font-bold text-fg"
                                 data-testid="calorie-value"
                                 aria-label={t('foodTracker.noTarget.eatenAria', { calories: nutrition.calories })}
                             >
                                 {nutrition.calories}
                             </div>
-                            <div className="text-xs text-gray-500">{t('macros.calories')}</div>
+                            <div className="text-xs text-fg-muted">{t('macros.calories')}</div>
                         </div>
 
                         {/* Съеденное по нутриентам — цветом, но без доли от нормы.
@@ -386,12 +386,12 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                 {/* Warning when goal exceeded */}
                 {isOverCalorieGoal && (
                     <div
-                        className="flex items-center gap-2 p-2 bg-orange-50 border border-orange-200 rounded-lg"
+                        className="flex items-center gap-2 p-2 bg-warning-soft border border-warning/30 rounded-lg"
                         role="alert"
                         aria-live="polite"
                     >
-                        <AlertTriangle className="h-3.5 w-3.5 text-orange-600 flex-shrink-0" aria-hidden="true" />
-                        <p className="text-xs text-orange-800">
+                        <AlertTriangle className="h-3.5 w-3.5 text-warning-fg flex-shrink-0" aria-hidden="true" />
+                        <p className="text-xs text-warning-fg">
                             {t('dashboard.nutrition.overGoal')}
                         </p>
                     </div>
@@ -429,14 +429,14 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                 {/* Empty state */}
                 {nutrition.calories === 0 && (
                     <div className="text-center py-2 space-y-2">
-                        <UtensilsCrossed className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">{t('dashboard.nutrition.empty')}</p>
+                        <UtensilsCrossed className="h-8 w-8 mx-auto text-fg-subtle" aria-hidden="true" />
+                        <p className="text-sm text-fg-muted">{t('dashboard.nutrition.empty')}</p>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleQuickAdd}
                             isLoading={isNavigating}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            className="text-primary border-primary/30 hover:bg-primary-soft"
                             aria-label={t('dashboard.nutrition.addToDiaryAria')}
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />

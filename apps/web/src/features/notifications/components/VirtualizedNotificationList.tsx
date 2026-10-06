@@ -58,7 +58,7 @@ export default function VirtualizedNotificationList({
                     if (item.type === 'header') {
                         return (
                             <div style={style}>
-                                <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-4">
+                                <h2 className="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-3 px-4">
                                     {item.date}
                                 </h2>
                             </div>
@@ -81,7 +81,7 @@ export default function VirtualizedNotificationList({
                     {isLoading && (
                         <div className="flex items-center justify-center gap-2">
                             <svg
-                                className="h-5 w-5 animate-spin text-blue-600"
+                                className="h-5 w-5 animate-spin text-primary"
                                 viewBox="0 0 24 24"
                                 aria-hidden="true"
                             >
@@ -100,7 +100,7 @@ export default function VirtualizedNotificationList({
                                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                 />
                             </svg>
-                            <span className="text-sm text-gray-600">{t('common.loading')}</span>
+                            <span className="text-sm text-fg-muted">{t('common.loading')}</span>
                         </div>
                     )}
                 </div>

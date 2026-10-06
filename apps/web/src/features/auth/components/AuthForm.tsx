@@ -59,7 +59,7 @@ export function AuthForm({
             <div className="text-right">
                 <Link
                     href="/forgot-password"
-                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                    className="text-sm text-primary hover:text-primary hover:underline"
                 >
                     {t('auth.forgotPassword')}
                 </Link>

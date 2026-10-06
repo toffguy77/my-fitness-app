@@ -35,17 +35,17 @@ export function ErrorState({
             className={
                 isPage
                     ? 'flex min-h-[60vh] items-center justify-center px-4'
-                    : 'rounded-lg border border-gray-200 bg-white p-6'
+                    : 'rounded-lg border border-line bg-surface p-6'
             }
         >
             <div className={isPage ? 'w-full max-w-md text-center' : 'text-center'}>
-                <h2 className={isPage ? 'text-xl font-semibold text-gray-900' : 'text-base font-medium text-gray-900'}>
+                <h2 className={isPage ? 'text-xl font-semibold text-fg' : 'text-base font-medium text-fg'}>
                     {title}
                 </h2>
-                <p className="mt-2 text-sm text-gray-600">{description}</p>
+                <p className="mt-2 text-sm text-fg-muted">{description}</p>
 
                 {debugDetail && process.env.NODE_ENV !== 'production' && (
-                    <pre className="mt-4 max-h-48 overflow-auto rounded bg-gray-100 p-3 text-left text-xs text-gray-700">
+                    <pre className="mt-4 max-h-48 overflow-auto rounded bg-subtle p-3 text-left text-xs text-fg">
                         {debugDetail}
                     </pre>
                 )}
@@ -55,20 +55,20 @@ export function ErrorState({
                         <button
                             type="button"
                             onClick={onRetry}
-                            className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+                            className="rounded-md bg-primary px-4 py-2 text-on-primary transition-colors hover:bg-primary-hover"
                         >
                             {retryLabel}
                         </button>
                     )}
                     {showHomeLink && (
-                        <Link href="/" className="text-sm text-blue-600 hover:underline">
+                        <Link href="/" className="text-sm text-primary hover:underline">
                             На главную
                         </Link>
                     )}
                 </div>
 
                 {errorId && (
-                    <p className="mt-4 text-xs text-gray-400">
+                    <p className="mt-4 text-xs text-fg-subtle">
                         Код ошибки: <span className="font-mono">{errorId}</span>
                     </p>
                 )}

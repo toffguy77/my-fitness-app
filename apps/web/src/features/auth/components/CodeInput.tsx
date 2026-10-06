@@ -59,11 +59,11 @@ export function CodeInput({ value, onChange, disabled, error }: CodeInputProps) 
                     onPaste={handlePaste}
                     className={cn(
                         'h-12 w-10 rounded-lg border text-center text-xl font-bold transition-colors',
-                        'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20',
+                        'focus:border-primary focus:outline-none focus:ring-2 focus:ring-focus/20',
                         'disabled:opacity-50',
                         error
-                            ? 'border-red-300 bg-red-50'
-                            : 'border-gray-300 bg-white'
+                            ? 'border-danger/30 bg-danger-soft'
+                            : 'border-line bg-surface'
                     )}
                     aria-label={t('auth.codeDigit', { position: i + 1 })}
                 />

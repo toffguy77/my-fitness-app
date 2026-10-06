@@ -149,14 +149,14 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
 
     return (
         <section
-            className={`photo-upload-section bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
+            className={`photo-upload-section bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
             aria-labelledby="photo-upload-heading"
             aria-describedby={showAttentionIndicator ? "photo-upload-attention-indicator" : undefined}
         >
             <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2
                     id="photo-upload-heading"
-                    className="text-base sm:text-lg font-semibold text-gray-900"
+                    className="text-base sm:text-lg font-semibold text-fg"
                 >
                     {t('dashboard.photo.title')}
                 </h2>
@@ -178,7 +178,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                 {previewUrl ? (
                     <div className="space-y-3">
                         {/* Thumbnail preview - responsive aspect ratio */}
-                        <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
+                        <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-subtle">
                             {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={previewUrl}
@@ -186,7 +186,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                                 className="w-full h-full object-cover"
                             />
                             {isUploaded && (
-                                <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
+                                <div className="absolute top-2 right-2 bg-success text-on-primary rounded-full p-1">
                                     <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
                                     <span className="sr-only">{t('dashboard.photo.uploadedBadge')}</span>
                                 </div>
@@ -195,7 +195,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
 
                         {/* Upload info */}
                         {photoData && (
-                            <div className="text-xs sm:text-sm text-gray-600">
+                            <div className="text-xs sm:text-sm text-fg-muted">
                                 <p>
                                     {t('dashboard.photo.uploadedAt', { date: formatDate(new Date(photoData.uploadedAt)) })}
                                 </p>
@@ -207,7 +207,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                             type="button"
                             onClick={handleUploadClick}
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2 sm:px-4 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 sm:px-4 text-sm font-medium bg-subtle text-fg rounded-lg hover:bg-subtle transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2"
                             aria-label={t('dashboard.photo.replaceAria')}
                         >
                             <Upload className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
@@ -216,14 +216,14 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                     </div>
                 ) : (
                     <div className="text-center py-2 space-y-2">
-                        <Camera className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">{t('dashboard.photo.empty')}</p>
+                        <Camera className="h-8 w-8 mx-auto text-fg-subtle" aria-hidden="true" />
+                        <p className="text-sm text-fg-muted">{t('dashboard.photo.empty')}</p>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleUploadClick}
                             disabled={isLoading}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            className="text-primary border-primary/30 hover:bg-primary-soft"
                             aria-label={t('dashboard.photo.uploadAria')}
                         >
                             <Camera className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -245,20 +245,20 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                 {/* Validation error */}
                 {validationError && (
                     <div
-                        className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg"
+                        className="flex items-start gap-2 p-3 bg-danger-soft border border-danger/30 rounded-lg"
                         role="alert"
                         aria-live="polite"
                     >
                         <AlertTriangle
-                            className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0 mt-0.5"
+                            className="w-4 h-4 sm:w-5 sm:h-5 text-danger-fg flex-shrink-0 mt-0.5"
                             aria-hidden="true"
                         />
-                        <p className="text-xs sm:text-sm text-red-800">{validationError}</p>
+                        <p className="text-xs sm:text-sm text-danger-fg">{validationError}</p>
                     </div>
                 )}
 
                 {/* File requirements */}
-                <div className="text-xs text-gray-500 space-y-1">
+                <div className="text-xs text-fg-muted space-y-1">
                     <p>{t('dashboard.photo.requirements')}</p>
                     <ul className="list-disc list-inside space-y-0.5 ml-2">
                         <li>{t('dashboard.photo.requirementFormat')}</li>

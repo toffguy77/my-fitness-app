@@ -55,7 +55,7 @@ describe('Property 9: Visual Update on Read Status Change', () => {
 
                     // Verify initial unread styling
                     let notificationElement = container.firstChild as HTMLElement;
-                    expect(notificationElement).toHaveClass('bg-blue-50');
+                    expect(notificationElement).toHaveClass('bg-primary-soft');
                     expect(notificationElement).not.toHaveClass('opacity-70');
 
                     // Click to mark as read - use the specific notification element
@@ -76,7 +76,7 @@ describe('Property 9: Visual Update on Read Status Change', () => {
                     notificationElement = container.firstChild as HTMLElement;
                     await waitFor(() => {
                         expect(notificationElement).toHaveClass('opacity-70');
-                        expect(notificationElement).not.toHaveClass('bg-blue-50');
+                        expect(notificationElement).not.toHaveClass('bg-primary-soft');
                     });
 
                     // Verify title styling changed from semibold to normal

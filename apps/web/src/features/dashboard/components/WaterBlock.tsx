@@ -48,13 +48,13 @@ const WaterRing = memo(function WaterRing({
             aria-label={t('dashboard.water.progressAria', { percentage })}
         >
             <svg width={size} height={size} className="transform -rotate-90" aria-hidden="true">
-                <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="none" className="text-gray-100" />
+                <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="none" className="text-on-coach" />
                 <circle
                     cx={size / 2} cy={size / 2} r={radius}
                     stroke="currentColor" strokeWidth={strokeWidth} fill="none"
                     strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
                     strokeLinecap="round"
-                    className={cn('transition-all duration-500', isComplete ? 'text-green-500' : 'text-blue-500')}
+                    className={cn('transition-all duration-500', isComplete ? 'text-success-fg' : 'text-primary')}
                 />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
@@ -127,7 +127,7 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">{t('dashboard.water.title')}</CardTitle>
+                        <CardTitle className="text-lg font-semibold text-fg">{t('dashboard.water.title')}</CardTitle>
                         {showAttention && (
                             <AttentionBadge urgency="normal" ariaLabel={t('dashboard.water.noneToday')} />
                         )}
@@ -150,23 +150,23 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                             <WaterRing percentage={percentage} size={72} strokeWidth={6}>
                                 <span className={cn(
                                     'text-base font-bold leading-tight',
-                                    isGoalReached ? 'text-green-600' : 'text-gray-900'
+                                    isGoalReached ? 'text-success-fg' : 'text-fg'
                                 )}>
                                     {glasses}/{goal}
                                 </span>
                             </WaterRing>
                         </div>
                         <div className="space-y-0.5">
-                            <div className="text-xs text-gray-500">{t('dashboard.water.glassesOf', { size: glassSize })}</div>
+                            <div className="text-xs text-fg-muted">{t('dashboard.water.glassesOf', { size: glassSize })}</div>
                             <div className={cn(
                                 'text-xs font-medium',
-                                isGoalReached ? 'text-green-600' : 'text-gray-600'
+                                isGoalReached ? 'text-success-fg' : 'text-fg-muted'
                             )}>
                                 {percentage}%
                             </div>
                         </div>
                         {isGoalReached ? (
-                            <div className="flex items-center justify-center gap-1.5 text-green-600" role="status">
+                            <div className="flex items-center justify-center gap-1.5 text-success-fg" role="status">
                                 <Check className="h-3.5 w-3.5" aria-hidden="true" />
                                 <span className="text-xs font-medium">{t('dashboard.water.goalReached')}</span>
                             </div>
@@ -174,7 +174,7 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                             <Button
                                 variant="outline" size="sm"
                                 onClick={handleAddGlass} isLoading={isAdding}
-                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                className="text-primary border-primary/30 hover:bg-primary-soft"
                                 aria-label={t('dashboard.water.addGlassAria')}
                             >
                                 <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -184,12 +184,12 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                     </div>
                 ) : (
                     <div className="text-center py-2 space-y-2">
-                        <Droplets className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">{t('dashboard.water.empty')}</p>
+                        <Droplets className="h-8 w-8 mx-auto text-fg-subtle" aria-hidden="true" />
+                        <p className="text-sm text-fg-muted">{t('dashboard.water.empty')}</p>
                         <Button
                             variant="outline" size="sm"
                             onClick={handleAddGlass} isLoading={isAdding}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            className="text-primary border-primary/30 hover:bg-primary-soft"
                             aria-label={t('dashboard.water.addGlassAria')}
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -198,7 +198,7 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                     </div>
                 )}
 
-                <div className="text-xs text-gray-400 text-center">
+                <div className="text-xs text-fg-subtle text-center">
                     {t('dashboard.water.goal', { goal })}
                 </div>
             </CardContent>

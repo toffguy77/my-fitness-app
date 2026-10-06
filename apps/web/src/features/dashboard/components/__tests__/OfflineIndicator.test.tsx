@@ -91,7 +91,7 @@ describe('OfflineIndicator', () => {
         it('should display red background when offline', () => {
             render(<OfflineIndicator />);
             const indicator = screen.getByRole('status').firstChild;
-            expect(indicator).toHaveClass('bg-red-500');
+            expect(indicator).toHaveClass('bg-danger');
         });
 
         it('should show pending changes count when offline', () => {
@@ -148,7 +148,7 @@ describe('OfflineIndicator', () => {
             });
 
             const indicator = screen.getByRole('status').firstChild;
-            expect(indicator).toHaveClass('bg-blue-500');
+            expect(indicator).toHaveClass('bg-primary');
         });
 
         it('should show sync button', () => {

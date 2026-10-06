@@ -101,19 +101,19 @@ export function SettingsTelegram() {
     }
 
     if (loading) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('settings.loading')}</p>
+        return <p className="py-8 text-center text-sm text-fg-muted">{t('settings.loading')}</p>
     }
 
     return (
         <section>
-            <h2 className="text-sm font-bold text-gray-900">{t('settings.telegram.heading')}</h2>
-            <p className="mt-1 text-sm text-gray-600">{t('settings.telegram.explanation')}</p>
+            <h2 className="text-sm font-bold text-fg">{t('settings.telegram.heading')}</h2>
+            <p className="mt-1 text-sm text-fg-muted">{t('settings.telegram.explanation')}</p>
 
             {unavailable ? (
-                <p className="mt-4 text-sm text-gray-500">{t('settings.telegram.unavailable')}</p>
+                <p className="mt-4 text-sm text-fg-muted">{t('settings.telegram.unavailable')}</p>
             ) : state?.linked ? (
                 <div className="mt-4 flex items-center justify-between gap-4">
-                    <span className="text-sm text-gray-900">
+                    <span className="text-sm text-fg">
                         {t('settings.telegram.connected')}
                         {state.username ? ` · @${state.username}` : ''}
                     </span>
@@ -121,7 +121,7 @@ export function SettingsTelegram() {
                         type="button"
                         onClick={handleDisconnect}
                         disabled={busy}
-                        className="text-sm font-medium text-red-600 disabled:opacity-50"
+                        className="text-sm font-medium text-danger-fg disabled:opacity-50"
                     >
                         {t('settings.telegram.disconnect')}
                     </button>
@@ -129,26 +129,26 @@ export function SettingsTelegram() {
             ) : (
                 <div className="mt-4">
                     <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-fg-muted">
                             {t('settings.telegram.notConnected')}
                         </span>
                         <button
                             type="button"
                             onClick={handleConnect}
                             disabled={busy}
-                            className="text-sm font-medium text-blue-600 disabled:opacity-50"
+                            className="text-sm font-medium text-primary disabled:opacity-50"
                         >
                             {t('settings.telegram.connect')}
                         </button>
                     </div>
-                    <p className="mt-2 text-xs text-gray-500">{t('settings.telegram.whyLink')}</p>
+                    <p className="mt-2 text-xs text-fg-muted">{t('settings.telegram.whyLink')}</p>
 
                     {groupLink && (
                         <a
                             href={groupLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-3 inline-block text-sm font-medium text-blue-600"
+                            className="mt-3 inline-block text-sm font-medium text-primary"
                         >
                             {t('settings.telegram.groupInvite')}
                         </a>

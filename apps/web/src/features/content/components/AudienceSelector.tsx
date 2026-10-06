@@ -36,7 +36,7 @@ export function AudienceSelector({
 }: AudienceSelectorProps) {
     return (
         <fieldset>
-            <legend className="mb-2 text-sm font-medium text-gray-700">
+            <legend className="mb-2 text-sm font-medium text-fg">
                 Аудитория
             </legend>
             <div className="flex flex-col gap-2">
@@ -46,8 +46,8 @@ export function AudienceSelector({
                         className={cn(
                             'flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors',
                             value === option.value
-                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                                ? 'border-primary bg-primary-soft text-primary'
+                                : 'border-line text-fg hover:bg-canvas'
                         )}
                     >
                         <input
@@ -56,14 +56,14 @@ export function AudienceSelector({
                             value={option.value}
                             checked={value === option.value}
                             onChange={() => onChange(option.value)}
-                            className="accent-blue-600"
+                            className="accent-primary"
                         />
                         {option.label}
                     </label>
                 ))}
             </div>
             {value === 'selected' && (
-                <div className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                <div className="mt-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-warning-fg">
                     <p>Выбор конкретных клиентов будет добавлен позже</p>
                     {clientIds.length > 0 && (
                         <p className="mt-1">

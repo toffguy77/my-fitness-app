@@ -64,7 +64,7 @@ function PasswordSection({ email }: { email: string }) {
     }, [])
 
     if (hasPassword === null) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('settings.password.loading')}</p>
+        return <p className="py-8 text-center text-sm text-fg-muted">{t('settings.password.loading')}</p>
     }
 
     return hasPassword ? <PasswordForm /> : <SetPasswordPanel email={email} />
@@ -90,7 +90,7 @@ function SetPasswordPanel({ email }: { email: string }) {
 
     if (sent) {
         return (
-            <div className="rounded-lg bg-green-50 p-4 text-green-800">
+            <div className="rounded-lg bg-success-soft p-4 text-success-fg">
                 <p className="font-medium">{t('settings.password.linkSent', { email })}</p>
             </div>
         )
@@ -98,15 +98,15 @@ function SetPasswordPanel({ email }: { email: string }) {
 
     return (
         <div className="space-y-4">
-            <p className="text-sm text-gray-600">{t('settings.password.noneYet')}</p>
-            <p className="text-sm text-gray-600">{t('settings.password.setExplanation')}</p>
+            <p className="text-sm text-fg-muted">{t('settings.password.noneYet')}</p>
+            <p className="text-sm text-fg-muted">{t('settings.password.setExplanation')}</p>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-danger-fg">{error}</p>}
 
             <button
                 onClick={handleSend}
                 disabled={sending || !email}
-                className="w-full rounded-lg bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                className="w-full rounded-lg bg-primary py-3 font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
                 {sending ? t('settings.password.sending') : t('settings.password.sendSetLink')}
             </button>
@@ -154,11 +154,11 @@ function PasswordForm() {
 
     if (success) {
         return (
-            <div className="rounded-lg bg-green-50 p-4 text-green-800">
+            <div className="rounded-lg bg-success-soft p-4 text-success-fg">
                 <p className="font-medium">{t('settings.password.changed')}</p>
                 <button
                     onClick={() => setSuccess(false)}
-                    className="mt-3 text-sm text-green-700 underline"
+                    className="mt-3 text-sm text-success-fg underline"
                 >
                     {t('settings.password.changeAgain')}
                 </button>
@@ -194,13 +194,13 @@ function PasswordForm() {
             />
 
             {serverError && (
-                <p className="text-sm text-red-600">{serverError}</p>
+                <p className="text-sm text-danger-fg">{serverError}</p>
             )}
 
             <button
                 onClick={handleSave}
                 disabled={saving}
-                className="mt-3 w-full rounded-lg bg-blue-600 py-3 text-white font-medium transition-colors hover:bg-blue-700 disabled:opacity-50"
+                className="mt-3 w-full rounded-lg bg-primary py-3 text-on-primary font-medium transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
                 {saving ? t('settings.saving') : t('settings.password.submit')}
             </button>

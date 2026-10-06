@@ -20,9 +20,9 @@ const RATING_LABELS: Record<RatingLevel, string> = {
 }
 
 const RATING_COLORS: Record<RatingLevel, string> = {
-    excellent: 'text-green-600',
-    good: 'text-yellow-600',
-    needs_improvement: 'text-red-600',
+    excellent: 'text-success-fg',
+    good: 'text-warning-fg',
+    needs_improvement: 'text-danger-fg',
 }
 
 interface ReportCardProps {
@@ -38,14 +38,14 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
     const feedback = report.curator_feedback
 
     return (
-        <div className="rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+        <div className="rounded-xl bg-surface shadow-sm border border-line overflow-hidden">
             <button
                 type="button"
                 onClick={() => setExpanded(!expanded)}
-                className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                className="w-full text-left px-4 py-3 hover:bg-canvas transition-colors"
             >
                 <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-900">
+                    <span className="text-sm font-semibold text-fg">
                         {formatDateRu(report.week_start)} — {formatDateRu(report.week_end)}
                     </span>
                     <div className="flex items-center gap-2">
@@ -53,31 +53,31 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                             className={cn(
                                 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
                                 report.has_feedback
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-yellow-100 text-yellow-800',
+                                    ? 'bg-success-soft text-success-fg'
+                                    : 'bg-warning-soft text-warning-fg',
                             )}
                         >
                             {report.has_feedback ? t('curator.feedback.given') : t('curator.feedback.awaiting')}
                         </span>
                         <ChevronDown
                             className={cn(
-                                'h-4 w-4 text-gray-400 transition-transform',
+                                'h-4 w-4 text-fg-subtle transition-transform',
                                 expanded && 'rotate-180',
                             )}
                         />
                     </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{t('curator.feedback.week', { week: report.week_number })}</p>
+                <p className="text-xs text-fg-muted mt-1">{t('curator.feedback.week', { week: report.week_number })}</p>
             </button>
 
             {expanded && (
-                <div className="px-4 pb-4 border-t border-gray-100 space-y-3 pt-3">
+                <div className="px-4 pb-4 border-t border-line space-y-3 pt-3">
                     {/* Summary data */}
                     {report.summary && Object.keys(report.summary).length > 0 && (
-                        <div className="text-xs text-gray-600 space-y-1">
+                        <div className="text-xs text-fg-muted space-y-1">
                             {Object.entries(report.summary).map(([key, value]) => (
                                 <p key={key}>
-                                    <span className="font-medium text-gray-700">{key}:</span>{' '}
+                                    <span className="font-medium text-fg">{key}:</span>{' '}
                                     {String(value)}
                                 </p>
                             ))}
@@ -86,51 +86,51 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
 
                     {/* Feedback display */}
                     {feedback ? (
-                        <div className="space-y-2 rounded-lg bg-gray-50 p-3">
-                            <h4 className="text-xs font-semibold text-gray-700">{t('curator.feedback.heading')}</h4>
+                        <div className="space-y-2 rounded-lg bg-canvas p-3">
+                            <h4 className="text-xs font-semibold text-fg">{t('curator.feedback.heading')}</h4>
                             {feedback.nutrition && (
                                 <div className="text-xs">
-                                    <span className="text-gray-500">{t('curator.feedback.nutritionLabel')}</span>
+                                    <span className="text-fg-muted">{t('curator.feedback.nutritionLabel')}</span>
                                     <span className={RATING_COLORS[feedback.nutrition.rating]}>
                                         {RATING_LABELS[feedback.nutrition.rating]}
                                     </span>
                                     {feedback.nutrition.comment && (
-                                        <span className="text-gray-500"> — {feedback.nutrition.comment}</span>
+                                        <span className="text-fg-muted"> — {feedback.nutrition.comment}</span>
                                     )}
                                 </div>
                             )}
                             {feedback.activity && (
                                 <div className="text-xs">
-                                    <span className="text-gray-500">{t('curator.feedback.activityLabel')}</span>
+                                    <span className="text-fg-muted">{t('curator.feedback.activityLabel')}</span>
                                     <span className={RATING_COLORS[feedback.activity.rating]}>
                                         {RATING_LABELS[feedback.activity.rating]}
                                     </span>
                                     {feedback.activity.comment && (
-                                        <span className="text-gray-500"> — {feedback.activity.comment}</span>
+                                        <span className="text-fg-muted"> — {feedback.activity.comment}</span>
                                     )}
                                 </div>
                             )}
                             {feedback.water && (
                                 <div className="text-xs">
-                                    <span className="text-gray-500">{t('curator.feedback.waterLabel')}</span>
+                                    <span className="text-fg-muted">{t('curator.feedback.waterLabel')}</span>
                                     <span className={RATING_COLORS[feedback.water.rating]}>
                                         {RATING_LABELS[feedback.water.rating]}
                                     </span>
                                     {feedback.water.comment && (
-                                        <span className="text-gray-500"> — {feedback.water.comment}</span>
+                                        <span className="text-fg-muted"> — {feedback.water.comment}</span>
                                     )}
                                 </div>
                             )}
-                            <p className="text-xs text-gray-700 mt-2">{feedback.summary}</p>
+                            <p className="text-xs text-fg mt-2">{feedback.summary}</p>
                             {feedback.recommendations && (
-                                <p className="text-xs text-gray-500 italic">{feedback.recommendations}</p>
+                                <p className="text-xs text-fg-muted italic">{feedback.recommendations}</p>
                             )}
                         </div>
                     ) : (
                         <button
                             type="button"
                             onClick={() => setShowFeedbackForm(true)}
-                            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-hover transition-colors"
                         >
                             <MessageSquare className="h-4 w-4" />
                             {t('curator.feedback.give')}

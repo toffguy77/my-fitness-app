@@ -21,9 +21,9 @@ const reasonLabels: Record<AttentionItem['reason'], string> = {
 }
 
 function getPriorityBadgeClass(priority: number): string {
-    if (priority <= 2) return 'bg-red-100 text-red-800'
-    if (priority === 3) return 'bg-yellow-100 text-yellow-800'
-    return 'bg-blue-100 text-blue-800'
+    if (priority <= 2) return 'bg-danger-soft text-danger-fg'
+    if (priority === 3) return 'bg-warning-soft text-warning-fg'
+    return 'bg-primary-soft text-primary'
 }
 
 interface GroupedClient {
@@ -86,9 +86,9 @@ export function AttentionList({ items }: AttentionListProps) {
                         data-testid="attention-item"
                         onClick={() => router.push(group.actionUrl)}
                         className={cn(
-                            'w-full rounded-xl bg-white p-3 shadow-sm border border-gray-100',
+                            'w-full rounded-xl bg-surface p-3 shadow-sm border border-line',
                             'text-left transition-shadow hover:shadow-md',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
                             'flex items-center gap-3'
                         )}
                     >
@@ -102,19 +102,19 @@ export function AttentionList({ items }: AttentionListProps) {
                                 unoptimized
                             />
                         ) : (
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600 shrink-0">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary shrink-0">
                                 {initials}
                             </div>
                         )}
 
                         <div className="flex-1 min-w-0">
                             <p
-                                className="text-sm font-semibold text-gray-900 truncate"
+                                className="text-sm font-semibold text-fg truncate"
                                 data-testid="attention-client-name"
                             >
                                 {group.clientName}
                             </p>
-                            <p className="text-xs text-gray-500 truncate">
+                            <p className="text-xs text-fg-muted truncate">
                                 {group.items.map((i) => i.detail).join(' · ')}
                             </p>
                         </div>

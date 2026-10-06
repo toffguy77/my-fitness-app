@@ -71,19 +71,19 @@ export function MediaUploader({ articleId, onUpload }: MediaUploaderProps) {
 
     return (
         <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-fg">
                 Загрузить изображение
             </label>
             <div className="flex items-center gap-2">
                 <button
                     type="button"
                     onClick={() => inputRef.current?.click()}
-                    className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                    className="rounded-md border border-line px-3 py-1.5 text-xs font-medium text-fg-muted transition-colors hover:bg-canvas"
                 >
                     Выбрать файл
                 </button>
                 {filename && (
-                    <span className="truncate text-xs text-gray-500">
+                    <span className="truncate text-xs text-fg-muted">
                         {filename}
                     </span>
                 )}
@@ -91,7 +91,7 @@ export function MediaUploader({ articleId, onUpload }: MediaUploaderProps) {
                     type="button"
                     onClick={handleUpload}
                     disabled={!filename || uploading}
-                    className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
                 >
                     {uploading ? 'Загрузка...' : 'Загрузить'}
                 </button>
@@ -104,10 +104,10 @@ export function MediaUploader({ articleId, onUpload }: MediaUploaderProps) {
                 className="hidden"
             />
             {error && (
-                <p className="text-xs text-red-600">{error}</p>
+                <p className="text-xs text-danger-fg">{error}</p>
             )}
             {uploadedUrl && (
-                <div className="rounded-md bg-green-50 px-3 py-2 text-xs text-green-700">
+                <div className="rounded-md bg-success-soft px-3 py-2 text-xs text-success-fg">
                     URL: <code className="select-all break-all">{uploadedUrl}</code>
                 </div>
             )}

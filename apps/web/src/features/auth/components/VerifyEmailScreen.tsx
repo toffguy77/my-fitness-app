@@ -92,12 +92,12 @@ export function VerifyEmailScreen() {
     const isBlocked = attempts >= 5
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-canvas">
             <div className="mx-auto max-w-md px-4 pb-8 pt-24">
-                <h2 className="mb-2 text-center text-xl font-bold text-gray-900">
+                <h2 className="mb-2 text-center text-xl font-bold text-fg">
                     {t('auth.verify.title')}
                 </h2>
-                <p className="mb-8 text-center text-sm text-gray-500">
+                <p className="mb-8 text-center text-sm text-fg-muted">
                     {t('auth.verify.sentTo', { email: userEmail })}
                 </p>
 
@@ -111,11 +111,11 @@ export function VerifyEmailScreen() {
                 </div>
 
                 {error && (
-                    <p className="mb-4 text-center text-sm text-red-600">{error}</p>
+                    <p className="mb-4 text-center text-sm text-danger-fg">{error}</p>
                 )}
 
                 {isBlocked && (
-                    <p className="mb-4 text-center text-sm text-gray-600">
+                    <p className="mb-4 text-center text-sm text-fg-muted">
                         {t('auth.verify.tooManyAttempts')}
                     </p>
                 )}
@@ -125,7 +125,7 @@ export function VerifyEmailScreen() {
                         type="button"
                         disabled={resendCooldown > 0}
                         onClick={handleResend}
-                        className="text-sm text-blue-600 transition-colors hover:text-blue-700 disabled:text-gray-400"
+                        className="text-sm text-primary transition-colors hover:text-primary disabled:text-fg-subtle"
                     >
                         {resendCooldown > 0
                             ? t('auth.verify.resendIn', { seconds: resendCooldown })

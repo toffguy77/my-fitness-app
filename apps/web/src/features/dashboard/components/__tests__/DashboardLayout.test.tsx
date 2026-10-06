@@ -81,7 +81,7 @@ describe('DashboardLayout', () => {
             expect(layout).toHaveClass('overflow-x-hidden')
 
             // Verify background color
-            expect(layout).toHaveClass('bg-gray-50')
+            expect(layout).toHaveClass('bg-canvas')
         })
 
         it('should pass user data to header component', () => {

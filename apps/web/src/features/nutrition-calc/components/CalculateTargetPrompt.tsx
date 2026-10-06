@@ -45,18 +45,18 @@ export function CalculateTargetPrompt({ missing, className = '' }: CalculateTarg
 
     return (
         <div
-            className={`rounded-xl border border-indigo-200 bg-indigo-50 p-3 sm:p-4 ${className}`}
+            className={`rounded-xl border border-primary/30 bg-primary-soft p-3 sm:p-4 ${className}`}
         >
             <div className="flex items-start gap-3">
-                <Calculator className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true" />
+                <Calculator className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
                 <div className="min-w-0">
-                    <p className="text-sm font-semibold text-indigo-900">
+                    <p className="text-sm font-semibold text-primary">
                         {t('foodTracker.noTarget.title')}
                     </p>
-                    <p className="mt-1 text-xs text-indigo-800 sm:text-sm">{explain(missing)}</p>
+                    <p className="mt-1 text-xs text-primary sm:text-sm">{explain(missing)}</p>
                     <Link
                         href={href}
-                        className="mt-2 inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 sm:text-sm"
+                        className="mt-2 inline-flex items-center rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-on-primary transition-colors hover:bg-primary-hover sm:text-sm"
                     >
                         {label}
                     </Link>

@@ -185,7 +185,7 @@ export function PortionSelector({
     return (
         <div className={`space-y-4 ${className}`}>
             {/* Portion Type Toggle */}
-            <div className="flex gap-1 p-1 bg-gray-100 rounded-lg" role="tablist" aria-label={t('foodTracker.portion.typeAria')}>
+            <div className="flex gap-1 p-1 bg-subtle rounded-lg" role="tablist" aria-label={t('foodTracker.portion.typeAria')}>
                 {(Object.keys(PORTION_TYPE_LABELS) as PortionType[]).map((type) => (
                     <button
                         key={type}
@@ -198,8 +198,8 @@ export function PortionSelector({
                         className={`
                             flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors
                             ${portionType === type
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                ? 'bg-surface text-primary shadow-sm'
+                                : 'text-fg-muted hover:text-fg hover:bg-canvas'
                             }
                             ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
                         `}
@@ -238,13 +238,13 @@ export function PortionSelector({
                                 w-24 px-3 py-2 text-center text-lg font-medium
                                 border rounded-lg focus:outline-none focus:ring-2
                                 ${error
-                                    ? 'border-red-500 focus:ring-red-500'
-                                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                                    ? 'border-danger focus:ring-danger'
+                                    : 'border-line focus:ring-focus focus:border-primary'
                                 }
-                                ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
+                                ${disabled ? 'bg-subtle cursor-not-allowed' : 'bg-surface'}
                             `}
                         />
-                        <span className="text-gray-600 font-medium">
+                        <span className="text-fg-muted font-medium">
                             {PORTION_TYPE_UNITS[portionType]}
                         </span>
                     </div>
@@ -264,12 +264,12 @@ export function PortionSelector({
                             onChange={handleSliderChange}
                             disabled={disabled}
                             className={`
-                                w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer
-                                accent-blue-600
+                                w-full h-2 bg-subtle rounded-lg appearance-none cursor-pointer
+                                accent-primary
                                 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
                             `}
                         />
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <div className="flex justify-between text-xs text-fg-muted mt-1">
                             <span>{MIN_PORTION}</span>
                             <span>{maxValue} {PORTION_TYPE_UNITS[portionType]}</span>
                         </div>
@@ -286,8 +286,8 @@ export function PortionSelector({
                                 className={`
                                     px-3 py-1.5 text-sm font-medium rounded-full border transition-colors
                                     ${amount === quickAmount
-                                        ? 'bg-blue-100 border-blue-500 text-blue-700'
-                                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-primary-soft border-primary text-primary'
+                                        : 'bg-surface border-line text-fg hover:bg-canvas'
                                     }
                                     ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
                                 `}
@@ -303,7 +303,7 @@ export function PortionSelector({
                         <p
                             id="portion-error"
                             role="alert"
-                            className="text-sm text-red-600 flex items-center gap-1"
+                            className="text-sm text-danger-fg flex items-center gap-1"
                         >
                             <svg
                                 className="w-4 h-4"
@@ -324,8 +324,8 @@ export function PortionSelector({
             </div>
 
             {/* КБЖУ Display */}
-            <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
+            <div className="p-4 bg-canvas rounded-lg">
+                <h4 className="text-sm font-medium text-fg mb-3">
                     {t('foodTracker.portion.nutrition')}
                 </h4>
                 <div className="grid grid-cols-4 gap-3">
@@ -370,10 +370,10 @@ interface NutrientDisplayProps {
 function NutrientDisplay({ label, value, unit, highlight = false }: NutrientDisplayProps): React.ReactElement {
     return (
         <div className="text-center">
-            <div className={`text-lg font-semibold ${highlight ? 'text-blue-600' : 'text-gray-900'}`}>
-                {value}{unit && <span className="text-sm font-normal text-gray-500 ml-0.5">{unit}</span>}
+            <div className={`text-lg font-semibold ${highlight ? 'text-primary' : 'text-fg'}`}>
+                {value}{unit && <span className="text-sm font-normal text-fg-muted ml-0.5">{unit}</span>}
             </div>
-            <div className="text-xs text-gray-500">{label}</div>
+            <div className="text-xs text-fg-muted">{label}</div>
         </div>
     );
 }

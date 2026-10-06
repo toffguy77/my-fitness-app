@@ -130,19 +130,19 @@ function ProfileSettingsForm({
 
             {/* Name */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.locality.name')}</h3>
+                <h3 className="mb-3 text-sm font-bold text-fg">{t('settings.locality.name')}</h3>
                 <div className="flex gap-2">
                     <input
                         type="text"
                         value={name}
                         onChange={(e) => handleNameChange(e.target.value)}
                         placeholder={t('settings.locality.namePlaceholder')}
-                        className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                        className="flex-1 rounded-lg border border-line bg-surface px-4 py-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-focus focus:ring-offset-2"
                     />
                     {nameChanged && (
                         <button
                             onClick={handleSaveName}
-                            className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                            className="rounded-lg bg-primary px-4 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
                         >
                             {t('settings.save')}
                         </button>
@@ -152,7 +152,7 @@ function ProfileSettingsForm({
 
             {/* Height */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.locality.height')}</h3>
+                <h3 className="mb-3 text-sm font-bold text-fg">{t('settings.locality.height')}</h3>
                 <div className="flex gap-2">
                     <input
                         type="number"
@@ -162,12 +162,12 @@ function ProfileSettingsForm({
                         min={50}
                         max={300}
                         step={0.1}
-                        className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                        className="flex-1 rounded-lg border border-line bg-surface px-4 py-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-focus focus:ring-offset-2"
                     />
                     {heightChanged && (
                         <button
                             onClick={handleSaveHeight}
-                            className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                            className="rounded-lg bg-primary px-4 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
                         >
                             {t('settings.save')}
                         </button>
@@ -196,7 +196,7 @@ function ProfileSettingsForm({
             <div className="mt-12">
                 <button
                     onClick={() => router.push('/settings/privacy')}
-                    className="w-full rounded-lg border border-red-200 py-3 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
+                    className="w-full rounded-lg border border-danger/30 py-3 text-sm font-medium text-danger-fg transition-colors hover:bg-danger-soft"
                 >
                     {t('settings.locality.deleteAccount')}
                 </button>

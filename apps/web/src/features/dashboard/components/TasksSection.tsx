@@ -132,10 +132,10 @@ const TaskItem = memo(function TaskItem({ task, onToggleComplete, style }: TaskI
         <div
             style={style}
             className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${isCompleted
-                ? 'bg-green-50 border-green-200'
+                ? 'bg-success-soft border-success/30'
                 : isOverdue
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-white border-gray-200 hover:border-gray-300'
+                    ? 'bg-danger-soft border-danger/30'
+                    : 'bg-surface border-line hover:border-line'
                 }`}
             role="article"
             aria-label={t('dashboard.tasks.taskAria', { title: task.title, status: isCompleted ? t('dashboard.tasks.statusDone') : isOverdue ? t('dashboard.tasks.statusOverdue') : t('dashboard.tasks.statusActive'), deadline: dueDateFormatted })}
@@ -150,29 +150,29 @@ const TaskItem = memo(function TaskItem({ task, onToggleComplete, style }: TaskI
                 aria-pressed={isCompleted}
             >
                 {isCompleted ? (
-                    <CheckCircle className="w-5 h-5 text-green-600" aria-hidden="true" />
+                    <CheckCircle className="w-5 h-5 text-success-fg" aria-hidden="true" />
                 ) : (
-                    <Circle className="w-5 h-5 text-gray-400 hover:text-gray-600" aria-hidden="true" />
+                    <Circle className="w-5 h-5 text-fg-subtle hover:text-fg-muted" aria-hidden="true" />
                 )}
             </button>
 
             {/* Task content */}
             <div className="flex-1 min-w-0">
                 <h4
-                    className={`text-sm font-medium ${isCompleted ? 'text-green-900 line-through' : 'text-gray-900'
+                    className={`text-sm font-medium ${isCompleted ? 'text-success-fg line-through' : 'text-fg'
                         }`}
                 >
                     {task.title}
                 </h4>
                 {task.description && (
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                    <p className="text-xs text-fg-muted mt-1 line-clamp-2">
                         {task.description}
                     </p>
                 )}
-                <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                <div className="flex items-center gap-2 mt-2 text-xs text-fg-muted">
                     <span>{t('dashboard.tasks.dueDate', { date: dueDateFormatted })}</span>
                     {isOverdue && (
-                        <span className="text-red-600 font-medium" role="status" aria-label={t('dashboard.tasks.overdueAria')}>
+                        <span className="text-danger-fg font-medium" role="status" aria-label={t('dashboard.tasks.overdueAria')}>
                             {t('dashboard.tasks.overdue')}
                         </span>
                     )}
@@ -301,14 +301,14 @@ export const TasksSection = memo(function TasksSection({
 
     return (
         <section
-            className={`tasks-section bg-white rounded-lg shadow-sm p-6 ${className}`}
+            className={`tasks-section bg-surface rounded-lg shadow-sm p-6 ${className}`}
             aria-labelledby="tasks-heading"
             aria-describedby={showAttentionIndicator ? "tasks-attention-indicator" : undefined}
         >
             <div className="flex items-center justify-between mb-4">
                 <h2
                     id="tasks-heading"
-                    className="text-lg font-semibold text-gray-900"
+                    className="text-lg font-semibold text-fg"
                 >
                     {t('dashboard.tasks.title')}
                 </h2>
@@ -341,7 +341,7 @@ export const TasksSection = memo(function TasksSection({
                             {/* Current week tasks */}
                             {currentWeekTasks.length > 0 && (
                                 <div role="group" aria-labelledby={`week-${currentWeek}-heading`}>
-                                    <h3 id={`week-${currentWeek}-heading`} className="text-sm font-medium text-gray-700 mb-2">
+                                    <h3 id={`week-${currentWeek}-heading`} className="text-sm font-medium text-fg mb-2">
                                         {t('dashboard.tasks.week', { week: currentWeek })}
                                     </h3>
                                     <div className="space-y-2">
@@ -362,7 +362,7 @@ export const TasksSection = memo(function TasksSection({
                             {/* Previous week tasks */}
                             {previousWeekTasks.length > 0 && (
                                 <div role="group" aria-labelledby={`week-${currentWeek - 1}-heading`}>
-                                    <h3 id={`week-${currentWeek - 1}-heading`} className="text-sm font-medium text-gray-700 mb-2">
+                                    <h3 id={`week-${currentWeek - 1}-heading`} className="text-sm font-medium text-fg mb-2">
                                         {t('dashboard.tasks.week', { week: currentWeek - 1 })}
                                     </h3>
                                     <div className="space-y-2">
@@ -392,7 +392,7 @@ export const TasksSection = memo(function TasksSection({
                         <button
                             type="button"
                             onClick={() => setShowAll(true)}
-                            className="w-full flex items-center justify-center gap-2 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                            className="w-full flex items-center justify-center gap-2 py-2 text-sm text-primary hover:text-primary font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 rounded"
                             aria-label={t('dashboard.tasks.showMoreAria', { count: allTasks.length - maxVisibleTasks })}
                         >
                             <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
@@ -405,7 +405,7 @@ export const TasksSection = memo(function TasksSection({
                         <button
                             type="button"
                             onClick={() => setShowAll(false)}
-                            className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-600 hover:text-gray-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded"
+                            className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 rounded"
                             aria-label={t('dashboard.tasks.collapseAria')}
                         >
                             <span>{t('dashboard.tasks.collapse')}</span>
@@ -419,11 +419,11 @@ export const TasksSection = memo(function TasksSection({
                     role="status"
                     aria-label={t('dashboard.tasks.emptyAria')}
                 >
-                    <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                        <CheckCircle className="w-8 h-8 text-gray-400" aria-hidden="true" />
+                    <div className="w-16 h-16 mb-4 rounded-full bg-subtle flex items-center justify-center">
+                        <CheckCircle className="w-8 h-8 text-fg-subtle" aria-hidden="true" />
                     </div>
-                    <p className="text-gray-600 text-sm">{t('dashboard.tasks.empty')}</p>
-                    <p className="text-gray-500 text-xs mt-2">
+                    <p className="text-fg-muted text-sm">{t('dashboard.tasks.empty')}</p>
+                    <p className="text-fg-muted text-xs mt-2">
                         {t('dashboard.tasks.emptyHint')}
                     </p>
                 </div>

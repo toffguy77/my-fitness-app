@@ -42,8 +42,8 @@ function formatTime(dateStr: string): string {
 
 export function MessageBubble({ message, isOwn, onImageAction }: MessageBubbleProps) {
     const alignment = isOwn ? 'justify-end' : 'justify-start'
-    const bubbleBg = isOwn ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900'
-    const timeColor = isOwn ? 'text-blue-200' : 'text-gray-400'
+    const bubbleBg = isOwn ? 'bg-primary text-on-primary' : 'bg-subtle text-fg'
+    const timeColor = isOwn ? 'text-primary' : 'text-fg-subtle'
 
     const content = useMemo(() => {
         switch (message.type) {
@@ -80,7 +80,7 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
                             <button
                                 type="button"
                                 onClick={() => onImageAction(message)}
-                                className="mt-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                                className="mt-1.5 text-xs text-success-fg hover:text-success-fg font-medium transition-colors"
                             >
                                 {t('chat.enterMacros')}
                             </button>
@@ -100,7 +100,7 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
                                 href={message.content}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm underline text-blue-600"
+                                className="text-sm underline text-primary"
                             >
                                 {t('chat.downloadFile')}
                             </a>

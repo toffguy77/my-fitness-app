@@ -57,7 +57,7 @@ export function NutrientCategory({
 }: NutrientCategoryProps): React.ReactElement {
     return (
         <div
-            className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${className}`}
+            className={`bg-surface rounded-xl shadow-sm border border-line overflow-hidden ${className}`}
             role="region"
             aria-label={t('foodTracker.nutrientCategory.aria', { label })}
         >
@@ -65,22 +65,22 @@ export function NutrientCategory({
             <button
                 type="button"
                 onClick={onToggle}
-                className="flex items-center justify-between w-full px-3 py-2.5 text-left hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:px-4 sm:py-3 touch-manipulation"
+                className="flex items-center justify-between w-full px-3 py-2.5 text-left hover:bg-canvas transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-4 sm:py-3 touch-manipulation"
                 aria-expanded={isExpanded}
                 aria-controls={`category-${category}-content`}
             >
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                    <span className="text-sm font-medium text-gray-900 sm:text-base">
+                    <span className="text-sm font-medium text-fg sm:text-base">
                         {label}
                     </span>
-                    <span className="text-xs text-gray-500 sm:text-sm">
+                    <span className="text-xs text-fg-muted sm:text-sm">
                         ({recommendations.length})
                     </span>
                 </div>
                 {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-400 sm:w-5 sm:h-5" aria-hidden="true" />
+                    <ChevronDown className="w-4 h-4 text-fg-subtle sm:w-5 sm:h-5" aria-hidden="true" />
                 ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-400 sm:w-5 sm:h-5" aria-hidden="true" />
+                    <ChevronRight className="w-4 h-4 text-fg-subtle sm:w-5 sm:h-5" aria-hidden="true" />
                 )}
             </button>
 

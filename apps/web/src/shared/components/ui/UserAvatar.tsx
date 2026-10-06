@@ -27,9 +27,9 @@ export const UserAvatar = forwardRef<HTMLButtonElement, UserAvatarProps>(
             return name.charAt(0).toUpperCase()
         }
 
-        const baseStyles = 'inline-flex items-center justify-center rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600'
+        const baseStyles = 'inline-flex items-center justify-center rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus'
         const interactiveStyles = onClick ? 'cursor-pointer hover:opacity-80' : ''
-        const avatarStyles = 'bg-blue-100 text-blue-700 border border-blue-200'
+        const avatarStyles = 'bg-primary-soft text-primary border border-primary/30'
 
         const content = avatarUrl ? (
             <Image

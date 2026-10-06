@@ -11,7 +11,7 @@ describe('Card', () => {
     it('applies default variant classes', () => {
         render(<Card data-testid="card">Default</Card>)
         const card = screen.getByTestId('card')
-        expect(card.className).toContain('bg-white')
+        expect(card.className).toContain('bg-surface')
         expect(card.className).toContain('rounded-lg')
     })
 
@@ -19,7 +19,7 @@ describe('Card', () => {
         render(<Card variant="bordered" data-testid="card">Bordered</Card>)
         const card = screen.getByTestId('card')
         expect(card.className).toContain('border')
-        expect(card.className).toContain('border-gray-200')
+        expect(card.className).toContain('border-line')
     })
 
     it('applies elevated variant classes', () => {

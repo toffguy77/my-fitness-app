@@ -86,7 +86,7 @@ const StepsRing = memo(function StepsRing({
                     stroke="currentColor"
                     strokeWidth={strokeWidth}
                     fill="none"
-                    className="text-gray-100"
+                    className="text-on-coach"
                 />
                 {/* Progress circle */}
                 <circle
@@ -101,7 +101,7 @@ const StepsRing = memo(function StepsRing({
                     strokeLinecap="round"
                     className={cn(
                         'transition-all duration-500',
-                        isComplete ? 'text-green-500' : 'text-blue-500'
+                        isComplete ? 'text-success-fg' : 'text-primary'
                     )}
                 />
             </svg>
@@ -239,7 +239,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
+                        <CardTitle className="text-lg font-semibold text-fg">
                             {t('dashboard.steps.title')}
                         </CardTitle>
                         {showAttentionIndicator && (
@@ -269,7 +269,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                             <span
                                 className={cn(
                                     'text-base font-bold leading-tight',
-                                    isGoalReached ? 'text-green-600' : 'text-gray-900'
+                                    isGoalReached ? 'text-success-fg' : 'text-fg'
                                 )}
                                 aria-label={t('dashboard.steps.currentAria', { steps: currentSteps.toLocaleString() })}
                             >
@@ -278,12 +278,12 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                         </StepsRing>
                     </div>
                     <div className="space-y-0.5">
-                        <div className="text-xs text-gray-500" aria-label={t('dashboard.steps.goalAria', { steps: stepsGoal.toLocaleString() })}>
+                        <div className="text-xs text-fg-muted" aria-label={t('dashboard.steps.goalAria', { steps: stepsGoal.toLocaleString() })}>
                             {t('dashboard.steps.ofGoal', { steps: formatSteps(stepsGoal) })}
                         </div>
                         <div className={cn(
                             'text-xs font-medium',
-                            isGoalReached ? 'text-green-600' : 'text-gray-600'
+                            isGoalReached ? 'text-success-fg' : 'text-fg-muted'
                         )}>
                             {percentage.toFixed(1)}%
                         </div>
@@ -292,7 +292,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                     {/* Completion indicator */}
                     {isGoalReached && (
                         <div
-                            className="flex items-center justify-center gap-1.5 text-green-600"
+                            className="flex items-center justify-center gap-1.5 text-success-fg"
                             role="status"
                             aria-label={t('dashboard.steps.goalReachedAria')}
                         >
@@ -304,8 +304,8 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
 
                 {/* Input dialog */}
                 {isDialogOpen && (
-                    <div className="space-y-2.5 p-3 bg-gray-50 rounded-lg border" role="dialog" aria-labelledby="steps-dialog-title">
-                        <div id="steps-dialog-title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <div className="space-y-2.5 p-3 bg-canvas rounded-lg border" role="dialog" aria-labelledby="steps-dialog-title">
+                        <div id="steps-dialog-title" className="flex items-center gap-2 text-sm font-medium text-fg">
                             <Target className="h-4 w-4" aria-hidden="true" />
                             <span>{t('dashboard.steps.update')}</span>
                         </div>
@@ -370,13 +370,13 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                 {/* Empty state or motivational message */}
                 {currentSteps === 0 ? (
                     <div className="text-center py-2 space-y-2" role="status" aria-label={t('dashboard.steps.emptyAria')}>
-                        <Footprints className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">{t('dashboard.steps.empty')}</p>
+                        <Footprints className="h-8 w-8 mx-auto text-fg-subtle" aria-hidden="true" />
+                        <p className="text-sm text-fg-muted">{t('dashboard.steps.empty')}</p>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleQuickAdd}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            className="text-primary border-primary/30 hover:bg-primary-soft"
                             aria-label={t('dashboard.steps.add')}
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -385,14 +385,14 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                     </div>
                 ) : !isGoalReached && (
                     <div className="text-center">
-                        <p className="text-xs text-gray-500" aria-label={t('dashboard.steps.remainingAria', { steps: (stepsGoal - currentSteps).toLocaleString() })}>
+                        <p className="text-xs text-fg-muted" aria-label={t('dashboard.steps.remainingAria', { steps: (stepsGoal - currentSteps).toLocaleString() })}>
                             {t('dashboard.steps.remaining', { steps: (stepsGoal - currentSteps).toLocaleString() })}
                         </p>
                     </div>
                 )}
 
                 {/* Helper text */}
-                <div className="text-xs text-gray-400 text-center">
+                <div className="text-xs text-fg-subtle text-center">
                     {t('dashboard.steps.hint')}
                 </div>
             </CardContent>

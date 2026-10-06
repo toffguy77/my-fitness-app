@@ -109,7 +109,7 @@ export function MessageList({ messages, isLoading, hasMore, onLoadMore, onImageA
                         type="button"
                         onClick={handleLoadMore}
                         disabled={isLoading}
-                        className="text-sm text-blue-500 hover:text-blue-600 disabled:text-gray-300 transition-colors"
+                        className="text-sm text-primary hover:text-primary disabled:text-fg-subtle transition-colors"
                     >
                         {isLoading ? t('common.loading') : t('chat.loadMore')}
                     </button>
@@ -119,14 +119,14 @@ export function MessageList({ messages, isLoading, hasMore, onLoadMore, onImageA
             {/* Loading state */}
             {isLoading && messages.length === 0 && (
                 <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-400 text-sm">{t('chat.loadingMessages')}</p>
+                    <p className="text-fg-subtle text-sm">{t('chat.loadingMessages')}</p>
                 </div>
             )}
 
             {/* Empty state */}
             {!isLoading && messages.length === 0 && (
                 <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-400 text-sm">{t('chat.noMessages')}</p>
+                    <p className="text-fg-subtle text-sm">{t('chat.noMessages')}</p>
                 </div>
             )}
 

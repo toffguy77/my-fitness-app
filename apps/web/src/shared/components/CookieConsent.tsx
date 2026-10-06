@@ -122,12 +122,12 @@ export function CookieConsent({ onChoice }: { onChoice?: (choice: CookieChoice) 
             // В потоке она сдвигает содержимое вниз, ничего не перекрывает и
             // видна сразу при открытии. Пропадает при прокрутке — и это
             // приемлемо: ответ нужен один раз и запоминается.
-            className="border-b border-gray-200 bg-gray-50 px-4 py-3 sm:px-6"
+            className="border-b border-line bg-canvas px-4 py-3 sm:px-6"
         >
             <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-fg">
                     {t('cookies.body')}{' '}
-                    <Link href="/legal/privacy" className="text-blue-600 underline underline-offset-2">
+                    <Link href="/legal/privacy" className="text-primary underline underline-offset-2">
                         {t('cookies.policy')}
                     </Link>
                 </p>
@@ -135,14 +135,14 @@ export function CookieConsent({ onChoice }: { onChoice?: (choice: CookieChoice) 
                     <button
                         type="button"
                         onClick={() => decide('denied')}
-                        className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        className="rounded-md border border-line px-4 py-2 text-sm text-fg hover:bg-canvas"
                     >
                         {t('cookies.decline')}
                     </button>
                     <button
                         type="button"
                         onClick={() => decide('granted')}
-                        className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+                        className="rounded-md bg-primary px-4 py-2 text-sm text-on-primary hover:bg-primary-hover"
                     >
                         {t('cookies.accept')}
                     </button>

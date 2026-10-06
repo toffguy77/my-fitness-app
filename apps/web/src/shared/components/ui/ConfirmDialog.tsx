@@ -80,7 +80,7 @@ export function ConfirmDialog({
 
     return (
         <div
-            className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 sm:items-center"
+            className="fixed inset-0 z-[70] flex items-end justify-center bg-scrim sm:items-center"
             onClick={(event) => {
                 if (event.target === event.currentTarget) cancelIfIdle()
             }}
@@ -91,12 +91,12 @@ export function ConfirmDialog({
         >
             <div
                 ref={dialogRef}
-                className="w-full rounded-t-2xl bg-white p-5 shadow-xl sm:max-w-md sm:rounded-2xl"
+                className="w-full rounded-t-2xl bg-surface p-5 shadow-xl sm:max-w-md sm:rounded-2xl"
             >
-                <h2 id={titleId} className="text-lg font-semibold text-gray-900">
+                <h2 id={titleId} className="text-lg font-semibold text-fg">
                     {title}
                 </h2>
-                <p id={descriptionId} className="mt-2 text-sm text-gray-600">
+                <p id={descriptionId} className="mt-2 text-sm text-fg-muted">
                     {description}
                 </p>
 

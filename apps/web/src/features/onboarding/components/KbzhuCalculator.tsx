@@ -14,7 +14,7 @@ const goals: FitnessGoal[] = ['loss', 'maintain', 'gain']
 const activityLevels: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active']
 const sexes: Sex[] = ['female', 'male']
 
-const fieldClass = 'mt-1 w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900'
+const fieldClass = 'mt-1 w-full rounded-lg border border-line bg-surface px-4 py-3 text-sm text-fg'
 
 /**
  * The calculator on the open page: every question on one screen, the answer
@@ -89,7 +89,7 @@ export function KbzhuCalculator() {
         : []
 
     return (
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
             <form
                 onSubmit={(e) => {
                     e.preventDefault()
@@ -98,13 +98,13 @@ export function KbzhuCalculator() {
                 className="grid gap-4 sm:grid-cols-2"
             >
                 <fieldset className="sm:col-span-2">
-                    <legend className="text-sm font-medium text-gray-900">{t('onboarding.sex')}</legend>
+                    <legend className="text-sm font-medium text-fg">{t('onboarding.sex')}</legend>
                     <div className="mt-2 grid grid-cols-2 gap-3">
                         {sexes.map((value) => (
                             <label
                                 key={value}
-                                className={`flex cursor-pointer items-center justify-center rounded-lg border py-3 text-sm text-gray-900 ${
-                                    sex === value ? 'border-blue-600 bg-blue-50' : 'border-gray-300 bg-white'
+                                className={`flex cursor-pointer items-center justify-center rounded-lg border py-3 text-sm text-fg ${
+                                    sex === value ? 'border-primary bg-primary-soft' : 'border-line bg-surface'
                                 }`}
                             >
                                 <input
@@ -122,7 +122,7 @@ export function KbzhuCalculator() {
                 </fieldset>
 
                 <div>
-                    <label htmlFor="calc-birth" className="block text-sm font-medium text-gray-900">
+                    <label htmlFor="calc-birth" className="block text-sm font-medium text-fg">
                         {t('onboarding.birthDate')}
                     </label>
                     <input
@@ -134,7 +134,7 @@ export function KbzhuCalculator() {
                     />
                 </div>
                 <div>
-                    <label htmlFor="calc-height" className="block text-sm font-medium text-gray-900">
+                    <label htmlFor="calc-height" className="block text-sm font-medium text-fg">
                         {t('onboarding.guest.heightCm')}
                     </label>
                     <input
@@ -148,7 +148,7 @@ export function KbzhuCalculator() {
                     />
                 </div>
                 <div>
-                    <label htmlFor="calc-weight" className="block text-sm font-medium text-gray-900">
+                    <label htmlFor="calc-weight" className="block text-sm font-medium text-fg">
                         {t('onboarding.guest.weightKg')}
                     </label>
                     <input
@@ -162,7 +162,7 @@ export function KbzhuCalculator() {
                     />
                 </div>
                 <div>
-                    <label htmlFor="calc-activity" className="block text-sm font-medium text-gray-900">
+                    <label htmlFor="calc-activity" className="block text-sm font-medium text-fg">
                         {t('onboarding.activityLevel')}
                     </label>
                     <select
@@ -180,7 +180,7 @@ export function KbzhuCalculator() {
                     </select>
                 </div>
                 <div className="sm:col-span-2">
-                    <label htmlFor="calc-goal" className="block text-sm font-medium text-gray-900">
+                    <label htmlFor="calc-goal" className="block text-sm font-medium text-fg">
                         {t('onboarding.goalLabel')}
                     </label>
                     <select
@@ -199,7 +199,7 @@ export function KbzhuCalculator() {
                 </div>
 
                 {problem && (
-                    <p role="alert" className="text-sm text-red-600 sm:col-span-2">
+                    <p role="alert" className="text-sm text-danger-fg sm:col-span-2">
                         {problem}
                     </p>
                 )}
@@ -207,7 +207,7 @@ export function KbzhuCalculator() {
                 <button
                     type="submit"
                     disabled={calculating}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60 sm:col-span-2"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-60 sm:col-span-2"
                 >
                     {calculating && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                     {calculating ? t('onboarding.calculator.calculating') : t('onboarding.calculator.calculate')}
@@ -215,20 +215,20 @@ export function KbzhuCalculator() {
             </form>
 
             {result && (
-                <div className="mt-6 border-t border-gray-100 pt-6" aria-live="polite">
-                    <h2 className="text-lg font-semibold text-gray-900">{t('onboarding.guest.resultTitle')}</h2>
-                    <div className="mt-4 rounded-xl bg-gray-50 p-5 text-center">
-                        <p className="text-sm text-gray-600">{t('onboarding.guest.calories')}</p>
-                        <p className="text-4xl font-bold text-gray-900">{Math.round(result.calories)}</p>
-                        <p className="text-sm text-gray-600">{t('onboarding.guest.kcalPerDay')}</p>
+                <div className="mt-6 border-t border-line pt-6" aria-live="polite">
+                    <h2 className="text-lg font-semibold text-fg">{t('onboarding.guest.resultTitle')}</h2>
+                    <div className="mt-4 rounded-xl bg-canvas p-5 text-center">
+                        <p className="text-sm text-fg-muted">{t('onboarding.guest.calories')}</p>
+                        <p className="text-4xl font-bold text-fg">{Math.round(result.calories)}</p>
+                        <p className="text-sm text-fg-muted">{t('onboarding.guest.kcalPerDay')}</p>
                     </div>
                     <div className="mt-3 grid grid-cols-3 gap-3">
                         {macros.map((macro) => (
-                            <div key={macro.label} className="rounded-lg bg-gray-50 p-3 text-center">
-                                <p className="text-xs text-gray-600">{macro.label}</p>
-                                <p className="text-lg font-semibold text-gray-900">
+                            <div key={macro.label} className="rounded-lg bg-canvas p-3 text-center">
+                                <p className="text-xs text-fg-muted">{macro.label}</p>
+                                <p className="text-lg font-semibold text-fg">
                                     <span>{macro.value}</span>
-                                    <span className="text-xs font-normal text-gray-500">
+                                    <span className="text-xs font-normal text-fg-muted">
                                         {' '}
                                         {t('onboarding.guest.gram')}
                                     </span>
@@ -236,11 +236,11 @@ export function KbzhuCalculator() {
                             </div>
                         ))}
                     </div>
-                    <p className="mt-4 text-sm text-gray-600">{t('onboarding.calculator.saveHint')}</p>
+                    <p className="mt-4 text-sm text-fg-muted">{t('onboarding.calculator.saveHint')}</p>
                     <button
                         type="button"
                         onClick={handleSave}
-                        className="mt-3 w-full rounded-lg border border-blue-600 py-3 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50"
+                        className="mt-3 w-full rounded-lg border border-primary py-3 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
                     >
                         {t('onboarding.calculator.saveAndPlan')}
                     </button>

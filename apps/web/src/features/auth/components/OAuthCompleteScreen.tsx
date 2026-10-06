@@ -37,13 +37,13 @@ export function OAuthCompleteScreen() {
     if (failed) {
         return (
             <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-                <p className="text-sm text-gray-900">{t('auth.oauth.completeFailedTitle')}</p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-fg">{t('auth.oauth.completeFailedTitle')}</p>
+                <p className="text-sm text-fg-muted">
                     {t('auth.oauth.completeFailedHint')}
                 </p>
                 <button
                     onClick={() => router.replace('/auth')}
-                    className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                    className="rounded-lg bg-primary px-4 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
                 >
                     {t('auth.oauth.backToSignIn')}
                 </button>
@@ -53,7 +53,7 @@ export function OAuthCompleteScreen() {
 
     return (
         <main className="flex min-h-screen items-center justify-center" aria-busy="true">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             <span className="sr-only">{t('auth.oauth.completing')}</span>
         </main>
     )

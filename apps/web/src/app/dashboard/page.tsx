@@ -209,8 +209,8 @@ export default function DashboardPage() {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                    <p className="text-gray-600">{t('common.loading')}</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-line-strong mx-auto mb-4"></div>
+                    <p className="text-fg-muted">{t('common.loading')}</p>
                 </div>
             </div>
         )

@@ -128,7 +128,7 @@ export function SettingsPrivacy() {
     }
 
     if (loading) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('settings.privacy.loading')}</p>
+        return <p className="py-8 text-center text-sm text-fg-muted">{t('settings.privacy.loading')}</p>
     }
 
     const deletionDate = status?.scheduled_for
@@ -138,8 +138,8 @@ export function SettingsPrivacy() {
     return (
         <div className="space-y-10">
             <section>
-                <h2 className="text-lg font-semibold text-gray-900">{t('settings.privacy.downloadHeading')}</h2>
-                <p className="mt-2 text-sm text-gray-600">
+                <h2 className="text-lg font-semibold text-fg">{t('settings.privacy.downloadHeading')}</h2>
+                <p className="mt-2 text-sm text-fg-muted">
                     {t('settings.privacy.downloadExplanation')}
                 </p>
 
@@ -147,7 +147,7 @@ export function SettingsPrivacy() {
                     type="button"
                     onClick={handleExport}
                     disabled={busy}
-                    className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-on-primary hover:bg-primary-hover disabled:opacity-50"
                 >
                     {t('settings.privacy.requestExport')}
                 </button>
@@ -155,8 +155,8 @@ export function SettingsPrivacy() {
                 {exports.length > 0 && (
                     <ul className="mt-4 space-y-2">
                         {exports.map((item) => (
-                            <li key={item.id} className="flex items-center justify-between rounded border border-gray-200 px-3 py-2 text-sm">
-                                <span className="text-gray-600">
+                            <li key={item.id} className="flex items-center justify-between rounded border border-line px-3 py-2 text-sm">
+                                <span className="text-fg-muted">
                                     {new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short', timeStyle: 'short' })
                                         .format(new Date(item.requested_at))}
                                     {' — '}
@@ -169,7 +169,7 @@ export function SettingsPrivacy() {
                                 {item.status === 'ready' && !item.downloaded && (
                                     <a
                                         href={accountApi.downloadExportUrl(item.id)}
-                                        className="text-blue-600 hover:underline"
+                                        className="text-primary hover:underline"
                                     >
                                         {t('settings.privacy.download')}
                                     </a>
@@ -181,28 +181,28 @@ export function SettingsPrivacy() {
             </section>
 
             <section>
-                <h2 className="text-lg font-semibold text-gray-900">{t('settings.privacy.deleteHeading')}</h2>
+                <h2 className="text-lg font-semibold text-fg">{t('settings.privacy.deleteHeading')}</h2>
 
                 {status?.requested ? (
-                    <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-4">
-                        <p className="text-sm text-amber-900">
+                    <div className="mt-2 rounded-md border border-warning/30 bg-warning-soft p-4">
+                        <p className="text-sm text-warning-fg">
                             {t('settings.privacy.scheduledFor', { date: deletionDate ?? '' })}
                         </p>
                         <button
                             type="button"
                             onClick={handleCancel}
                             disabled={busy}
-                            className="mt-3 rounded-md bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700 disabled:opacity-50"
+                            className="mt-3 rounded-md bg-warning px-4 py-2 text-sm text-on-primary hover:bg-warning disabled:opacity-50"
                         >
                             {t('settings.privacy.cancelDeletion')}
                         </button>
                     </div>
                 ) : (
                     <>
-                        <p className="mt-2 text-sm text-gray-600">
+                        <p className="mt-2 text-sm text-fg-muted">
                             {t('settings.privacy.whatGoes')}
                         </p>
-                        <p className="mt-2 text-sm text-gray-600">
+                        <p className="mt-2 text-sm text-fg-muted">
                             {t('settings.privacy.gracePeriod')}
                         </p>
 
@@ -210,12 +210,12 @@ export function SettingsPrivacy() {
                             <button
                                 type="button"
                                 onClick={() => setShowDeleteForm(true)}
-                                className="mt-4 rounded-md border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                className="mt-4 rounded-md border border-danger/30 px-4 py-2 text-sm text-danger-fg hover:bg-danger-soft"
                             >
                                 {t('settings.privacy.deleteAccount')}
                             </button>
                         ) : (
-                            <div className="mt-4 space-y-3 rounded-md border border-red-300 p-4">
+                            <div className="mt-4 space-y-3 rounded-md border border-danger/30 p-4">
                                 {hasPassword ? (
                                     <label className="block text-sm">
                                         {t('settings.privacy.currentPassword')}
@@ -223,13 +223,13 @@ export function SettingsPrivacy() {
                                             type="password"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                                            className="mt-1 w-full rounded border border-line px-3 py-2"
                                             autoComplete="current-password"
                                         />
                                     </label>
                                 ) : (
                                     <div className="space-y-2">
-                                        <p className="text-sm text-gray-600">
+                                        <p className="text-sm text-fg-muted">
                                             {t('settings.privacy.noPasswordExplanation')}
                                         </p>
                                         {!codeSent ? (
@@ -237,7 +237,7 @@ export function SettingsPrivacy() {
                                                 type="button"
                                                 onClick={handleSendCode}
                                                 disabled={sendingCode}
-                                                className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                                className="rounded-md border border-line px-4 py-2 text-sm text-fg hover:bg-canvas disabled:opacity-50"
                                             >
                                                 {sendingCode ? t('settings.privacy.sendingCode') : t('settings.privacy.sendCode')}
                                             </button>
@@ -250,7 +250,7 @@ export function SettingsPrivacy() {
                                                     maxLength={6}
                                                     value={code}
                                                     onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                                                    className="mt-1 w-full rounded border border-line px-3 py-2"
                                                 />
                                             </label>
                                         )}
@@ -262,7 +262,7 @@ export function SettingsPrivacy() {
                                         type="text"
                                         value={confirmation}
                                         onChange={(e) => setConfirmation(e.target.value)}
-                                        className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                                        className="mt-1 w-full rounded border border-line px-3 py-2"
                                     />
                                 </label>
                                 <div className="flex gap-3">
@@ -274,14 +274,14 @@ export function SettingsPrivacy() {
                                             confirmation !== CONFIRM_PHRASE ||
                                             (hasPassword ? !password : code.length !== 6)
                                         }
-                                        className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+                                        className="rounded-md bg-danger px-4 py-2 text-sm text-on-primary hover:bg-danger disabled:opacity-50"
                                     >
                                         {t('settings.privacy.deleteAccount')}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setShowDeleteForm(false)}
-                                        className="text-sm text-gray-600 hover:underline"
+                                        className="text-sm text-fg-muted hover:underline"
                                     >
                                         {t('settings.privacy.cancel')}
                                     </button>

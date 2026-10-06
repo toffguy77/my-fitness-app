@@ -113,7 +113,7 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
                         // Ensure full width and prevent horizontal scrolling (Requirement 12.5)
                         'w-full max-w-full overflow-x-hidden',
                         // Background color
-                        'bg-gray-50',
+                        'bg-canvas',
                         // Smooth transitions for orientation changes (Requirement 12.6)
                         'transition-all duration-300 ease-in-out',
                         className

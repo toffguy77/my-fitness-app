@@ -17,26 +17,26 @@ export function SocialAccountsForm({
         <div className="flex flex-col gap-6">
             {/* Telegram */}
             <div className="flex flex-col gap-1.5">
-                <label className="font-medium text-gray-900" htmlFor="settings-telegram">
+                <label className="font-medium text-fg" htmlFor="settings-telegram">
                     Ник в Telegram
                 </label>
-                <p className="text-sm text-gray-500">Привяжи свой @username</p>
+                <p className="text-sm text-fg-muted">Привяжи свой @username</p>
                 <input
                     id="settings-telegram"
                     type="text"
                     value={telegram}
                     onChange={(e) => onTelegramChange(e.target.value)}
                     placeholder="@username"
-                    className="w-full rounded-xl bg-blue-50 px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                    className="w-full rounded-xl bg-primary-soft px-4 py-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-focus focus:ring-offset-2"
                 />
             </div>
 
             {/* Instagram */}
             <div className="flex flex-col gap-1.5">
-                <label className="font-medium text-gray-900" htmlFor="settings-instagram">
+                <label className="font-medium text-fg" htmlFor="settings-instagram">
                     Профиль в Instagram
                 </label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-fg-muted">
                     В формате @твойпрофиль, например: @zingilevskiy
                 </p>
                 <input
@@ -45,7 +45,7 @@ export function SocialAccountsForm({
                     value={instagram}
                     onChange={(e) => onInstagramChange(e.target.value)}
                     placeholder="@profile"
-                    className="w-full rounded-xl bg-blue-50 px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                    className="w-full rounded-xl bg-primary-soft px-4 py-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-focus focus:ring-offset-2"
                 />
             </div>
         </div>

@@ -55,7 +55,7 @@ export function NotificationsLayout({
     return (
         <div
             className={cn(
-                'flex flex-col min-h-screen bg-gray-50',
+                'flex flex-col min-h-screen bg-canvas',
                 className
             )}
             data-testid="notifications-layout"
@@ -66,8 +66,8 @@ export function NotificationsLayout({
                 className={cn(
                     'sr-only focus:not-sr-only',
                     'focus:absolute focus:top-4 focus:left-4 focus:z-50',
-                    'bg-blue-600 text-white px-4 py-2 rounded-lg',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
+                    'bg-primary text-on-primary px-4 py-2 rounded-lg',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2'
                 )}
             >
                 Skip to main content
@@ -76,7 +76,7 @@ export function NotificationsLayout({
             {/* Page Header (Requirement 1.1, 1.4) */}
             <header
                 className={cn(
-                    'bg-white border-b border-gray-200',
+                    'bg-surface border-b border-line',
                     'sticky top-0 z-10',
                     // Fixed height matching dashboard header (h-16 = 64px)
                     'h-16 px-4',
@@ -92,11 +92,11 @@ export function NotificationsLayout({
                             onClick={handleBackClick}
                             className={cn(
                                 'p-2 rounded-lg transition-colors',
-                                'text-gray-600 hover:text-gray-900 hover:bg-gray-100',
+                                'text-fg-muted hover:text-fg hover:bg-subtle',
                                 // Enhanced focus-visible styles (Requirement 6.4, 6.7)
                                 'focus:outline-none',
-                                'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
-                                'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_white,0_0_0_4px_#3b82f6]',
+                                'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
+                                'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--ds-color-bg-surface),0_0_0_4px_var(--ds-color-focus)]',
                                 // Touch-friendly sizing on mobile (Requirement 6.1, 6.2)
                                 'sm:p-2.5',
                                 // Minimum touch target size (Requirement 6.4)
@@ -118,7 +118,7 @@ export function NotificationsLayout({
                         {/* Page Title */}
                         <h1
                             className={cn(
-                                'font-semibold text-gray-900',
+                                'font-semibold text-fg',
                                 // Responsive font sizes (Requirement 6.1, 6.2, 6.3)
                                 'text-xl',      // Mobile: 20px
                                 'sm:text-2xl',  // Tablet: 24px
@@ -134,11 +134,11 @@ export function NotificationsLayout({
                         onClick={handleSettingsClick}
                         className={cn(
                             'p-2 rounded-lg transition-colors',
-                            'text-gray-600 hover:text-gray-900 hover:bg-gray-100',
+                            'text-fg-muted hover:text-fg hover:bg-subtle',
                             // Enhanced focus-visible styles (Requirement 6.4, 6.7)
                             'focus:outline-none',
-                            'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
-                            'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_white,0_0_0_4px_#3b82f6]',
+                            'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
+                            'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--ds-color-bg-surface),0_0_0_4px_var(--ds-color-focus)]',
                             // Touch-friendly sizing on mobile (Requirement 6.1, 6.2)
                             'sm:p-2.5',
                             // Minimum touch target size (Requirement 6.4)

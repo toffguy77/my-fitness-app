@@ -183,9 +183,9 @@ describe('KBZHUSummary', () => {
                 />
             );
 
-            expect(container.querySelectorAll('.bg-red-500')).toHaveLength(0);
-            expect(container.querySelectorAll('.bg-yellow-500')).toHaveLength(0);
-            expect(container.querySelectorAll('.bg-green-500')).toHaveLength(0);
+            expect(container.querySelectorAll('.bg-danger')).toHaveLength(0);
+            expect(container.querySelectorAll('.bg-warning')).toHaveLength(0);
+            expect(container.querySelectorAll('.bg-success')).toHaveLength(0);
         });
     });
 
@@ -217,7 +217,7 @@ describe('KBZHUSummary', () => {
             const { container } = render(<KBZHUSummary current={current} target={target} />);
 
             // Check for red text on exceeding values
-            const redText = container.querySelectorAll('.text-red-600');
+            const redText = container.querySelectorAll('.text-danger-fg');
             expect(redText.length).toBeGreaterThan(0);
         });
     });

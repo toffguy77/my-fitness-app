@@ -79,7 +79,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                     {Array.from({ length: 3 }).map((_, index) => (
                         <div
                             key={index}
-                            className="h-80 bg-gray-100 rounded-lg animate-pulse"
+                            className="h-80 bg-subtle rounded-lg animate-pulse"
                             aria-label={t('dashboard.grid.loadingAria')}
                         />
                     ))}
@@ -93,7 +93,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
         return (
             <div className={cn('space-y-4', className)}>
                 <div className="text-center py-8 space-y-4">
-                    <div className="text-red-500">
+                    <div className="text-danger-fg">
                         <svg
                             className="h-12 w-12 mx-auto mb-3"
                             fill="none"
@@ -110,16 +110,16 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                         </svg>
                     </div>
                     <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-fg">
                             {t('dashboard.grid.loadFailed')}
                         </h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-fg-muted">
                             {error.message}
                         </p>
                     </div>
                     <button
                         onClick={() => handleFetchData()}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-primary bg-primary-soft border border-primary/30 rounded-lg hover:bg-primary-soft focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2"
                     >
                         {t('dashboard.grid.retry')}
                     </button>
@@ -170,7 +170,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
             {/* Real-time update indicator */}
             {isLoading && dayData && (
                 <div className="flex items-center justify-center py-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="flex items-center gap-2 text-sm text-fg-muted">
                         <svg
                             className="h-4 w-4 animate-spin"
                             viewBox="0 0 24 24"
@@ -199,9 +199,9 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
             {/* Offline indicator */}
             {error?.code === 'NETWORK_ERROR' && (
                 <div className="flex items-center justify-center py-2">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-warning-soft border border-warning/30 rounded-lg">
                         <svg
-                            className="h-4 w-4 text-yellow-600"
+                            className="h-4 w-4 text-warning-fg"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -214,7 +214,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
                             />
                         </svg>
-                        <span className="text-sm text-yellow-800">
+                        <span className="text-sm text-warning-fg">
                             {t('dashboard.grid.offlineCached')}
                         </span>
                     </div>

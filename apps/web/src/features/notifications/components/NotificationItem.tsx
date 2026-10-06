@@ -78,14 +78,14 @@ export function NotificationItem({
                 // Cursor and interaction states
                 'cursor-pointer',
                 // Desktop hover states (Requirement 6.3)
-                'hover:bg-gray-50 md:hover:bg-gray-100',
+                'hover:bg-canvas md:hover:bg-subtle',
                 // Enhanced focus-visible styles (Requirement 6.4, 6.7)
                 'focus:outline-none',
-                'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
-                'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_white,0_0_0_4px_#3b82f6]',
+                'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
+                'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--ds-color-bg-surface),0_0_0_4px_var(--ds-color-focus)]',
                 'focus-visible:z-10',
                 // Read/unread styling with high contrast (Requirement 6.6)
-                isUnread && 'bg-blue-50 hover:bg-blue-100 md:hover:bg-blue-200',
+                isUnread && 'bg-primary-soft hover:bg-primary-soft md:hover:bg-primary-soft',
                 !isUnread && 'opacity-70'
             )}
         >
@@ -108,8 +108,8 @@ export function NotificationItem({
                         'sm:text-base',     // Tablet
                         'md:text-base',     // Desktop
                         // High contrast text (Requirement 6.6)
-                        isUnread ? 'font-semibold text-gray-900' : 'font-normal text-gray-700',
-                        notification.actionUrl && 'group-hover:text-blue-600'
+                        isUnread ? 'font-semibold text-fg' : 'font-normal text-fg',
+                        notification.actionUrl && 'group-hover:text-primary'
                     )}
                 >
                     {notification.title}
@@ -125,7 +125,7 @@ export function NotificationItem({
                         'sm:text-sm',       // Tablet: standard
                         'md:text-sm',       // Desktop: standard
                         // High contrast text (Requirement 6.6)
-                        isUnread ? 'text-gray-700' : 'text-gray-500'
+                        isUnread ? 'text-fg' : 'text-fg-muted'
                     )}
                 >
                     {notification.content}
@@ -135,7 +135,7 @@ export function NotificationItem({
                 <time
                     dateTime={notification.createdAt}
                     className={cn(
-                        'text-gray-500 mt-1 block',
+                        'text-fg-muted mt-1 block',
                         // Responsive font sizing (Requirement 6.1, 6.2, 6.3)
                         'text-xs',          // Mobile
                         'sm:text-xs',       // Tablet
@@ -155,7 +155,7 @@ export function NotificationItem({
                     role="presentation"
                 >
                     <div className={cn(
-                        'rounded-full bg-blue-600',
+                        'rounded-full bg-primary',
                         // Responsive dot sizing (Requirement 6.1, 6.2, 6.3)
                         'h-2 w-2',          // Mobile
                         'sm:h-2.5 sm:w-2.5', // Tablet

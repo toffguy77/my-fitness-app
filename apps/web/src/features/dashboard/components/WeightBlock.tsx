@@ -187,7 +187,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
+                        <CardTitle className="text-lg font-semibold text-fg">
                             {t('dashboard.weight.title')}
                         </CardTitle>
                         {showAttentionIndicator && (
@@ -273,16 +273,16 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                         {/* Current weight display */}
                         {isWeightLogged ? (
                             <div className="space-y-2" role="region" aria-label={t('dashboard.weight.currentAria')}>
-                                <div className="text-4xl font-bold text-gray-900">
+                                <div className="text-4xl font-bold text-fg">
                                     <span aria-label={t('dashboard.weight.currentValueAria', { weight: formatWeight(currentWeight) })}>
                                         {formatWeight(currentWeight)}
                                     </span>
-                                    <span className="text-lg text-gray-500 ml-1" aria-hidden="true">{t('dashboard.weight.kg')}</span>
+                                    <span className="text-lg text-fg-muted ml-1" aria-hidden="true">{t('dashboard.weight.kg')}</span>
                                 </div>
 
                                 {/* Completion indicator */}
                                 <div
-                                    className="flex items-center justify-center gap-2 text-green-600"
+                                    className="flex items-center justify-center gap-2 text-success-fg"
                                     role="status"
                                     aria-label={t('dashboard.weight.loggedAria')}
                                 >
@@ -295,8 +295,8 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                     <div
                                         className={cn(
                                             'flex items-center justify-center gap-1 text-sm',
-                                            weightChange > 0 ? 'text-red-600' :
-                                                weightChange < 0 ? 'text-green-600' : 'text-gray-600'
+                                            weightChange > 0 ? 'text-danger-fg' :
+                                                weightChange < 0 ? 'text-success-fg' : 'text-fg-muted'
                                         )}
                                         role="status"
                                         aria-label={t('dashboard.weight.changeAria', { direction: weightChange > 0 ? t('dashboard.weight.increase') : weightChange < 0 ? t('dashboard.weight.decrease') : t('dashboard.weight.unchanged'), amount: Math.abs(weightChange).toFixed(1) })}
@@ -313,7 +313,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                             {formatWeight(Math.abs(weightChange))} {t('dashboard.weight.kg')}
                                         </span>
                                         {weightChange !== 0 && (
-                                            <span className="text-gray-500">
+                                            <span className="text-fg-muted">
                                                 {t('dashboard.weight.sinceYesterday')}
                                             </span>
                                         )}
@@ -322,22 +322,22 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
 
                                 {/* Previous weight reference */}
                                 {previousWeight && (
-                                    <div className="text-xs text-gray-500" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
+                                    <div className="text-xs text-fg-muted" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
                                         {t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}
                                     </div>
                                 )}
 
                                 {/* Target weight with distance */}
                                 {targetWeight != null && distanceToTarget != null && (
-                                    <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 pt-1">
-                                        <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
+                                    <div className="flex items-center justify-center gap-1.5 text-xs text-fg-muted pt-1">
+                                        <Target className="h-3.5 w-3.5 text-success-fg" aria-hidden="true" />
                                         <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
                                         {Math.abs(distanceToTarget) >= 0.1 ? (
-                                            <span className={distanceToTarget > 0 ? 'text-amber-600' : 'text-green-600'}>
+                                            <span className={distanceToTarget > 0 ? 'text-warning-fg' : 'text-success-fg'}>
                                                 ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} {t('dashboard.weight.kg')})
                                             </span>
                                         ) : (
-                                            <span className="text-green-600 font-medium">{t('dashboard.weight.targetReached')}</span>
+                                            <span className="text-success-fg font-medium">{t('dashboard.weight.targetReached')}</span>
                                         )}
                                     </div>
                                 )}
@@ -345,7 +345,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                         ) : (
                             /* Empty state */
                             <div className="py-8 space-y-3" role="status" aria-label={t('dashboard.weight.emptyAria')}>
-                                <div className="text-gray-400">
+                                <div className="text-fg-subtle">
                                     <svg
                                         className="h-12 w-12 mx-auto mb-3"
                                         fill="none"
@@ -361,18 +361,18 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                         />
                                     </svg>
                                 </div>
-                                <p className="text-sm text-gray-500 mb-3">
+                                <p className="text-sm text-fg-muted mb-3">
                                     {t('dashboard.weight.empty')}
                                 </p>
                                 {previousWeight && (
-                                    <p className="text-xs text-gray-400 mb-3" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
+                                    <p className="text-xs text-fg-subtle mb-3" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
                                         {t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}
                                     </p>
                                 )}
                                 {/* Target weight in empty state */}
                                 {targetWeight != null && (
-                                    <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
-                                        <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
+                                    <div className="flex items-center justify-center gap-1.5 text-xs text-fg-muted">
+                                        <Target className="h-3.5 w-3.5 text-success-fg" aria-hidden="true" />
                                         <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
                                     </div>
                                 )}
@@ -380,7 +380,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                     variant="outline"
                                     size="sm"
                                     onClick={handleQuickAdd}
-                                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                    className="text-primary border-primary/30 hover:bg-primary-soft"
                                     aria-label={t('dashboard.weight.logAria')}
                                 >
                                     <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -393,7 +393,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
 
                 {/* Helper text */}
                 {!isEditing && (
-                    <div className="text-xs text-gray-400 text-center">
+                    <div className="text-xs text-fg-subtle text-center">
                         {t('dashboard.weight.hint')}
                     </div>
                 )}

@@ -23,7 +23,7 @@ interface SkeletonProps {
 export const Skeleton = memo(function Skeleton({ className = '' }: SkeletonProps) {
     return (
         <div
-            className={`animate-pulse bg-gray-200 rounded ${className}`}
+            className={`animate-pulse bg-subtle rounded ${className}`}
             aria-hidden="true"
         />
     );
@@ -35,7 +35,7 @@ export const Skeleton = memo(function Skeleton({ className = '' }: SkeletonProps
 
 export const KBZHUSummarySkeleton = memo(function KBZHUSummarySkeleton() {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4">
+        <div className="bg-surface rounded-xl shadow-sm border border-line p-3 sm:p-4">
             <Skeleton className="h-5 w-32 mb-3 sm:mb-4" />
             <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
                 {[1, 2, 3, 4].map((i) => (
@@ -59,8 +59,8 @@ export const KBZHUSummarySkeleton = memo(function KBZHUSummarySkeleton() {
 
 export const MealSlotSkeleton = memo(function MealSlotSkeleton() {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100">
+        <div className="bg-surface rounded-xl shadow-sm border border-line overflow-hidden">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-line">
                 <div className="flex items-center gap-2">
                     <Skeleton className="w-5 h-5 rounded" />
                     <Skeleton className="h-4 w-20" />
@@ -90,7 +90,7 @@ export const MealSlotSkeleton = memo(function MealSlotSkeleton() {
 
 export const WaterTrackerSkeleton = memo(function WaterTrackerSkeleton() {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4">
+        <div className="bg-surface rounded-xl shadow-sm border border-line p-3 sm:p-4">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                     <Skeleton className="w-5 h-5 rounded" />
@@ -168,7 +168,7 @@ export const RecommendationsSkeleton = memo(function RecommendationsSkeleton() {
     return (
         <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div key={i} className="bg-surface rounded-xl shadow-sm border border-line p-4">
                     <div className="flex items-center justify-between mb-3">
                         <Skeleton className="h-5 w-24" />
                         <Skeleton className="w-5 h-5 rounded" />

@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             </div>
         )
     }
@@ -41,29 +41,29 @@ export default function AdminDashboardPage() {
 
     return (
         <div className="px-4 py-6 space-y-6">
-            <h1 className="text-xl font-semibold text-gray-900">{t('admin.dashboard.heading')}</h1>
+            <h1 className="text-xl font-semibold text-fg">{t('admin.dashboard.heading')}</h1>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 text-center">
-                    <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
-                    <p className="text-xs text-gray-500">{t('admin.dashboard.users')}</p>
+                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line text-center">
+                    <p className="text-2xl font-bold text-fg">{totalUsers}</p>
+                    <p className="text-xs text-fg-muted">{t('admin.dashboard.users')}</p>
                 </div>
-                <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 text-center">
-                    <p className="text-2xl font-bold text-blue-600">{totalCurators}</p>
-                    <p className="text-xs text-gray-500">{t('admin.dashboard.curators')}</p>
+                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line text-center">
+                    <p className="text-2xl font-bold text-primary">{totalCurators}</p>
+                    <p className="text-xs text-fg-muted">{t('admin.dashboard.curators')}</p>
                 </div>
-                <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 text-center">
-                    <p className="text-2xl font-bold text-green-600">{totalClients}</p>
-                    <p className="text-xs text-gray-500">{t('admin.dashboard.clients')}</p>
+                <div className="rounded-xl bg-surface p-4 shadow-sm border border-line text-center">
+                    <p className="text-2xl font-bold text-success-fg">{totalClients}</p>
+                    <p className="text-xs text-fg-muted">{t('admin.dashboard.clients')}</p>
                 </div>
             </div>
 
             {/* Curator load */}
             <section>
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('admin.dashboard.curatorLoad')}</h2>
+                <h2 className="text-sm font-semibold text-fg mb-3">{t('admin.dashboard.curatorLoad')}</h2>
                 {curators.length === 0 ? (
-                    <p className="text-sm text-gray-500">{t('admin.dashboard.noCurators')}</p>
+                    <p className="text-sm text-fg-muted">{t('admin.dashboard.noCurators')}</p>
                 ) : (
                     <div className="space-y-2">
                         {curators.map((curator) => (
@@ -78,10 +78,10 @@ export default function AdminDashboardPage() {
             <section>
                 <Link
                     href="/admin/jobs"
-                    className="flex items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:bg-gray-50"
+                    className="flex items-center justify-between rounded-xl border border-line bg-surface p-4 shadow-sm hover:bg-canvas"
                 >
-                    <span className="text-sm font-medium text-gray-900">{t('admin.jobs.heading')}</span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm font-medium text-fg">{t('admin.jobs.heading')}</span>
+                    <ChevronRight className="h-4 w-4 text-fg-subtle" />
                 </Link>
             </section>
         </div>

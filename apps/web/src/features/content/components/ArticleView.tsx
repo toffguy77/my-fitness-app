@@ -65,7 +65,7 @@ export function ArticleView({ articleId }: ArticleViewProps) {
         return (
             <div className="flex items-center justify-center py-20">
                 <svg
-                    className="h-6 w-6 animate-spin text-blue-600"
+                    className="h-6 w-6 animate-spin text-primary"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -94,12 +94,12 @@ export function ArticleView({ articleId }: ArticleViewProps) {
             <div className="px-4 py-6">
                 <Link
                     href="/content"
-                    className="mb-4 inline-flex items-center gap-1 text-sm text-blue-600"
+                    className="mb-4 inline-flex items-center gap-1 text-sm text-primary"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Назад
                 </Link>
-                <div className="rounded-lg bg-red-50 p-4 text-center text-red-600">
+                <div className="rounded-lg bg-danger-soft p-4 text-center text-danger-fg">
                     {error || 'Статья не найдена'}
                 </div>
             </div>

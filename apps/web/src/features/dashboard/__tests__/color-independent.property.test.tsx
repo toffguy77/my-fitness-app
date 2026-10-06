@@ -27,7 +27,7 @@ describe('Property 38: Color-Independent Information', () => {
                         const TestComponent = () => (
                             <div
                                 data-testid={testId}
-                                className={`flex items-center gap-2 ${isCompleted ? 'text-green-600' : 'text-gray-600'
+                                className={`flex items-center gap-2 ${isCompleted ? 'text-success-fg' : 'text-fg-muted'
                                     }`}
                             >
                                 {isCompleted ? (
@@ -52,10 +52,10 @@ describe('Property 38: Color-Independent Information', () => {
 
                         // Verify both color (via className) and icon are present
                         if (isCompleted) {
-                            expect(container.className).toContain('text-green-600');
+                            expect(container.className).toContain('text-success-fg');
                             expect(queryByTestId('check-icon')).toBeTruthy();
                         } else {
-                            expect(container.className).toContain('text-gray-600');
+                            expect(container.className).toContain('text-fg-muted');
                             expect(queryByTestId('circle-icon')).toBeTruthy();
                         }
 
@@ -88,8 +88,8 @@ describe('Property 38: Color-Independent Information', () => {
                                 {/* Nutrition */}
                                 <div
                                     className={`flex items-center justify-center w-6 h-6 rounded-full ${completionStatus.nutritionFilled
-                                        ? 'bg-green-500'
-                                        : 'bg-gray-300'
+                                        ? 'bg-success'
+                                        : 'bg-line'
                                         }`}
                                     aria-label={
                                         completionStatus.nutritionFilled
@@ -104,7 +104,7 @@ describe('Property 38: Color-Independent Information', () => {
                                 >
                                     {completionStatus.nutritionFilled && (
                                         <Check
-                                            className="w-4 h-4 text-white"
+                                            className="w-4 h-4 text-on-primary"
                                             aria-hidden="true"
                                             data-testid="nutrition-check"
                                         />
@@ -114,8 +114,8 @@ describe('Property 38: Color-Independent Information', () => {
                                 {/* Weight */}
                                 <div
                                     className={`flex items-center justify-center w-6 h-6 rounded-full ${completionStatus.weightLogged
-                                        ? 'bg-green-500'
-                                        : 'bg-gray-300'
+                                        ? 'bg-success'
+                                        : 'bg-line'
                                         }`}
                                     aria-label={
                                         completionStatus.weightLogged
@@ -130,7 +130,7 @@ describe('Property 38: Color-Independent Information', () => {
                                 >
                                     {completionStatus.weightLogged && (
                                         <Check
-                                            className="w-4 h-4 text-white"
+                                            className="w-4 h-4 text-on-primary"
                                             aria-hidden="true"
                                             data-testid="weight-check"
                                         />
@@ -140,8 +140,8 @@ describe('Property 38: Color-Independent Information', () => {
                                 {/* Activity */}
                                 <div
                                     className={`flex items-center justify-center w-6 h-6 rounded-full ${completionStatus.activityCompleted
-                                        ? 'bg-green-500'
-                                        : 'bg-gray-300'
+                                        ? 'bg-success'
+                                        : 'bg-line'
                                         }`}
                                     aria-label={
                                         completionStatus.activityCompleted
@@ -156,7 +156,7 @@ describe('Property 38: Color-Independent Information', () => {
                                 >
                                     {completionStatus.activityCompleted && (
                                         <Check
-                                            className="w-4 h-4 text-white"
+                                            className="w-4 h-4 text-on-primary"
                                             aria-hidden="true"
                                             data-testid="activity-check"
                                         />
@@ -203,10 +203,10 @@ describe('Property 38: Color-Independent Information', () => {
                         const testId = `alert-${type}`;
                         const colorClass =
                             type === 'error'
-                                ? 'bg-red-50 border-red-200 text-red-800'
+                                ? 'bg-danger-soft border-danger/30 text-danger-fg'
                                 : type === 'warning'
-                                    ? 'bg-yellow-50 border-yellow-200 text-yellow-800'
-                                    : 'bg-blue-50 border-blue-200 text-blue-800';
+                                    ? 'bg-warning-soft border-warning/30 text-warning-fg'
+                                    : 'bg-primary-soft border-primary/30 text-primary';
 
                         const TestComponent = () => (
                             <div
@@ -252,15 +252,15 @@ describe('Property 38: Color-Independent Information', () => {
                         const testId = `progress-${percentage}`;
                         const colorClass =
                             percentage >= 90
-                                ? 'bg-green-500'
+                                ? 'bg-success'
                                 : percentage >= 70
-                                    ? 'bg-yellow-500'
-                                    : 'bg-orange-500';
+                                    ? 'bg-warning'
+                                    : 'bg-warning';
 
                         const TestComponent = () => (
                             <div data-testid={testId} className="space-y-2">
                                 {/* Progress bar with color */}
-                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div className="w-full bg-subtle rounded-full h-3">
                                     <div
                                         className={`h-full rounded-full transition-all ${colorClass}`}
                                         style={{ width: `${percentage}%` }}
@@ -272,7 +272,7 @@ describe('Property 38: Color-Independent Information', () => {
                                 </div>
 
                                 {/* Percentage text */}
-                                <div className="text-sm font-medium text-gray-700">
+                                <div className="text-sm font-medium text-fg">
                                     {percentage}%
                                 </div>
                             </div>
@@ -307,10 +307,10 @@ describe('Property 38: Color-Independent Information', () => {
                         const isIncrease = trend === 'increase';
                         const isDecrease = trend === 'decrease';
                         const colorClass = isDecrease
-                            ? 'text-green-600'
+                            ? 'text-success-fg'
                             : isIncrease
-                                ? 'text-orange-600'
-                                : 'text-gray-600';
+                                ? 'text-warning-fg'
+                                : 'text-fg-muted';
 
                         const TestComponent = () => (
                             <div
@@ -364,10 +364,10 @@ describe('Property 38: Color-Independent Information', () => {
             fc.assert(
                 fc.property(
                     fc.constantFrom(
-                        { status: 'active', label: 'Активно', color: 'bg-green-100 text-green-800' },
-                        { status: 'pending', label: 'Ожидание', color: 'bg-yellow-100 text-yellow-800' },
-                        { status: 'overdue', label: 'Просрочено', color: 'bg-red-100 text-red-800' },
-                        { status: 'completed', label: 'Выполнено', color: 'bg-blue-100 text-blue-800' }
+                        { status: 'active', label: 'Активно', color: 'bg-success-soft text-success-fg' },
+                        { status: 'pending', label: 'Ожидание', color: 'bg-warning-soft text-warning-fg' },
+                        { status: 'overdue', label: 'Просрочено', color: 'bg-danger-soft text-danger-fg' },
+                        { status: 'completed', label: 'Выполнено', color: 'bg-primary-soft text-primary' }
                     ),
                     (badgeData) => {
                         const testId = `badge-${badgeData.status}`;
@@ -403,11 +403,11 @@ describe('Property 38: Color-Independent Information', () => {
             fc.assert(
                 fc.property(
                     fc.constantFrom(
-                        { bg: 'bg-green-500', text: 'text-white' },
-                        { bg: 'bg-red-500', text: 'text-white' },
-                        { bg: 'bg-blue-500', text: 'text-white' },
-                        { bg: 'bg-yellow-500', text: 'text-gray-900' },
-                        { bg: 'bg-gray-100', text: 'text-gray-900' }
+                        { bg: 'bg-success', text: 'text-on-primary' },
+                        { bg: 'bg-danger', text: 'text-on-primary' },
+                        { bg: 'bg-primary', text: 'text-on-primary' },
+                        { bg: 'bg-warning', text: 'text-fg' },
+                        { bg: 'bg-subtle', text: 'text-fg' }
                     ),
                     (colorCombo) => {
                         const testId = `contrast-${colorCombo.bg}`;

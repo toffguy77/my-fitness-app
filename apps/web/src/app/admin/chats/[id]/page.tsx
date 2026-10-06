@@ -13,17 +13,17 @@ export default function AdminChatDetailPage() {
     return (
         <div className="flex flex-col h-[calc(100vh-8rem)]">
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
                 <button
                     type="button"
                     onClick={() => router.push('/admin/chats')}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-subtle transition-colors"
                     aria-label={t('common.back')}
                 >
-                    <ArrowLeft className="h-5 w-5 text-gray-700" />
+                    <ArrowLeft className="h-5 w-5 text-fg" />
                 </button>
-                <h1 className="text-sm font-semibold text-gray-900">{t('admin.chats.viewHeading')}</h1>
-                <span className="ml-auto text-xs text-gray-400">{t('admin.chats.readOnly')}</span>
+                <h1 className="text-sm font-semibold text-fg">{t('admin.chats.viewHeading')}</h1>
+                <span className="ml-auto text-xs text-fg-subtle">{t('admin.chats.readOnly')}</span>
             </div>
 
             {/* Messages */}

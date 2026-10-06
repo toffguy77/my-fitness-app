@@ -93,10 +93,10 @@ function MacroSubtotal({
 
 function SubtotalDisplay({ subtotal }: SubtotalDisplayProps) {
     return (
-        <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-100 sm:gap-3 sm:text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-[10px] text-fg-muted mt-2 pt-2 border-t border-line sm:gap-3 sm:text-xs">
             <span className="font-medium">{t('foodTracker.mealSlot.subtotal')}</span>
             <span>{Math.round(subtotal.calories)} {t('units.kcal')}</span>
-            <span className="text-gray-300 hidden sm:inline">|</span>
+            <span className="text-fg-subtle hidden sm:inline">|</span>
             {/* Подытог приёма пищи — то, что новичок видит чаще кольца, и до
                 этого он был целиком серым. Цвет опознаёт нутриент и ничего не
                 утверждает о норме, поэтому уместен и здесь, где нормы нет. */}
@@ -146,24 +146,24 @@ export function MealSlot({
 
     return (
         <section
-            className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${className}`}
+            className={`bg-surface rounded-xl shadow-sm border border-line overflow-hidden ${className}`}
             aria-label={t('foodTracker.mealSlot.aria', { label })}
         >
             {/* Header - responsive padding */}
-            <div className="flex items-center justify-between px-3 py-2.5 bg-gray-50 border-b border-gray-100 sm:px-4 sm:py-3">
+            <div className="flex items-center justify-between px-3 py-2.5 bg-canvas border-b border-line sm:px-4 sm:py-3">
                 <div className="flex items-center gap-2 sm:gap-3">
-                    <MealIcon mealType={mealType} className="text-gray-600 w-4 h-4 sm:w-5 sm:h-5" />
+                    <MealIcon mealType={mealType} className="text-fg-muted w-4 h-4 sm:w-5 sm:h-5" />
                     <div>
-                        <h3 className="text-xs font-semibold text-gray-900 sm:text-sm">{label}</h3>
+                        <h3 className="text-xs font-semibold text-fg sm:text-sm">{label}</h3>
                         {firstTime && (
-                            <p className="text-[10px] text-gray-500 sm:text-xs">{firstTime}</p>
+                            <p className="text-[10px] text-fg-muted sm:text-xs">{firstTime}</p>
                         )}
                     </div>
                 </div>
                 <button
                     type="button"
                     onClick={() => onAddEntry(mealType)}
-                    className="p-1.5 rounded-full bg-blue-500 text-white hover:bg-blue-600 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:p-2 touch-manipulation"
+                    className="p-1.5 rounded-full bg-primary text-on-primary hover:bg-primary active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:p-2 touch-manipulation"
                     aria-label={t('foodTracker.mealSlot.addAria', { label })}
                 >
                     <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -175,7 +175,7 @@ export function MealSlot({
                 {hasEntries ? (
                     <>
                         {/* Entry list */}
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y divide-line">
                             {entries.map((entry) => (
                                 <FoodEntryItem
                                     key={entry.id}
@@ -193,13 +193,13 @@ export function MealSlot({
                 ) : (
                     /* Empty state */
                     <div className="py-4 text-center sm:py-6">
-                        <p className="text-xs text-gray-400 sm:text-sm">
+                        <p className="text-xs text-fg-subtle sm:text-sm">
                             {t('foodTracker.mealSlot.empty')}
                         </p>
                         <button
                             type="button"
                             onClick={() => onAddEntry(mealType)}
-                            className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
+                            className="mt-1.5 text-xs text-primary hover:text-primary font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
                         >
                             {t('foodTracker.mealSlot.addFood')}
                         </button>

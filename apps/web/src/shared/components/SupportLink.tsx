@@ -37,7 +37,7 @@ export function SupportLink({ className }: { className?: string }) {
             target="_blank"
             rel="noopener noreferrer"
             data-testid="support-link"
-            className={className ?? 'text-sm text-blue-600 hover:underline'}
+            className={className ?? 'text-sm text-primary hover:underline'}
             onClick={() => track(EVENTS.supportOpened, { from: token ? 'with_lead' : 'no_lead' })}
         >
             Задать вопрос в Telegram

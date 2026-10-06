@@ -67,10 +67,10 @@ export const FirstWeekChecklist = memo(function FirstWeekChecklist({
     return (
         <Card className={cn('w-full', className)} variant="bordered">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-lg font-semibold text-gray-900">
+                <CardTitle className="text-lg font-semibold text-fg">
                     {t('dashboard.firstWeek.title')}
                 </CardTitle>
-                <span className="text-sm font-medium text-gray-500" data-testid="first-week-progress">
+                <span className="text-sm font-medium text-fg-muted" data-testid="first-week-progress">
                     {t('dashboard.firstWeek.progress', { done, total: state.steps.length })}
                 </span>
             </CardHeader>
@@ -81,24 +81,24 @@ export const FirstWeekChecklist = memo(function FirstWeekChecklist({
                         <li key={step.key}>
                             <Link
                                 href={STEP_LINKS[step.key]}
-                                className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-gray-50"
+                                className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-canvas"
                             >
                                 <span
                                     className={cn(
                                         'flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border',
                                         step.done
-                                            ? 'border-green-500 bg-green-500'
-                                            : 'border-gray-300 bg-white'
+                                            ? 'border-success bg-success'
+                                            : 'border-line bg-surface'
                                     )}
                                     aria-hidden="true"
                                 >
-                                    {step.done && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                                    {step.done && <Check className="h-3 w-3 text-on-primary" strokeWidth={3} />}
                                 </span>
 
                                 <span
                                     className={cn(
                                         'flex-1 text-sm',
-                                        step.done ? 'text-gray-400 line-through' : 'text-gray-900'
+                                        step.done ? 'text-fg-subtle line-through' : 'text-fg'
                                     )}
                                 >
                                     {t(STEP_LABEL_KEYS[step.key])}
@@ -108,11 +108,11 @@ export const FirstWeekChecklist = memo(function FirstWeekChecklist({
                                     цвету галочки состояние не прочитать тому, кто
                                     цвета не различает. */}
                                 {step.done ? (
-                                    <span className="text-xs font-medium text-green-600">
+                                    <span className="text-xs font-medium text-success-fg">
                                         {t('dashboard.firstWeek.done')}
                                     </span>
                                 ) : (
-                                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300" aria-hidden="true" />
+                                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-fg-subtle" aria-hidden="true" />
                                 )}
                             </Link>
                         </li>

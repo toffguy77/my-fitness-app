@@ -6,15 +6,15 @@ import type { ContentStatus } from '@/features/content/types'
 const STATUS_CONFIG: Record<ContentStatus, { label: string; className: string }> = {
     draft: {
         label: 'Черновик',
-        className: 'bg-gray-100 text-gray-700',
+        className: 'bg-subtle text-fg',
     },
     scheduled: {
         label: 'Запланирован',
-        className: 'bg-amber-100 text-amber-700',
+        className: 'bg-warning-soft text-warning-fg',
     },
     published: {
         label: 'Опубликован',
-        className: 'bg-green-100 text-green-700',
+        className: 'bg-success-soft text-success-fg',
     },
 }
 
@@ -25,7 +25,7 @@ export interface StatusBadgeProps {
 export function StatusBadge({ status }: StatusBadgeProps) {
     const config = STATUS_CONFIG[status] ?? {
         label: status,
-        className: 'bg-gray-100 text-gray-700',
+        className: 'bg-subtle text-fg',
     }
 
     return (

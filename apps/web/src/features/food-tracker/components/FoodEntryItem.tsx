@@ -120,15 +120,15 @@ export function FoodEntryItem({
             onKeyDown={handleKeyDown}
             onMouseEnter={() => setShowActions(true)}
             onMouseLeave={() => setShowActions(false)}
-            className={`group flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${className}`}
+            className={`group flex items-center justify-between py-3 px-2 hover:bg-canvas rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus ${className}`}
             aria-label={ariaLabel}
         >
             {/* Food info */}
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-fg truncate">
                     {entry.foodName}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-fg-muted">
                     {portionDisplay}
                 </p>
             </div>
@@ -145,7 +145,7 @@ export function FoodEntryItem({
                             <button
                                 type="button"
                                 onClick={handleEdit}
-                                className="p-1.5 rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                className="p-1.5 rounded-full text-fg-subtle hover:text-primary hover:bg-primary-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                                 aria-label={t('foodTracker.entry.editAria', { name: entry.foodName })}
                             >
                                 <Edit2 className="w-4 h-4" />
@@ -155,7 +155,7 @@ export function FoodEntryItem({
                             <button
                                 type="button"
                                 onClick={handleDelete}
-                                className="p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                                className="p-1.5 rounded-full text-fg-subtle hover:text-danger-fg hover:bg-danger-soft transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-danger"
                                 aria-label={t('foodTracker.entry.deleteAria', { name: entry.foodName })}
                             >
                                 <Trash2 className="w-4 h-4" />
@@ -166,7 +166,7 @@ export function FoodEntryItem({
 
                 {/* Calories */}
                 <div className="text-right min-w-[70px]">
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-fg">
                         {caloriesDisplay}
                     </p>
                 </div>

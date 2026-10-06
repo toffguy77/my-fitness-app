@@ -1,0 +1,71 @@
+{
+  "$description": "Семантические роли цвета — светлая тема. Компоненты и экраны ссылаются только сюда.",
+  "color": {
+    "$type": "color",
+    "bg": {
+      "canvas": { "$value": "{palette.sand.100}", "$description": "Фон экрана" },
+      "surface": { "$value": "{palette.sand.50}", "$description": "Карточки, списки, поля ввода" },
+      "subtle": { "$value": "{palette.sand.200}", "$description": "Вторичные заливки: выбранная строка, полоса нормы, неактивная кнопка" },
+      "nav": { "$value": "#F6F1E8F2", "$description": "Нижняя навигация поверх прокрутки" },
+      "scrim": { "$value": "#14110D80", "$description": "Затемнение под модальными окнами и шторками" }
+    },
+    "fg": {
+      "default": { "$value": "{palette.umber.900}", "$description": "Основной текст и иконки" },
+      "muted": { "$value": "{palette.umber.500}", "$description": "Вторичный текст: подписи, единицы" },
+      "subtle": { "$value": "{palette.umber.400}", "$description": "Третичный текст: метки секций, неактивные вкладки. Контраст ≥ 4.5:1 к canvas" },
+      "disabled": { "$value": "{palette.sand.600}" },
+      "inverse": { "$value": "{palette.sand.100}", "$description": "Текст на инвертированной заливке (выбранный день)" }
+    },
+    "line": {
+      "default": { "$value": "{palette.sand.400}", "$description": "Границы карточек, разделители" },
+      "strong": { "$value": "{palette.umber.900}", "$description": "Контурные кнопки, выделенная вкладка" }
+    },
+    "primary": {
+      "default": { "$value": "{palette.terracotta.500}", "$description": "Главное действие экрана, бренд" },
+      "hover": { "$value": "{palette.terracotta.600}" },
+      "fg": { "$value": "{palette.white}", "$description": "Текст на primary" },
+      "soft": { "$value": "#B8492F1A", "$description": "Подложка акцента" }
+    },
+    "coach": {
+      "bg": { "$value": "{palette.umber.900}", "$description": "Голос куратора: карточка сообщения, подсказки, панель быстрого ввода" },
+      "fg": { "$value": "{palette.sand.100}" },
+      "fg-muted": { "$value": "{palette.sand.500}" }
+    },
+    "track": { "$value": "{palette.sand.300}", "$description": "Незаполненная часть полос и дуг прогресса" },
+    "macro": {
+      "protein": { "$value": "{palette.blue.600}", "$description": "Заливка: полосы, сегменты, точки. Цвет опознаёт нутриент (openspec macro-colour-system)" },
+      "protein-fg": { "$value": "{palette.blue.600}", "$description": "Подпись нутриента текстом, контраст ≥ 4.5:1" },
+      "fat": { "$value": "{palette.amber.500}" },
+      "fat-fg": { "$value": "{palette.amber.700}" },
+      "carbs": { "$value": "{palette.sage.500}" },
+      "carbs-fg": { "$value": "{palette.sage.700}" },
+      "water": { "$value": "{palette.blue.600}" }
+    },
+    "status": {
+      "success": { "$value": "{palette.sage.500}" },
+      "success-fg": { "$value": "{palette.sage.700}" },
+      "success-soft": { "$value": "#5E8F4B1F" },
+      "warning": { "$value": "{palette.rust.600}", "$description": "Мимо нормы, превышение" },
+      "warning-fg": { "$value": "{palette.rust.600}" },
+      "warning-soft": { "$value": "#A6531B1A" },
+      "danger": { "$value": "{palette.red.600}" },
+      "danger-fg": { "$value": "{palette.red.600}" },
+      "danger-soft": { "$value": "#A32A2A14" },
+      "info": { "$value": "{palette.blue.600}" },
+      "info-fg": { "$value": "{palette.blue.600}" },
+      "info-soft": { "$value": "#4666B01A" }
+    },
+    "focus": { "$value": "{palette.terracotta.500}", "$description": "Кольцо фокуса клавиатуры" }
+  },
+  "shadow": {
+    "$type": "shadow",
+    "float": {
+      "$value": { "color": "#2A211840", "offsetX": "0px", "offsetY": "10px", "blur": "30px", "spread": "0px" },
+      "$description": "Плавающие элементы: панель быстрого ввода"
+    },
+    "overlay": {
+      "$value": { "color": "#2A211833", "offsetX": "0px", "offsetY": "16px", "blur": "48px", "spread": "0px" },
+      "$description": "Модальные окна, шторки, выпадающие меню"
+    }
+  }
+}

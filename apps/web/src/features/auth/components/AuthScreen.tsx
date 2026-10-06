@@ -122,14 +122,14 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50">
+        <div className="min-h-screen flex flex-col bg-canvas">
             {/* Header */}
-            <header className="bg-white border-b border-gray-200 py-6">
+            <header className="bg-surface border-b border-line py-6">
                 <div className="max-w-md mx-auto px-6 text-center">
                     <div className="flex justify-center mb-2">
-                        <Logo width={160} height={48} className="text-gray-900" />
+                        <Logo width={160} height={48} className="text-fg" />
                     </div>
-                    <p className="mt-2 text-sm text-gray-600">
+                    <p className="mt-2 text-sm text-fg-muted">
                         {t('auth.tagline')}
                     </p>
                 </div>
@@ -138,7 +138,7 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
             {/* Main Form */}
             <main className="flex-1 py-8">
                 <div className="max-w-md mx-auto px-6">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="bg-surface rounded-lg shadow-sm border border-line p-6">
                         {/*
                             MagicLinkForm stays mounted even while the password
                             form is showing — `hidden`, not a conditional
@@ -175,9 +175,9 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
                                                 onChange={(e) =>
                                                     setFormData({ ...formData, rememberMe: e.target.checked })
                                                 }
-                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                className="h-4 w-4 rounded border-line text-primary focus:ring-focus"
                                             />
-                                            <span className="text-sm text-gray-600">
+                                            <span className="text-sm text-fg-muted">
                                                 {t('auth.rememberMe')}
                                             </span>
                                         </label>
@@ -238,7 +238,7 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
                                     {mode === 'register' && (
                                         <button
                                             onClick={() => setMode('login')}
-                                            className="w-full text-sm text-gray-600 hover:text-gray-900"
+                                            className="w-full text-sm text-fg-muted hover:text-fg"
                                         >
                                             {t('auth.haveAccountSignIn')}
                                         </button>
@@ -246,7 +246,7 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
 
                                     <button
                                         onClick={() => setEntryMethod('link')}
-                                        className="w-full text-sm text-gray-600 hover:text-gray-900"
+                                        className="w-full text-sm text-fg-muted hover:text-fg"
                                     >
                                         {t('auth.magicLink.switchToLink')}
                                     </button>

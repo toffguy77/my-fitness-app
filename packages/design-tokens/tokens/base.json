@@ -1,0 +1,77 @@
+{
+  "$description": "Токены, не зависящие от темы: шрифты, шкала текста, отступы, радиусы, размеры, движение.",
+  "font": {
+    "family": {
+      "$type": "fontFamily",
+      "serif": { "$value": ["Literata Variable", "Literata", "Georgia", "serif"], "$description": "Смысл: заголовки экранов, голос куратора, цитаты. Веб — @fontsource-variable/literata; iOS/Android — тот же Literata (OFL)" },
+      "sans": { "$value": ["Golos Text Variable", "Golos Text", "system-ui", "-apple-system", "Segoe UI", "sans-serif"], "$description": "Интерфейс и цифры. Цифры — всегда tabular-nums" }
+    },
+    "weight": {
+      "$type": "fontWeight",
+      "regular": { "$value": 400 },
+      "medium": { "$value": 500 },
+      "semibold": { "$value": 600 }
+    }
+  },
+  "type": {
+    "$description": "Шкала текста. size/line в px; на iOS — pt, на Android — sp (масштабируются системной настройкой размера шрифта).",
+    "display": { "family": { "$value": "serif", "$type": "string" }, "size": { "$value": "34px", "$type": "dimension" }, "line": { "$value": "40px", "$type": "dimension" }, "weight": { "$value": 500, "$type": "fontWeight" }, "tracking": { "$value": "-0.015em", "$type": "dimension" } },
+    "title-1": { "family": { "$value": "serif", "$type": "string" }, "size": { "$value": "30px", "$type": "dimension" }, "line": { "$value": "36px", "$type": "dimension" }, "weight": { "$value": 500, "$type": "fontWeight" }, "tracking": { "$value": "-0.015em", "$type": "dimension" } },
+    "title-2": { "family": { "$value": "serif", "$type": "string" }, "size": { "$value": "22px", "$type": "dimension" }, "line": { "$value": "28px", "$type": "dimension" }, "weight": { "$value": 500, "$type": "fontWeight" }, "tracking": { "$value": "0em", "$type": "dimension" } },
+    "title-3": { "family": { "$value": "serif", "$type": "string" }, "size": { "$value": "18px", "$type": "dimension" }, "line": { "$value": "24px", "$type": "dimension" }, "weight": { "$value": 500, "$type": "fontWeight" }, "tracking": { "$value": "0em", "$type": "dimension" } },
+    "quote": { "family": { "$value": "serif", "$type": "string" }, "size": { "$value": "19px", "$type": "dimension" }, "line": { "$value": "28px", "$type": "dimension" }, "weight": { "$value": 400, "$type": "fontWeight" }, "tracking": { "$value": "0em", "$type": "dimension" } },
+    "num-xl": { "family": { "$value": "sans", "$type": "string" }, "size": { "$value": "44px", "$type": "dimension" }, "line": { "$value": "48px", "$type": "dimension" }, "weight": { "$value": 600, "$type": "fontWeight" }, "tracking": { "$value": "-0.02em", "$type": "dimension" } },
+    "num-l": { "family": { "$value": "sans", "$type": "string" }, "size": { "$value": "22px", "$type": "dimension" }, "line": { "$value": "26px", "$type": "dimension" }, "weight": { "$value": 600, "$type": "fontWeight" }, "tracking": { "$value": "-0.01em", "$type": "dimension" } },
+    "headline": { "family": { "$value": "sans", "$type": "string" }, "size": { "$value": "16px", "$type": "dimension" }, "line": { "$value": "22px", "$type": "dimension" }, "weight": { "$value": 600, "$type": "fontWeight" }, "tracking": { "$value": "0em", "$type": "dimension" } },
+    "body": { "family": { "$value": "sans", "$type": "string" }, "size": { "$value": "16px", "$type": "dimension" }, "line": { "$value": "24px", "$type": "dimension" }, "weight": { "$value": 400, "$type": "fontWeight" }, "tracking": { "$value": "0em", "$type": "dimension" } },
+    "callout": { "family": { "$value": "sans", "$type": "string" }, "size": { "$value": "15px", "$type": "dimension" }, "line": { "$value": "20px", "$type": "dimension" }, "weight": { "$value": 400, "$type": "fontWeight" }, "tracking": { "$value": "0em", "$type": "dimension" } },
+    "caption": { "family": { "$value": "sans", "$type": "string" }, "size": { "$value": "13px", "$type": "dimension" }, "line": { "$value": "18px", "$type": "dimension" }, "weight": { "$value": 400, "$type": "fontWeight" }, "tracking": { "$value": "0em", "$type": "dimension" } },
+    "overline": { "family": { "$value": "sans", "$type": "string" }, "size": { "$value": "13px", "$type": "dimension" }, "line": { "$value": "18px", "$type": "dimension" }, "weight": { "$value": 600, "$type": "fontWeight" }, "tracking": { "$value": "0.08em", "$type": "dimension" } },
+    "micro": { "family": { "$value": "sans", "$type": "string" }, "size": { "$value": "11px", "$type": "dimension" }, "line": { "$value": "14px", "$type": "dimension" }, "weight": { "$value": 500, "$type": "fontWeight" }, "tracking": { "$value": "0em", "$type": "dimension" } }
+  },
+  "space": {
+    "$type": "dimension",
+    "$description": "Сетка 4 pt",
+    "0": { "$value": "0px" },
+    "1": { "$value": "4px" },
+    "2": { "$value": "8px" },
+    "3": { "$value": "12px" },
+    "4": { "$value": "16px" },
+    "5": { "$value": "20px" },
+    "6": { "$value": "24px" },
+    "8": { "$value": "32px" },
+    "10": { "$value": "40px" },
+    "12": { "$value": "48px" },
+    "16": { "$value": "64px" },
+    "screen-x": { "$value": "20px", "$description": "Боковое поле экрана на телефоне" }
+  },
+  "radius": {
+    "$type": "dimension",
+    "xs": { "$value": "6px" },
+    "s": { "$value": "10px", "$description": "Поля ввода, небольшие плашки" },
+    "m": { "$value": "14px", "$description": "Вложенные карточки, плитки дней" },
+    "l": { "$value": "18px", "$description": "Карточки экрана" },
+    "xl": { "$value": "28px", "$description": "Шторки и модальные окна" },
+    "pill": { "$value": "9999px", "$description": "Кнопки и чипы" }
+  },
+  "size": {
+    "$type": "dimension",
+    "touch": { "$value": "44px", "$description": "Минимальная область нажатия (Apple HIG 44 pt, Material 48 dp — берём 44 и не меньше)" },
+    "control": { "$value": "48px", "$description": "Высота кнопок и полей" },
+    "tabbar": { "$value": "64px", "$description": "Высота нижней навигации без safe area" },
+    "content-max": { "$value": "640px", "$description": "Максимальная ширина колонки контента на планшете и десктопе" }
+  },
+  "motion": {
+    "duration": {
+      "$type": "duration",
+      "fast": { "$value": "120ms", "$description": "Нажатие, наведение" },
+      "base": { "$value": "200ms", "$description": "Появление, смена состояния" },
+      "slow": { "$value": "320ms", "$description": "Заполнение прогресса, шторки" }
+    },
+    "easing": {
+      "$type": "cubicBezier",
+      "standard": { "$value": [0.2, 0, 0, 1] },
+      "emphasized": { "$value": [0.3, 0, 0, 1] }
+    }
+  }
+}

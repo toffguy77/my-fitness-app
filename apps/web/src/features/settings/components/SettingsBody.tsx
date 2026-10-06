@@ -108,18 +108,18 @@ function BodyForm({
         <>
             {/* Birth date */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.birthDate')}</h3>
+                <h3 className="mb-3 text-sm font-bold text-fg">{t('settings.body.birthDate')}</h3>
                 <input
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                    className="w-full rounded-lg border border-line bg-surface px-4 py-3 text-sm text-fg outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2"
                 />
             </div>
 
             {/* Biological sex */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.sex')}</h3>
+                <h3 className="mb-3 text-sm font-bold text-fg">{t('settings.body.sex')}</h3>
                 <div className="flex gap-3">
                     {([
                         { value: 'male', label: t('settings.body.male') },
@@ -129,8 +129,8 @@ function BodyForm({
                             key={option.value}
                             className={`flex-1 cursor-pointer rounded-lg border px-4 py-3 text-center text-sm font-medium transition-colors ${
                                 biologicalSex === option.value
-                                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                    ? 'border-primary bg-primary-soft text-primary'
+                                    : 'border-line bg-surface text-fg hover:bg-canvas'
                             }`}
                         >
                             <input
@@ -149,7 +149,7 @@ function BodyForm({
 
             {/* Height */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.height')}</h3>
+                <h3 className="mb-3 text-sm font-bold text-fg">{t('settings.body.height')}</h3>
                 <input
                     type="number"
                     value={height}
@@ -158,16 +158,16 @@ function BodyForm({
                     min={50}
                     max={300}
                     step={0.1}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                    className="w-full rounded-lg border border-line bg-surface px-4 py-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-focus focus:ring-offset-2"
                 />
             </div>
 
             {/* Current weight (read-only) */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.currentWeight')}</h3>
-                <p className="text-sm text-gray-500">
+                <h3 className="mb-3 text-sm font-bold text-fg">{t('settings.body.currentWeight')}</h3>
+                <p className="text-sm text-fg-muted">
                     {t('settings.body.enterWeightOn')}{' '}
-                    <Link href="/dashboard" className="text-blue-600 hover:underline">
+                    <Link href="/dashboard" className="text-primary hover:underline">
                         {t('settings.body.dashboard')}
                     </Link>
                 </p>
@@ -175,7 +175,7 @@ function BodyForm({
 
             {/* Target weight */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.targetWeight')}</h3>
+                <h3 className="mb-3 text-sm font-bold text-fg">{t('settings.body.targetWeight')}</h3>
                 <input
                     type="number"
                     value={targetWeight}
@@ -184,17 +184,17 @@ function BodyForm({
                     min={20}
                     max={500}
                     step={0.1}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                    className="w-full rounded-lg border border-line bg-surface px-4 py-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-focus focus:ring-offset-2"
                 />
             </div>
 
             {/* Activity level */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.activityLevel')}</h3>
+                <h3 className="mb-3 text-sm font-bold text-fg">{t('settings.body.activityLevel')}</h3>
                 <select
                     value={activityLevel}
                     onChange={(e) => setActivityLevel(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                    className="w-full rounded-lg border border-line bg-surface px-4 py-3 text-sm text-fg outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2"
                 >
                     <option value="">{t('settings.body.choose')}</option>
                     {ACTIVITY_LEVELS.map((level) => (
@@ -207,15 +207,15 @@ function BodyForm({
 
             {/* Fitness goal */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.goal')}</h3>
+                <h3 className="mb-3 text-sm font-bold text-fg">{t('settings.body.goal')}</h3>
                 <div className="flex flex-col gap-2">
                     {FITNESS_GOALS.map((goal) => (
                         <label
                             key={goal}
                             className={`cursor-pointer rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
                                 fitnessGoal === goal
-                                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                    ? 'border-primary bg-primary-soft text-primary'
+                                    : 'border-line bg-surface text-fg hover:bg-canvas'
                             }`}
                         >
                             <input
@@ -236,7 +236,7 @@ function BodyForm({
             <button
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                className="w-full rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
                 {saving ? t('settings.saving') : t('settings.save')}
             </button>

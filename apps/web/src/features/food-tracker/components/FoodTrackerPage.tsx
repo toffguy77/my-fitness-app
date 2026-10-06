@@ -133,15 +133,15 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
     const hasEntries = Object.values(entries).some((meal) => meal.length > 0);
 
     return (
-        <div className={`bg-gray-50 ${className}`}>
+        <div className={`bg-canvas ${className}`}>
             {/* Offline indicator */}
             {isOffline && (
                 <div
-                    className="bg-yellow-50 border-b border-yellow-200 px-3 py-2 text-center sm:px-4"
+                    className="bg-warning-soft border-b border-warning/30 px-3 py-2 text-center sm:px-4"
                     role="alert"
                     aria-live="polite"
                 >
-                    <span className="text-xs text-yellow-800 sm:text-sm">
+                    <span className="text-xs text-warning-fg sm:text-sm">
                         {t('foodTracker.page.offlineBanner')}
                     </span>
                 </div>
@@ -203,19 +203,19 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                 {/* Error display - responsive positioning */}
                 {error && (
                     <div
-                        className="fixed bottom-20 left-3 right-3 max-w-sm mx-auto bg-red-50 border border-red-200 rounded-lg p-3 shadow-lg sm:bottom-20 sm:left-4 sm:right-4 sm:max-w-md sm:p-4 z-40"
+                        className="fixed bottom-20 left-3 right-3 max-w-sm mx-auto bg-danger-soft border border-danger/30 rounded-lg p-3 shadow-lg sm:bottom-20 sm:left-4 sm:right-4 sm:max-w-md sm:p-4 z-40"
                         role="alert"
                         aria-live="assertive"
                     >
                         <div className="flex items-start justify-between gap-2">
                             <div className="flex items-start flex-1 min-w-0">
-                                <span className="text-red-500 mr-2 flex-shrink-0" aria-hidden="true">⚠️</span>
-                                <p className="text-xs text-red-800 sm:text-sm">{error.message}</p>
+                                <span className="text-danger-fg mr-2 flex-shrink-0" aria-hidden="true">⚠️</span>
+                                <p className="text-xs text-danger-fg sm:text-sm">{error.message}</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={clearError}
-                                className="text-red-500 hover:text-red-700 p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
+                                className="text-danger-fg hover:text-danger-fg p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded"
                                 aria-label={t('foodTracker.page.dismissError')}
                             >
                                 ✕
@@ -252,16 +252,16 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
             {/* Сохранение или добавление не удалось: прежнее состояние осталось видимым. */}
             {recommendations.actionError && (
                 <div
-                    className="fixed bottom-20 left-3 right-3 max-w-sm mx-auto bg-red-50 border border-red-200 rounded-lg p-3 shadow-lg sm:left-4 sm:right-4 sm:max-w-md sm:p-4 z-40"
+                    className="fixed bottom-20 left-3 right-3 max-w-sm mx-auto bg-danger-soft border border-danger/30 rounded-lg p-3 shadow-lg sm:left-4 sm:right-4 sm:max-w-md sm:p-4 z-40"
                     role="alert"
                     aria-live="assertive"
                 >
                     <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs text-red-800 sm:text-sm">{recommendations.actionError}</p>
+                        <p className="text-xs text-danger-fg sm:text-sm">{recommendations.actionError}</p>
                         <button
                             type="button"
                             onClick={recommendations.clearActionError}
-                            className="text-red-500 hover:text-red-700 p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
+                            className="text-danger-fg hover:text-danger-fg p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger rounded"
                             aria-label={t('foodTracker.page.dismissError')}
                         >
                             ✕

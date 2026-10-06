@@ -20,7 +20,7 @@ export function CuratorLoadCard({ curator }: CuratorLoadCardProps) {
     return (
         <div
             className={cn(
-                'rounded-xl bg-white p-4 shadow-sm border border-gray-100',
+                'rounded-xl bg-surface p-4 shadow-sm border border-line',
                 'transition-shadow hover:shadow-md'
             )}
             data-testid={`curator-load-card-${curator.id}`}
@@ -35,17 +35,17 @@ export function CuratorLoadCard({ curator }: CuratorLoadCardProps) {
                         className="h-10 w-10 rounded-full object-cover"
                     />
                 ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
                         {initials}
                     </div>
                 )}
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{curator.name}</p>
-                    <p className="text-xs text-gray-500 truncate">{curator.email}</p>
+                    <p className="text-sm font-semibold text-fg truncate">{curator.name}</p>
+                    <p className="text-xs text-fg-muted truncate">{curator.email}</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-lg font-bold text-blue-600">{curator.client_count}</p>
-                    <p className="text-xs text-gray-500">{t('admin.dashboard.clientsWord')}</p>
+                    <p className="text-lg font-bold text-primary">{curator.client_count}</p>
+                    <p className="text-xs text-fg-muted">{t('admin.dashboard.clientsWord')}</p>
                 </div>
             </div>
         </div>

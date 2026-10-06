@@ -31,10 +31,10 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                         aria-invalid={error}
                         aria-describedby={helperId}
                         className={cn(
-                            'h-4 w-4 rounded border-gray-300 text-blue-600',
-                            'focus:ring-2 focus:ring-blue-600 focus:ring-offset-2',
+                            'h-4 w-4 rounded border-line text-primary',
+                            'focus:ring-2 focus:ring-focus focus:ring-offset-2',
                             'disabled:cursor-not-allowed disabled:opacity-50',
-                            error && 'border-red-500 focus:ring-red-600',
+                            error && 'border-danger focus:ring-danger',
                             className
                         )}
                         {...props}
@@ -45,8 +45,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                         <label
                             htmlFor={checkboxId}
                             className={cn(
-                                'font-medium text-gray-700',
-                                error && 'text-red-600'
+                                'font-medium text-fg',
+                                error && 'text-danger-fg'
                             )}
                         >
                             {label}
@@ -55,8 +55,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                             <p
                                 id={helperId}
                                 className={cn(
-                                    'text-gray-500',
-                                    error && 'text-red-600'
+                                    'text-fg-muted',
+                                    error && 'text-danger-fg'
                                 )}
                             >
                                 {helperText}

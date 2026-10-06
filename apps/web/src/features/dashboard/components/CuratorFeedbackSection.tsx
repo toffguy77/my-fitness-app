@@ -33,11 +33,11 @@ export interface CuratorFeedbackSectionProps {
 function getRatingBadge(rating: RatingLevel): { label: string; className: string } {
     switch (rating) {
         case 'excellent':
-            return { label: t('dashboard.feedback.excellent'), className: 'bg-green-100 text-green-800' }
+            return { label: t('dashboard.feedback.excellent'), className: 'bg-success-soft text-success-fg' }
         case 'good':
-            return { label: t('dashboard.feedback.good'), className: 'bg-yellow-100 text-yellow-800' }
+            return { label: t('dashboard.feedback.good'), className: 'bg-warning-soft text-warning-fg' }
         case 'needs_improvement':
-            return { label: t('dashboard.feedback.needsWork'), className: 'bg-red-100 text-red-800' }
+            return { label: t('dashboard.feedback.needsWork'), className: 'bg-danger-soft text-danger-fg' }
     }
 }
 
@@ -101,7 +101,7 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
 
     return (
         <section
-            className={`bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
+            className={`bg-surface rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
             aria-labelledby="curator-feedback-heading"
         >
             {/* Header — clickable to toggle */}
@@ -114,20 +114,20 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
             >
                 <div className="flex items-center gap-2">
                     <MessageSquare
-                        className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600"
+                        className="w-4 h-4 sm:w-5 sm:h-5 text-primary"
                         aria-hidden="true"
                     />
                     <h2
                         id="curator-feedback-heading"
-                        className="text-base sm:text-lg font-semibold text-gray-900"
+                        className="text-base sm:text-lg font-semibold text-fg"
                     >
                         {t('dashboard.feedback.title')}
                     </h2>
                 </div>
                 {expanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-400" aria-hidden="true" />
+                    <ChevronUp className="w-5 h-5 text-fg-subtle" aria-hidden="true" />
                 ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-400" aria-hidden="true" />
+                    <ChevronDown className="w-5 h-5 text-fg-subtle" aria-hidden="true" />
                 )}
             </button>
 
@@ -149,7 +149,7 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
                                         role="listitem"
                                         className="flex items-center gap-1.5"
                                     >
-                                        <span className="text-xs text-gray-600">
+                                        <span className="text-xs text-fg-muted">
                                             {getCategoryName(cat)}:
                                         </span>
                                         <span
@@ -165,16 +165,16 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
 
                     {/* Summary */}
                     <div>
-                        <p className="text-sm text-gray-700">{feedback.summary}</p>
+                        <p className="text-sm text-fg">{feedback.summary}</p>
                     </div>
 
                     {/* Recommendations */}
                     {feedback.recommendations && (
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <p className="text-xs font-medium text-blue-800 mb-1">
+                        <div className="p-3 bg-primary-soft border border-primary/30 rounded-lg">
+                            <p className="text-xs font-medium text-primary mb-1">
                                 {t('dashboard.feedback.recommendations')}
                             </p>
-                            <p className="text-sm text-blue-700">
+                            <p className="text-sm text-primary">
                                 {feedback.recommendations}
                             </p>
                         </div>

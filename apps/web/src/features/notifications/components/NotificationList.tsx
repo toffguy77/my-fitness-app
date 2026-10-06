@@ -104,7 +104,7 @@ export function NotificationList({
                 <div className="flex flex-col items-center gap-3">
                     <svg
                         className={cn(
-                            'animate-spin text-blue-600',
+                            'animate-spin text-primary',
                             // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
                             'h-6 w-6',          // Mobile
                             'sm:h-7 sm:w-7',    // Tablet
@@ -129,7 +129,7 @@ export function NotificationList({
                         />
                     </svg>
                     <p className={cn(
-                        'text-gray-600',
+                        'text-fg-muted',
                         // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
                         'text-xs',          // Mobile
                         'sm:text-sm',       // Tablet
@@ -155,14 +155,14 @@ export function NotificationList({
                 aria-live="polite"
             >
                 <AlertCircle className={cn(
-                    'text-red-500 mb-4',
+                    'text-danger-fg mb-4',
                     // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
                     'h-10 w-10',        // Mobile
                     'sm:h-11 sm:w-11',  // Tablet
                     'md:h-12 md:w-12'   // Desktop
                 )} aria-hidden="true" />
                 <h3 className={cn(
-                    'font-semibold text-gray-900 mb-2',
+                    'font-semibold text-fg mb-2',
                     // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
                     'text-base',        // Mobile
                     'sm:text-lg',       // Tablet
@@ -171,7 +171,7 @@ export function NotificationList({
                     {t('notifications.loadError')}
                 </h3>
                 <p className={cn(
-                    'text-gray-600 mb-4 text-center max-w-md',
+                    'text-fg-muted mb-4 text-center max-w-md',
                     // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
                     'text-xs',          // Mobile
                     'sm:text-sm',       // Tablet
@@ -183,11 +183,11 @@ export function NotificationList({
                     onClick={onLoadMore}
                     className={cn(
                         'rounded-lg font-medium transition-colors',
-                        'bg-blue-600 text-white hover:bg-blue-700',
+                        'bg-primary text-on-primary hover:bg-primary-hover',
                         // Enhanced focus-visible styles (Requirement 6.4, 6.7)
                         'focus:outline-none',
-                        'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
-                        'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_white,0_0_0_4px_#3b82f6]',
+                        'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
+                        'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--ds-color-bg-surface),0_0_0_4px_var(--ds-color-focus)]',
                         // Responsive button sizing (Requirement 6.1, 6.2, 6.3)
                         'px-4 py-2 text-sm',        // Mobile: touch-friendly
                         'sm:px-5 sm:py-2.5',        // Tablet: larger
@@ -219,14 +219,14 @@ export function NotificationList({
                 aria-label="No notifications"
             >
                 <Inbox className={cn(
-                    'text-gray-400 mb-4',
+                    'text-fg-subtle mb-4',
                     // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
                     'h-12 w-12',        // Mobile
                     'sm:h-14 sm:w-14',  // Tablet
                     'md:h-16 md:w-16'   // Desktop
                 )} aria-hidden="true" />
                 <h3 className={cn(
-                    'font-semibold text-gray-900 mb-2',
+                    'font-semibold text-fg mb-2',
                     // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
                     'text-base',        // Mobile
                     'sm:text-lg',       // Tablet
@@ -235,7 +235,7 @@ export function NotificationList({
                     {t('notifications.empty')}
                 </h3>
                 <p className={cn(
-                    'text-gray-600 text-center max-w-md',
+                    'text-fg-muted text-center max-w-md',
                     // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
                     'text-xs',          // Mobile
                     'sm:text-sm',       // Tablet
@@ -259,7 +259,7 @@ export function NotificationList({
         return (
             <Suspense fallback={
                 <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-line-strong"></div>
                 </div>
             }>
                 <VirtualizedNotificationList
@@ -286,7 +286,7 @@ export function NotificationList({
                 <div key={group.date}>
                     {/* Date header */}
                     <h2 className={cn(
-                        'font-semibold text-gray-500 uppercase tracking-wide mb-3',
+                        'font-semibold text-fg-muted uppercase tracking-wide mb-3',
                         // Responsive sizing and spacing (Requirement 6.1, 6.2, 6.3)
                         'text-xs px-3',         // Mobile: compact
                         'sm:text-xs sm:px-4',   // Tablet: standard
@@ -327,7 +327,7 @@ export function NotificationList({
                         <div className="flex items-center justify-center gap-2">
                             <svg
                                 className={cn(
-                                    'animate-spin text-blue-600',
+                                    'animate-spin text-primary',
                                     // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
                                     'h-4 w-4',          // Mobile
                                     'sm:h-5 sm:w-5',    // Tablet
@@ -352,7 +352,7 @@ export function NotificationList({
                                 />
                             </svg>
                             <span className={cn(
-                                'text-gray-600',
+                                'text-fg-muted',
                                 // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
                                 'text-xs',          // Mobile
                                 'sm:text-sm',       // Tablet

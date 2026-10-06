@@ -96,8 +96,8 @@ export function TasksTab({ clientId }: TasksTabProps) {
                         className={cn(
                             'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                             filter === f.id
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                                ? 'bg-primary text-on-primary'
+                                : 'bg-subtle text-fg-muted hover:bg-subtle',
                         )}
                     >
                         {f.label}
@@ -107,17 +107,17 @@ export function TasksTab({ clientId }: TasksTabProps) {
 
             {loading ? (
                 <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
                 </div>
             ) : error ? (
-                <p className="py-8 text-center text-sm text-red-500">{error}</p>
+                <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
             ) : tasks.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center sm:py-8">
-                    <p className="text-sm text-gray-400">{t('curator.tasksTab.empty')}</p>
+                <div className="rounded-xl border-2 border-dashed border-line py-6 text-center sm:py-8">
+                    <p className="text-sm text-fg-subtle">{t('curator.tasksTab.empty')}</p>
                     <button
                         type="button"
                         onClick={() => { setEditingTask(undefined); setShowForm(true) }}
-                        className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
+                        className="mt-1.5 text-xs text-primary hover:text-primary font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
                     >
                         {t('curator.tasksTab.create')}
                     </button>
@@ -141,7 +141,7 @@ export function TasksTab({ clientId }: TasksTabProps) {
                 type="button"
                 data-testid="create-task-fab"
                 onClick={() => { setEditingTask(undefined); setShowForm(true) }}
-                className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:bottom-24 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
+                className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-on-primary shadow-lg hover:bg-primary-hover active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:bottom-24 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
                 aria-label={t('curator.tasksTab.create')}
             >
                 <Plus className="h-5 w-5 sm:h-6 sm:w-6" />

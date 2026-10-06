@@ -91,13 +91,13 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
     }
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40">
-            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-20 shadow-xl animate-in slide-in-from-bottom">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-scrim">
+            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-surface p-5 pb-20 shadow-xl animate-in slide-in-from-bottom">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-semibold text-gray-900">
+                    <h2 className="text-base font-semibold text-fg">
                         {isEdit ? t('curator.plan.update') : t('curator.plan.create')}
                     </h2>
-                    <button type="button" onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
+                    <button type="button" onClick={onClose} className="p-1 text-fg-subtle hover:text-fg-muted">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -105,45 +105,45 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.calories')}</label>
+                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.plan.calories')}</label>
                             <input
                                 type="number"
                                 value={calories}
                                 onChange={(e) => setCalories(e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                                 required
                                 min={0}
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.proteinGrams')}</label>
+                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.plan.proteinGrams')}</label>
                             <input
                                 type="number"
                                 value={protein}
                                 onChange={(e) => setProtein(e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                                 required
                                 min={0}
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.fatGrams')}</label>
+                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.plan.fatGrams')}</label>
                             <input
                                 type="number"
                                 value={fat}
                                 onChange={(e) => setFat(e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                                 required
                                 min={0}
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.carbsGrams')}</label>
+                            <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.plan.carbsGrams')}</label>
                             <input
                                 type="number"
                                 value={carbs}
                                 onChange={(e) => setCarbs(e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                                 required
                                 min={0}
                             />
@@ -153,22 +153,22 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                     {!isEdit && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.startDate')}</label>
+                                <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.plan.startDate')}</label>
                                 <input
                                     type="date"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.endDate')}</label>
+                                <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.plan.endDate')}</label>
                                 <input
                                     type="date"
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                    className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                                     required
                                 />
                             </div>
@@ -176,22 +176,22 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                     )}
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.comment')}</label>
+                        <label className="block text-xs font-medium text-fg-muted mb-1">{t('curator.plan.comment')}</label>
                         <textarea
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                             rows={2}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-focus"
                             placeholder={t('curator.plan.optional')}
                         />
                     </div>
 
-                    {error && <p className="text-xs text-red-500">{error}</p>}
+                    {error && <p className="text-xs text-danger-fg">{error}</p>}
 
                     <button
                         type="submit"
                         disabled={saving}
-                        className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                        className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-on-primary hover:bg-primary-hover disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                     >
                         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                         {isEdit ? t('curator.plan.update') : t('curator.plan.create')}

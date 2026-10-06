@@ -230,12 +230,12 @@ describe('NotificationsTabs', () => {
                         const inactiveBadge = inactiveTabElement?.querySelector('[aria-label*="unread notifications"]');
 
                         // Active tab badge should have blue background
-                        expect(activeBadge).toHaveClass('bg-blue-600');
-                        expect(activeBadge).toHaveClass('text-white');
+                        expect(activeBadge).toHaveClass('bg-primary');
+                        expect(activeBadge).toHaveClass('text-on-primary');
 
                         // Inactive tab badge should have gray background
-                        expect(inactiveBadge).toHaveClass('bg-gray-200');
-                        expect(inactiveBadge).toHaveClass('text-gray-700');
+                        expect(inactiveBadge).toHaveClass('bg-subtle');
+                        expect(inactiveBadge).toHaveClass('text-fg');
 
                         // Clean up
                         unmount();
@@ -582,10 +582,10 @@ describe('NotificationsTabs', () => {
             const mainTab = screen.getByRole('tab', { name: 'Основные' });
             const contentTab = screen.getByRole('tab', { name: 'Контент' });
 
-            expect(mainTab).toHaveClass('text-blue-600');
-            expect(mainTab).toHaveClass('border-blue-600');
+            expect(mainTab).toHaveClass('text-primary');
+            expect(mainTab).toHaveClass('border-primary');
 
-            expect(contentTab).toHaveClass('text-gray-600');
+            expect(contentTab).toHaveClass('text-fg-muted');
             expect(contentTab).toHaveClass('border-transparent');
         });
 
@@ -605,12 +605,12 @@ describe('NotificationsTabs', () => {
             const contentBadge = contentTab.querySelector('[aria-label*="unread notifications"]');
 
             // Active tab (main) should have blue badge
-            expect(mainBadge).toHaveClass('bg-blue-600');
-            expect(mainBadge).toHaveClass('text-white');
+            expect(mainBadge).toHaveClass('bg-primary');
+            expect(mainBadge).toHaveClass('text-on-primary');
 
             // Inactive tab (content) should have gray badge
-            expect(contentBadge).toHaveClass('bg-gray-200');
-            expect(contentBadge).toHaveClass('text-gray-700');
+            expect(contentBadge).toHaveClass('bg-subtle');
+            expect(contentBadge).toHaveClass('text-fg');
         });
 
         it('has visible focus indicators', () => {
@@ -624,7 +624,7 @@ describe('NotificationsTabs', () => {
 
             const mainTab = screen.getByRole('tab', { name: 'Основные' });
             expect(mainTab).toHaveClass('focus-visible:ring-2');
-            expect(mainTab).toHaveClass('focus-visible:ring-blue-500');
+            expect(mainTab).toHaveClass('focus-visible:ring-focus');
         });
     });
 });
@@ -705,7 +705,7 @@ describe('Responsive Design', () => {
         expect(firstTab).toHaveClass('md:text-base');
 
         // Desktop: hover states
-        expect(firstTab).toHaveClass('md:hover:text-gray-700');
+        expect(firstTab).toHaveClass('md:hover:text-fg');
 
         // Badge: desktop sizing
         const badge = firstTab.querySelector('span[role="status"]');

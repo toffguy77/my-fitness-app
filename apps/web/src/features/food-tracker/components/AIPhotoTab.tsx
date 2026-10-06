@@ -332,9 +332,9 @@ export function AIPhotoTab({
 
     // Get confidence color
     const getConfidenceColor = (confidence: number): string => {
-        if (confidence >= 0.9) return 'text-green-600';
-        if (confidence >= 0.7) return 'text-yellow-600';
-        return 'text-red-600';
+        if (confidence >= 0.9) return 'text-success-fg';
+        if (confidence >= 0.7) return 'text-warning-fg';
+        return 'text-danger-fg';
     };
 
     return (
@@ -342,15 +342,15 @@ export function AIPhotoTab({
             {/* Photo Selection */}
             {status === 'idle' && (
                 <div className="flex-1 flex flex-col items-center justify-center p-6">
-                    <ImageIcon className="w-16 h-16 text-gray-400 mb-4" />
-                    <p className="text-gray-600 text-center mb-6">
+                    <ImageIcon className="w-16 h-16 text-fg-subtle mb-4" />
+                    <p className="text-fg-muted text-center mb-6">
                         {t('foodTracker.photo.prompt')}
                     </p>
                     <div className="flex gap-4">
                         <button
                             type="button"
                             onClick={handleCameraCapture}
-                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                            className="flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                             <Camera className="w-5 h-5" />
                             <span>{t('foodTracker.photo.camera')}</span>
@@ -358,7 +358,7 @@ export function AIPhotoTab({
                         <button
                             type="button"
                             onClick={handleGallerySelect}
-                            className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                            className="flex items-center gap-2 px-6 py-3 bg-subtle text-fg rounded-xl hover:bg-subtle transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                             <Upload className="w-5 h-5" />
                             <span>{t('foodTracker.photo.gallery')}</span>
@@ -380,8 +380,8 @@ export function AIPhotoTab({
                             />
                         </div>
                     )}
-                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-                    <p className="text-gray-600">{t('foodTracker.photo.recognising')}</p>
+                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="text-fg-muted">{t('foodTracker.photo.recognising')}</p>
                 </div>
             )}
 
@@ -390,7 +390,7 @@ export function AIPhotoTab({
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Photo preview */}
                     {photoPreview && (
-                        <div className="relative h-40 bg-gray-100 mb-4">
+                        <div className="relative h-40 bg-subtle mb-4">
                             {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={photoPreview}
@@ -400,7 +400,7 @@ export function AIPhotoTab({
                             <button
                                 type="button"
                                 onClick={handleReset}
-                                className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                                className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-surface"
                                 aria-label={t('foodTracker.photo.retake')}
                             >
                                 <X className="w-4 h-4" />
@@ -412,19 +412,19 @@ export function AIPhotoTab({
                     <div className="flex-1 overflow-y-auto px-4">
                         {results.length === 0 ? (
                             <div className="text-center py-8">
-                                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                <p className="text-gray-500">{t('foodTracker.photo.nothingFound')}</p>
+                                <AlertCircle className="w-12 h-12 text-fg-subtle mx-auto mb-4" />
+                                <p className="text-fg-muted">{t('foodTracker.photo.nothingFound')}</p>
                             </div>
                         ) : (
                             <div>
                                 {/* Dish name and total info */}
-                                <div className="p-3 bg-blue-50 border-2 border-blue-500 rounded-xl mb-3">
+                                <div className="p-3 bg-primary-soft border-2 border-primary rounded-xl mb-3">
                                     <div className="flex items-center justify-between">
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-gray-900 truncate">
+                                            <p className="font-medium text-fg truncate">
                                                 {results[0].food.name}
                                             </p>
-                                            <p className="text-sm text-gray-500">
+                                            <p className="text-sm text-fg-muted">
                                                 {t('foodTracker.photo.per100Calories', { calories: Math.round(results[0].food.nutritionPer100.calories) })}
                                             </p>
                                         </div>
@@ -432,7 +432,7 @@ export function AIPhotoTab({
                                             <p className={`text-sm font-medium ${getConfidenceColor(results[0].confidence)}`}>
                                                 {Math.round(results[0].confidence * 100)}%
                                             </p>
-                                            <p className="text-xs text-gray-400">
+                                            <p className="text-xs text-fg-subtle">
                                                 {getConfidenceLabel(results[0].confidence)}
                                             </p>
                                         </div>
@@ -445,7 +445,7 @@ export function AIPhotoTab({
                                     saved (openspec design decision 7). */}
                                 {positions.length > 0 && (
                                     <div className="mb-3">
-                                        <h4 className="text-sm font-medium text-gray-500 mb-2">
+                                        <h4 className="text-sm font-medium text-fg-muted mb-2">
                                             {hasComposition
                                                 ? t('foodTracker.photo.composition')
                                                 : t('foodTracker.photo.portionWeight')}
@@ -463,18 +463,18 @@ export function AIPhotoTab({
                                                 return (
                                                 <li
                                                     key={idx}
-                                                    className="p-2 bg-gray-50 rounded-lg text-sm"
+                                                    className="p-2 bg-canvas rounded-lg text-sm"
                                                 >
                                                     <div className="flex items-center justify-between mb-1">
                                                         {/* In the single-position case the dish name above
                                                             already names it — repeating it here would make
                                                             the text ambiguous to find, not just redundant. */}
                                                         {hasComposition && (
-                                                            <span className="text-gray-700 font-medium">
+                                                            <span className="text-fg font-medium">
                                                                 {position.name}
                                                             </span>
                                                         )}
-                                                        <span className="text-gray-400">
+                                                        <span className="text-fg-subtle">
                                                             {t('foodTracker.photo.itemCalories', { calories: Math.round(position.nutritionPer100.calories) })}
                                                         </span>
                                                     </div>
@@ -490,17 +490,17 @@ export function AIPhotoTab({
                                                             placeholder={t('foodTracker.photo.weightPlaceholder')}
                                                             aria-label={t('foodTracker.photo.weightInputLabel', { name: position.name })}
                                                             aria-invalid={weightValidation.error !== null}
-                                                            className="w-20 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            className="w-20 px-2 py-1 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-focus"
                                                         />
-                                                        <span className="text-gray-500 text-xs">{t('units.gram')}</span>
-                                                        <span className="text-gray-400 text-xs">
+                                                        <span className="text-fg-muted text-xs">{t('units.gram')}</span>
+                                                        <span className="text-fg-subtle text-xs">
                                                             {t('foodTracker.photo.modelEstimate', { weight: Math.round(position.estimatedWeight) })}
                                                         </span>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleUseModelEstimate(idx, position.estimatedWeight)}
                                                             aria-label={t('foodTracker.photo.useModelEstimateAria', { name: position.name })}
-                                                            className="text-xs text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
+                                                            className="text-xs text-primary hover:text-primary underline-offset-2 hover:underline"
                                                         >
                                                             {t('foodTracker.photo.useModelEstimate')}
                                                         </button>
@@ -509,7 +509,7 @@ export function AIPhotoTab({
                                                         generic "enter a weight" hint — a "0" or an extra digit
                                                         must not look the same as an untouched field. */}
                                                     {weightValidation.error && (
-                                                        <p className="text-xs text-red-600 mt-1">
+                                                        <p className="text-xs text-danger-fg mt-1">
                                                             {weightValidation.error}
                                                         </p>
                                                     )}
@@ -522,18 +522,18 @@ export function AIPhotoTab({
 
                                 {/* Low confidence warning */}
                                 {hasLowConfidenceResults && (
-                                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                    <div className="mt-4 p-3 bg-warning-soft border border-warning/30 rounded-xl">
                                         <div className="flex items-start gap-2">
-                                            <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                                            <AlertCircle className="w-5 h-5 text-warning-fg flex-shrink-0 mt-0.5" />
                                             <div>
-                                                <p className="text-sm text-yellow-700">
+                                                <p className="text-sm text-warning-fg">
                                                     {t('foodTracker.photo.lowConfidence')}
                                                 </p>
                                                 {onManualSearch && (
                                                     <button
                                                         type="button"
                                                         onClick={handleManualSearch}
-                                                        className="mt-2 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                                                        className="mt-2 flex items-center gap-1 text-sm text-primary hover:text-primary"
                                                     >
                                                         <Search className="w-4 h-4" />
                                                         <span>{t('foodTracker.photo.searchManually')}</span>
@@ -548,28 +548,28 @@ export function AIPhotoTab({
                     </div>
 
                     {/* Action button */}
-                    <div className="p-4 border-t border-gray-200">
+                    <div className="p-4 border-t border-line">
                         {positions.length > 0 && (
-                            <div className="mb-3 p-3 bg-gray-50 rounded-xl" aria-live="polite">
+                            <div className="mb-3 p-3 bg-canvas rounded-xl" aria-live="polite">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700">
+                                    <span className="text-sm font-medium text-fg">
                                         {t('foodTracker.photo.liveTotalCalories', { calories: Math.round(liveTotals.calories) })}
                                     </span>
-                                    <div className="flex gap-2 text-xs text-gray-500">
+                                    <div className="flex gap-2 text-xs text-fg-muted">
                                         <span>{t('macros.proteinShort')}: {Math.round(liveTotals.protein)}{t('units.gram')}</span>
                                         <span>{t('macros.fatShort')}: {Math.round(liveTotals.fat)}{t('units.gram')}</span>
                                         <span>{t('macros.carbsShort')}: {Math.round(liveTotals.carbs)}{t('units.gram')}</span>
                                     </div>
                                 </div>
                                 {!allWeightsEntered && (
-                                    <p className="text-xs text-yellow-600 mt-1">
+                                    <p className="text-xs text-warning-fg mt-1">
                                         {t('foodTracker.photo.liveTotalPartial')}
                                     </p>
                                 )}
                             </div>
                         )}
                         {results.length > 0 && !allWeightsEntered && (
-                            <p className="text-xs text-gray-500 mb-2 text-center">
+                            <p className="text-xs text-fg-muted mb-2 text-center">
                                 {t('foodTracker.photo.weightRequiredHint')}
                             </p>
                         )}
@@ -577,7 +577,7 @@ export function AIPhotoTab({
                             type="button"
                             onClick={handleConfirmSelection}
                             disabled={results.length === 0 || !allWeightsEntered}
-                            className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            className="w-full px-4 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:bg-line disabled:cursor-not-allowed"
                         >
                             {t('common.add')}
                         </button>
@@ -598,13 +598,13 @@ export function AIPhotoTab({
                             />
                         </div>
                     )}
-                    <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
-                    <p className="text-red-600 text-center mb-6">{error}</p>
+                    <AlertCircle className="w-16 h-16 text-danger-fg mb-4" />
+                    <p className="text-danger-fg text-center mb-6">{error}</p>
                     <div className="flex gap-4">
                         <button
                             type="button"
                             onClick={handleReset}
-                            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                            className="px-6 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                             {t('foodTracker.photo.tryAgain')}
                         </button>
@@ -612,7 +612,7 @@ export function AIPhotoTab({
                             <button
                                 type="button"
                                 onClick={handleManualSearch}
-                                className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                                className="flex items-center gap-2 px-6 py-3 bg-subtle text-fg rounded-xl hover:bg-subtle transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                             >
                                 <Search className="w-5 h-5" />
                                 <span>{t('foodTracker.photo.searchManually')}</span>

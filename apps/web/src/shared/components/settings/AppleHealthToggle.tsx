@@ -23,7 +23,7 @@ export function AppleHealthToggle({ enabled, onChange }: AppleHealthToggleProps)
         <div className="flex flex-col gap-3">
             {/* Main row */}
             <div className="flex items-center justify-between">
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-fg">
                     Синхронизация с Apple Здоровье
                 </span>
 
@@ -37,12 +37,12 @@ export function AppleHealthToggle({ enabled, onChange }: AppleHealthToggleProps)
                         onClick={handleToggle}
                         className={cn(
                             'relative inline-flex h-6 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors',
-                            enabled ? 'bg-blue-600' : 'bg-gray-300'
+                            enabled ? 'bg-primary' : 'bg-line'
                         )}
                     >
                         <span
                             className={cn(
-                                'inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
+                                'inline-block h-5 w-5 rounded-full bg-surface shadow-sm transition-transform',
                                 enabled ? 'translate-x-6' : 'translate-x-0.5'
                             )}
                         />
@@ -50,7 +50,7 @@ export function AppleHealthToggle({ enabled, onChange }: AppleHealthToggleProps)
 
                     {/* Chevron icon */}
                     <svg
-                        className="h-5 w-5 text-gray-400"
+                        className="h-5 w-5 text-fg-subtle"
                         fill="none"
                         viewBox="0 0 24 24"
                         strokeWidth={2}
@@ -65,7 +65,7 @@ export function AppleHealthToggle({ enabled, onChange }: AppleHealthToggleProps)
             {/* Help link */}
             <button
                 type="button"
-                className="self-start text-sm text-blue-600 transition-colors hover:text-blue-700"
+                className="self-start text-sm text-primary transition-colors hover:text-primary"
             >
                 Как настроить Apple Health
             </button>

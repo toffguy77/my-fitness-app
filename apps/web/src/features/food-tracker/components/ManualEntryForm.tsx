@@ -171,13 +171,13 @@ export function ManualEntryForm({
 
     return (
         <form onSubmit={handleSubmit} className={`space-y-4 ${className}`}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-lg font-semibold text-fg mb-4">
                 {t('foodTracker.manualEntry.title')}
             </h3>
 
             {/* Name */}
             <div>
-                <label htmlFor="manual-name" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="manual-name" className="block text-sm font-medium text-fg mb-1">
                     {t('foodTracker.manualEntry.productName')}
                 </label>
                 <input
@@ -186,19 +186,19 @@ export function ManualEntryForm({
                     value={formData.name}
                     onChange={handleChange('name')}
                     placeholder={t('foodTracker.manualEntry.namePlaceholder')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus ${errors.name ? 'border-danger' : 'border-line'
                         }`}
                     aria-invalid={!!errors.name}
                     aria-describedby={errors.name ? 'name-error' : undefined}
                 />
                 {errors.name && (
-                    <p id="name-error" className="mt-1 text-sm text-red-600">{errors.name}</p>
+                    <p id="name-error" className="mt-1 text-sm text-danger-fg">{errors.name}</p>
                 )}
             </div>
 
             {/* Brand (optional) */}
             <div>
-                <label htmlFor="manual-brand" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="manual-brand" className="block text-sm font-medium text-fg mb-1">
                     {t('foodTracker.manualEntry.brand')}
                 </label>
                 <input
@@ -207,20 +207,20 @@ export function ManualEntryForm({
                     value={formData.brand}
                     onChange={handleChange('brand')}
                     placeholder={t('foodTracker.manualEntry.brandPlaceholder')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-focus"
                 />
             </div>
 
             {/* Nutrition per 100g */}
-            <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 mb-3">
+            <div className="p-3 bg-canvas rounded-lg">
+                <p className="text-sm font-medium text-fg mb-3">
                     {t('foodTracker.manualEntry.per100Heading')}
                 </p>
 
                 <div className="grid grid-cols-2 gap-3">
                     {/* Calories */}
                     <div>
-                        <label htmlFor="manual-calories" className="block text-xs text-gray-500 mb-1">
+                        <label htmlFor="manual-calories" className="block text-xs text-fg-muted mb-1">
                             {t('foodTracker.manualEntry.caloriesField')}
                         </label>
                         <input
@@ -232,18 +232,18 @@ export function ManualEntryForm({
                             value={formData.calories}
                             onChange={handleChange('calories')}
                             placeholder="0"
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.calories ? 'border-red-500' : 'border-gray-300'
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus ${errors.calories ? 'border-danger' : 'border-line'
                                 }`}
                             aria-invalid={!!errors.calories}
                         />
                         {errors.calories && (
-                            <p className="mt-1 text-xs text-red-600">{errors.calories}</p>
+                            <p className="mt-1 text-xs text-danger-fg">{errors.calories}</p>
                         )}
                     </div>
 
                     {/* Protein */}
                     <div>
-                        <label htmlFor="manual-protein" className="block text-xs text-gray-500 mb-1">
+                        <label htmlFor="manual-protein" className="block text-xs text-fg-muted mb-1">
                             {t('foodTracker.manualEntry.proteinField')}
                         </label>
                         <input
@@ -255,18 +255,18 @@ export function ManualEntryForm({
                             value={formData.protein}
                             onChange={handleChange('protein')}
                             placeholder="0"
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.protein ? 'border-red-500' : 'border-gray-300'
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus ${errors.protein ? 'border-danger' : 'border-line'
                                 }`}
                             aria-invalid={!!errors.protein}
                         />
                         {errors.protein && (
-                            <p className="mt-1 text-xs text-red-600">{errors.protein}</p>
+                            <p className="mt-1 text-xs text-danger-fg">{errors.protein}</p>
                         )}
                     </div>
 
                     {/* Fat */}
                     <div>
-                        <label htmlFor="manual-fat" className="block text-xs text-gray-500 mb-1">
+                        <label htmlFor="manual-fat" className="block text-xs text-fg-muted mb-1">
                             {t('foodTracker.manualEntry.fatField')}
                         </label>
                         <input
@@ -278,18 +278,18 @@ export function ManualEntryForm({
                             value={formData.fat}
                             onChange={handleChange('fat')}
                             placeholder="0"
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fat ? 'border-red-500' : 'border-gray-300'
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus ${errors.fat ? 'border-danger' : 'border-line'
                                 }`}
                             aria-invalid={!!errors.fat}
                         />
                         {errors.fat && (
-                            <p className="mt-1 text-xs text-red-600">{errors.fat}</p>
+                            <p className="mt-1 text-xs text-danger-fg">{errors.fat}</p>
                         )}
                     </div>
 
                     {/* Carbs */}
                     <div>
-                        <label htmlFor="manual-carbs" className="block text-xs text-gray-500 mb-1">
+                        <label htmlFor="manual-carbs" className="block text-xs text-fg-muted mb-1">
                             {t('foodTracker.manualEntry.carbsField')}
                         </label>
                         <input
@@ -301,12 +301,12 @@ export function ManualEntryForm({
                             value={formData.carbs}
                             onChange={handleChange('carbs')}
                             placeholder="0"
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.carbs ? 'border-red-500' : 'border-gray-300'
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus ${errors.carbs ? 'border-danger' : 'border-line'
                                 }`}
                             aria-invalid={!!errors.carbs}
                         />
                         {errors.carbs && (
-                            <p className="mt-1 text-xs text-red-600">{errors.carbs}</p>
+                            <p className="mt-1 text-xs text-danger-fg">{errors.carbs}</p>
                         )}
                     </div>
                 </div>
@@ -314,7 +314,7 @@ export function ManualEntryForm({
 
             {/* Serving Size */}
             <div>
-                <label htmlFor="manual-serving" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="manual-serving" className="block text-sm font-medium text-fg mb-1">
                     {t('foodTracker.manualEntry.servingField')}
                 </label>
                 <input
@@ -326,12 +326,12 @@ export function ManualEntryForm({
                     value={formData.servingSize}
                     onChange={handleChange('servingSize')}
                     placeholder="100"
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.servingSize ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-focus ${errors.servingSize ? 'border-danger' : 'border-line'
                         }`}
                     aria-invalid={!!errors.servingSize}
                 />
                 {errors.servingSize && (
-                    <p className="mt-1 text-sm text-red-600">{errors.servingSize}</p>
+                    <p className="mt-1 text-sm text-danger-fg">{errors.servingSize}</p>
                 )}
             </div>
 
@@ -340,7 +340,7 @@ export function ManualEntryForm({
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-line text-fg rounded-xl hover:bg-canvas transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
                     <X className="w-5 h-5" />
                     <span>{t('common.cancel')}</span>
@@ -348,11 +348,11 @@ export function ManualEntryForm({
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:bg-line disabled:cursor-not-allowed"
                 >
                     {isSubmitting ? (
                         <>
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <div className="w-5 h-5 border-2 border-surface border-t-transparent rounded-full animate-spin" />
                             <span>{t('common.saving')}</span>
                         </>
                     ) : (

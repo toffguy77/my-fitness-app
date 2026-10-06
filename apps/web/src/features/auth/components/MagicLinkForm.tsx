@@ -121,7 +121,7 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
                     ref={sentMessageRef}
                     tabIndex={-1}
                     role="status"
-                    className="text-sm text-gray-700 focus:outline-none"
+                    className="text-sm text-fg focus:outline-none"
                 >
                     {t('auth.magicLink.sent')}
                 </p>
@@ -135,7 +135,7 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
                 <button
                     type="button"
                     onClick={onSwitchToPassword}
-                    className="w-full cursor-pointer text-sm font-medium text-blue-600 underline underline-offset-4 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
+                    className="w-full cursor-pointer text-sm font-medium text-primary underline underline-offset-4 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded"
                 >
                     {t('auth.magicLink.switchToPassword')}
                 </button>
@@ -150,8 +150,8 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
     return (
         <div className="space-y-4">
             <div>
-                <h2 className="text-lg font-semibold text-gray-900">{heading}</h2>
-                <p className="mt-1 text-sm text-gray-600">{explanation}</p>
+                <h2 className="text-lg font-semibold text-fg">{heading}</h2>
+                <p className="mt-1 text-sm text-fg-muted">{explanation}</p>
             </div>
 
             <Input
@@ -168,7 +168,7 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
             <ConsentSection consents={consents} setConsents={setConsents} />
 
             {errorMessage && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-sm text-danger-fg" role="alert">
                     {errorMessage}
                 </p>
             )}
@@ -196,7 +196,7 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
                 <button
                     type="button"
                     onClick={onSwitchToPassword}
-                    className="w-full cursor-pointer text-sm font-medium text-blue-600 underline underline-offset-4 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
+                    className="w-full cursor-pointer text-sm font-medium text-primary underline underline-offset-4 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 rounded"
                 >
                     {t('auth.magicLink.switchToPassword')}
                 </button>

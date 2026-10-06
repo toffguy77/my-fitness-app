@@ -68,10 +68,10 @@ describe('CuratorFooterNavigation', () => {
         render(<CuratorFooterNavigation activeItem="chats" />)
 
         const chatsBtn = screen.getByTestId('nav-item-chats')
-        expect(chatsBtn.className).toContain('text-blue-600')
+        expect(chatsBtn.className).toContain('text-primary')
 
         const clientsBtn = screen.getByTestId('nav-item-hub')
-        expect(clientsBtn.className).toContain('text-gray-600')
+        expect(clientsBtn.className).toContain('text-fg-muted')
     })
 
     it('calls onNavigate and router.push on click', () => {

@@ -17,7 +17,7 @@ export const AppLogo = forwardRef<HTMLDivElement, AppLogoProps>(
 
         const { width, height } = sizes[size]
 
-        const baseStyles = 'inline-flex items-center justify-center transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600'
+        const baseStyles = 'inline-flex items-center justify-center transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus'
         const interactiveStyles = onClick ? 'cursor-pointer hover:opacity-80' : ''
 
         if (onClick) {

@@ -59,7 +59,7 @@ export function NotificationIcon({
         return (
             <div
                 className={cn(
-                    'relative rounded-full overflow-hidden bg-gray-100',
+                    'relative rounded-full overflow-hidden bg-subtle',
                     // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
                     'h-8 w-8',          // Mobile: compact
                     'sm:h-10 sm:w-10',  // Tablet: standard
@@ -69,8 +69,8 @@ export function NotificationIcon({
             >
                 {/* Loading placeholder */}
                 {imageLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                        <div className="h-4 w-4 animate-pulse rounded-full bg-gray-300" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-subtle">
+                        <div className="h-4 w-4 animate-pulse rounded-full bg-line" />
                     </div>
                 )}
 
@@ -94,7 +94,7 @@ export function NotificationIcon({
 
     // Otherwise, render the appropriate Lucide icon based on type
     const iconClassName = cn(
-        'text-gray-600',
+        'text-fg-muted',
         // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
         'h-4 w-4',          // Mobile
         'sm:h-5 sm:w-5',    // Tablet
@@ -102,7 +102,7 @@ export function NotificationIcon({
     );
 
     const containerClassName = cn(
-        'flex items-center justify-center rounded-full bg-gray-100',
+        'flex items-center justify-center rounded-full bg-subtle',
         // Responsive icon container sizing (Requirement 6.1, 6.2, 6.3)
         'h-8 w-8',          // Mobile: compact
         'sm:h-10 sm:w-10',  // Tablet: standard

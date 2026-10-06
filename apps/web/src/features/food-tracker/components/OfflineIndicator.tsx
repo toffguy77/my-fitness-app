@@ -50,7 +50,7 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
 
     return (
         <div
-            className={`bg-yellow-50 border-b border-yellow-200 ${className}`}
+            className={`bg-warning-soft border-b border-warning/30 ${className}`}
             role="alert"
             aria-live="polite"
         >
@@ -59,10 +59,10 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                     {/* Status message */}
                     <div className="flex items-center gap-2 min-w-0">
                         <WifiOff
-                            className="w-4 h-4 text-yellow-600 flex-shrink-0"
+                            className="w-4 h-4 text-warning-fg flex-shrink-0"
                             aria-hidden="true"
                         />
-                        <span className="text-xs text-yellow-800 sm:text-sm truncate">
+                        <span className="text-xs text-warning-fg sm:text-sm truncate">
                             {isOffline ? (
                                 t('common.offline')
                             ) : pendingOperationsCount > 0 ? (
@@ -79,7 +79,7 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                             type="button"
                             onClick={handleSync}
                             disabled={isSyncing}
-                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-200 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm touch-manipulation"
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-warning-fg bg-warning-soft hover:bg-warning-soft rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-warning disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm touch-manipulation"
                             aria-label={t('foodTracker.offline.syncAria')}
                         >
                             {isSyncing ? (
@@ -98,7 +98,7 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
 
                     {/* Success indicator after sync */}
                     {isOnline && pendingOperationsCount === 0 && !isOffline && (
-                        <div className="flex items-center gap-1 text-green-600">
+                        <div className="flex items-center gap-1 text-success-fg">
                             <Check className="w-3 h-3 sm:w-4 sm:h-4" aria-hidden="true" />
                             <span className="text-xs sm:text-sm">{t('foodTracker.offline.synced')}</span>
                         </div>

@@ -45,7 +45,7 @@ export const AdminLayout = forwardRef<HTMLDivElement, AdminLayoutProps>(
                 className={cn(
                     'min-h-screen',
                     'w-full max-w-full overflow-x-hidden',
-                    'bg-gray-50',
+                    'bg-canvas',
                     'transition-all duration-300 ease-in-out',
                     className
                 )}

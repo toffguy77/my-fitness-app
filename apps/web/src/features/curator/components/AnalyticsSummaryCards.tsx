@@ -10,68 +10,68 @@ interface AnalyticsSummaryCardsProps {
 }
 
 function getKbzhuColor(percent: number): string {
-    if (percent >= 90 && percent <= 110) return 'text-green-600'
-    if (percent >= 70 && percent < 90) return 'text-yellow-600'
-    return 'text-red-600'
+    if (percent >= 90 && percent <= 110) return 'text-success-fg'
+    if (percent >= 70 && percent < 90) return 'text-warning-fg'
+    return 'text-danger-fg'
 }
 
 export function AnalyticsSummaryCards({ analytics }: AnalyticsSummaryCardsProps) {
     return (
         <div className="grid grid-cols-2 gap-3">
             {/* Active clients */}
-            <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+            <div className="rounded-xl bg-surface p-4 shadow-sm border border-line">
                 <div className="flex items-center gap-2 mb-2">
-                    <Users className="h-4 w-4 text-blue-500" />
-                    <span className="text-xs text-gray-500">{t('curator.analytics.activeClients')}</span>
+                    <Users className="h-4 w-4 text-primary" />
+                    <span className="text-xs text-fg-muted">{t('curator.analytics.activeClients')}</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">{analytics.total_clients}</p>
+                <p className="text-2xl font-bold text-fg">{analytics.total_clients}</p>
                 {analytics.attention_clients > 0 ? (
-                    <p className="text-xs text-red-600 mt-1">
+                    <p className="text-xs text-danger-fg mt-1">
                         {t('curator.analytics.needAttention', { count: analytics.attention_clients })}
                     </p>
                 ) : (
-                    <p className="text-xs text-gray-400 mt-1">{t('curator.analytics.allFine')}</p>
+                    <p className="text-xs text-fg-subtle mt-1">{t('curator.analytics.allFine')}</p>
                 )}
             </div>
 
             {/* KBZHU completion */}
-            <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+            <div className="rounded-xl bg-surface p-4 shadow-sm border border-line">
                 <div className="flex items-center gap-2 mb-2">
-                    <Target className="h-4 w-4 text-blue-500" />
-                    <span className="text-xs text-gray-500">{t('curator.analytics.macrosDone')}</span>
+                    <Target className="h-4 w-4 text-primary" />
+                    <span className="text-xs text-fg-muted">{t('curator.analytics.macrosDone')}</span>
                 </div>
                 <p className={cn('text-2xl font-bold', getKbzhuColor(analytics.avg_kbzhu_percent))}>
                     {analytics.avg_kbzhu_percent}%
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{t('curator.analytics.averagePerClient')}</p>
+                <p className="text-xs text-fg-subtle mt-1">{t('curator.analytics.averagePerClient')}</p>
             </div>
 
             {/* Messages */}
-            <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+            <div className="rounded-xl bg-surface p-4 shadow-sm border border-line">
                 <div className="flex items-center gap-2 mb-2">
-                    <MessageSquare className="h-4 w-4 text-blue-500" />
-                    <span className="text-xs text-gray-500">{t('curator.analytics.messages')}</span>
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    <span className="text-xs text-fg-muted">{t('curator.analytics.messages')}</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">{analytics.total_unread}</p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-2xl font-bold text-fg">{analytics.total_unread}</p>
+                <p className="text-xs text-fg-subtle mt-1">
                     {t('curator.analytics.fromClients', { count: analytics.clients_waiting })}
                 </p>
             </div>
 
             {/* Tasks */}
-            <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+            <div className="rounded-xl bg-surface p-4 shadow-sm border border-line">
                 <div className="flex items-center gap-2 mb-2">
-                    <CheckSquare className="h-4 w-4 text-blue-500" />
-                    <span className="text-xs text-gray-500">{t('curator.analytics.tasks')}</span>
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                    <span className="text-xs text-fg-muted">{t('curator.analytics.tasks')}</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">{analytics.active_tasks}</p>
+                <p className="text-2xl font-bold text-fg">{analytics.active_tasks}</p>
                 <div className="flex flex-wrap gap-x-2 mt-1">
                     {analytics.overdue_tasks > 0 && (
-                        <span className="text-xs text-red-600">
+                        <span className="text-xs text-danger-fg">
                             {t('curator.analytics.overdue', { count: analytics.overdue_tasks })}
                         </span>
                     )}
-                    <span className="text-xs text-green-600">
+                    <span className="text-xs text-success-fg">
                         {t('curator.analytics.today', { count: analytics.completed_today })}
                     </span>
                 </div>

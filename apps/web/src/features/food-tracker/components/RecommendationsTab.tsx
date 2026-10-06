@@ -199,14 +199,14 @@ export function RecommendationsTab({
         >
             {/* Header with action buttons - responsive */}
             <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
+                <h2 className="text-base font-semibold text-fg sm:text-lg">
                     {t('foodTracker.recommendations.title')}
                 </h2>
                 <div className="flex items-center gap-1.5 sm:gap-2">
                     <button
                         type="button"
                         onClick={onConfigureClick}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm touch-manipulation"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-fg-muted hover:text-fg hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm touch-manipulation"
                         aria-label={t('foodTracker.recommendations.configureAria')}
                     >
                         <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
@@ -218,15 +218,15 @@ export function RecommendationsTab({
             {/* Загрузка не удалась: показанное ниже — не измерение. */}
             {error && (
                 <div
-                    className="rounded-lg border border-red-200 bg-red-50 p-2.5 sm:p-3"
+                    className="rounded-lg border border-danger/30 bg-danger-soft p-2.5 sm:p-3"
                     role="alert"
                 >
-                    <p className="text-xs text-red-800 sm:text-sm">{error}</p>
+                    <p className="text-xs text-danger-fg sm:text-sm">{error}</p>
                     {onRetry && (
                         <button
                             type="button"
                             onClick={onRetry}
-                            className="mt-1.5 text-xs text-red-700 underline hover:text-red-900 sm:text-sm touch-manipulation"
+                            className="mt-1.5 text-xs text-danger-fg underline hover:text-danger-fg sm:text-sm touch-manipulation"
                         >
                             {t('foodTracker.recommendations.retry')}
                         </button>
@@ -236,7 +236,7 @@ export function RecommendationsTab({
 
             {/* Потребление сервер считает за сегодня, а не за выбранный день. */}
             {!isLoading && !error && showsOtherDay && (
-                <p className="text-xs text-gray-500 sm:text-sm">
+                <p className="text-xs text-fg-muted sm:text-sm">
                     {t('foodTracker.recommendations.todayOnly')}
                 </p>
             )}
@@ -245,13 +245,13 @@ export function RecommendationsTab({
                 их нельзя: либо продукт не считает этот нутриент, либо считать
                 нечего — за день нет записей. */}
             {!isLoading && !error && !catalogueEmpty && !anyIntakeKnown && recommendations.length > 0 && (
-                <p className="text-xs text-gray-500 sm:text-sm">
+                <p className="text-xs text-fg-muted sm:text-sm">
                     {t('foodTracker.recommendations.intakeNotCounted')}
                 </p>
             )}
 
             {!isLoading && !error && !catalogueEmpty && anyIntakeKnown && hasEntriesToday === false && (
-                <p className="text-xs text-gray-500 sm:text-sm">
+                <p className="text-xs text-fg-muted sm:text-sm">
                     {t('foodTracker.recommendations.noEntriesToday')}
                 </p>
             )}
@@ -260,13 +260,13 @@ export function RecommendationsTab({
                 просьба заполнить профиль, и это единственное место в продукте, где
                 заполнение сразу что-то даёт. */}
             {!isLoading && !error && anyNormNeedsProfile && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5 sm:p-3">
-                    <p className="text-xs text-blue-900 sm:text-sm">
+                <div className="rounded-lg border border-primary/30 bg-primary-soft p-2.5 sm:p-3">
+                    <p className="text-xs text-primary sm:text-sm">
                         {t('foodTracker.recommendations.profileNeeded')}
                     </p>
                     <a
                         href="/settings/body"
-                        className="mt-1.5 inline-block text-xs font-medium text-blue-700 underline sm:text-sm"
+                        className="mt-1.5 inline-block text-xs font-medium text-primary underline sm:text-sm"
                     >
                         {t('foodTracker.recommendations.profileLink')}
                     </a>
@@ -277,8 +277,8 @@ export function RecommendationsTab({
             {isLoading && (
                 <div className="flex items-center justify-center py-6 sm:py-8" aria-live="polite" aria-busy="true">
                     <div className="flex flex-col items-center gap-2">
-                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin sm:w-6 sm:h-6" />
-                        <span className="text-xs text-gray-500 sm:text-sm">{t('common.loading')}</span>
+                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin sm:w-6 sm:h-6" />
+                        <span className="text-xs text-fg-muted sm:text-sm">{t('common.loading')}</span>
                     </div>
                 </div>
             )}
@@ -287,7 +287,7 @@ export function RecommendationsTab({
             {!isLoading && (
                 <>
                     <section aria-label={t('foodTracker.recommendations.dailyAria')}>
-                        <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 sm:text-sm sm:mb-3">
+                        <h3 className="text-xs font-medium text-fg-muted uppercase tracking-wide mb-2 sm:text-sm sm:mb-3">
                             {t('foodTracker.recommendations.daily')}
                         </h3>
 
@@ -318,7 +318,7 @@ export function RecommendationsTab({
                             справочник норм не заполнен — настройки не помогут;
                             нутриенты выключены — помогут именно они. */}
                         {recommendations.filter((r) => !r.isWeekly).length === 0 && (
-                            <div className="text-center py-6 text-gray-500 sm:py-8">
+                            <div className="text-center py-6 text-fg-muted sm:py-8">
                                 {catalogueEmpty ? (
                                     <p className="text-xs sm:text-sm">
                                         {t('foodTracker.recommendations.catalogueEmpty')}
@@ -329,7 +329,7 @@ export function RecommendationsTab({
                                         <button
                                             type="button"
                                             onClick={onConfigureClick}
-                                            className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 sm:mt-2 sm:text-sm touch-manipulation"
+                                            className="mt-1.5 text-xs text-primary hover:text-primary sm:mt-2 sm:text-sm touch-manipulation"
                                         >
                                             {t('foodTracker.recommendations.configure')}
                                         </button>
@@ -345,21 +345,21 @@ export function RecommendationsTab({
                             <button
                                 type="button"
                                 onClick={() => setIsWeeklyExpanded(!isWeeklyExpanded)}
-                                className="flex items-center justify-between w-full py-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded sm:py-2 touch-manipulation"
+                                className="flex items-center justify-between w-full py-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded sm:py-2 touch-manipulation"
                                 aria-expanded={isWeeklyExpanded}
                             >
-                                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide sm:text-sm">
+                                <h3 className="text-xs font-medium text-fg-muted uppercase tracking-wide sm:text-sm">
                                     {t('foodTracker.recommendations.weekly')}
                                 </h3>
                                 {isWeeklyExpanded ? (
-                                    <ChevronDown className="w-3.5 h-3.5 text-gray-400 sm:w-4 sm:h-4" aria-hidden="true" />
+                                    <ChevronDown className="w-3.5 h-3.5 text-fg-subtle sm:w-4 sm:h-4" aria-hidden="true" />
                                 ) : (
-                                    <ChevronRight className="w-3.5 h-3.5 text-gray-400 sm:w-4 sm:h-4" aria-hidden="true" />
+                                    <ChevronRight className="w-3.5 h-3.5 text-fg-subtle sm:w-4 sm:h-4" aria-hidden="true" />
                                 )}
                             </button>
 
                             {isWeeklyExpanded && (
-                                <div className="mt-1.5 space-y-1 bg-white rounded-xl shadow-sm border border-gray-200 p-2 sm:mt-2 sm:p-3">
+                                <div className="mt-1.5 space-y-1 bg-surface rounded-xl shadow-sm border border-line p-2 sm:mt-2 sm:p-3">
                                     {weeklyRecommendations.map((rec) => (
                                         <NutrientRecommendationItem
                                             key={rec.id}
@@ -379,36 +379,36 @@ export function RecommendationsTab({
                         <button
                             type="button"
                             onClick={() => setIsCustomExpanded(!isCustomExpanded)}
-                            className="flex items-center justify-between w-full py-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded sm:py-2 touch-manipulation"
+                            className="flex items-center justify-between w-full py-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded sm:py-2 touch-manipulation"
                             aria-expanded={isCustomExpanded}
                         >
-                            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide sm:text-sm">
+                            <h3 className="text-xs font-medium text-fg-muted uppercase tracking-wide sm:text-sm">
                                 {t('foodTracker.recommendations.custom')}
                             </h3>
                             {isCustomExpanded ? (
-                                <ChevronDown className="w-3.5 h-3.5 text-gray-400 sm:w-4 sm:h-4" aria-hidden="true" />
+                                <ChevronDown className="w-3.5 h-3.5 text-fg-subtle sm:w-4 sm:h-4" aria-hidden="true" />
                             ) : (
-                                <ChevronRight className="w-3.5 h-3.5 text-gray-400 sm:w-4 sm:h-4" aria-hidden="true" />
+                                <ChevronRight className="w-3.5 h-3.5 text-fg-subtle sm:w-4 sm:h-4" aria-hidden="true" />
                             )}
                         </button>
 
                         {isCustomExpanded && (
-                            <div className="mt-1.5 space-y-1 bg-white rounded-xl shadow-sm border border-gray-200 p-2 sm:mt-2 sm:p-3">
+                            <div className="mt-1.5 space-y-1 bg-surface rounded-xl shadow-sm border border-line p-2 sm:mt-2 sm:p-3">
                                 {customRecommendations.length > 0 ? (
                                     customRecommendations.map((rec) => (
                                         <button
                                             key={rec.id}
                                             type="button"
                                             onClick={() => handleCustomRecommendationClick(rec)}
-                                            className="flex items-center justify-between w-full p-1.5 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 touch-manipulation"
+                                            className="flex items-center justify-between w-full p-1.5 hover:bg-canvas rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:p-2 touch-manipulation"
                                         >
-                                            <span className="text-xs font-medium text-gray-900 sm:text-sm">
+                                            <span className="text-xs font-medium text-fg sm:text-sm">
                                                 {rec.name}
                                             </span>
                                             {/* Потребление по своей рекомендации сервер не
                                                 считает. Ноль нарисовал бы «0 из 500 мг» и
                                                 выглядел бы как измерение. */}
-                                            <span className="text-xs text-gray-500 sm:text-sm">
+                                            <span className="text-xs text-fg-muted sm:text-sm">
                                                 {rec.currentIntake === undefined
                                                     ? t('foodTracker.recommendations.targetOnly', {
                                                         target: String(rec.dailyTarget),
@@ -419,7 +419,7 @@ export function RecommendationsTab({
                                         </button>
                                     ))
                                 ) : (
-                                    <p className="text-xs text-gray-500 text-center py-1.5 sm:text-sm sm:py-2">
+                                    <p className="text-xs text-fg-muted text-center py-1.5 sm:text-sm sm:py-2">
                                         {t('foodTracker.recommendations.noCustom')}
                                     </p>
                                 )}
@@ -428,7 +428,7 @@ export function RecommendationsTab({
                                 <button
                                     type="button"
                                     onClick={onAddRecommendationClick}
-                                    className="flex items-center justify-center gap-1 w-full p-1.5 mt-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-1.5 sm:p-2 sm:mt-2 sm:text-sm touch-manipulation"
+                                    className="flex items-center justify-center gap-1 w-full p-1.5 mt-1.5 text-xs text-primary hover:bg-primary-soft rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:gap-1.5 sm:p-2 sm:mt-2 sm:text-sm touch-manipulation"
                                     aria-label={t('foodTracker.recommendations.add')}
                                 >
                                     <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />

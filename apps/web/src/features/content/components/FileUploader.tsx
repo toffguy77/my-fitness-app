@@ -44,7 +44,7 @@ export function FileUploader({ onFileLoaded }: FileUploaderProps) {
             <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                className="rounded-md border border-line px-3 py-1.5 text-xs font-medium text-fg-muted transition-colors hover:bg-canvas"
             >
                 Импорт .md файла
             </button>

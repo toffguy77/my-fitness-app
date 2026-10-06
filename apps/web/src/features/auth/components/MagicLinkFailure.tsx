@@ -29,15 +29,15 @@ export function MagicLinkFailure({
 }) {
     return (
         <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-            <h1 className="text-lg font-semibold text-gray-900">{t('auth.magicLink.consume.title')}</h1>
-            <p role="alert" className="text-sm text-gray-900">
+            <h1 className="text-lg font-semibold text-fg">{t('auth.magicLink.consume.title')}</h1>
+            <p role="alert" className="text-sm text-fg">
                 {message}
             </p>
             {onRetry && (
                 <button
                     type="button"
                     onClick={onRetry}
-                    className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                    className="rounded-lg bg-primary px-4 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
                 >
                     {t('auth.magicLink.consume.retry')}
                 </button>
@@ -49,8 +49,8 @@ export function MagicLinkFailure({
                 // единственное действие на экране, и вид у него прежний.
                 className={
                     onRetry
-                        ? 'text-sm font-medium text-blue-600 hover:text-blue-700'
-                        : 'rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700'
+                        ? 'text-sm font-medium text-primary hover:text-primary'
+                        : 'rounded-lg bg-primary px-4 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover'
                 }
             >
                 {t('auth.oauth.backToSignIn')}

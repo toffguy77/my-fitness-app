@@ -122,7 +122,7 @@ export function SupportQueue() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             </div>
         )
     }
@@ -132,7 +132,7 @@ export function SupportQueue() {
             <div>
                 <button
                     onClick={() => setSelected(null)}
-                    className="text-sm text-gray-600 hover:text-gray-900"
+                    className="text-sm text-fg-muted hover:text-fg"
                 >
                     {t('curator.support.backToList')}
                 </button>
@@ -140,9 +140,9 @@ export function SupportQueue() {
                 {/* What they were doing when they got stuck, so nobody has to
                     ask them to repeat it. */}
                 {selected.lead && (
-                    <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                        <p className="text-sm font-medium text-gray-900">{selected.lead.email}</p>
-                        <p className="text-xs text-gray-600">
+                    <div className="mt-4 rounded-lg border border-line bg-canvas p-3">
+                        <p className="text-sm font-medium text-fg">{selected.lead.email}</p>
+                        <p className="text-xs text-fg-muted">
                             {t('curator.leads.stoppedAt', { step: stepLabels[selected.lead.last_step] ?? selected.lead.last_step })}
                             {selected.lead.summary && ` · ${selected.lead.summary}`}
                         </p>
@@ -155,13 +155,13 @@ export function SupportQueue() {
                             key={message.id}
                             className={`rounded-lg p-3 text-sm ${
                                 message.author === 'user'
-                                    ? 'bg-gray-100 text-gray-900'
+                                    ? 'bg-subtle text-fg'
                                     : message.author === 'operator'
-                                      ? 'bg-blue-50 text-gray-900'
-                                      : 'bg-white text-gray-600 border border-gray-200'
+                                      ? 'bg-primary-soft text-fg'
+                                      : 'bg-surface text-fg-muted border border-line'
                             }`}
                         >
-                            <p className="mb-1 text-xs text-gray-500">
+                            <p className="mb-1 text-xs text-fg-muted">
                                 {message.author === 'user'
                                     ? t('curator.support.authorUser')
                                     : message.author === 'operator'
@@ -174,7 +174,7 @@ export function SupportQueue() {
                 </ul>
 
                 <div className="mt-4">
-                    <label htmlFor="support-reply" className="block text-sm font-medium text-gray-900">
+                    <label htmlFor="support-reply" className="block text-sm font-medium text-fg">
                         {t('curator.support.reply')}
                     </label>
                     <textarea
@@ -182,19 +182,19 @@ export function SupportQueue() {
                         value={reply}
                         onChange={(e) => setReply(e.target.value)}
                         rows={3}
-                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                        className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm text-fg"
                     />
                     <div className="mt-3 flex gap-3">
                         <button
                             onClick={handleReply}
                             disabled={!reply.trim() || sending}
-                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-hover disabled:opacity-50"
                         >
                             {sending ? t('curator.support.sending') : t('curator.support.sendToTelegram')}
                         </button>
                         <button
                             onClick={handleClose}
-                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
+                            className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-fg hover:bg-canvas"
                         >
                             {t('curator.support.close')}
                         </button>
@@ -205,7 +205,7 @@ export function SupportQueue() {
     }
 
     if (conversations.length === 0) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('curator.support.empty')}</p>
+        return <p className="py-8 text-center text-sm text-fg-muted">{t('curator.support.empty')}</p>
     }
 
     return (
@@ -215,24 +215,24 @@ export function SupportQueue() {
                     <button
                         onClick={() => openThread(conversation)}
                         data-testid="support-conversation"
-                        className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left hover:shadow-md"
+                        className="w-full rounded-xl border border-line bg-surface p-4 text-left hover:shadow-md"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold text-gray-900">
+                            <span className="text-sm font-semibold text-fg">
                                 {conversation.telegram_name || conversation.telegram_username || t('curator.support.noName')}
                             </span>
                             <span
                                 className={`text-xs ${
                                     conversation.status === 'escalated'
-                                        ? 'font-semibold text-red-600'
-                                        : 'text-gray-500'
+                                        ? 'font-semibold text-danger-fg'
+                                        : 'text-fg-muted'
                                 }`}
                             >
                                 {statusLabels[conversation.status]}
                             </span>
                         </div>
                         {conversation.escalation_reason && (
-                            <p className="mt-1 text-xs text-gray-600">
+                            <p className="mt-1 text-xs text-fg-muted">
                                 {t('curator.support.reason', { reason: conversation.escalation_reason })}
                             </p>
                         )}

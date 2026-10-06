@@ -17,9 +17,12 @@
         "build:sw": "serwist build serwist.config.mjs && node scripts/verify-sw.mjs"
     },
     "dependencies": {
+        "@burcev/design-tokens": "*",
         "@burcev/types": "*",
         "@burcev/ui": "*",
         "@burcev/utils": "*",
+        "@fontsource-variable/golos-text": "^5.3.0",
+        "@fontsource-variable/literata": "^5.3.0",
         "@types/react-window": "^1.8.8",
         "gray-matter": "^4.0.3",
         "html5-qrcode": "^2.3.8",

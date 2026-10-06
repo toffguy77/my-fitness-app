@@ -44,14 +44,14 @@ export default function CuratorHubPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
             </div>
         )
     }
 
     if (error) {
         return (
-            <p className="py-8 text-center text-sm text-red-500">{error}</p>
+            <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
         )
     }
 
@@ -61,7 +61,7 @@ export default function CuratorHubPage() {
 
             {attentionItems.length > 0 && (
                 <section>
-                    <h2 className="text-sm font-semibold text-red-600 mb-2">
+                    <h2 className="text-sm font-semibold text-danger-fg mb-2">
                         {t('curator.list.needAttention')}
                     </h2>
                     <AttentionList items={attentionItems} />
@@ -77,7 +77,7 @@ export default function CuratorHubPage() {
 
             <section>
                 <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-semibold text-gray-900">{t('curator.list.allClients')}</h2>
+                    <h2 className="text-sm font-semibold text-fg">{t('curator.list.allClients')}</h2>
                 </div>
                 <ClientList
                     clients={clients}

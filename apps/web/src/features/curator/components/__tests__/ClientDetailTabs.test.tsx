@@ -29,15 +29,15 @@ describe('ClientDetailTabs', () => {
     it('highlights overview tab by default', () => {
         render(<ClientDetailTabs />)
         const btn = screen.getByText('Обзор')
-        expect(btn.className).toContain('border-blue-600')
+        expect(btn.className).toContain('border-primary')
     })
 
     it('highlights active tab from activeTab prop', () => {
         render(<ClientDetailTabs activeTab="tasks" />)
         const btn = screen.getByText('Задачи')
-        expect(btn.className).toContain('border-blue-600')
+        expect(btn.className).toContain('border-primary')
         const overview = screen.getByText('Обзор')
-        expect(overview.className).not.toContain('border-blue-600')
+        expect(overview.className).not.toContain('border-primary')
     })
 
     it('navigates to tab on click', () => {

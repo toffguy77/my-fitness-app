@@ -370,7 +370,7 @@ export function FoodEntryModal({
 
     return (
         <div
-            className={`fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center ${className}`}
+            className={`fixed inset-0 z-[60] flex items-end justify-center bg-scrim sm:items-center ${className}`}
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
@@ -378,15 +378,15 @@ export function FoodEntryModal({
         >
             <div
                 ref={modalRef}
-                className="w-full bg-white rounded-t-2xl shadow-xl max-h-[85vh] flex flex-col sm:max-w-lg sm:rounded-2xl sm:max-h-[90vh]"
+                className="w-full bg-surface rounded-t-2xl shadow-xl max-h-[85vh] flex flex-col sm:max-w-lg sm:rounded-2xl sm:max-h-[90vh]"
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-3 border-b border-gray-200 sm:p-4">
+                <div className="flex items-center justify-between p-3 border-b border-line sm:p-4">
                     {(step === 'select-portion' || step === 'manual-entry') ? (
                         <button
                             type="button"
                             onClick={step === 'manual-entry' ? handleManualEntryCancel : handleBackToFoodSelection}
-                            className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 touch-manipulation"
+                            className="p-1.5 text-fg-muted hover:text-fg hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:p-2 touch-manipulation"
                             aria-label={t('common.back')}
                         >
                             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -396,7 +396,7 @@ export function FoodEntryModal({
                     )}
                     <h2
                         id="food-entry-modal-title"
-                        className="text-base font-semibold text-gray-900 sm:text-lg"
+                        className="text-base font-semibold text-fg sm:text-lg"
                     >
                         {step === 'select-food'
                             ? t('foodTracker.entryModal.addEntry')
@@ -410,7 +410,7 @@ export function FoodEntryModal({
                         ref={firstFocusableRef}
                         type="button"
                         onClick={onClose}
-                        className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 touch-manipulation"
+                        className="p-1.5 text-fg-muted hover:text-fg hover:bg-subtle rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:p-2 touch-manipulation"
                         aria-label={t('common.close')}
                     >
                         <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -422,7 +422,7 @@ export function FoodEntryModal({
                     <>
                         {/* Tabs */}
                         <div
-                            className="flex border-b border-gray-200"
+                            className="flex border-b border-line"
                             role="tablist"
                             aria-label={t('foodTracker.tabs.label')}
                         >
@@ -441,9 +441,9 @@ export function FoodEntryModal({
                                         tabIndex={isActive ? 0 : -1}
                                         onClick={() => handleTabChange(tab.id)}
                                         onKeyDown={(e) => handleTabKeyDown(e, index)}
-                                        className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-1 text-[10px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:gap-1 sm:py-3 sm:px-2 sm:text-xs touch-manipulation ${isActive
-                                            ? 'text-blue-600 border-b-2 border-blue-600 -mb-px'
-                                            : 'text-gray-500 hover:text-gray-700'
+                                        className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-1 text-[10px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:gap-1 sm:py-3 sm:px-2 sm:text-xs touch-manipulation ${isActive
+                                            ? 'text-primary border-b-2 border-primary -mb-px'
+                                            : 'text-fg-muted hover:text-fg'
                                             }`}
                                     >
                                         <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -506,14 +506,14 @@ export function FoodEntryModal({
                             <>
                                 {/* Batch Progress Indicator */}
                                 {batchFoods.length > 1 && (
-                                    <div className="flex items-center justify-between mb-4 p-3 bg-blue-50 rounded-lg">
-                                        <p className="text-sm text-blue-700">
+                                    <div className="flex items-center justify-between mb-4 p-3 bg-primary-soft rounded-lg">
+                                        <p className="text-sm text-primary">
                                             {t('foodTracker.entryModal.batchProgress', { current: batchIndex + 1, total: batchFoods.length })}
                                         </p>
                                         <button
                                             type="button"
                                             onClick={handleSkipBatchItem}
-                                            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                            className="text-sm text-primary hover:text-primary font-medium"
                                         >
                                             {t('common.skip')}
                                         </button>
@@ -521,33 +521,33 @@ export function FoodEntryModal({
                                 )}
 
                                 {/* Food Info — Editable */}
-                                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                                <div className="mb-4 p-3 bg-canvas rounded-lg">
                                     {isEditingDetails ? (
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="block text-xs text-gray-500 mb-1">{t('foodTracker.entryModal.name')}</label>
+                                                <label className="block text-xs text-fg-muted mb-1">{t('foodTracker.entryModal.name')}</label>
                                                 <input
                                                     type="text"
                                                     value={editedName}
                                                     onChange={(e) => setEditedName(e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-focus"
                                                 />
                                             </div>
-                                            <p className="text-xs text-gray-500 font-medium">{t('foodTracker.entryModal.macrosPer100')}</p>
+                                            <p className="text-xs text-fg-muted font-medium">{t('foodTracker.entryModal.macrosPer100')}</p>
                                             <div className="grid grid-cols-4 gap-2">
                                                 <div>
-                                                    <label className="block text-[10px] text-gray-400 mb-0.5">{t('macros.calories')}</label>
+                                                    <label className="block text-[10px] text-fg-subtle mb-0.5">{t('macros.calories')}</label>
                                                     <input
                                                         type="number"
                                                         value={editedNutritionPer100.calories || ''}
                                                         onChange={(e) => handleNutritionPer100Change('calories', e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        className="w-full px-2 py-1.5 border border-line rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-focus"
                                                         min="0"
                                                         step="1"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="flex items-center gap-1 text-[10px] text-gray-500 mb-0.5">
+                                                    <label className="flex items-center gap-1 text-[10px] text-fg-muted mb-0.5">
                                                         <span
                                                             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                                                             style={{ backgroundColor: MACRO_COLORS.protein }}
@@ -559,13 +559,13 @@ export function FoodEntryModal({
                                                         type="number"
                                                         value={editedNutritionPer100.protein || ''}
                                                         onChange={(e) => handleNutritionPer100Change('protein', e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        className="w-full px-2 py-1.5 border border-line rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-focus"
                                                         min="0"
                                                         step="0.1"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="flex items-center gap-1 text-[10px] text-gray-500 mb-0.5">
+                                                    <label className="flex items-center gap-1 text-[10px] text-fg-muted mb-0.5">
                                                         <span
                                                             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                                                             style={{ backgroundColor: MACRO_COLORS.fat }}
@@ -577,13 +577,13 @@ export function FoodEntryModal({
                                                         type="number"
                                                         value={editedNutritionPer100.fat || ''}
                                                         onChange={(e) => handleNutritionPer100Change('fat', e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        className="w-full px-2 py-1.5 border border-line rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-focus"
                                                         min="0"
                                                         step="0.1"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="flex items-center gap-1 text-[10px] text-gray-500 mb-0.5">
+                                                    <label className="flex items-center gap-1 text-[10px] text-fg-muted mb-0.5">
                                                         <span
                                                             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                                                             style={{ backgroundColor: MACRO_COLORS.carbs }}
@@ -595,7 +595,7 @@ export function FoodEntryModal({
                                                         type="number"
                                                         value={editedNutritionPer100.carbs || ''}
                                                         onChange={(e) => handleNutritionPer100Change('carbs', e.target.value)}
-                                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        className="w-full px-2 py-1.5 border border-line rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-focus"
                                                         min="0"
                                                         step="0.1"
                                                     />
@@ -604,7 +604,7 @@ export function FoodEntryModal({
                                             <button
                                                 type="button"
                                                 onClick={() => setIsEditingDetails(false)}
-                                                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                                className="text-sm text-primary hover:text-primary font-medium"
                                             >
                                                 {t('common.done')}
                                             </button>
@@ -612,11 +612,11 @@ export function FoodEntryModal({
                                     ) : (
                                         <div className="flex items-start justify-between">
                                             <div>
-                                                <h3 className="font-medium text-gray-900">{editedName}</h3>
+                                                <h3 className="font-medium text-fg">{editedName}</h3>
                                                 {selectedFood.brand && (
-                                                    <p className="text-sm text-gray-500">{selectedFood.brand}</p>
+                                                    <p className="text-sm text-fg-muted">{selectedFood.brand}</p>
                                                 )}
-                                                <p className="text-xs text-gray-400 mt-1">
+                                                <p className="text-xs text-fg-subtle mt-1">
                                                     {t('foodTracker.entryModal.per100Summary', { calories: Math.round(editedNutritionPer100.calories) })}
                                                     {' · '}{t('macros.proteinShort')} {Math.round(editedNutritionPer100.protein)}
                                                     {' · '}{t('macros.fatShort')} {Math.round(editedNutritionPer100.fat)}
@@ -628,7 +628,7 @@ export function FoodEntryModal({
                                                     <button
                                                         type="button"
                                                         onClick={() => handleCloneFood(selectedFood)}
-                                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        className="p-1.5 text-fg-subtle hover:text-primary hover:bg-primary-soft rounded-lg transition-colors"
                                                         aria-label={t('foodTracker.entryModal.saveAsOwn')}
                                                         title={t('foodTracker.entryModal.saveAsOwn')}
                                                     >
@@ -638,7 +638,7 @@ export function FoodEntryModal({
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsEditingDetails(true)}
-                                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    className="p-1.5 text-fg-subtle hover:text-primary hover:bg-primary-soft rounded-lg transition-colors"
                                                     aria-label={t('common.edit')}
                                                 >
                                                     <Pencil className="w-4 h-4" />
@@ -657,8 +657,8 @@ export function FoodEntryModal({
                                 />
 
                                 {/* Meal Type Info */}
-                                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                                    <p className="text-sm text-blue-700">
+                                <div className="mt-4 p-3 bg-primary-soft rounded-lg">
+                                    <p className="text-sm text-primary">
                                         {t('foodTracker.entryModal.mealLabel')} <span className="font-medium">{getMealTypeLabel(mealType)}</span>
                                     </p>
                                 </div>
@@ -669,11 +669,11 @@ export function FoodEntryModal({
                                         type="button"
                                         onClick={handleSaveEntry}
                                         disabled={isSaving || !calculatedNutrition}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:bg-line disabled:cursor-not-allowed"
                                     >
                                         {isSaving ? (
                                             <>
-                                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                <div className="w-5 h-5 border-2 border-surface border-t-transparent rounded-full animate-spin" />
                                                 <span>{t('common.saving')}</span>
                                             </>
                                         ) : (

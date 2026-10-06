@@ -9,6 +9,7 @@ import type { Payload } from 'recharts/types/component/DefaultTooltipContent'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { cn } from '@/shared/utils/cn'
 import type { TargetVsActual } from '../types'
+import { AXIS_STYLE, GRID_STROKE, chartColor } from '@/shared/charts/chartTheme'
 
 interface KBJUWeeklyChartProps {
     data: TargetVsActual[]
@@ -16,8 +17,6 @@ interface KBJUWeeklyChartProps {
 }
 
 const CHART_HEIGHT = 160
-const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
-const GRID_STROKE = '#f0f0f0'
 
 function ChartTooltip({ active, payload, label }: {
     active?: boolean
@@ -26,10 +25,10 @@ function ChartTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
-            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+        <div className="rounded-lg border border-line bg-surface px-3 py-2 shadow-sm">
+            <p className="text-xs font-medium text-fg mb-1">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
-                <p key={entry.name} className="text-xs text-gray-600">
+                <p key={entry.name} className="text-xs text-fg-muted">
                     <span
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
@@ -77,7 +76,7 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
     return (
         <Card className={cn('', className)} variant="bordered">
             <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-gray-900">
+                <CardTitle className="text-lg font-semibold text-fg">
                     Калории за неделю
                 </CardTitle>
             </CardHeader>
@@ -88,12 +87,12 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
                         <XAxis
                             dataKey="label"
                             tick={AXIS_STYLE}
-                            stroke="#e5e7eb"
+                            stroke={chartColor.line}
                             tickLine={false}
                         />
                         <YAxis
                             tick={AXIS_STYLE}
-                            stroke="#e5e7eb"
+                            stroke={chartColor.line}
                             tickLine={false}
                             width={50}
                         />
@@ -101,36 +100,36 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
                         <Line
                             type="monotone"
                             dataKey="target"
-                            stroke="#6366f1"
+                            stroke={chartColor['fg-subtle']}
                             strokeDasharray="6 3"
                             strokeWidth={2}
-                            dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }}
+                            dot={{ r: 3, fill: chartColor['fg-subtle'], strokeWidth: 0 }}
                             connectNulls
                             name="target"
                         />
                         <Line
                             type="monotone"
                             dataKey="actual"
-                            stroke="#10b981"
+                            stroke={chartColor.primary}
                             strokeWidth={2}
                             dot={(props: Record<string, unknown>) => {
                                 const { cx, cy, payload } = props as { cx: number; cy: number; payload: { status: string } }
-                                const colors: Record<string, string> = { green: '#10b981', yellow: '#f59e0b', red: '#ef4444' }
+                                const colors: Record<string, string> = { green: chartColor.primary, yellow: chartColor.warning, red: chartColor.danger }
                                 const color = colors[payload.status] ?? colors.green
-                                return <Dot cx={cx} cy={cy} r={3} fill={color} stroke="white" strokeWidth={1.5} />
+                                return <Dot cx={cx} cy={cy} r={3} fill={color} stroke={chartColor.surface} strokeWidth={1.5} />
                             }}
                             connectNulls
                             name="actual"
                         />
                     </LineChart>
                 </ResponsiveContainer>
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                <div className="flex items-center gap-4 mt-2 text-xs text-fg-muted">
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 border-t-2 border-dashed border-indigo-500" />
+                        <span className="inline-block w-4 border-t-2 border-dashed border-primary" />
                         Цель
                     </span>
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 border-t-2 border-emerald-500" />
+                        <span className="inline-block w-4 border-t-2 border-success" />
                         Факт
                     </span>
                 </div>

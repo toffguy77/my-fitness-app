@@ -75,7 +75,7 @@ describe('ClientCard', () => {
     it('does not show unread badge when count is 0', () => {
         const { container } = render(<ClientCard client={makeClient({ unread_count: 0 })} />)
 
-        expect(container.querySelector('.bg-red-500')).not.toBeInTheDocument()
+        expect(container.querySelector('.bg-danger')).not.toBeInTheDocument()
     })
 
     it('shows KBZHU progress bars when plan and kbzhu exist', () => {

@@ -112,7 +112,7 @@ describe('CodeInput', () => {
 
         const inputs = screen.getAllByRole('textbox')
         inputs.forEach((input) => {
-            expect(input.className).toContain('border-red')
+            expect(input.className).toContain('border-danger')
         })
     })
 
@@ -121,7 +121,7 @@ describe('CodeInput', () => {
 
         const inputs = screen.getAllByRole('textbox')
         inputs.forEach((input) => {
-            expect(input.className).toContain('border-gray')
+            expect(input.className).toContain('border-line')
         })
     })
 

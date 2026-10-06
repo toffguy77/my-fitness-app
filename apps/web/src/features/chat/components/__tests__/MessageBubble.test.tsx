@@ -35,13 +35,13 @@ describe('MessageBubble', () => {
 
     it('own messages have blue background', () => {
         const { container } = render(<MessageBubble message={makeMessage()} isOwn={true} />)
-        const bubble = container.querySelector('.bg-blue-500')
+        const bubble = container.querySelector('.bg-primary')
         expect(bubble).toBeInTheDocument()
     })
 
     it('other messages have gray background', () => {
         const { container } = render(<MessageBubble message={makeMessage()} isOwn={false} />)
-        const bubble = container.querySelector('.bg-gray-100')
+        const bubble = container.querySelector('.bg-subtle')
         expect(bubble).toBeInTheDocument()
     })
 

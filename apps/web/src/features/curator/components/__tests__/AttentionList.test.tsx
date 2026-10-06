@@ -105,18 +105,18 @@ describe('AttentionList', () => {
     it('applies red badge for priority 1-2', () => {
         render(<AttentionList items={[makeItem({ priority: 2 })]} />)
         const badge = screen.getByText('Алерт КБЖУ')
-        expect(badge.className).toContain('bg-red-100')
+        expect(badge.className).toContain('bg-danger-soft')
     })
 
     it('applies yellow badge for priority 3', () => {
         render(<AttentionList items={[makeItem({ priority: 3 })]} />)
         const badge = screen.getByText('Алерт КБЖУ')
-        expect(badge.className).toContain('bg-yellow-100')
+        expect(badge.className).toContain('bg-warning-soft')
     })
 
     it('applies blue badge for priority 4-5', () => {
         render(<AttentionList items={[makeItem({ priority: 5 })]} />)
         const badge = screen.getByText('Алерт КБЖУ')
-        expect(badge.className).toContain('bg-blue-100')
+        expect(badge.className).toContain('bg-primary-soft')
     })
 })

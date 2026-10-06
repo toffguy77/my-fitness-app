@@ -62,8 +62,8 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                 className={`
                     flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg
                     ${isOffline
-                        ? 'bg-red-500 text-white'
-                        : 'bg-blue-500 text-white'
+                        ? 'bg-danger text-on-primary'
+                        : 'bg-primary text-on-primary'
                     }
                 `}
             >
@@ -96,7 +96,7 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                     <button
                         onClick={handleSync}
                         disabled={isSyncing}
-                        className="ml-2 p-1 rounded hover:bg-white/20 transition-colors disabled:opacity-50"
+                        className="ml-2 p-1 rounded hover:bg-surface/20 transition-colors disabled:opacity-50"
                         aria-label={t('dashboard.connection.syncNow')}
                     >
                         <RefreshCw
@@ -109,7 +109,7 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
 
             {/* Pending changes count (when offline) */}
             {isOffline && queueSize > 0 && (
-                <div className="mt-2 text-xs text-center text-gray-600 bg-white rounded px-2 py-1 shadow">
+                <div className="mt-2 text-xs text-center text-fg-muted bg-surface rounded px-2 py-1 shadow">
                     {t('dashboard.connection.queued', { count: queueSize, noun: plural(queueSize, { one: t('dashboard.sync.changeOne'), few: t('dashboard.sync.changeFew'), many: t('dashboard.sync.changeMany') }) })}
                 </div>
             )}

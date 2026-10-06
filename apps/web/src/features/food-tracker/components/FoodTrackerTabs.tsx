@@ -94,7 +94,7 @@ export function FoodTrackerTabs({
 
     return (
         <div className={`w-full ${className}`} role="tablist" aria-label={t('foodTracker.tabs2.aria')}>
-            <div className="flex bg-gray-100 rounded-lg p-0.5 sm:p-1">
+            <div className="flex bg-subtle rounded-lg p-0.5 sm:p-1">
                 {TABS.map((tab, index) => {
                     const isActive = activeTab === tab.id;
 
@@ -112,9 +112,9 @@ export function FoodTrackerTabs({
                             tabIndex={isActive ? 0 : -1}
                             onClick={() => handleTabClick(tab.id)}
                             onKeyDown={(e) => handleKeyDown(e, index)}
-                            className={`flex-1 py-2 px-3 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:py-2.5 sm:px-4 sm:text-sm touch-manipulation ${isActive
-                                ? 'bg-white text-gray-900 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            className={`flex-1 py-2 px-3 text-xs font-medium rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:py-2.5 sm:px-4 sm:text-sm touch-manipulation ${isActive
+                                ? 'bg-surface text-fg shadow-sm'
+                                : 'text-fg-muted hover:text-fg hover:bg-canvas'
                                 }`}
                         >
                             {tab.label}

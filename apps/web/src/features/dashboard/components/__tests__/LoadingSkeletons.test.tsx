@@ -183,7 +183,7 @@ describe('LoadingSkeletons', () => {
             const { container } = render(<TasksSectionSkeleton />)
 
             // Check for task item containers with border
-            const taskItems = container.querySelectorAll('.border.border-gray-200.rounded-lg')
+            const taskItems = container.querySelectorAll('.border.border-line.rounded-lg')
             expect(taskItems.length).toBe(3)
         })
 
@@ -300,19 +300,19 @@ describe('LoadingSkeletons', () => {
         it('applies base card styling to all skeletons', () => {
             const { rerender } = render(<ProgressSectionSkeleton />)
             let skeleton = screen.getByRole('status')
-            expect(skeleton).toHaveClass('bg-white', 'rounded-lg', 'shadow-sm')
+            expect(skeleton).toHaveClass('bg-surface', 'rounded-lg', 'shadow-sm')
 
             rerender(<PhotoUploadSectionSkeleton />)
             skeleton = screen.getByRole('status')
-            expect(skeleton).toHaveClass('bg-white', 'rounded-lg', 'shadow-sm')
+            expect(skeleton).toHaveClass('bg-surface', 'rounded-lg', 'shadow-sm')
 
             rerender(<WeeklyPlanSectionSkeleton />)
             skeleton = screen.getByRole('status')
-            expect(skeleton).toHaveClass('bg-white', 'rounded-lg', 'shadow-sm')
+            expect(skeleton).toHaveClass('bg-surface', 'rounded-lg', 'shadow-sm')
 
             rerender(<TasksSectionSkeleton />)
             skeleton = screen.getByRole('status')
-            expect(skeleton).toHaveClass('bg-white', 'rounded-lg', 'shadow-sm')
+            expect(skeleton).toHaveClass('bg-surface', 'rounded-lg', 'shadow-sm')
         })
 
         it('applies responsive padding', () => {
@@ -325,7 +325,7 @@ describe('LoadingSkeletons', () => {
         it('skeleton elements have gray background', () => {
             const { container } = render(<ProgressSectionSkeleton />)
 
-            const skeletonElements = container.querySelectorAll('.bg-gray-200')
+            const skeletonElements = container.querySelectorAll('.bg-subtle')
             expect(skeletonElements.length).toBeGreaterThan(0)
         })
     })

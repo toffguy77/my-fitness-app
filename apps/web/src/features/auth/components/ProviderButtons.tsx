@@ -23,11 +23,11 @@ export function ProviderButtons({ mode }: { mode: 'login' | 'register' }) {
     return (
         <div className="mt-6">
             <div className="flex items-center gap-3" aria-hidden="true">
-                <span className="h-px flex-1 bg-gray-200" />
-                <span className="text-xs text-gray-500">
+                <span className="h-px flex-1 bg-subtle" />
+                <span className="text-xs text-fg-muted">
                     {mode === 'register' ? t('auth.orRegisterWith') : t('auth.orSignInWith')}
                 </span>
-                <span className="h-px flex-1 bg-gray-200" />
+                <span className="h-px flex-1 bg-subtle" />
             </div>
 
             <div className="mt-4 space-y-2">
@@ -38,7 +38,7 @@ export function ProviderButtons({ mode }: { mode: 'login' | 'register' }) {
                         // the provider's own site.
                         href={providersApi.startUrl(provider)}
                         data-testid={`oauth-${provider}`}
-                        className="flex w-full items-center justify-center rounded-lg border border-gray-300 bg-white py-3 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-50"
+                        className="flex w-full items-center justify-center rounded-lg border border-line bg-surface py-3 text-sm font-medium text-fg transition-colors hover:bg-canvas"
                     >
                         {providerLabel(provider)}
                     </a>

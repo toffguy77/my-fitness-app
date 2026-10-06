@@ -8,65 +8,65 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8">
+        <div className="min-h-screen bg-canvas py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto bg-surface rounded-lg shadow-sm p-8">
+                <h1 className="text-3xl font-bold text-fg mb-8">
                     Договор публичной оферты
                 </h1>
 
                 <div className="prose prose-gray max-w-none">
                     <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-semibold text-fg mb-4">
                             1. Общие положения
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             Настоящий документ является официальным предложением (публичной офертой)
                             {SELLER.fullName} (далее — "Исполнитель") для физических лиц (далее — "Пользователь")
                             заключить договор на оказание услуг по предоставлению доступа к платформе
                             отслеживания питания и фитнеса BURCEV (далее — "Платформа").
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             Акцептом настоящей оферты является регистрация на Платформе и создание
                             учетной записи Пользователя.
                         </p>
                     </section>
 
                     <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-semibold text-fg mb-4">
                             2. Предмет договора
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             2.1. Исполнитель обязуется предоставить Пользователю доступ к функционалу
                             Платформы для ведения дневника питания, отслеживания калорий и макронутриентов.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             2.2. Работа с куратором является отдельной платной услугой и включает:
                             переписку с куратором, составление недельного плана калорийности и
                             макронутриентов, письменный разбор недели.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             2.3. Пользователь обязуется использовать Платформу в соответствии с условиями
                             настоящего договора и применимым законодательством.
                         </p>
                     </section>
 
                     <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-semibold text-fg mb-4">
                             3. Права и обязанности сторон
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             3.1. Исполнитель обязуется:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="list-disc pl-6 mb-4 text-fg">
                             <li>Обеспечивать работоспособность Платформы 24/7</li>
                             <li>Обеспечивать защиту персональных данных Пользователя</li>
                             <li>Предоставлять техническую поддержку</li>
                             <li>Уведомлять о существенных изменениях в работе Платформы</li>
                         </ul>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             3.2. Пользователь обязуется:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="list-disc pl-6 mb-4 text-fg">
                             <li>Предоставлять достоверную информацию при регистрации</li>
                             <li>Не передавать доступ к своей учетной записи третьим лицам</li>
                             <li>Не использовать Платформу в противоправных целях</li>
@@ -75,36 +75,36 @@ export default function TermsPage() {
                     </section>
 
                     <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-semibold text-fg mb-4">
                             4. Стоимость услуг, порядок расчетов и возврат оплаты
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             4.1. Функционал Платформы предоставляется бесплатно, за исключением услуги
                             работы с куратором.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             4.2. Стоимость услуги работы с куратором указана на{' '}
-                            <a href="/pricing" className="text-blue-600 underline">
+                            <a href="/pricing" className="text-primary underline">
                                 странице тарифов
                             </a>{' '}
                             Платформы.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             4.3. Стоимость, действовавшая на момент оплаты, сохраняется до окончания
                             оплаченного периода. Изменение тарифа применяется начиная со следующего
                             периода.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             4.4. Оплаченный период оканчивается в 23:59 последнего дня периода по
                             московскому времени (UTC+3).
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             4.5. Пользователь вправе отказаться от услуги работы с куратором в течение
                             7 (семи) календарных дней с момента оплаты и получить возврат оплаты в полном
                             размере. Возврат в этот срок не обусловлен тем, пользовался ли Пользователь
                             услугой.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             4.6. Пользователь вправе отказаться от услуги в любой момент после
                             истечения срока, указанного в пункте 4.5, и получить возврат оплаты
                             пропорционально количеству неиспользованных дней оплаченного периода.
@@ -112,77 +112,77 @@ export default function TermsPage() {
                     </section>
 
                     <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-semibold text-fg mb-4">
                             5. Ответственность сторон
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             5.1. Исполнитель не несет ответственности за:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="list-disc pl-6 mb-4 text-fg">
                             <li>Результаты использования Платформы Пользователем</li>
                             <li>Временные технические сбои и перерывы в работе</li>
                             <li>Действия третьих лиц, получивших доступ к учетной записи Пользователя</li>
                         </ul>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             5.2. Пользователь несет полную ответственность за сохранность своих учетных данных.
                         </p>
                     </section>
 
                     <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-semibold text-fg mb-4">
                             6. Срок действия и расторжение договора
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             6.1. Договор вступает в силу с момента регистрации Пользователя и действует
                             бессрочно.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             6.2. Пользователь вправе расторгнуть договор в любое время, удалив свою
                             учетную запись.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             6.3. Исполнитель вправе расторгнуть договор в одностороннем порядке при
                             нарушении Пользователем условий настоящего договора.
                         </p>
                     </section>
 
                     <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-semibold text-fg mb-4">
                             7. Заключительные положения
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             7.1. Исполнитель оставляет за собой право вносить изменения в настоящий
                             договор, уведомляя об этом Пользователей через Платформу.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-fg mb-4">
                             7.2. Все споры разрешаются путем переговоров, а при недостижении согласия —
                             в судебном порядке по месту нахождения Исполнителя.
                         </p>
                     </section>
 
                     <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                        <h2 className="text-2xl font-semibold text-fg mb-4">
                             8. Реквизиты Исполнителя
                         </h2>
-                        <p className="text-gray-700 mb-2">
+                        <p className="text-fg mb-2">
                             <strong>{SELLER.fullName}</strong>
                         </p>
-                        <p className="text-gray-700 mb-2">
+                        <p className="text-fg mb-2">
                             ИНН: {SELLER.inn}
                         </p>
-                        <p className="text-gray-700 mb-2">
+                        <p className="text-fg mb-2">
                             ОГРНИП: {SELLER.ogrnip}
                         </p>
-                        <p className="text-gray-700 mb-2">
+                        <p className="text-fg mb-2">
                             Адрес: {SELLER.address}
                         </p>
-                        <p className="text-gray-700 mb-2">
+                        <p className="text-fg mb-2">
                             Email: {SELLER.email}
                         </p>
                     </section>
 
-                    <div className="mt-12 pt-8 border-t border-gray-200">
-                        <p className="text-sm text-gray-500">
+                    <div className="mt-12 pt-8 border-t border-line">
+                        <p className="text-sm text-fg-muted">
                             Дата последнего обновления: {LEGAL_DOCUMENTS_UPDATED}
                         </p>
                     </div>

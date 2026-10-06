@@ -83,18 +83,18 @@ function FoodRow({
                 tabIndex={0}
                 onClick={handleClick}
                 onKeyDown={handleKeyDown}
-                className="flex items-center justify-between px-3 py-3 mx-1 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                className="flex items-center justify-between px-3 py-3 mx-1 hover:bg-canvas rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                 aria-label={t('foodTracker.search.itemAria', { name: food.name, serving: servingInfo, calories: Math.round(food.nutritionPer100.calories) })}
             >
                 <div className="flex-1 min-w-0">
-                    <p className="text-gray-900 font-medium truncate">{food.name}</p>
-                    <p className="text-sm text-gray-500">{servingInfo}</p>
+                    <p className="text-fg font-medium truncate">{food.name}</p>
+                    <p className="text-sm text-fg-muted">{servingInfo}</p>
                 </div>
                 <div className="ml-4 text-right">
-                    <p className="text-gray-900 font-medium">
+                    <p className="text-fg font-medium">
                         {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                     </p>
-                    <p className="text-xs text-gray-500">{t('foodTracker.search.per100')}</p>
+                    <p className="text-xs text-fg-muted">{t('foodTracker.search.per100')}</p>
                 </div>
             </div>
         </div>
@@ -174,18 +174,18 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
             tabIndex={0}
             onClick={handleClick}
             onKeyDown={handleKeyDown}
-            className="flex items-center justify-between px-3 py-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+            className="flex items-center justify-between px-3 py-3 hover:bg-canvas rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             aria-label={t('foodTracker.search.itemAria', { name: food.name, serving: servingInfo, calories: Math.round(food.nutritionPer100.calories) })}
         >
             <div className="flex-1 min-w-0">
-                <p className="text-gray-900 font-medium truncate">{food.name}</p>
-                <p className="text-sm text-gray-500">{servingInfo}</p>
+                <p className="text-fg font-medium truncate">{food.name}</p>
+                <p className="text-sm text-fg-muted">{servingInfo}</p>
             </div>
             <div className="ml-4 text-right">
-                <p className="text-gray-900 font-medium">
+                <p className="text-fg font-medium">
                     {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                 </p>
-                <p className="text-xs text-gray-500">{t('foodTracker.search.per100')}</p>
+                <p className="text-xs text-fg-muted">{t('foodTracker.search.per100')}</p>
             </div>
         </li>
     );
