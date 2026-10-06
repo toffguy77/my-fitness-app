@@ -12,4 +12,4 @@
 ## 3. Без JavaScript
 
 - [x] 3.1 E2E `seo-without-javascript.spec.ts`: `/content` без JavaScript содержит ссылку на опубликованную статью. Проверка: локальный прогон E2E.
-- [ ] 3.2 После выкатки: `curl -s https://new.burcev.team/content | grep -o 'href="/content/[^"]*"' | sort -u | wc -l` = числу публичных статей (≤ 20), затем то же на проде.
+- [x] 3.2 После выкатки: `curl -s https://new.burcev.team/content | grep -o 'href="/content/[^"]*"' | sort -u | wc -l` = числу публичных статей (≤ 20), затем то же на проде. *Проверено 2026-10-06 на dev и на проде (`v2026.10.06+31a71d72`).*

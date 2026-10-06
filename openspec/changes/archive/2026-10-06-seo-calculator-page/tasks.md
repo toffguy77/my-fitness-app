@@ -22,4 +22,4 @@
 ## 5. Без JavaScript
 
 - [x] 5.1 E2E `seo-without-javascript.spec.ts`: страница без JavaScript содержит `h1`, текст и вопросы. Проверка: локальный прогон E2E.
-- [ ] 5.2 После выкатки: `curl -s https://new.burcev.team/kalkulyator-kbzhu | grep -c 'FAQPage'` = 1, расчёт в браузере работает; затем прод.
+- [x] 5.2 После выкатки: `curl -s https://new.burcev.team/kalkulyator-kbzhu | grep -c 'FAQPage'` = 1, расчёт в браузере работает; затем прод. *Проверено 2026-10-06 на dev и на проде (`v2026.10.06+31a71d72`).*

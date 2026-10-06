@@ -21,4 +21,4 @@
 
 ## 5. Живая проверка
 
-- [ ] 5.1 После выкатки на dev: `curl -sI https://new.burcev.team/content/<uuid>` → `301`, `location: /content/<slug>`; `curl -s …/content/<slug>` → `200`. Затем прод для всех 10 статей.
+- [x] 5.1 После выкатки на dev: `curl -sI https://new.burcev.team/content/<uuid>` → `301`, `location: /content/<slug>`; `curl -s …/content/<slug>` → `200`. Затем прод для всех 10 статей. *Проверено 2026-10-06 на dev и на проде (`v2026.10.06+31a71d72`).*
