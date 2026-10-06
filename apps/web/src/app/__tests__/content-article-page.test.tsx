@@ -130,6 +130,7 @@ describe('the public article page', () => {
                 name: 'Сергей Бурцев',
                 jobTitle: 'Спортивный практикующий тренер, мастер спорта по тяжёлой атлетике',
                 url: 'https://burcev.team/avtor/sergey-burcev',
+                image: 'https://burcev.team/authors/sergey-burcev.jpg',
             })
             expect(ld.mainEntityOfPage).toBe(`https://burcev.team/content/${article.slug}`)
         })

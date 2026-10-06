@@ -22,6 +22,6 @@ export const EXPERT_AUTHOR: ExpertAuthor = {
     name: 'Сергей Бурцев',
     initials: 'СБ',
     jobTitle: 'Спортивный практикующий тренер, мастер спорта по тяжёлой атлетике',
-    photo: undefined,
+    photo: '/authors/sergey-burcev.jpg',
     path: '/avtor/sergey-burcev',
 }
