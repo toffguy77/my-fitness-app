@@ -42,6 +42,7 @@
 - `apps/web/src/shared/components/JsonLd.tsx`.
 - `apps/web/src/app/content/[id]/page.tsx`.
 - `apps/web/src/app/unsubscribe/page.tsx`.
+- `apps/web/src/app/content/loading.tsx` — удаляется (иначе 404 уходит кодом 200).
 - `apps/api/internal/modules/content/handler.go:507-532`.
 - Тесты: `apps/web/src/shared/components/__tests__/JsonLd.test.tsx`,
   `apps/web/src/app/__tests__/content-article-page.test.tsx`,

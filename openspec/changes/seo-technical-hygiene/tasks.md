@@ -11,7 +11,8 @@
 ## 3. Страницы
 
 - [ ] 3.1 Тесты: неизвестный slug → `notFound()`; ошибка API → не `notFound()`; `BreadcrumbList` статьи; `/unsubscribe` с `robots: noindex, nofollow`. Проверка: `npx jest content-article-page unsubscribe` падает до реализации.
-- [ ] 3.2 Реализовать. Проверка: тесты зелёные.
+- [ ] 3.2 Реализовать, удалить `app/content/loading.tsx`. Проверка: тесты зелёные.
+- [ ] 3.3 Код ответа на сборке: `npm run build && PORT=3099 npm start`, затем `curl -s -o /dev/null -w '%{http_code}' localhost:3099/content/takoy-stati-net` = `404`. Проверка: наблюдаемый код.
 
 ## 4. Живая проверка
 

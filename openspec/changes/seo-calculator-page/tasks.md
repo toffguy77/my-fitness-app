@@ -15,7 +15,11 @@
 - [ ] 3.3 Тест посадочной: ссылка на `/kalkulyator-kbzhu` в подвале; добавить ссылку. Проверка: `npx jest landing`.
 - [ ] 3.4 Проверки целостности: `node scripts/check-internal-links.mjs` и `node scripts/check-i18n.mjs` из корня. Проверка: обе проходят.
 
-## 4. Без JavaScript
+## 4. Руководство пользователя
 
-- [ ] 4.1 E2E `seo-without-javascript.spec.ts`: страница без JavaScript содержит `h1`, текст и вопросы. Проверка: локальный прогон E2E.
-- [ ] 4.2 После выкатки: `curl -s https://new.burcev.team/kalkulyator-kbzhu | grep -c 'FAQPage'` = 1, расчёт в браузере работает; затем прод.
+- [ ] 4.1 Добавить в `docs/user-guide/` раздел о странице `/kalkulyator-kbzhu` (что считает, как сохранить результат), проверить `05-контент-и-обучение.md` на упоминания адресов статей; выполнить `make sync-knowledge` в `apps/api`. Проверка: `go test ./internal/modules/support/ -run TestKnowledgeMatchesUserGuide` зелёный.
+
+## 5. Без JavaScript
+
+- [ ] 5.1 E2E `seo-without-javascript.spec.ts`: страница без JavaScript содержит `h1`, текст и вопросы. Проверка: локальный прогон E2E.
+- [ ] 5.2 После выкатки: `curl -s https://new.burcev.team/kalkulyator-kbzhu | grep -c 'FAQPage'` = 1, расчёт в браузере работает; затем прод.
