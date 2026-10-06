@@ -11,4 +11,4 @@
 
 ## 3. Живая проверка
 
-- [ ] 3.1 После выкатки на dev: число `<loc>…/content/` в `curl -s https://new.burcev.team/sitemap.xml` равно `total` из `GET /api/v1/public/content`. Затем то же на проде (ожидается 10).
+- [x] 3.1 После выкатки на dev: число `<loc>…/content/` в `curl -s https://new.burcev.team/sitemap.xml` равно `total` из `GET /api/v1/public/content`. Затем то же на проде (ожидается 10). *Проверено 2026-10-06 на dev и на проде (`v2026.10.06+31a71d72`).*

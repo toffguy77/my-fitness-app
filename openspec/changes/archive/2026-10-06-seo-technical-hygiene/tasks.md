@@ -16,4 +16,4 @@
 
 ## 4. Живая проверка
 
-- [ ] 4.1 После выкатки: `curl -s -o /dev/null -w '%{http_code}' https://new.burcev.team/content/takoy-stati-net` = `404`; `curl -s 'https://new.burcev.team/api/v1/public/content?limit=5000' | jq '.data.articles|length'` ≤ 100. Затем прод.
+- [x] 4.1 После выкатки: `curl -s -o /dev/null -w '%{http_code}' https://new.burcev.team/content/takoy-stati-net` = `404`; `curl -s 'https://new.burcev.team/api/v1/public/content?limit=5000' | jq '.data.articles|length'` ≤ 100. Затем прод. *Проверено 2026-10-06 на dev и на проде (`v2026.10.06+31a71d72`).*

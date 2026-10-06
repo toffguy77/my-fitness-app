@@ -101,6 +101,77 @@ describe('KbzhuCalculator', () => {
         expect(mockPush).toHaveBeenCalledWith('/onboarding')
     })
 
+    // The reported defect: the answers reached the wizard only with a
+    // successful calculation, so /onboarding showed what an earlier visit had
+    // left in the browser instead of what was just typed here.
+    it('hands what was typed to the wizard without a calculation', () => {
+        useGuestOnboardingStore.getState().load({
+            goal: 'gain',
+            sex: 'male',
+            birth_date: '1980-01-01',
+            height_cm: 190,
+            weight_kg: 100,
+            activity_level: 'active',
+        })
+        render(<KbzhuCalculator />)
+        fillEverything()
+
+        expect(useGuestOnboardingStore.getState()).toMatchObject({
+            goal: 'loss',
+            sex: 'female',
+            birthDate: '1990-05-01',
+            heightCm: '168',
+            weightKg: '65',
+            activityLevel: 'moderate',
+            result: null,
+        })
+        expect(mockCalculate).not.toHaveBeenCalled()
+    })
+
+    it('shows the answers the wizard already has', () => {
+        useGuestOnboardingStore.getState().load({ goal: 'gain', height_cm: 190, weight_kg: 100 })
+        render(<KbzhuCalculator />)
+
+        expect(screen.getByLabelText('Цель')).toHaveValue('gain')
+        expect(screen.getByLabelText('Рост, см')).toHaveValue(190)
+        expect(screen.getByLabelText('Вес, кг')).toHaveValue(100)
+    })
+
+    // The second leak: an edit after the calculation stayed on this page, and
+    // "save" carried the old weight and the old numbers into the wizard.
+    it('drops a result the answers no longer match', async () => {
+        render(<KbzhuCalculator />)
+        fillEverything()
+        fireEvent.click(screen.getByRole('button', { name: 'Рассчитать' }))
+        await waitFor(() => expect(screen.getByText('1850')).toBeInTheDocument())
+
+        fireEvent.change(screen.getByLabelText('Вес, кг'), { target: { value: '90' } })
+
+        expect(screen.queryByText('1850')).not.toBeInTheDocument()
+        expect(
+            screen.queryByRole('button', { name: 'Сохранить результат и получить план' }),
+        ).not.toBeInTheDocument()
+        const state = useGuestOnboardingStore.getState()
+        expect(state.weightKg).toBe('90')
+        expect(state.result).toBeNull()
+        expect(state.step).toBe(GUEST_STEPS.activity)
+    })
+
+    it('discards a calculation an edit overtook', async () => {
+        let answer: (value: typeof result) => void = () => {}
+        mockCalculate.mockReturnValue(new Promise((resolve) => (answer = resolve)))
+        render(<KbzhuCalculator />)
+        fillEverything()
+        fireEvent.click(screen.getByRole('button', { name: 'Рассчитать' }))
+
+        fireEvent.change(screen.getByLabelText('Вес, кг'), { target: { value: '90' } })
+        answer(result)
+
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Рассчитать' })).toBeEnabled())
+        expect(screen.queryByText('1850')).not.toBeInTheDocument()
+        expect(useGuestOnboardingStore.getState().result).toBeNull()
+    })
+
     it('reports a failed calculation', async () => {
         mockCalculate.mockRejectedValue(new Error('boom'))
         render(<KbzhuCalculator />)

@@ -12,4 +12,4 @@
 ## 3. Без JavaScript
 
 - [x] 3.1 E2E `seo-without-javascript.spec.ts`: опубликовать статью через API куратора, открыть её с `javaScriptEnabled: false`, проверить `h1` и анонс. Тело в E2E не проверяется: в прогоне нет S3 (`e2e.yml` не передаёт хранилище), а тело статьи живёт там; тело проверяет задача 3.2. Проверка: `npm run test:e2e -- seo-without-javascript` локально по `reference_run_e2e_locally`.
-- [ ] 3.2 После выкатки на dev: `curl -s https://new.burcev.team/content/<slug> | grep -c '<h1'` ≥ 1 и в ответе есть первая фраза статьи. Затем то же на проде.
+- [x] 3.2 После выкатки на dev: `curl -s https://new.burcev.team/content/<slug> | grep -c '<h1'` ≥ 1 и в ответе есть первая фраза статьи. Затем то же на проде. *Проверено 2026-10-06 на dev и на проде (`v2026.10.06+31a71d72`).*
