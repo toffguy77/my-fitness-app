@@ -234,3 +234,47 @@ CSS-переменных нет (картинка OG, `global-error`) — `value
   (каталог [designsystems.one](https://www.designsystems.one/design-systems)):
   палитра → роли → компоненты, формат W3C Design Tokens, одна сборка на все
   платформы.
+
+## 11. Перевод экрана на систему — рецепт
+
+Кодмод меняет классы по оттенку; экран «на системе» — когда решения приняты по
+смыслу. Порядок для любого экрана:
+
+1. **Каркас страницы.** Колонка `mx-auto w-full max-w-content px-screen-x py-5`
+   (рабочие экраны куратора и админа на десктопе — `max-w-5xl`/`max-w-7xl`).
+   Заголовок экрана — `h1.type-title-1`. Метка группы — `type-overline text-fg-subtle`.
+2. **Поверхности.** Карточка — `Card` (или `rounded-card border border-line
+   bg-surface p-5`). Тени (`shadow-sm/md/lg`) у карточек убрать; `shadow-overlay`
+   — только у того, что над экраном. Заголовок карточки — `CardTitle`
+   (`type-title-3`) или `type-title-2` для главной карточки экрана.
+3. **Действия.** Кнопки — `Button`/`IconButton`, не самодельные `<button
+   className="bg-primary …">`. Одна `primary` на экран; рядом — `secondary`;
+   в строках и заголовках — `ghost`; удаление — `danger` после подтверждения.
+   Ссылка-действие — `text-primary font-semibold`.
+4. **Выбор.** Выбранный чип, день, фильтр — инверсия чернилами `bg-fg
+   text-fg-inverse` (не терракота). Вкладки — подчёркиванием
+   (`border-b-2 border-line-strong` у активной). Переключатель из 2–3 вариантов —
+   сегменты в `rounded-full border border-line p-1`.
+5. **Смысл цвета.** После кодмода синие информационные блоки стали
+   `primary-soft`/`text-primary`. Если блок сообщает, а не зовёт к действию, —
+   `bg-info-soft text-info-fg`. Статусы — `success|warning|danger` с `-soft`
+   подложкой и `-fg` текстом. Бренд — только для главного действия и активного.
+6. **Поля.** `Input` (48 px, текст 16 px) или те же классы: `h-12 rounded-field
+   border border-line bg-surface px-4 text-base`. Подпись над полем —
+   `text-sm font-medium text-fg-muted`. Ошибка — `text-danger-fg` под полем.
+7. **Списки.** Строка ≥ 56 px, разделитель `divide-line`, хвост — `ChevronRight`
+   `text-fg-subtle`. Группа строк — одной карточкой `rounded-card border
+   border-line bg-surface`, без тени.
+8. **Модальные окна.** `bg-scrim` под ними; окно — `rounded-t-sheet` снизу на
+   телефоне и `sm:rounded-sheet` по центру, `bg-surface shadow-overlay`,
+   заголовок `type-title-2`, кнопки `size="lg"`, отказ первым.
+9. **Иконки и эмодзи.** Только `lucide-react`, `strokeWidth` 1.8–2, у
+   иконок-кнопок `aria-label`. Эмодзи в интерфейсе — заменить иконкой
+   (в пользовательском контенте статей и сообщений — оставить).
+10. **Цифры.** `tabular-nums` везде, где числа стоят друг под другом или
+    меняются. Главное число карточки — `type-num-l`/`type-num-xl`.
+11. **Загрузка.** Скелетон — `animate-pulse rounded-tile bg-subtle`; спиннер —
+    `border-2 border-line border-t-primary rounded-full animate-spin`.
+12. **Тесты.** Проверять смысл (роль, имя, текст, `aria-*`, состояние), а не
+    раскладку классов. Класс в тесте уместен, только когда он и есть смысл:
+    роль цвета нутриента, инверсия выбранного, цель нажатия `h-11`.
