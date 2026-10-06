@@ -292,23 +292,6 @@ func TestLoginWithRememberMe(t *testing.T) {
 	})
 }
 
-func TestRefresh(t *testing.T) {
-	t.Run("missing refresh_token returns 400", func(t *testing.T) {
-		handler, _, cleanup := setupTestHandler(t)
-		defer cleanup()
-
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(map[string]string{})
-		c.Request = httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBuffer(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-
-		handler.Refresh(c)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-}
-
 func TestLogout(t *testing.T) {
 	t.Run("logout with refresh token revokes it", func(t *testing.T) {
 		handler, mock, cleanup := setupTestHandler(t)
@@ -471,8 +454,11 @@ func TestRefresh_AcceptsTheTokenFromTheCookie(t *testing.T) {
 	}
 }
 
-// Without a token in either place there is nothing to refresh.
-func TestRefresh_RejectsARequestCarryingNoToken(t *testing.T) {
+// Without a token in either place there is nothing to refresh — and that is an
+// answer, not an error. An anonymous visitor asks here on every page load (the
+// page cannot see the HttpOnly cookie), and a 400 put an error in the console
+// of every visitor to every public page.
+func TestRefresh_AnswersNoSessionWhenCarryingNoToken(t *testing.T) {
 	handler, _, cleanup := setupTestHandler(t)
 	defer cleanup()
 
@@ -484,5 +470,7 @@ func TestRefresh_RejectsARequestCarryingNoToken(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Empty(t, w.Body.String())
+	assert.Empty(t, w.Header().Values("Set-Cookie"), "nothing to clear when nothing was sent")
 }
