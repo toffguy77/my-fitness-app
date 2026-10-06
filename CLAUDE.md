@@ -211,6 +211,15 @@ makes its required check unsatisfiable: every pull request then reports
 mergeable and blocked at the same time, with nothing failing and nothing
 saying why. If a job has to be renamed, change the ruleset in the same breath.
 
+## Release Notes in Telegram
+
+A release PR into `main` needs a `## Что нового` section in its body, written
+for the whole team — no migration numbers, package versions or PR references.
+After the merge, `.github/workflows/release-notify.yml` waits until prod's
+`/ready` reports the merged commit, then posts that section to the team group
+(topic «Analytics»). Without the section the workflow fails instead of posting
+the technical body. Preview: `node scripts/release-notify.mjs <PR> --dry-run`.
+
 ## Служебные учётки
 
 Учётки прогона (`*@burcev.test` и `e2e-*@burcev.team`) живут на проде

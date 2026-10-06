@@ -1,0 +1,60 @@
+name: Release Notes
+
+# Tells the team in Telegram («Burcev Team», topic «Analytics») what a release
+# brought, once it is live on prod. The text is the release PR's
+# `## Что нового` section — written for everyone in the group, not the
+# technical body. Details: scripts/release-notify.mjs.
+#
+# Not a required check, and deliberately apart from ci.yml: its job names are
+# a contract with the ruleset (see CLAUDE.md, «Required Checks»).
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  # Re-send by hand: after a timeout, or for a release merged before this existed.
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Release PR number
+        required: true
+      wait:
+        description: Wait until prod runs the release
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  notify:
+    name: Release notes to Telegram
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    # The rollout is the auto-deploy, then APP_VERSION raised and a second
+    # deploy; each build takes up to forty minutes.
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Wait for prod and post
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          RELEASE_NOTIFY_CHAT_ID: '-1003276858677'
+          RELEASE_NOTIFY_THREAD_ID: '48'
+          WAIT_TIMEOUT_MIN: '90'
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          WAIT: ${{ github.event_name == 'pull_request' || inputs.wait }}
+        run: |
+          if [ "$WAIT" = "true" ]; then
+            node scripts/release-notify.mjs "$PR" --wait
+          else
+            node scripts/release-notify.mjs "$PR"
+          fi
