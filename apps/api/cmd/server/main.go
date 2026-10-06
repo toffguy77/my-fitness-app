@@ -448,6 +448,15 @@ func main() {
 		log.Warn("Support bot is disabled", "reason", "TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET or OPENROUTER_API_KEY is absent")
 	}
 
+	// Заявка на куратора зовёт людей: суперадминов — уведомлением, кураторов —
+	// в общей ленте их группы. Без этого она лежала в очереди, пока туда не
+	// заглянут, и единственная за две недели пролежала неделю.
+	var curatorsGroup leads.GroupAnnouncer
+	if bridge != nil && bridge.Enabled() {
+		curatorsGroup = bridge
+	}
+	leadsService.WithOperatorAlerts(notificationsSvc, curatorsGroup, appOrigin(cfg.AppDomain))
+
 	// Periodic work. Every job takes a PostgreSQL advisory lock, so running
 	// more than one instance does not run the work twice, and every execution
 	// is recorded — which is what makes "are snapshots being collected?"

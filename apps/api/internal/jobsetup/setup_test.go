@@ -40,6 +40,7 @@ func TestRegister_DeclaresEveryJobValidly(t *testing.T) {
 		"cleanup.verification-codes",
 		"leads.send-reminders",
 		"leads.purge-expired",
+		"leads.raise-unhandled-curator-requests",
 		"analytics.purge-events",
 		"support.purge-conversations",
 		"support.reconcile-group",

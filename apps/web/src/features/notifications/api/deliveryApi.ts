@@ -61,6 +61,7 @@ export const TYPE_LABELS: Record<string, string> = {
     system_update: t('notifications.types.system_update'),
     general: t('notifications.types.general'),
     support_escalated: t('notifications.types.support_escalated'),
+    curator_requested: t('notifications.types.curator_requested'),
 }
 
 /** The public half of the VAPID pair; a browser cannot subscribe without it. */

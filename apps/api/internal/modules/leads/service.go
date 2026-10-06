@@ -29,6 +29,11 @@ type Service struct {
 	db     *sql.DB
 	log    *logger.Logger
 	secret string
+
+	// Оповещение о заявках на куратора (alerts.go). Оба пути могут быть nil.
+	notifier OperatorNotifier
+	group    GroupAnnouncer
+	appURL   string
 }
 
 // NewService creates the service. secret signs resume links.
@@ -80,9 +85,11 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 			email, name, sex, birth_date, height_cm, weight_kg, activity_level, goal,
 			calories, protein, fat, carbs, water_glasses,
 			last_step, source, data_consent, contact_consent, capture_source,
-			utm_source, utm_medium, utm_campaign, utm_content, utm_term, yandex_click_id
+			utm_source, utm_medium, utm_campaign, utm_content, utm_term, yandex_click_id,
+			curator_requested_at
 		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-		          $19,$20,$21,$22,$23,$24)
+		          $19,$20,$21,$22,$23,$24,
+		          CASE WHEN $25::boolean THEN NOW() END)
 		RETURNING id, created_at, updated_at`,
 		email, nullIfEmpty(in.Name),
 		nullIfEmpty(in.Parameters.Sex), nullIfEmpty(in.Parameters.BirthDate),
@@ -97,6 +104,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 		nullIfEmpty(in.Attribution.UTMSource), nullIfEmpty(in.Attribution.UTMMedium),
 		nullIfEmpty(in.Attribution.UTMCampaign), nullIfEmpty(in.Attribution.UTMContent),
 		nullIfEmpty(in.Attribution.UTMTerm), nullIfEmpty(in.Attribution.YandexClickID),
+		isCuratorRequestStep(step),
 	).Scan(&lead.ID, &lead.CreatedAt, &lead.UpdatedAt)
 	if err != nil {
 		return nil, "", fmt.Errorf("create lead: %w", err)
@@ -116,6 +124,13 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 	}
 
 	s.log.Info("Saved onboarding lead", "lead_id", lead.ID, "step", step)
+
+	// Гость со страницы тарифов просит куратора так же, как вошедший человек.
+	if isCuratorRequestStep(step) {
+		s.announce(ctx, curatorRequest{
+			LeadID: lead.ID, Email: email, Name: in.Name, CaptureSource: captureSource,
+		}, 0)
+	}
 	return lead, s.ResumeToken(lead.ID), nil
 }
 
@@ -478,6 +493,10 @@ func (s *Service) DueReminders(ctx context.Context) ([]Lead, error) {
 		FROM leads
 		WHERE reminder_sent_at IS NULL
 		  AND contact_consent = true
+		  -- Напоминание зовёт закончить анкету и сулит сохранённый расчёт.
+		  -- Просившему куратора оно ни о чём: анкеты он не заполнял, а ждёт
+		  -- он ответа человека, которого и зовёт оповещение (alerts.go).
+		  AND curator_requested_at IS NULL
 		  AND created_at <= NOW() - $1::interval
 		  AND created_at > NOW() - $2::interval`,
 		intervalOf(ReminderDelay), intervalOf(Retention))
