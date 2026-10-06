@@ -430,6 +430,24 @@ for (const name of [...readByServer].sort()) {
     )
 }
 
+// Серверный рендер ходит в API своего стенда, а не в «api».
+//
+// Имя службы compose вешает на каждую сеть, в которую она входит, а в
+// dokploy-network входят оба стенда. Без INTERNAL_API_URL web брал запасное
+// http://api:4000 и попадал то в API прода, то в API dev: прод показывал на
+// странице автора одну статью из базы dev вместо десяти и отвечал 404 на свои
+// же статьи. Однозначен только псевдоним с именем стенда.
+const webService = compose.match(/^ {2}web:\n([\s\S]*?)(?=^ {2}[a-z][\w-]*:\n)/m)?.[1] ?? ''
+const internalApiUrl = webService.match(/^\s*-\s*INTERNAL_API_URL=(\S+)/m)?.[1]
+if (!internalApiUrl || !internalApiUrl.includes('${APP_ENV')) {
+    problems.push(
+        `Служба web в docker-compose.yml не задаёт INTERNAL_API_URL с именем стенда` +
+            (internalApiUrl ? ` (сейчас ${internalApiUrl}).\n` : '.\n') +
+            `  Запасное http://api:4000 в общей dokploy-network указывает на API обоих стендов,\n` +
+            `  и прод через раз читает базу dev. Нужен псевдоним burcev-\${APP_ENV:-dev}-api.`,
+    )
+}
+
 // ---------------------------------------------------------------------------
 // Свойства события сверяются с его объявлением
 // ---------------------------------------------------------------------------
