@@ -32,12 +32,12 @@ export interface GuestOnboardingState {
     setStep: (step: number) => void
     next: () => void
     back: () => void
-    setGoal: (goal: FitnessGoal) => void
-    setSex: (sex: Sex) => void
+    setGoal: (goal: FitnessGoal | '') => void
+    setSex: (sex: Sex | '') => void
     setBirthDate: (value: string) => void
     setHeightCm: (value: string) => void
     setWeightKg: (value: string) => void
-    setActivityLevel: (value: ActivityLevel) => void
+    setActivityLevel: (value: ActivityLevel | '') => void
     setResult: (result: GuestResult | null) => void
     setEmail: (value: string) => void
     load: (values: Partial<GuestParameters>, result?: GuestResult | null) => void
@@ -68,6 +68,30 @@ const initialState = {
     email: '',
 }
 
+type Answers = Pick<
+    GuestOnboardingState,
+    'goal' | 'sex' | 'birthDate' | 'heightCm' | 'weightKg' | 'activityLevel'
+>
+
+/**
+ * A changed answer makes the result somebody else's.
+ *
+ * The result is dropped, and a wizard standing on the result or contact step
+ * goes back to the last question: on the result step without a result it would
+ * show an empty screen with no button, and the contact step would save the old
+ * numbers under the new parameters. The calculator edits answers while the
+ * wizard sits on its result step, so this is not a theoretical order.
+ */
+function answer(state: GuestOnboardingState, change: Partial<Answers>): Partial<GuestOnboardingState> {
+    const changed = (Object.keys(change) as (keyof Answers)[]).some((key) => state[key] !== change[key])
+    if (!changed) return {}
+    return {
+        ...change,
+        result: null,
+        step: Math.min(state.step, GUEST_STEPS.activity),
+    }
+}
+
 export const useGuestOnboardingStore = create<GuestOnboardingState>()(
     persist(
         (set) => ({
@@ -76,12 +100,12 @@ export const useGuestOnboardingStore = create<GuestOnboardingState>()(
             setStep: (step) => set({ step }),
             next: () => set((state) => ({ step: Math.min(state.step + 1, GUEST_STEPS.contact) })),
             back: () => set((state) => ({ step: Math.max(state.step - 1, GUEST_STEPS.goal) })),
-            setGoal: (goal) => set({ goal }),
-            setSex: (sex) => set({ sex }),
-            setBirthDate: (birthDate) => set({ birthDate }),
-            setHeightCm: (heightCm) => set({ heightCm }),
-            setWeightKg: (weightKg) => set({ weightKg }),
-            setActivityLevel: (activityLevel) => set({ activityLevel }),
+            setGoal: (goal) => set((state) => answer(state, { goal })),
+            setSex: (sex) => set((state) => answer(state, { sex })),
+            setBirthDate: (birthDate) => set((state) => answer(state, { birthDate })),
+            setHeightCm: (heightCm) => set((state) => answer(state, { heightCm })),
+            setWeightKg: (weightKg) => set((state) => answer(state, { weightKg })),
+            setActivityLevel: (activityLevel) => set((state) => answer(state, { activityLevel })),
             setResult: (result) => set({ result }),
             setEmail: (email) => set({ email }),
 
