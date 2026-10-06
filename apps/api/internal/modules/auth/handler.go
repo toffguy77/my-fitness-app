@@ -433,8 +433,12 @@ func (h *Handler) Refresh(c *gin.Context) {
 	} else {
 		token = req.RefreshToken
 	}
+	// Nothing to exchange is an answer, not an error: every page load of an
+	// anonymous visitor asks here, because the page cannot see the HttpOnly
+	// cookie and so cannot tell whether there is a session. A 400 put an
+	// error in the console of every visitor to every public page.
 	if token == "" {
-		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		c.Status(http.StatusNoContent)
 		return
 	}
 
