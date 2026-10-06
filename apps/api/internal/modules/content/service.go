@@ -910,7 +910,7 @@ func (s *Service) GetFeed(ctx context.Context, clientID int64, category string, 
 	selectQuery := fmt.Sprintf(`
 		SELECT a.id, CASE WHEN a.audience_scope = 'all' THEN a.slug ELSE '' END,
 		       COALESCE(u.name, '') AS author_name, a.title, a.excerpt,
-		       COALESCE(a.cover_image_url, ''), a.category, a.published_at
+		       COALESCE(a.cover_image_url, ''), a.category, a.published_at, a.updated_at
 		FROM articles a
 		JOIN users u ON u.id = a.author_id
 		WHERE %s%s
@@ -931,10 +931,11 @@ func (s *Service) GetFeed(ctx context.Context, clientID int64, category string, 
 	for rows.Next() {
 		var card ArticleCard
 		var publishedAt sql.NullTime
+		var updatedAt time.Time
 
 		if err := rows.Scan(
 			&card.ID, &card.Slug, &card.AuthorName, &card.Title, &card.Excerpt,
-			&card.CoverImageURL, &card.Category, &publishedAt,
+			&card.CoverImageURL, &card.Category, &publishedAt, &updatedAt,
 		); err != nil {
 			s.log.Error("Failed to scan feed article row", "error", err)
 			return nil, fmt.Errorf("failed to scan feed article row: %w", err)
@@ -943,6 +944,7 @@ func (s *Service) GetFeed(ctx context.Context, clientID int64, category string, 
 		if publishedAt.Valid {
 			card.PublishedAt = &publishedAt.Time
 		}
+		card.UpdatedAt = &updatedAt
 
 		articles = append(articles, card)
 	}
@@ -1059,7 +1061,7 @@ func (s *Service) GetPublicFeed(ctx context.Context, category string, limit int,
 	selectQuery := fmt.Sprintf(`
 		SELECT a.id, CASE WHEN a.audience_scope = 'all' THEN a.slug ELSE '' END,
 		       COALESCE(u.name, '') AS author_name, a.title, a.excerpt,
-		       COALESCE(a.cover_image_url, ''), a.category, a.published_at
+		       COALESCE(a.cover_image_url, ''), a.category, a.published_at, a.updated_at
 		FROM articles a
 		JOIN users u ON u.id = a.author_id
 		WHERE %s%s
@@ -1080,10 +1082,11 @@ func (s *Service) GetPublicFeed(ctx context.Context, category string, limit int,
 	for rows.Next() {
 		var card ArticleCard
 		var publishedAt sql.NullTime
+		var updatedAt time.Time
 
 		if err := rows.Scan(
 			&card.ID, &card.Slug, &card.AuthorName, &card.Title, &card.Excerpt,
-			&card.CoverImageURL, &card.Category, &publishedAt,
+			&card.CoverImageURL, &card.Category, &publishedAt, &updatedAt,
 		); err != nil {
 			s.log.Error("Failed to scan public feed article row", "error", err)
 			return nil, fmt.Errorf("failed to scan public feed article row: %w", err)
@@ -1092,6 +1095,7 @@ func (s *Service) GetPublicFeed(ctx context.Context, category string, limit int,
 		if publishedAt.Valid {
 			card.PublishedAt = &publishedAt.Time
 		}
+		card.UpdatedAt = &updatedAt
 
 		articles = append(articles, card)
 	}

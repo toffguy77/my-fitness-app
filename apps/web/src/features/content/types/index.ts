@@ -34,6 +34,8 @@ export interface ArticleCard {
   cover_image_url?: string
   category: ContentCategory
   published_at?: string
+  /** When the article last changed — the sitemap's lastmod. */
+  updated_at?: string
 }
 
 export interface CreateArticleRequest {

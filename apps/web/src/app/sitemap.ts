@@ -1,82 +1,90 @@
 import type { MetadataRoute } from 'next'
+import { articleUrl, SITE_URL } from '@/features/content/utils/articlePath'
+import { EXPERT_AUTHOR } from '@/shared/constants/author'
 
-const SITE_URL = 'https://burcev.team'
 const API_URL = process.env.INTERNAL_API_URL || 'http://api:4000'
 
-/** How long the build waits for the article list before shipping without it. */
+/**
+ * Built per request, not at `next build`.
+ *
+ * As a static route the sitemap was rendered once inside the image build,
+ * where the API is not reachable: every deploy shipped a sitemap without a
+ * single article, and it stayed that way until the next deploy.
+ */
+export const dynamic = 'force-dynamic'
+
+/** One page of the public feed; the API trims anything larger to this. */
+const PAGE_SIZE = 100
+/** A guard against an API that never says it is done: 5 000 articles. */
+const MAX_PAGES = 50
+/** How long one page of the feed may take before the sitemap goes without. */
 const ARTICLE_FETCH_TIMEOUT_MS = 5000
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const staticPages: MetadataRoute.Sitemap = [
-        {
-            url: SITE_URL,
-            lastModified: new Date(),
-            changeFrequency: 'weekly',
-            priority: 1.0,
-        },
-        {
-            // Единственная страница, где сказано, что продаётся, — значит
-            // приоритет сразу за посадочной.
-            url: `${SITE_URL}/pricing`,
-            lastModified: new Date(),
-            changeFrequency: 'monthly',
-            priority: 0.9,
-        },
-        {
-            url: `${SITE_URL}/auth`,
-            lastModified: new Date(),
-            changeFrequency: 'monthly',
-            priority: 0.5,
-        },
-        {
-            url: `${SITE_URL}/content`,
-            lastModified: new Date(),
-            changeFrequency: 'daily',
-            priority: 0.8,
-        },
-        {
-            url: `${SITE_URL}/legal/terms`,
-            lastModified: new Date(),
-            changeFrequency: 'yearly',
-            priority: 0.3,
-        },
-        {
-            url: `${SITE_URL}/legal/privacy`,
-            lastModified: new Date(),
-            changeFrequency: 'yearly',
-            priority: 0.3,
-        },
-    ]
+interface FeedCard {
+    id: string
+    slug?: string
+    published_at?: string
+    updated_at?: string
+}
 
-    let articlePages: MetadataRoute.Sitemap = []
+/*
+ * No lastModified on these: "now" on every request tells a crawler that
+ * everything changes all the time, and it stops trusting the field.
+ */
+const STATIC_PAGES: MetadataRoute.Sitemap = [
+    { url: SITE_URL, changeFrequency: 'weekly', priority: 1.0 },
+    // Единственная страница, где сказано, что продаётся, — значит
+    // приоритет сразу за посадочной.
+    { url: `${SITE_URL}/pricing`, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${SITE_URL}/kalkulyator-kbzhu`, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${SITE_URL}/content`, changeFrequency: 'daily', priority: 0.8 },
+    { url: `${SITE_URL}${EXPERT_AUTHOR.path}`, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${SITE_URL}/legal/terms`, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${SITE_URL}/legal/privacy`, changeFrequency: 'yearly', priority: 0.3 },
+]
+
+async function publicArticles(): Promise<FeedCard[]> {
+    const articles: FeedCard[] = []
+    for (let page = 0; page < MAX_PAGES; page++) {
+        const res = await fetch(
+            `${API_URL}/api/v1/public/content?limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
+            {
+                // A crawler does not need to cost the API a query every time.
+                next: { revalidate: 300 },
+                signal: AbortSignal.timeout(ARTICLE_FETCH_TIMEOUT_MS),
+            },
+        )
+        if (!res.ok) throw new Error(`public feed answered ${res.status}`)
+
+        const data = await res.json()
+        const batch: FeedCard[] = data?.data?.articles ?? []
+        const total: number = data?.data?.total ?? 0
+        articles.push(...batch)
+
+        if (batch.length < PAGE_SIZE || articles.length >= total) break
+    }
+    return articles
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+    let articles: FeedCard[] = []
     try {
-        // Bounded on purpose. This runs at build time, where the API may not be
-        // reachable under the name this environment uses: without a deadline
-        // the request hangs until Next's own 60-second page timeout, three
-        // times over, and then fails the whole build over a list of articles
-        // the sitemap can do without.
-        const res = await fetch(`${API_URL}/api/v1/public/content?limit=1000`, {
-            next: { revalidate: 3600 },
-            signal: AbortSignal.timeout(ARTICLE_FETCH_TIMEOUT_MS),
-        })
-        if (res.ok) {
-            const data = await res.json()
-            const articles = data?.data?.articles || []
-            articlePages = articles.map(
-                (article: { id: string; published_at?: string }) => ({
-                    url: `${SITE_URL}/content/${article.id}`,
-                    lastModified: article.published_at
-                        ? new Date(article.published_at)
-                        : new Date(),
-                    changeFrequency: 'monthly' as const,
-                    priority: 0.6,
-                }),
-            )
-        }
-    } catch {
-        // Unreachable, slow or refusing: a sitemap of the static pages is a
-        // correct sitemap, and a failed build is not.
+        articles = await publicArticles()
+    } catch (err) {
+        // The static pages are still a correct sitemap — but a sitemap that
+        // silently lost its articles is how this went unnoticed before.
+        console.error('sitemap: public articles unavailable', err)
     }
 
-    return [...staticPages, ...articlePages]
+    const articlePages: MetadataRoute.Sitemap = articles.map((article) => {
+        const changed = article.updated_at ?? article.published_at
+        return {
+            url: articleUrl(article),
+            ...(changed && { lastModified: new Date(changed) }),
+            changeFrequency: 'monthly' as const,
+            priority: 0.6,
+        }
+    })
+
+    return [...STATIC_PAGES, ...articlePages]
 }

@@ -66,6 +66,8 @@ type ArticleCard struct {
 	CoverImageURL string     `json:"cover_image_url,omitempty"`
 	Category      string     `json:"category"`
 	PublishedAt   *time.Time `json:"published_at,omitempty"`
+	// UpdatedAt is when the article last changed: the sitemap's lastmod.
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
 type ArticlesListResponse struct {

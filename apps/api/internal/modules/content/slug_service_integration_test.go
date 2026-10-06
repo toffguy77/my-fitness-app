@@ -170,3 +170,22 @@ func TestSlug_PersonalFeedOmitsSlugOfRestrictedArticles(t *testing.T) {
 	assert.Equal(t, "dlya-vsekh", slugs[public.ID])
 	assert.Empty(t, slugs[mine.ID])
 }
+
+// The sitemap's lastmod of an article is the date it last changed. The public
+// card has to carry it, or the sitemap can only repeat the publication date.
+func TestPublicFeed_CarriesUpdatedAt(t *testing.T) {
+	s, db, author := slugFixture(t)
+	ctx := context.Background()
+
+	a := createArticle(t, s, author, "Правленая статья", "all")
+	publish(t, s, author, a.ID)
+	_, err := db.ExecContext(ctx,
+		`UPDATE articles SET published_at = '2026-03-01T12:00:00Z', updated_at = '2026-03-05T12:00:00Z' WHERE id = $1`, a.ID)
+	require.NoError(t, err)
+
+	feed, err := s.GetPublicFeed(ctx, "", 20, 0)
+	require.NoError(t, err)
+	require.Len(t, feed.Articles, 1)
+	require.NotNil(t, feed.Articles[0].UpdatedAt)
+	assert.Equal(t, "2026-03-05", feed.Articles[0].UpdatedAt.UTC().Format("2006-01-02"))
+}
