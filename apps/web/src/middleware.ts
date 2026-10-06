@@ -115,9 +115,55 @@ export function applySecurityHeaders(headers: Headers, secure: boolean): void {
     }
 }
 
-export function middleware(request: NextRequest) {
+const LEGACY_ARTICLE_PATH =
+    /^\/content\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
+
+/** How long an old link may wait on the API before it is simply let through. */
+const LEGACY_LOOKUP_TIMEOUT_MS = 2000
+
+/**
+ * Where an old article address now lives, or null to let the request through.
+ *
+ * Articles were addressed by UUID before they had slugs, and those addresses
+ * are in links and in the index. A public article answers them with a 301 to
+ * its readable address — a permanent redirect is what moves a page in search,
+ * and `permanentRedirect` in the page would have answered 308.
+ *
+ * Anything the public API does not have passes through: it may be an article
+ * for one curator's clients, which the page hands to the signed-in reader. So
+ * does a failure — the page can still render the article itself.
+ */
+export async function legacyArticleRedirect(
+    pathname: string,
+    fetchImpl: typeof fetch = fetch,
+): Promise<string | null> {
+    const match = LEGACY_ARTICLE_PATH.exec(pathname)
+    if (!match) return null
+
+    const apiUrl = process.env.INTERNAL_API_URL || 'http://api:4000'
+    try {
+        const res = await fetchImpl(`${apiUrl}/api/v1/public/content/${match[1]}`, {
+            signal: AbortSignal.timeout(LEGACY_LOOKUP_TIMEOUT_MS),
+        })
+        if (!res.ok) return null
+        const data = await res.json()
+        const slug: unknown = data?.data?.slug
+        return typeof slug === 'string' && slug ? `/content/${slug}` : null
+    } catch {
+        return null
+    }
+}
+
+export async function middleware(request: NextRequest) {
     const nonce = makeNonce()
     const policy = contentSecurityPolicy(nonce)
+
+    const movedTo = await legacyArticleRedirect(request.nextUrl.pathname)
+    if (movedTo) {
+        const redirect = NextResponse.redirect(new URL(movedTo, request.url), 301)
+        redirect.headers.set('Content-Security-Policy', policy)
+        return redirect
+    }
 
     if (needsAnAccount(request.nextUrl.pathname) && !request.cookies.has(SESSION_MARKER)) {
         // Where they were going, so signing in returns them there rather than

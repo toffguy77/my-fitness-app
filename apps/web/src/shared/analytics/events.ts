@@ -27,6 +27,8 @@ export const EVENTS = {
     supportOpened: 'support_chat_opened',
     curatorOfferShown: 'curator_offer_shown',
     curatorOfferClicked: 'curator_offer_clicked',
+    calculatorResult: 'calculator_result',
+    articleCtaClicked: 'article_cta_clicked',
 } as const
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS]
