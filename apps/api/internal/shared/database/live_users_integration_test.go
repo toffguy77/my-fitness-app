@@ -113,3 +113,78 @@ func TestLiveAnalyticsEventsKeepsAnonymous(t *testing.T) {
 	assert.Equal(t, 1, live, "событие живого пользователя пропало")
 	assert.Equal(t, 0, fromTest, "событие прогона просочилось в расчёты")
 }
+
+// Кураторы и администратор каждый день ходят по продукту, и у них обычные
+// почты — по адресу их не отличить. За две недели до этого теста половина
+// «живых» входов оказалась кураторскими. Отсекаются по роли, вместе с
+// браузерами, из которых они входили до того, как назвались.
+func TestLiveViewsExcludeStaff(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "live_staff")
+	ctx := context.Background()
+
+	addUser := func(email, role string) int64 {
+		var id int64
+		require.NoError(t, db.QueryRowContext(ctx,
+			`INSERT INTO users (email, password, name, role) VALUES ($1,'x','Проверка',$2) RETURNING id`,
+			email, role,
+		).Scan(&id))
+		return id
+	}
+	clientID := addUser("person@example.com", "client")
+	curatorID := addUser("curator@yandex.ru", "coordinator")
+	adminID := addUser("boss@burcev.team", "super_admin")
+	testID := addUser("e2e-run@burcev.test", "client")
+
+	var liveIDs []int64
+	rows, err := db.QueryContext(ctx, `SELECT id FROM live_users ORDER BY id`)
+	require.NoError(t, err)
+	for rows.Next() {
+		var id int64
+		require.NoError(t, rows.Scan(&id))
+		liveIDs = append(liveIDs, id)
+	}
+	require.NoError(t, rows.Err())
+	_ = rows.Close()
+	assert.Equal(t, []int64{clientID}, liveIDs, "в live_users должен остаться только клиент")
+
+	// Браузер, связанный с учёткой, — тот, из которого человек потом вошёл.
+	browser := func(owner *int64) string {
+		var v string
+		require.NoError(t, db.QueryRowContext(ctx, `SELECT gen_random_uuid()::text`).Scan(&v))
+		if owner != nil {
+			_, err := db.ExecContext(ctx,
+				`INSERT INTO analytics_identities (visitor_id, user_id) VALUES ($1::uuid, $2)`, v, *owner)
+			require.NoError(t, err)
+		}
+		return v
+	}
+	insert := func(label, visitor string, userID *int64) {
+		_, err := db.ExecContext(ctx, `
+			INSERT INTO analytics_events (name, visitor_id, user_id, platform, properties)
+			VALUES ('landing_viewed', $1::uuid, $2, 'web', jsonb_build_object('label', $3::text))`,
+			visitor, userID, label)
+		require.NoError(t, err)
+	}
+
+	insert("stranger", browser(nil), nil)              // аноним — остаётся
+	insert("client-before", browser(&clientID), nil)   // будущий клиент до входа — остаётся
+	insert("client", browser(nil), &clientID)          // клиент — остаётся
+	insert("curator", browser(nil), &curatorID)        // куратор — исчезает
+	insert("admin", browser(nil), &adminID)            // администратор — исчезает
+	insert("curator-before", browser(&curatorID), nil) // браузер куратора до входа — исчезает
+	insert("test-before", browser(&testID), nil)       // браузер прогона до входа — исчезает
+
+	got := map[string]bool{}
+	rows, err = db.QueryContext(ctx, `SELECT properties->>'label' FROM live_analytics_events`)
+	require.NoError(t, err)
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var label string
+		require.NoError(t, rows.Scan(&label))
+		got[label] = true
+	}
+	require.NoError(t, rows.Err())
+
+	assert.Equal(t, map[string]bool{"stranger": true, "client-before": true, "client": true}, got,
+		"в расчёт попали события сотрудников или прогонов, либо пропали клиентские")
+}
