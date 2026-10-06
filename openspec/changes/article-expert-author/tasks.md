@@ -1,17 +1,17 @@
 ## 1. Автор
 
-- [ ] 1.1 Тесты `ArticleAuthor`: имя-ссылка, квалификация, инициалы без фото, изображение с `alt` при фото. Проверка: `npx jest ArticleAuthor` падает до реализации.
-- [ ] 1.2 Реализовать `author.ts` и `ArticleAuthor`, подключить в `ArticleContent` вместо `author_name`. Проверка: тесты зелёные, тест «Имя учётной записи скрыто» на странице статьи зелёный.
+- [x] 1.1 Тесты `ArticleAuthor`: имя-ссылка, квалификация, инициалы без фото, изображение с `alt` при фото. Проверка: `npx jest ArticleAuthor` падает до реализации.
+- [x] 1.2 Реализовать `author.ts` и `ArticleAuthor`, подключить в `ArticleContent` вместо `author_name`. Проверка: тесты зелёные, тест «Имя учётной записи скрыто» на странице статьи зелёный.
 
 ## 2. Разметка статьи
 
-- [ ] 2.1 Тест: JSON-LD статьи — `Person` с `name`, `jobTitle`, `url`, без `image` при отсутствии фото. Проверка: `npx jest content-article-page` падает до реализации.
-- [ ] 2.2 Реализовать. Проверка: тест зелёный.
+- [x] 2.1 Тест: JSON-LD статьи — `Person` с `name`, `jobTitle`, `url`, без `image` при отсутствии фото. Проверка: `npx jest content-article-page` падает до реализации.
+- [x] 2.2 Реализовать. Проверка: тест зелёный.
 
 ## 3. Страница автора
 
-- [ ] 3.1 Тесты страницы: `h1`, квалификация, ссылки на статьи из публичного API, `ProfilePage`/`Person`, canonical. Проверка: `npx jest avtor` падает до реализации.
-- [ ] 3.2 Реализовать `app/avtor/sergey-burcev/page.tsx`. Проверка: тесты зелёные, `node scripts/check-internal-links.mjs`.
+- [x] 3.1 Тесты страницы: `h1`, квалификация, ссылки на статьи из публичного API, `ProfilePage`/`Person`, canonical. Проверка: `npx jest avtor` падает до реализации.
+- [x] 3.2 Реализовать `app/avtor/sergey-burcev/page.tsx`. Проверка: тесты зелёные, `node scripts/check-internal-links.mjs`.
 
 ## 4. Фото
 

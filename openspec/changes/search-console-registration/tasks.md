@@ -1,6 +1,6 @@
 ## 1. Код
 
-- [ ] 1.1 Тест `robots.test.ts`: директива `Sitemap` с абсолютным адресом. Тест метаданных макета: нет `verification.yandex`. Проверка: `npx jest robots layout-metadata` зелёный (поведение уже такое, тест закрепляет его).
+- [x] 1.1 Тест `robots.test.ts`: директива `Sitemap` с абсолютным адресом. Тест метаданных макета: нет `verification.yandex`. Проверка: `npx jest robots layout-metadata` зелёный (поведение уже такое, тест закрепляет его).
 
 ## 2. Живая проверка
 
