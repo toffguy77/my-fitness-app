@@ -49,6 +49,12 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 	if !in.Consents.DataProcessing {
 		return nil, "", fmt.Errorf("data processing consent is required: %w", apperrors.ErrValidation)
 	}
+	// Эти значения ставит только сервер — заявке вошедшего человека
+	// (CreateCuratorRequest). Из публичной формы они выдали бы гостя за
+	// зарегистрированного клиента в оповещении кураторам.
+	if in.Source == "product" || in.LastStep == "curator_request" {
+		return nil, "", fmt.Errorf("reserved lead source or step: %w", apperrors.ErrValidation)
+	}
 
 	email := strings.ToLower(strings.TrimSpace(in.Email))
 	step := in.LastStep

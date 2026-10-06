@@ -10,6 +10,7 @@ import (
 
 	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/modules/notifications"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/testsupport"
@@ -262,4 +263,37 @@ func TestRaiseUnhandledCuratorRequests_ГостьСЧужимАдресомНе�
 	last := sent[len(sent)-1]
 	assert.NotContains(t, last, "клиент №")
 	assert.Contains(t, last, "адрес не подтверждён")
+}
+
+// source и last_step заявки вошедшего человека ставит только сервер.
+func TestCreate_ЗарезервированныеЗначенияОтвергаются(t *testing.T) {
+	ctx := context.Background()
+	_, service, group := alertingService(t, "alert_reserved_values")
+
+	for _, in := range []leads.CreateInput{
+		{Email: "a@example.test", LastStep: "pricing", Source: "product"},
+		{Email: "b@example.test", LastStep: "curator_request"},
+	} {
+		in.Consents = leads.Consents{DataProcessing: true, Contact: true}
+		_, _, err := service.Create(ctx, in, "127.0.0.1", "test")
+		require.ErrorIs(t, err, apperrors.ErrValidation)
+	}
+	assert.Empty(t, group.messages())
+}
+
+func TestCuratorRequest_ЧужаяТочкаЗахватаВГруппуНеПопадает(t *testing.T) {
+	ctx := context.Background()
+	_, service, group := alertingService(t, "alert_foreign_capture")
+
+	_, _, err := service.Create(ctx, leads.CreateInput{
+		Email:         "guest@example.test",
+		LastStep:      "pricing",
+		CaptureSource: "оплата тут evil.example",
+		Consents:      leads.Consents{DataProcessing: true, Contact: true},
+	}, "127.0.0.1", "test")
+	require.NoError(t, err)
+
+	sent := group.messages()
+	require.Len(t, sent, 1)
+	assert.NotContains(t, sent[0], "evil.example")
 }

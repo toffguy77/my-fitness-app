@@ -98,7 +98,9 @@ func sourceLabel(captureSource string) string {
 	case CapturePricingPage:
 		return "страница тарифов"
 	}
-	return captureSource
+	// Точку захвата гость присылает сам: незнакомое значение в ленту группы не
+	// попадает — это был бы его текст от имени бота.
+	return "другое"
 }
 
 // announce зовёт людей к заявке.
