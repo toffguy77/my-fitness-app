@@ -37,6 +37,16 @@ describe('sitemap', () => {
         expect(sitemapModule.dynamic).toBe('force-dynamic')
     })
 
+    // Построить при запросе мало: из кэша с stale-while-revalidate робот,
+    // приходящий раз в сутки, всякий раз получал бы снимок прошлого обхода.
+    it('reads the articles afresh, not from a cache', async () => {
+        global.fetch = feedOf(1) as unknown as typeof fetch
+
+        await sitemap()
+
+        expect(global.fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ cache: 'no-store' }))
+    })
+
     it('lists the public pages, the calculator and the author', async () => {
         const urls = (await sitemap()).map((e) => e.url)
 

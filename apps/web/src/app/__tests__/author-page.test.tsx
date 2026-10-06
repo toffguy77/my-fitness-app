@@ -21,6 +21,12 @@ describe('the author page', () => {
         })
     })
 
+    it('reads the article list afresh', async () => {
+        await AuthorPage()
+
+        expect(global.fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ cache: 'no-store' }))
+    })
+
     it('names the author and his qualification', async () => {
         render(await AuthorPage())
 

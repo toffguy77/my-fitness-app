@@ -20,8 +20,12 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
  * "not found" for it would tell search engines to drop a page that exists.
  */
 async function getPublicArticle(ref: string): Promise<Article | null> {
+    // Not from a cache: with stale-while-revalidate the first reader after a
+    // quiet spell — on this site, usually a crawler — got the article as it
+    // was before the last edit. generateMetadata and the page make the same
+    // request; Next runs it once per render.
     const res = await fetch(`${API_URL}/api/v1/public/content/${encodeURIComponent(ref)}`, {
-        next: { revalidate: 60 },
+        cache: 'no-store',
     })
     if (res.status === 404 || res.status === 400) return null
     if (!res.ok) throw new Error(`public article ${ref}: ${res.status}`)

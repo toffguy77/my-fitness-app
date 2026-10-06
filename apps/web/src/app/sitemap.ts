@@ -49,8 +49,9 @@ async function publicArticles(): Promise<FeedCard[]> {
         const res = await fetch(
             `${API_URL}/api/v1/public/content?limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
             {
-                // A crawler does not need to cost the API a query every time.
-                next: { revalidate: 300 },
+                // Not from a cache: with stale-while-revalidate a crawler that
+                // calls once a day would always get the previous visit's list.
+                cache: 'no-store',
                 signal: AbortSignal.timeout(ARTICLE_FETCH_TIMEOUT_MS),
             },
         )

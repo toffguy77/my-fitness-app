@@ -43,6 +43,15 @@ describe('ContentFeedPage', () => {
         expect(mockFeedList).toHaveBeenCalledWith({ initialArticles: articles, initialTotal: 12 })
     })
 
+    // Не из кэша: при stale-while-revalidate первый посетитель после паузы —
+    // а на тихом сайте это обычно робот — получал прошлый снимок ленты, без
+    // только что опубликованной статьи.
+    it('asks the API afresh on every request', async () => {
+        render(await ContentFeedPage())
+
+        expect(global.fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ cache: 'no-store' }))
+    })
+
     // Без начальных данных лента загрузится в браузере, как раньше: падение
     // API не должно ронять страницу.
     it('leaves the list to load itself when the API fails', async () => {

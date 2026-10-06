@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 async function getArticles(): Promise<ArticleCard[]> {
     try {
         const res = await fetch(`${API_URL}/api/v1/public/content?limit=100`, {
-            next: { revalidate: 300 },
+            cache: 'no-store',
         })
         if (!res.ok) return []
         const data = await res.json()

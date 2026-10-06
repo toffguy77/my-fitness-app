@@ -28,8 +28,11 @@ const FIRST_PAGE = 20
  */
 async function getFirstPage(): Promise<FeedResponse | undefined> {
     try {
+        // Not from a cache: with stale-while-revalidate the first visitor after
+        // a quiet spell — usually a crawler — got the feed without the article
+        // published in between.
         const res = await fetch(`${API_URL}/api/v1/public/content?limit=${FIRST_PAGE}&offset=0`, {
-            next: { revalidate: 60 },
+            cache: 'no-store',
         })
         if (!res.ok) return undefined
         const data = await res.json()

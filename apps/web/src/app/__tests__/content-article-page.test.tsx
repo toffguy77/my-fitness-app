@@ -74,6 +74,15 @@ describe('the public article page', () => {
             ;(global.fetch as jest.Mock).mockImplementation(() => answer(200, { data: article }))
         })
 
+        it('reads the article afresh, so an edit is what the next reader sees', async () => {
+            await ArticlePage(params(article.slug))
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({ cache: 'no-store' }),
+            )
+        })
+
         it('renders the title and the body on the server, without the client view', async () => {
             const { container } = render(await ArticlePage(params(article.slug)))
 
