@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { AlertCircle, ArrowLeft } from 'lucide-react'
 import { contentApi, publicContentApi } from '@/features/content/api/contentApi'
 import { ArticleContent } from './ArticleContent'
 import type { Article } from '@/features/content/types'
@@ -63,27 +63,11 @@ export function ArticleView({ articleId }: ArticleViewProps) {
     // Loading state
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-20">
-                <svg
-                    className="h-6 w-6 animate-spin text-primary"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                >
-                    <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                    />
-                    <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                </svg>
+            <div className="flex items-center justify-center py-20" role="status">
+                <span
+                    className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary"
+                    aria-hidden="true"
+                />
             </div>
         )
     }
@@ -91,16 +75,17 @@ export function ArticleView({ articleId }: ArticleViewProps) {
     // Error state
     if (error || !article) {
         return (
-            <div className="px-4 py-6">
+            <div className="mx-auto w-full max-w-content px-screen-x py-5">
                 <Link
                     href="/content"
-                    className="mb-4 inline-flex items-center gap-1 text-sm text-primary"
+                    className="-ml-2 mb-4 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-[15px] font-semibold text-fg-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                     Назад
                 </Link>
-                <div className="rounded-lg bg-danger-soft p-4 text-center text-danger-fg">
-                    {error || 'Статья не найдена'}
+                <div className="flex items-start gap-3 rounded-card bg-danger-soft p-5 text-danger-fg" role="alert">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                    <p className="text-[15px]">{error || 'Статья не найдена'}</p>
                 </div>
             </div>
         )

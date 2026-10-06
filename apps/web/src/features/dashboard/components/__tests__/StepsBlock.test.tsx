@@ -69,7 +69,8 @@ describe('StepsBlock', () => {
 
             expect(screen.getByText('5.0k')).toBeInTheDocument()
             expect(screen.getByText('из 10.0k шагов')).toBeInTheDocument()
-            expect(screen.getByText('50.0%')).toBeInTheDocument()
+            // Доля процентом на экран не выводится (остаток важнее доли).
+            expect(screen.queryByText('50.0%')).not.toBeInTheDocument()
         })
 
         it('formats steps under 1000 without k suffix', () => {
@@ -121,7 +122,7 @@ describe('StepsBlock', () => {
             render(<StepsBlock date={testDate} />)
 
             expect(screen.getByText('Цель достигнута!')).toBeInTheDocument()
-            expect(screen.getByText('150.0%')).toBeInTheDocument()
+            expect(screen.queryByText('150.0%')).not.toBeInTheDocument()
         })
 
         it('shows remaining steps when goal not reached', () => {
@@ -181,10 +182,11 @@ describe('StepsBlock', () => {
 
             render(<StepsBlock date={testDate} />)
 
+            // Полоса считает шаги: 5000 из 10000.
             const progressBar = screen.getByRole('progressbar')
-            expect(progressBar).toHaveAttribute('aria-valuenow', '50')
+            expect(progressBar).toHaveAttribute('aria-valuenow', '5000')
             expect(progressBar).toHaveAttribute('aria-valuemin', '0')
-            expect(progressBar).toHaveAttribute('aria-valuemax', '100')
+            expect(progressBar).toHaveAttribute('aria-valuemax', '10000')
             expect(progressBar).toHaveAttribute('aria-label', 'Прогресс шагов: 50.0%')
         })
 
@@ -203,7 +205,8 @@ describe('StepsBlock', () => {
             render(<StepsBlock date={testDate} />)
 
             const progressBar = screen.getByRole('progressbar')
-            expect(progressBar).toHaveAttribute('aria-valuenow', '100')
+            expect(progressBar).toHaveAttribute('aria-valuenow', '10000')
+            expect(progressBar).toHaveAttribute('aria-valuemax', '10000')
         })
     })
 

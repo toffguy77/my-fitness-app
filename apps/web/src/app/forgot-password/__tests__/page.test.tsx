@@ -56,7 +56,7 @@ describe('ForgotPasswordPage', () => {
 
         it('renders back to login link', () => {
             render(<ForgotPasswordPage />)
-            const backLink = screen.getByText('← Вернуться к входу')
+            const backLink = screen.getByText('Вернуться к входу')
             expect(backLink).toBeInTheDocument()
             expect(backLink.closest('a')).toHaveAttribute('href', '/auth')
         })

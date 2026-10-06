@@ -21,6 +21,7 @@ import {
 } from '../api/deliveryApi'
 
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
 import { messageForOr } from '@/shared/errors/apiErrors'
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
@@ -47,12 +48,12 @@ function Toggle({
             aria-label={label}
             disabled={disabled}
             onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-                checked ? 'bg-primary' : 'bg-subtle'
+            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 before:absolute before:-inset-y-2.5 before:inset-x-0 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
+                checked ? 'bg-primary' : 'bg-line-strong'
             } ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
         >
             <span
-                className={`pointer-events-none inline-block h-4 w-4 translate-y-1 rounded-full bg-surface shadow-sm transition-transform duration-200 ${
+                className={`pointer-events-none inline-block h-4 w-4 translate-y-1 rounded-full bg-surface transition-transform duration-200 ${
                     checked ? 'translate-x-6' : 'translate-x-1'
                 }`}
             />
@@ -90,7 +91,7 @@ export function NotificationDeliverySettings() {
     if (loading) {
         return (
             <div className="flex justify-center py-12">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" />
             </div>
         )
     }
@@ -115,11 +116,11 @@ export function NotificationDeliverySettings() {
         <div className="space-y-6" data-testid="delivery-settings">
             <PushSection />
 
-            <div className="rounded-2xl bg-surface p-4 shadow-sm">
-                <p className="mb-1 text-sm font-medium text-fg-muted">{t('notifications.delivery.emailsHeading')}</p>
+            <div className="rounded-card border border-line bg-surface p-5">
+                <h2 className="mb-1 type-title-3 text-fg">{t('notifications.delivery.emailsHeading')}</h2>
                 <div className="flex items-center justify-between py-3">
                     <div className="pr-4">
-                        <p className="font-medium text-fg">{t('notifications.delivery.receiveEmails')}</p>
+                        <p className="type-headline text-fg">{t('notifications.delivery.receiveEmails')}</p>
                         <p className="mt-0.5 text-sm text-fg-muted">
                             {t('notifications.delivery.emailsExplanation')}
                         </p>
@@ -132,17 +133,19 @@ export function NotificationDeliverySettings() {
                 </div>
             </div>
 
-            <div className="rounded-2xl bg-surface p-4 shadow-sm">
+            <div className="rounded-card border border-line bg-surface p-5">
                 <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-medium text-fg-muted">{t('notifications.delivery.quietHeading')}</p>
+                    <h2 className="type-title-3 text-fg">{t('notifications.delivery.quietHeading')}</h2>
                     {prefs.quietHoursStart !== null && (
-                        <button
+                        <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setQuietHours(null, null)}
-                            className="text-sm text-fg-muted hover:text-fg"
+                            className="-mr-3 min-h-11 text-fg-muted"
                         >
                             {t('notifications.delivery.disable')}
-                        </button>
+                        </Button>
                     )}
                 </div>
                 <p className="mb-3 text-sm text-fg-muted">
@@ -158,7 +161,7 @@ export function NotificationDeliverySettings() {
                         onChange={(e) =>
                             setQuietHours(Number(e.target.value), prefs.quietHoursEnd ?? 8)
                         }
-                        className="rounded-lg border border-line px-3 py-2 text-sm text-fg"
+                        className="h-12 rounded-field border border-line bg-surface px-3 text-base text-fg tabular-nums focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                     >
                         {HOURS.map((hour) => (
                             <option key={hour} value={hour}>
@@ -176,7 +179,7 @@ export function NotificationDeliverySettings() {
                         onChange={(e) =>
                             setQuietHours(prefs.quietHoursStart ?? 22, Number(e.target.value))
                         }
-                        className="rounded-lg border border-line px-3 py-2 text-sm text-fg"
+                        className="h-12 rounded-field border border-line bg-surface px-3 text-base text-fg tabular-nums focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                     >
                         {HOURS.map((hour) => (
                             <option key={hour} value={hour}>
@@ -187,9 +190,9 @@ export function NotificationDeliverySettings() {
                 </div>
             </div>
 
-            <div className="rounded-2xl bg-surface p-4 shadow-sm">
-                <p className="mb-3 text-sm font-medium text-fg-muted">{t('notifications.delivery.whatHeading')}</p>
-                <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 text-xs text-fg-subtle">
+            <div className="rounded-card border border-line bg-surface p-5">
+                <h2 className="mb-3 type-title-3 text-fg">{t('notifications.delivery.whatHeading')}</h2>
+                <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 text-xs font-medium text-fg-subtle">
                     <span />
                     <span className="w-11 text-center">{t('notifications.delivery.columnHere')}</span>
                     <span className="w-11 text-center">{t('notifications.delivery.columnEmail')}</span>
@@ -198,7 +201,7 @@ export function NotificationDeliverySettings() {
                 {prefs.types.map((setting, index) => (
                     <div
                         key={setting.type}
-                        className={`grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 py-3 ${
+                        className={`grid min-h-14 grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 py-3 ${
                             index < prefs.types.length - 1 ? 'border-b border-line' : ''
                         }`}
                     >

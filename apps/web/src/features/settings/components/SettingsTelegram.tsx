@@ -5,6 +5,9 @@ import toast from 'react-hot-toast'
 import { telegramApi, type TelegramLinkState } from '@/features/settings/api/telegram'
 import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
+import { CheckCircle2, ExternalLink, Info } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
+import { SettingsCard, SettingsRow, SettingsSection } from './SettingsSection'
 
 /**
  * Подключение Telegram к аккаунту.
@@ -105,56 +108,69 @@ export function SettingsTelegram() {
     }
 
     return (
-        <section>
-            <h2 className="text-sm font-bold text-fg">{t('settings.telegram.heading')}</h2>
-            <p className="mt-1 text-sm text-fg-muted">{t('settings.telegram.explanation')}</p>
-
+        <SettingsSection
+            title={t('settings.telegram.heading')}
+            titleId="settings-telegram-heading"
+            description={t('settings.telegram.explanation')}
+        >
             {unavailable ? (
-                <p className="mt-4 text-sm text-fg-muted">{t('settings.telegram.unavailable')}</p>
+                <p className="flex items-start gap-2 rounded-tile bg-info-soft p-4 text-sm text-info-fg">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                    {t('settings.telegram.unavailable')}
+                </p>
             ) : state?.linked ? (
-                <div className="mt-4 flex items-center justify-between gap-4">
-                    <span className="text-sm text-fg">
-                        {t('settings.telegram.connected')}
-                        {state.username ? ` · @${state.username}` : ''}
-                    </span>
-                    <button
-                        type="button"
-                        onClick={handleDisconnect}
-                        disabled={busy}
-                        className="text-sm font-medium text-danger-fg disabled:opacity-50"
-                    >
-                        {t('settings.telegram.disconnect')}
-                    </button>
-                </div>
-            ) : (
-                <div className="mt-4">
-                    <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm text-fg-muted">
-                            {t('settings.telegram.notConnected')}
+                <SettingsCard>
+                    <SettingsRow>
+                        <span className="flex min-w-0 items-center gap-2 text-base text-fg">
+                            <CheckCircle2 className="h-5 w-5 shrink-0 text-success-fg" strokeWidth={1.8} aria-hidden="true" />
+                            <span className="truncate">
+                                {t('settings.telegram.connected')}
+                                {state.username ? ` · @${state.username}` : ''}
+                            </span>
                         </span>
-                        <button
+                        <Button
                             type="button"
-                            onClick={handleConnect}
+                            variant="ghost"
+                            onClick={handleDisconnect}
                             disabled={busy}
-                            className="text-sm font-medium text-primary disabled:opacity-50"
+                            className="-mr-2 text-danger-fg hover:bg-danger-soft"
                         >
-                            {t('settings.telegram.connect')}
-                        </button>
-                    </div>
-                    <p className="mt-2 text-xs text-fg-muted">{t('settings.telegram.whyLink')}</p>
+                            {t('settings.telegram.disconnect')}
+                        </Button>
+                    </SettingsRow>
+                </SettingsCard>
+            ) : (
+                <>
+                    <SettingsCard>
+                        <SettingsRow>
+                            <span className="text-base text-fg-muted">
+                                {t('settings.telegram.notConnected')}
+                            </span>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={handleConnect}
+                                disabled={busy}
+                            >
+                                {t('settings.telegram.connect')}
+                            </Button>
+                        </SettingsRow>
+                    </SettingsCard>
+                    <p className="type-caption text-fg-subtle">{t('settings.telegram.whyLink')}</p>
 
                     {groupLink && (
                         <a
                             href={groupLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-3 inline-block text-sm font-medium text-primary"
+                            className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold text-primary hover:underline"
                         >
                             {t('settings.telegram.groupInvite')}
+                            <ExternalLink className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                         </a>
                     )}
-                </div>
+                </>
             )}
-        </section>
+        </SettingsSection>
     )
 }

@@ -2,19 +2,24 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
 import { guestApi } from '../api/guest'
 import type { ActivityLevel, FitnessGoal, GuestResult, Sex } from '../api/guest'
 import { useGuestOnboardingStore, GUEST_STEPS, parametersOf } from '../store/guestOnboardingStore'
 import { EVENTS, track } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { Button } from '@/shared/components/ui/Button'
+import { MACRO_COLORS } from '@/shared/constants/macros'
+import { cn } from '@/shared/utils/cn'
 
 const goals: FitnessGoal[] = ['loss', 'maintain', 'gain']
 const activityLevels: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active']
 const sexes: Sex[] = ['female', 'male']
 
-const fieldClass = 'mt-1 w-full rounded-lg border border-line bg-surface px-4 py-3 text-sm text-fg'
+// Поле ввода по системе: 48 px, текст 16 px — iOS не масштабирует страницу.
+const fieldClass =
+    'h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums ' +
+    'placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30'
 
 /**
  * The calculator on the open page: every question on one screen, the answer
@@ -82,14 +87,14 @@ export function KbzhuCalculator() {
 
     const macros = result
         ? [
-              { label: t('onboarding.guest.protein'), value: Math.round(result.protein) },
-              { label: t('onboarding.guest.fat'), value: Math.round(result.fat) },
-              { label: t('onboarding.guest.carbs'), value: Math.round(result.carbs) },
+              { key: 'protein' as const, label: t('onboarding.guest.protein'), value: Math.round(result.protein) },
+              { key: 'fat' as const, label: t('onboarding.guest.fat'), value: Math.round(result.fat) },
+              { key: 'carbs' as const, label: t('onboarding.guest.carbs'), value: Math.round(result.carbs) },
           ]
         : []
 
     return (
-        <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+        <section className="rounded-card border border-line bg-surface p-5 sm:p-6">
             <form
                 onSubmit={(e) => {
                     e.preventDefault()
@@ -98,14 +103,19 @@ export function KbzhuCalculator() {
                 className="grid gap-4 sm:grid-cols-2"
             >
                 <fieldset className="sm:col-span-2">
-                    <legend className="text-sm font-medium text-fg">{t('onboarding.sex')}</legend>
-                    <div className="mt-2 grid grid-cols-2 gap-3">
+                    <legend className="text-sm font-medium text-fg-muted">{t('onboarding.sex')}</legend>
+                    <div className="mt-1.5 grid grid-cols-2 gap-2">
                         {sexes.map((value) => (
                             <label
                                 key={value}
-                                className={`flex cursor-pointer items-center justify-center rounded-lg border py-3 text-sm text-fg ${
-                                    sex === value ? 'border-primary bg-primary-soft' : 'border-line bg-surface'
-                                }`}
+                                className={cn(
+                                    'flex h-12 cursor-pointer items-center justify-center rounded-full border text-sm font-semibold transition-colors',
+                                    'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus has-[:focus-visible]:ring-offset-2',
+                                    // Выбранное — инверсия чернилами: терракота у кнопки «Рассчитать».
+                                    sex === value
+                                        ? 'border-fg bg-fg text-fg-inverse'
+                                        : 'border-line bg-surface text-fg hover:bg-subtle',
+                                )}
                             >
                                 <input
                                     type="radio"
@@ -122,7 +132,7 @@ export function KbzhuCalculator() {
                 </fieldset>
 
                 <div>
-                    <label htmlFor="calc-birth" className="block text-sm font-medium text-fg">
+                    <label htmlFor="calc-birth" className="mb-1.5 block text-sm font-medium text-fg-muted">
                         {t('onboarding.birthDate')}
                     </label>
                     <input
@@ -134,7 +144,7 @@ export function KbzhuCalculator() {
                     />
                 </div>
                 <div>
-                    <label htmlFor="calc-height" className="block text-sm font-medium text-fg">
+                    <label htmlFor="calc-height" className="mb-1.5 block text-sm font-medium text-fg-muted">
                         {t('onboarding.guest.heightCm')}
                     </label>
                     <input
@@ -148,7 +158,7 @@ export function KbzhuCalculator() {
                     />
                 </div>
                 <div>
-                    <label htmlFor="calc-weight" className="block text-sm font-medium text-fg">
+                    <label htmlFor="calc-weight" className="mb-1.5 block text-sm font-medium text-fg-muted">
                         {t('onboarding.guest.weightKg')}
                     </label>
                     <input
@@ -162,7 +172,7 @@ export function KbzhuCalculator() {
                     />
                 </div>
                 <div>
-                    <label htmlFor="calc-activity" className="block text-sm font-medium text-fg">
+                    <label htmlFor="calc-activity" className="mb-1.5 block text-sm font-medium text-fg-muted">
                         {t('onboarding.activityLevel')}
                     </label>
                     <select
@@ -180,7 +190,7 @@ export function KbzhuCalculator() {
                     </select>
                 </div>
                 <div className="sm:col-span-2">
-                    <label htmlFor="calc-goal" className="block text-sm font-medium text-fg">
+                    <label htmlFor="calc-goal" className="mb-1.5 block text-sm font-medium text-fg-muted">
                         {t('onboarding.goalLabel')}
                     </label>
                     <select
@@ -204,29 +214,37 @@ export function KbzhuCalculator() {
                     </p>
                 )}
 
-                <button
+                <Button
                     type="submit"
                     disabled={calculating}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-60 sm:col-span-2"
+                    isLoading={calculating}
+                    size="lg"
+                    className="mt-2 sm:col-span-2"
                 >
-                    {calculating && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                     {calculating ? t('onboarding.calculator.calculating') : t('onboarding.calculator.calculate')}
-                </button>
+                </Button>
             </form>
 
             {result && (
                 <div className="mt-6 border-t border-line pt-6" aria-live="polite">
-                    <h2 className="text-lg font-semibold text-fg">{t('onboarding.guest.resultTitle')}</h2>
-                    <div className="mt-4 rounded-xl bg-canvas p-5 text-center">
-                        <p className="text-sm text-fg-muted">{t('onboarding.guest.calories')}</p>
-                        <p className="text-4xl font-bold text-fg">{Math.round(result.calories)}</p>
+                    <h2 className="type-title-2 text-fg">{t('onboarding.guest.resultTitle')}</h2>
+                    <div className="mt-4 rounded-tile bg-canvas p-5 text-center">
+                        <p className="type-overline text-fg-subtle">{t('onboarding.guest.calories')}</p>
+                        <p className="mt-1 type-num-xl text-fg">{Math.round(result.calories)}</p>
                         <p className="text-sm text-fg-muted">{t('onboarding.guest.kcalPerDay')}</p>
                     </div>
-                    <div className="mt-3 grid grid-cols-3 gap-3">
+                    <div className="mt-2 grid grid-cols-3 gap-2">
                         {macros.map((macro) => (
-                            <div key={macro.label} className="rounded-lg bg-canvas p-3 text-center">
-                                <p className="text-xs text-fg-muted">{macro.label}</p>
-                                <p className="text-lg font-semibold text-fg">
+                            <div key={macro.label} className="rounded-tile bg-canvas p-3 text-center">
+                                <p className="flex items-center justify-center gap-1.5 type-caption text-fg-muted">
+                                    <span
+                                        className="h-2 w-2 rounded-full"
+                                        style={{ backgroundColor: MACRO_COLORS[macro.key] }}
+                                        aria-hidden="true"
+                                    />
+                                    {macro.label}
+                                </p>
+                                <p className="mt-0.5 type-num-l text-fg">
                                     <span>{macro.value}</span>
                                     <span className="text-xs font-normal text-fg-muted">
                                         {' '}
@@ -237,13 +255,11 @@ export function KbzhuCalculator() {
                         ))}
                     </div>
                     <p className="mt-4 text-sm text-fg-muted">{t('onboarding.calculator.saveHint')}</p>
-                    <button
-                        type="button"
-                        onClick={handleSave}
-                        className="mt-3 w-full rounded-lg border border-primary py-3 text-sm font-medium text-primary transition-colors hover:bg-primary-soft"
-                    >
+                    {/* Контуром: главное действие формы — «Рассчитать», вторая
+                        терракотовая кнопка на экране спорила бы с ней. */}
+                    <Button type="button" variant="secondary" size="lg" block onClick={handleSave} className="mt-3">
                         {t('onboarding.calculator.saveAndPlan')}
-                    </button>
+                    </Button>
                 </div>
             )}
         </section>

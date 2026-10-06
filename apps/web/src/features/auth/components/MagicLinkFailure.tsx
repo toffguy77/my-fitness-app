@@ -19,6 +19,9 @@
 
 import Link from 'next/link'
 import { t } from '@/shared/i18n'
+import { buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
+import { cn } from '@/shared/utils/cn'
+import { AuthShell } from './AuthShell'
 
 export function MagicLinkFailure({
     message,
@@ -28,33 +31,36 @@ export function MagicLinkFailure({
     onRetry?: () => void
 }) {
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-            <h1 className="text-lg font-semibold text-fg">{t('auth.magicLink.consume.title')}</h1>
-            <p role="alert" className="text-sm text-fg">
+        <AuthShell centered className="text-center">
+            <h1 className="type-title-1 text-fg">{t('auth.magicLink.consume.title')}</h1>
+            <p role="alert" className="mt-4 rounded-tile bg-danger-soft p-4 type-callout text-danger-fg">
                 {message}
             </p>
-            {onRetry && (
-                <button
-                    type="button"
-                    onClick={onRetry}
-                    className="rounded-lg bg-primary px-4 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
+            <div className="mt-8 flex flex-col items-center gap-2">
+                {onRetry && (
+                    <button
+                        type="button"
+                        onClick={onRetry}
+                        className={cn(buttonBase, buttonVariants.primary, buttonSizes.lg, 'w-full')}
+                    >
+                        {t('auth.magicLink.consume.retry')}
+                    </button>
+                )}
+                <Link
+                    href="/auth"
+                    // Вторая кнопка того же вида рядом с «Повторить» выглядела бы
+                    // как два равнозначных первичных действия; без повтора это
+                    // единственное действие на экране, и вид у него главный.
+                    className={cn(
+                        buttonBase,
+                        onRetry ? buttonVariants.ghost : buttonVariants.primary,
+                        buttonSizes.lg,
+                        'w-full',
+                    )}
                 >
-                    {t('auth.magicLink.consume.retry')}
-                </button>
-            )}
-            <Link
-                href="/auth"
-                // Вторая кнопка того же вида рядом с «Повторить» выглядела бы
-                // как два равнозначных первичных действия; без повтора это
-                // единственное действие на экране, и вид у него прежний.
-                className={
-                    onRetry
-                        ? 'text-sm font-medium text-primary hover:text-primary'
-                        : 'rounded-lg bg-primary px-4 py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover'
-                }
-            >
-                {t('auth.oauth.backToSignIn')}
-            </Link>
-        </main>
+                    {t('auth.oauth.backToSignIn')}
+                </Link>
+            </div>
+        </AuthShell>
     )
 }

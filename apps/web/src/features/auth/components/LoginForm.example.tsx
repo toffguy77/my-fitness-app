@@ -125,7 +125,7 @@ export function LoginFormWithLogging({ onSubmit }: LoginFormProps) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label htmlFor="email" className="block text-sm font-medium">
+                <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-fg-muted">
                     Email
                 </label>
                 <Input
@@ -141,7 +141,7 @@ export function LoginFormWithLogging({ onSubmit }: LoginFormProps) {
             </div>
 
             <div>
-                <label htmlFor="password" className="block text-sm font-medium">
+                <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-fg-muted">
                     Password
                 </label>
                 <Input
@@ -156,7 +156,7 @@ export function LoginFormWithLogging({ onSubmit }: LoginFormProps) {
                 )}
             </div>
 
-            <Button type="submit" disabled={isLoading} className="w-full">
+            <Button type="submit" disabled={isLoading} size="lg" block>
                 {isLoading ? t('auth.loading') : t('auth.signIn')}
             </Button>
         </form>

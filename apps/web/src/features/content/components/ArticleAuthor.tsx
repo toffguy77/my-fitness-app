@@ -22,13 +22,13 @@ export function ArticleAuthor({ author }: { author: ExpertAuthor }) {
             ) : (
                 <span
                     aria-hidden="true"
-                    className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary"
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-subtle text-sm font-semibold text-fg-muted"
                 >
                     {author.initials}
                 </span>
             )}
             <div className="text-sm">
-                <Link href={author.path} className="font-medium text-fg hover:underline">
+                <Link href={author.path} className="font-semibold text-fg hover:underline">
                     {author.name}
                 </Link>
                 <p className="text-fg-muted">{author.jobTitle}</p>

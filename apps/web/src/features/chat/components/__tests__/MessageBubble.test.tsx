@@ -33,16 +33,21 @@ describe('MessageBubble', () => {
         expect(screen.getByText('Hello world')).toBeInTheDocument()
     })
 
-    it('own messages have blue background', () => {
-        const { container } = render(<MessageBubble message={makeMessage()} isOwn={true} />)
-        const bubble = container.querySelector('.bg-primary')
-        expect(bubble).toBeInTheDocument()
+    // Свои и чужие сообщения различаются заливкой: свои — инверсией чернилами,
+    // чужие — бумагой с линией. Терракота у пузырей не используется: она
+    // остаётся у кнопки «Отправить».
+    it('own messages are inverted ink, not brand colour', () => {
+        render(<MessageBubble message={makeMessage()} isOwn={true} />)
+        const bubble = screen.getByText('Hello world').parentElement as HTMLElement
+        expect(bubble).toHaveClass('bg-fg', 'text-fg-inverse')
+        expect(bubble).not.toHaveClass('bg-primary')
     })
 
-    it('other messages have gray background', () => {
-        const { container } = render(<MessageBubble message={makeMessage()} isOwn={false} />)
-        const bubble = container.querySelector('.bg-subtle')
-        expect(bubble).toBeInTheDocument()
+    it('other messages sit on paper with a line', () => {
+        render(<MessageBubble message={makeMessage()} isOwn={false} />)
+        const bubble = screen.getByText('Hello world').parentElement as HTMLElement
+        expect(bubble).toHaveClass('bg-surface', 'border-line')
+        expect(bubble).not.toHaveClass('bg-fg')
     })
 
     it('own messages are right-aligned', () => {

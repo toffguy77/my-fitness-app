@@ -55,10 +55,10 @@ export function FileAttachment({ attachment }: FileAttachmentProps) {
                 <img
                     src={attachment.file_url}
                     alt={attachment.file_name}
-                    className="max-w-[240px] max-h-[240px] rounded-lg object-cover"
+                    className="max-h-[240px] max-w-[240px] rounded-tile border border-line object-cover"
                     loading="lazy"
                 />
-                <span className="text-xs text-fg-muted mt-1 block">
+                <span className="mt-1 block text-xs text-fg-muted tabular-nums">
                     {attachment.file_name} ({formatFileSize(attachment.file_size)})
                 </span>
             </a>
@@ -70,12 +70,14 @@ export function FileAttachment({ attachment }: FileAttachmentProps) {
             href={attachment.file_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-subtle hover:bg-subtle transition-colors max-w-[280px]"
+            className="flex min-h-14 max-w-[280px] items-center gap-3 rounded-tile border border-line bg-surface px-3 py-2 transition-colors hover:bg-subtle"
         >
-            <FileDown className="w-5 h-5 text-fg-muted shrink-0" />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                <FileDown className="h-[18px] w-[18px] text-fg-muted" strokeWidth={1.8} />
+            </span>
             <div className="min-w-0 flex-1">
                 <p className="text-sm text-fg truncate">{attachment.file_name}</p>
-                <p className="text-xs text-fg-muted">{formatFileSize(attachment.file_size)}</p>
+                <p className="text-xs text-fg-muted tabular-nums">{formatFileSize(attachment.file_size)}</p>
             </div>
         </a>
     )

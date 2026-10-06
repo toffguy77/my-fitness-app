@@ -3,8 +3,10 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Card, Logo } from '@/shared/components/ui'
-import { Button } from '@/shared/components/ui/Button'
+import { ArrowLeft, Check, X } from 'lucide-react'
+import { Button, buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
+import { AuthPanel, AuthShell, AuthStatusIcon } from '@/features/auth/components/AuthShell'
+import { cn } from '@/shared/utils/cn'
 import { PasswordInput } from '@/shared/components/forms/PasswordInput'
 import toast from 'react-hot-toast'
 import { validateResetToken, resetPassword as resetPasswordApi } from '@/features/auth/api/passwordReset'
@@ -114,176 +116,132 @@ function ResetPasswordContent() {
     // Loading state
     if (isValidating) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
-                <Card className="w-full max-w-md p-8">
-                    <div className="text-center space-y-4">
-                        <div className="animate-spin mx-auto w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
-                        <p className="text-fg-muted">Проверка ссылки...</p>
-                    </div>
-                </Card>
-            </div>
+            <AuthShell centered logo={false} className="text-center">
+                <div
+                    className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary"
+                    aria-hidden="true"
+                />
+                <p className="mt-4 type-body text-fg-muted">Проверка ссылки...</p>
+            </AuthShell>
         )
     }
 
     // Invalid token
     if (!isTokenValid) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
-                <Card className="w-full max-w-md p-8">
-                    <div className="text-center space-y-4">
-                        <div className="mx-auto w-16 h-16 bg-danger-soft rounded-full flex items-center justify-center">
-                            <svg
-                                className="w-8 h-8 text-danger-fg"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
-                        </div>
+            <AuthShell
+                centered
+                logo={false}
+                icon={
+                    <AuthStatusIcon tone="danger">
+                        <X className="h-7 w-7" strokeWidth={1.8} />
+                    </AuthStatusIcon>
+                }
+                title="Неверная ссылка"
+                description={tokenError}
+            >
+                <div className="space-y-2">
+                    <Link href="/forgot-password" className={cn(buttonBase, buttonVariants.primary, buttonSizes.lg, 'w-full')}>
+                        Запросить новую ссылку
+                    </Link>
 
-                        <h1 className="text-2xl font-bold text-fg">Неверная ссылка</h1>
-
-                        <p className="text-fg-muted">{tokenError}</p>
-
-                        <div className="pt-4 space-y-2">
-                            <Link href="/forgot-password" className="block">
-                                <Button className="w-full">Запросить новую ссылку</Button>
-                            </Link>
-
-                            <Link href="/auth" className="block">
-                                <Button variant="outline" className="w-full">
-                                    Вернуться к входу
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                </Card>
-            </div>
+                    <Link href="/auth" className={cn(buttonBase, buttonVariants.ghost, buttonSizes.lg, 'w-full')}>
+                        Вернуться к входу
+                    </Link>
+                </div>
+            </AuthShell>
         )
     }
 
     // Success state
     if (isSuccess) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
-                <Card className="w-full max-w-md p-8">
-                    <div className="text-center space-y-4">
-                        <div className="mx-auto w-16 h-16 bg-success-soft rounded-full flex items-center justify-center">
-                            <svg
-                                className="w-8 h-8 text-success-fg"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
-                                />
-                            </svg>
-                        </div>
-
-                        <h1 className="text-2xl font-bold text-fg">Пароль успешно изменен!</h1>
-
-                        <p className="text-fg-muted">
-                            Ваш пароль был успешно изменен. Теперь вы можете войти с новым паролем.
-                        </p>
-
-                        <p className="text-sm text-fg-muted">Перенаправление на страницу входа...</p>
-                    </div>
-                </Card>
-            </div>
+            <AuthShell
+                centered
+                logo={false}
+                icon={
+                    <AuthStatusIcon tone="success">
+                        <Check className="h-7 w-7" strokeWidth={1.8} />
+                    </AuthStatusIcon>
+                }
+                title="Пароль успешно изменен!"
+                description="Ваш пароль был успешно изменен. Теперь вы можете войти с новым паролем."
+            >
+                <p role="status" className="text-center text-sm text-fg-muted">Перенаправление на страницу входа...</p>
+            </AuthShell>
         )
     }
 
     // Reset form
     return (
-        <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
-            <Card className="w-full max-w-md p-8">
-                <div className="space-y-6">
-                    <div className="text-center space-y-4">
-                        <div className="flex justify-center">
-                            <Logo width={160} height={48} className="text-fg" />
-                        </div>
-                        <div className="space-y-2">
-                            <h1 className="text-2xl font-bold text-fg">Сброс пароля</h1>
-                            <p className="text-fg-muted">Введите новый пароль.</p>
-                        </div>
+        <AuthShell title="Сброс пароля" description="Введите новый пароль.">
+            <AuthPanel>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div>
+                        <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-fg-muted">
+                            Новый пароль
+                        </label>
+                        <PasswordInput
+                            id="password"
+                            value={password}
+                            onChange={(e) => {
+                                setPassword(e.target.value)
+                                setError('')
+                            }}
+                            placeholder="Введите новый пароль"
+                            disabled={isLoading}
+                            showRequirements
+                            showStrengthIndicator
+                            autoFocus
+                            required
+                        />
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-fg mb-1">
-                                Новый пароль
-                            </label>
-                            <PasswordInput
-                                id="password"
-                                value={password}
-                                onChange={(e) => {
-                                    setPassword(e.target.value)
-                                    setError('')
-                                }}
-                                placeholder="Введите новый пароль"
-                                disabled={isLoading}
-                                showRequirements
-                                showStrengthIndicator
-                                autoFocus
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label
-                                htmlFor="confirmPassword"
-                                className="block text-sm font-medium text-fg mb-1"
-                            >
-                                Подтвердите пароль
-                            </label>
-                            <PasswordInput
-                                id="confirmPassword"
-                                value={confirmPassword}
-                                onChange={(e) => {
-                                    setConfirmPassword(e.target.value)
-                                    setError('')
-                                }}
-                                placeholder="Подтвердите новый пароль"
-                                error={error}
-                                disabled={isLoading}
-                                required
-                            />
-                        </div>
-
-                        <Button type="submit" className="w-full" isLoading={isLoading} disabled={isLoading}>
-                            {isLoading ? 'Сброс пароля...' : 'Сбросить пароль'}
-                        </Button>
-                    </form>
-
-                    <div className="text-center">
-                        <Link
-                            href="/auth"
-                            className="text-sm text-primary hover:text-primary font-medium"
+                    <div>
+                        <label
+                            htmlFor="confirmPassword"
+                            className="mb-1.5 block text-sm font-medium text-fg-muted"
                         >
-                            ← Вернуться к входу
-                        </Link>
+                            Подтвердите пароль
+                        </label>
+                        <PasswordInput
+                            id="confirmPassword"
+                            value={confirmPassword}
+                            onChange={(e) => {
+                                setConfirmPassword(e.target.value)
+                                setError('')
+                            }}
+                            placeholder="Подтвердите новый пароль"
+                            error={error}
+                            disabled={isLoading}
+                            required
+                        />
                     </div>
-                </div>
-            </Card>
-        </div>
+
+                    <Button type="submit" size="lg" className="mt-1 w-full" isLoading={isLoading} disabled={isLoading}>
+                        {isLoading ? 'Сброс пароля...' : 'Сбросить пароль'}
+                    </Button>
+                </form>
+            </AuthPanel>
+
+            <div className="mt-6 flex justify-center">
+                <Link
+                    href="/auth"
+                    className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary"
+                >
+                    <ArrowLeft className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                    Вернуться к входу
+                </Link>
+            </div>
+        </AuthShell>
     )
 }
 
 export default function ResetPasswordPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-canvas">
-                <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
+            <div className="flex min-h-screen items-center justify-center bg-canvas">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" />
             </div>
         }>
             <ResetPasswordContent />

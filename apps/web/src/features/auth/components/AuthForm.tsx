@@ -56,10 +56,10 @@ export function AuthForm({
                 aria-label={t('auth.password')}
             />
 
-            <div className="text-right">
+            <div className="-mt-1 flex justify-end">
                 <Link
                     href="/forgot-password"
-                    className="text-sm text-primary hover:text-primary hover:underline"
+                    className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline"
                 >
                     {t('auth.forgotPassword')}
                 </Link>

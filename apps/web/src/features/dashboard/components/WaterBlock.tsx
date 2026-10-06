@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, memo, useMemo } from 'react'
-import { Plus, Check, Droplets } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
-import { Button } from '@/shared/components/ui/Button'
+import { Plus, Check } from 'lucide-react'
+import { color } from '@burcev/design-tokens'
+import { Card, CardTitle } from '@/shared/components/ui/Card'
+import { Button, IconButton } from '@/shared/components/ui/Button'
+import { ProgressBar } from '@/shared/components/ui/ProgressBar'
 import { cn } from '@/shared/utils/cn'
 import { formatLocalDate } from '@/shared/utils/format'
 import { apiClient } from '@/shared/utils/api-client'
@@ -16,53 +18,6 @@ export interface WaterBlockProps {
     date: Date
     className?: string
 }
-
-interface WaterRingProps {
-    percentage: number
-    size?: number
-    strokeWidth?: number
-    className?: string
-    children?: React.ReactNode
-}
-
-const WaterRing = memo(function WaterRing({
-    percentage,
-    size = 72,
-    strokeWidth = 6,
-    className,
-    children,
-}: WaterRingProps) {
-    const radius = (size - strokeWidth) / 2
-    const circumference = radius * 2 * Math.PI
-    const cappedPercentage = Math.min(percentage, 100)
-    const strokeDashoffset = circumference - (cappedPercentage / 100) * circumference
-    const isComplete = percentage >= 100
-
-    return (
-        <div
-            className={cn('relative inline-flex items-center justify-center', className)}
-            role="progressbar"
-            aria-valuenow={cappedPercentage}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={t('dashboard.water.progressAria', { percentage })}
-        >
-            <svg width={size} height={size} className="transform -rotate-90" aria-hidden="true">
-                <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="none" className="text-on-coach" />
-                <circle
-                    cx={size / 2} cy={size / 2} r={radius}
-                    stroke="currentColor" strokeWidth={strokeWidth} fill="none"
-                    strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round"
-                    className={cn('transition-all duration-500', isComplete ? 'text-success-fg' : 'text-primary')}
-                />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                {children}
-            </div>
-        </div>
-    )
-})
 
 export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlockProps) {
     const [glasses, setGlasses] = useState(0)
@@ -122,86 +77,81 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
     const isToday = dateStr === formatLocalDate(new Date())
     const showAttention = isToday && glasses === 0
 
+    // Вода — в языке карточки питания: стаканы главным числом, полоса цветом
+    // воды (цвет опознаёт показатель и не меняется при достижении цели).
     return (
-        <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-fg">{t('dashboard.water.title')}</CardTitle>
-                        {showAttention && (
-                            <AttentionBadge urgency="normal" ariaLabel={t('dashboard.water.noneToday')} />
-                        )}
-                    </div>
-                    <Button
-                        variant="ghost" size="sm"
-                        onClick={handleAddGlass} isLoading={isAdding}
-                        className="h-8 w-8 p-0"
-                        aria-label={t('dashboard.water.addGlassAria')}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+        <Card className={cn('flex h-full flex-col gap-4', className)}>
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <CardTitle>{t('dashboard.water.title')}</CardTitle>
+                    {showAttention && (
+                        <AttentionBadge urgency="normal" ariaLabel={t('dashboard.water.noneToday')} />
+                    )}
                 </div>
-            </CardHeader>
+                <IconButton
+                    variant="ghost"
+                    onClick={handleAddGlass}
+                    disabled={isAdding}
+                    aria-busy={isAdding}
+                    aria-label={t('dashboard.water.addGlassAria')}
+                >
+                    <Plus className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                </IconButton>
+            </div>
 
-            <CardContent className="space-y-3">
-                {glasses > 0 ? (
-                    <div className="text-center space-y-2" role="region" aria-label={t('dashboard.water.progressRegion')}>
-                        <div className="flex justify-center">
-                            <WaterRing percentage={percentage} size={72} strokeWidth={6}>
-                                <span className={cn(
-                                    'text-base font-bold leading-tight',
-                                    isGoalReached ? 'text-success-fg' : 'text-fg'
-                                )}>
-                                    {glasses}/{goal}
-                                </span>
-                            </WaterRing>
-                        </div>
-                        <div className="space-y-0.5">
-                            <div className="text-xs text-fg-muted">{t('dashboard.water.glassesOf', { size: glassSize })}</div>
-                            <div className={cn(
-                                'text-xs font-medium',
-                                isGoalReached ? 'text-success-fg' : 'text-fg-muted'
-                            )}>
-                                {percentage}%
-                            </div>
-                        </div>
-                        {isGoalReached ? (
-                            <div className="flex items-center justify-center gap-1.5 text-success-fg" role="status">
-                                <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                                <span className="text-xs font-medium">{t('dashboard.water.goalReached')}</span>
-                            </div>
-                        ) : (
-                            <Button
-                                variant="outline" size="sm"
-                                onClick={handleAddGlass} isLoading={isAdding}
-                                className="text-primary border-primary/30 hover:bg-primary-soft"
-                                aria-label={t('dashboard.water.addGlassAria')}
-                            >
-                                <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                                {t('common.add')}
-                            </Button>
-                        )}
+            {glasses > 0 ? (
+                <div className="space-y-2" role="region" aria-label={t('dashboard.water.progressRegion')}>
+                    <div className="flex items-baseline gap-2">
+                        <span className="type-num-l text-fg">
+                            {glasses}/{goal}
+                        </span>
+                        <span className="text-sm text-fg-muted tabular-nums">
+                            {t('dashboard.water.glassesOf', { size: glassSize })}
+                        </span>
                     </div>
-                ) : (
-                    <div className="text-center py-2 space-y-2">
-                        <Droplets className="h-8 w-8 mx-auto text-fg-subtle" aria-hidden="true" />
-                        <p className="text-sm text-fg-muted">{t('dashboard.water.empty')}</p>
+                    <ProgressBar
+                        value={Math.min(glasses, goal)}
+                        max={goal}
+                        color={color.water}
+                        label={t('dashboard.water.progressAria', { percentage })}
+                    />
+                    {isGoalReached ? (
+                        <div className="flex items-center gap-1.5 text-success-fg" role="status">
+                            <Check className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                            <span className="text-sm font-medium">{t('dashboard.water.goalReached')}</span>
+                        </div>
+                    ) : (
                         <Button
-                            variant="outline" size="sm"
-                            onClick={handleAddGlass} isLoading={isAdding}
-                            className="text-primary border-primary/30 hover:bg-primary-soft"
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleAddGlass}
+                            isLoading={isAdding}
                             aria-label={t('dashboard.water.addGlassAria')}
                         >
-                            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+                            <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                             {t('common.add')}
                         </Button>
-                    </div>
-                )}
-
-                <div className="text-xs text-fg-subtle text-center">
-                    {t('dashboard.water.goal', { goal })}
+                    )}
                 </div>
-            </CardContent>
+            ) : (
+                <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-fg-muted">{t('dashboard.water.empty')}</p>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleAddGlass}
+                        isLoading={isAdding}
+                        aria-label={t('dashboard.water.addGlassAria')}
+                    >
+                        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                        {t('common.add')}
+                    </Button>
+                </div>
+            )}
+
+            <p className="mt-auto type-caption text-fg-subtle">
+                {t('dashboard.water.goal', { goal })}
+            </p>
         </Card>
     )
 })

@@ -220,7 +220,8 @@ describe('SettingsPageLayout', () => {
       </SettingsPageLayout>
     )
 
-    const link = screen.getByText('Профиль')
-    expect(link.closest('a')).toHaveAttribute('href', '/profile')
+    // Назад — кнопка-иконка: имя у неё в aria-label, не в видимом тексте.
+    const link = screen.getByRole('link', { name: 'Профиль' })
+    expect(link).toHaveAttribute('href', '/profile')
   })
 })

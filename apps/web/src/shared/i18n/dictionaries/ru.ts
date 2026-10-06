@@ -1940,6 +1940,7 @@ export const ru = {
             password: 'Изменить пароль',
             body: 'Тело и цели',
             providers: 'Вход через сервисы',
+            privacy: 'Данные и удаление аккаунта',
         },
         locality: {
             name: 'Имя',

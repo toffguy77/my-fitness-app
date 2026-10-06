@@ -10,6 +10,8 @@ import { changePassword } from '../api/settings'
 import { providersApi } from '@/features/auth/api/providers'
 import { requestPasswordReset } from '@/features/auth/api/passwordReset'
 import { t } from '@/shared/i18n'
+import { CheckCircle2 } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 
 const changePasswordSchema = z
     .object({
@@ -90,26 +92,30 @@ function SetPasswordPanel({ email }: { email: string }) {
 
     if (sent) {
         return (
-            <div className="rounded-lg bg-success-soft p-4 text-success-fg">
+            <div className="flex items-start gap-3 rounded-tile bg-success-soft p-4 text-success-fg" role="status">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.8} aria-hidden="true" />
                 <p className="font-medium">{t('settings.password.linkSent', { email })}</p>
             </div>
         )
     }
 
     return (
-        <div className="space-y-4">
-            <p className="text-sm text-fg-muted">{t('settings.password.noneYet')}</p>
+        <div className="flex flex-col gap-4">
+            <p className="type-body text-fg">{t('settings.password.noneYet')}</p>
             <p className="text-sm text-fg-muted">{t('settings.password.setExplanation')}</p>
 
-            {error && <p className="text-sm text-danger-fg">{error}</p>}
+            {error && <p className="text-sm text-danger-fg" role="alert">{error}</p>}
 
-            <button
+            <Button
+                type="button"
+                size="lg"
+                block
                 onClick={handleSend}
                 disabled={sending || !email}
-                className="w-full rounded-lg bg-primary py-3 font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
+                className="mt-2"
             >
                 {sending ? t('settings.password.sending') : t('settings.password.sendSetLink')}
-            </button>
+            </Button>
         </div>
     )
 }
@@ -154,11 +160,15 @@ function PasswordForm() {
 
     if (success) {
         return (
-            <div className="rounded-lg bg-success-soft p-4 text-success-fg">
-                <p className="font-medium">{t('settings.password.changed')}</p>
+            <div className="rounded-tile bg-success-soft p-4 text-success-fg" role="status">
+                <p className="flex items-start gap-3 font-medium">
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                    {t('settings.password.changed')}
+                </p>
                 <button
+                    type="button"
                     onClick={() => setSuccess(false)}
-                    className="mt-3 text-sm text-success-fg underline"
+                    className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-success-fg underline underline-offset-2"
                 >
                     {t('settings.password.changeAgain')}
                 </button>
@@ -167,7 +177,7 @@ function PasswordForm() {
     }
 
     return (
-        <div className="space-y-5">
+        <div className="flex flex-col gap-5">
             <PasswordInput
                 label={t('settings.password.current')}
                 placeholder={t('settings.password.enterCurrent')}
@@ -197,13 +207,9 @@ function PasswordForm() {
                 <p className="text-sm text-danger-fg">{serverError}</p>
             )}
 
-            <button
-                onClick={handleSave}
-                disabled={saving}
-                className="mt-3 w-full rounded-lg bg-primary py-3 text-on-primary font-medium transition-colors hover:bg-primary-hover disabled:opacity-50"
-            >
+            <Button type="button" size="lg" block onClick={handleSave} disabled={saving} className="mt-2">
                 {saving ? t('settings.saving') : t('settings.password.submit')}
-            </button>
+            </Button>
         </div>
     )
 }

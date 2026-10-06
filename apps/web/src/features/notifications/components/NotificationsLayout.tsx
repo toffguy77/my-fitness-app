@@ -10,6 +10,7 @@
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Settings } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
+import { IconButton } from '@/shared/components/ui/Button';
 
 import { t } from '@/shared/i18n'
 export interface NotificationsLayoutProps {
@@ -66,7 +67,7 @@ export function NotificationsLayout({
                 className={cn(
                     'sr-only focus:not-sr-only',
                     'focus:absolute focus:top-4 focus:left-4 focus:z-50',
-                    'bg-primary text-on-primary px-4 py-2 rounded-lg',
+                    'rounded-full bg-fg px-4 py-2 text-fg-inverse',
                     'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2'
                 )}
             >
@@ -75,106 +76,41 @@ export function NotificationsLayout({
 
             {/* Page Header (Requirement 1.1, 1.4) */}
             <header
-                className={cn(
-                    'bg-surface border-b border-line',
-                    'sticky top-0 z-10',
-                    // Fixed height matching dashboard header (h-16 = 64px)
-                    'h-16 px-4',
-                    'flex items-center'
-                )}
+                className="sticky top-0 z-10 border-b border-line bg-nav backdrop-blur"
                 role="banner"
             >
-                <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
-                    {/* Left: Back Button + Page Title */}
-                    <div className="flex items-center gap-3">
-                        {/* Back Button */}
-                        <button
-                            onClick={handleBackClick}
-                            className={cn(
-                                'p-2 rounded-lg transition-colors',
-                                'text-fg-muted hover:text-fg hover:bg-subtle',
-                                // Enhanced focus-visible styles (Requirement 6.4, 6.7)
-                                'focus:outline-none',
-                                'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
-                                'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--ds-color-bg-surface),0_0_0_4px_var(--ds-color-focus)]',
-                                // Touch-friendly sizing on mobile (Requirement 6.1, 6.2)
-                                'sm:p-2.5',
-                                // Minimum touch target size (Requirement 6.4)
-                                'min-h-[44px] min-w-[44px] flex items-center justify-center'
-                            )}
-                            aria-label="Back to dashboard"
-                            title={t('notifications.backToDashboard')}
-                            type="button"
-                        >
-                            <ArrowLeft
-                                className={cn(
-                                    'w-5 h-5',      // Mobile: 20px
-                                    'sm:w-6 sm:h-6' // Tablet/Desktop: 24px
-                                )}
-                                aria-hidden="true"
-                            />
-                        </button>
+                <div className="mx-auto flex h-16 w-full max-w-content items-center gap-1 px-2 sm:px-screen-x">
+                    {/* Back Button */}
+                    <IconButton
+                        variant="ghost"
+                        onClick={handleBackClick}
+                        aria-label="Back to dashboard"
+                        title={t('notifications.backToDashboard')}
+                    >
+                        <ArrowLeft className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                    </IconButton>
 
-                        {/* Page Title */}
-                        <h1
-                            className={cn(
-                                'font-semibold text-fg',
-                                // Responsive font sizes (Requirement 6.1, 6.2, 6.3)
-                                'text-xl',      // Mobile: 20px
-                                'sm:text-2xl',  // Tablet: 24px
-                                'lg:text-3xl'   // Desktop: 30px
-                            )}
-                        >
-                            {t('notifications.title')}
-                        </h1>
-                    </div>
+                    {/* Page Title — заголовок экрана засечками */}
+                    <h1 className="min-w-0 flex-1 truncate type-title-1 text-fg">
+                        {t('notifications.title')}
+                    </h1>
 
                     {/* Right: Settings Icon Button (Requirement 1.4) */}
-                    <button
+                    <IconButton
+                        variant="ghost"
                         onClick={handleSettingsClick}
-                        className={cn(
-                            'p-2 rounded-lg transition-colors',
-                            'text-fg-muted hover:text-fg hover:bg-subtle',
-                            // Enhanced focus-visible styles (Requirement 6.4, 6.7)
-                            'focus:outline-none',
-                            'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
-                            'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--ds-color-bg-surface),0_0_0_4px_var(--ds-color-focus)]',
-                            // Touch-friendly sizing on mobile (Requirement 6.1, 6.2)
-                            'sm:p-2.5',
-                            // Minimum touch target size (Requirement 6.4)
-                            'min-h-[44px] min-w-[44px] flex items-center justify-center'
-                        )}
                         aria-label="Notification settings"
                         title={t('notifications.settingsTitle')}
-                        type="button"
                     >
-                        <Settings
-                            className={cn(
-                                'w-5 h-5',      // Mobile: 20px
-                                'sm:w-6 sm:h-6' // Tablet/Desktop: 24px
-                            )}
-                            aria-hidden="true"
-                        />
-                    </button>
+                        <Settings className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                    </IconButton>
                 </div>
             </header>
 
-            {/* Main Content Area */}
+            {/* Main Content Area — колонка контента; на телефоне строки списка во всю ширину */}
             <main
                 id="main-content"
-                className={cn(
-                    'flex-1',
-                    // Responsive container (Requirement 6.1, 6.2, 6.3)
-                    'max-w-7xl mx-auto w-full',
-                    // Responsive padding
-                    'px-0',         // Mobile: no horizontal padding (full width)
-                    'sm:px-4',      // Tablet: 16px padding
-                    'lg:px-8',      // Desktop: 32px padding
-                    // Vertical spacing
-                    'py-4',         // Mobile: 16px
-                    'sm:py-6',      // Tablet: 24px
-                    'lg:py-8'       // Desktop: 32px
-                )}
+                className="mx-auto w-full max-w-content flex-1 py-5 sm:px-screen-x"
                 role="main"
             >
                 {children}

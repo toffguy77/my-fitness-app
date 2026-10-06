@@ -6,6 +6,18 @@ import { accountApi, type DataExport, type DeletionStatus } from '../api/account
 import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
+import { AlertTriangle, Download } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
+import { fieldClass, fieldLabelClass } from '@/shared/components/forms/fieldStyles'
+import { cn } from '@/shared/utils/cn'
+
+/** Цвет статуса выгрузки — роль состояния, а не оттенок. */
+const EXPORT_STATUS_TONE: Record<DataExport['status'], string> = {
+    ready: 'text-success-fg',
+    pending: 'text-fg-muted',
+    building: 'text-fg-muted',
+    failed: 'text-danger-fg',
+}
 
 // i18n-exempt: the word a person types to confirm; it belongs with the
 // sentence that asks for it, which is in the dictionary.
@@ -136,66 +148,76 @@ export function SettingsPrivacy() {
         : null
 
     return (
-        <div className="space-y-10">
-            <section>
-                <h2 className="text-lg font-semibold text-fg">{t('settings.privacy.downloadHeading')}</h2>
+        <div className="flex flex-col gap-6">
+            <section className="rounded-card border border-line bg-surface p-5">
+                <h2 className="type-title-3 text-fg">{t('settings.privacy.downloadHeading')}</h2>
                 <p className="mt-2 text-sm text-fg-muted">
                     {t('settings.privacy.downloadExplanation')}
                 </p>
 
-                <button
+                <Button
                     type="button"
+                    variant="secondary"
                     onClick={handleExport}
                     disabled={busy}
-                    className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-on-primary hover:bg-primary-hover disabled:opacity-50"
+                    className="mt-4"
                 >
                     {t('settings.privacy.requestExport')}
-                </button>
+                </Button>
 
                 {exports.length > 0 && (
-                    <ul className="mt-4 space-y-2">
-                        {exports.map((item) => (
-                            <li key={item.id} className="flex items-center justify-between rounded border border-line px-3 py-2 text-sm">
-                                <span className="text-fg-muted">
-                                    {new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short', timeStyle: 'short' })
-                                        .format(new Date(item.requested_at))}
-                                    {' — '}
-                                    {item.status === 'ready' && !item.downloaded && t('settings.privacy.exportReady')}
-                                    {item.status === 'ready' && item.downloaded && t('settings.privacy.exportDownloaded')}
-                                    {item.status === 'pending' && t('settings.privacy.exportPending')}
-                                    {item.status === 'building' && t('settings.privacy.exportBuilding')}
-                                    {item.status === 'failed' && t('settings.privacy.exportFailedStatus')}
-                                </span>
-                                {item.status === 'ready' && !item.downloaded && (
-                                    <a
-                                        href={accountApi.downloadExportUrl(item.id)}
-                                        className="text-primary hover:underline"
-                                    >
-                                        {t('settings.privacy.download')}
-                                    </a>
-                                )}
-                            </li>
-                        ))}
+                    <ul className="mt-4 divide-y divide-line border-t border-line">
+                        {exports.map((item) => {
+                            const fresh = item.status === 'ready' && !item.downloaded
+                            return (
+                                <li key={item.id} className="flex min-h-14 items-center justify-between gap-3 py-2 text-sm">
+                                    <span className="text-fg-muted">
+                                        <span className="tabular-nums">
+                                            {new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short', timeStyle: 'short' })
+                                                .format(new Date(item.requested_at))}
+                                        </span>
+                                        {' — '}
+                                        <span className={item.status === 'ready' && item.downloaded ? 'text-fg-muted' : EXPORT_STATUS_TONE[item.status]}>
+                                            {fresh && t('settings.privacy.exportReady')}
+                                            {item.status === 'ready' && item.downloaded && t('settings.privacy.exportDownloaded')}
+                                            {item.status === 'pending' && t('settings.privacy.exportPending')}
+                                            {item.status === 'building' && t('settings.privacy.exportBuilding')}
+                                            {item.status === 'failed' && t('settings.privacy.exportFailedStatus')}
+                                        </span>
+                                    </span>
+                                    {fresh && (
+                                        <a
+                                            href={accountApi.downloadExportUrl(item.id)}
+                                            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 font-semibold text-primary hover:underline"
+                                        >
+                                            <Download className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                                            {t('settings.privacy.download')}
+                                        </a>
+                                    )}
+                                </li>
+                            )
+                        })}
                     </ul>
                 )}
             </section>
 
-            <section>
-                <h2 className="text-lg font-semibold text-fg">{t('settings.privacy.deleteHeading')}</h2>
+            <section className="rounded-card border border-line bg-surface p-5">
+                <h2 className="type-title-3 text-fg">{t('settings.privacy.deleteHeading')}</h2>
 
                 {status?.requested ? (
-                    <div className="mt-2 rounded-md border border-warning/30 bg-warning-soft p-4">
-                        <p className="text-sm text-warning-fg">
+                    <div className="mt-3 rounded-tile bg-warning-soft p-4" role="status">
+                        <p className="flex items-start gap-2 text-sm text-warning-fg">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
                             {t('settings.privacy.scheduledFor', { date: deletionDate ?? '' })}
                         </p>
-                        <button
+                        <Button
                             type="button"
                             onClick={handleCancel}
                             disabled={busy}
-                            className="mt-3 rounded-md bg-warning px-4 py-2 text-sm text-on-primary hover:bg-warning disabled:opacity-50"
+                            className="mt-3"
                         >
                             {t('settings.privacy.cancelDeletion')}
-                        </button>
+                        </Button>
                     </div>
                 ) : (
                     <>
@@ -207,84 +229,92 @@ export function SettingsPrivacy() {
                         </p>
 
                         {!showDeleteForm ? (
-                            <button
+                            <Button
                                 type="button"
+                                variant="secondary"
                                 onClick={() => setShowDeleteForm(true)}
-                                className="mt-4 rounded-md border border-danger/30 px-4 py-2 text-sm text-danger-fg hover:bg-danger-soft"
+                                className="mt-4 border-danger text-danger-fg hover:bg-danger-soft"
                             >
                                 {t('settings.privacy.deleteAccount')}
-                            </button>
+                            </Button>
                         ) : (
-                            <div className="mt-4 space-y-3 rounded-md border border-danger/30 p-4">
+                            <div className="mt-4 flex flex-col gap-4 rounded-tile border border-danger p-4">
                                 {hasPassword ? (
-                                    <label className="block text-sm">
-                                        {t('settings.privacy.currentPassword')}
+                                    <label className="block">
+                                        <span className={fieldLabelClass}>{t('settings.privacy.currentPassword')}</span>
                                         <input
                                             type="password"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            className="mt-1 w-full rounded border border-line px-3 py-2"
+                                            className={fieldClass}
                                             autoComplete="current-password"
                                         />
                                     </label>
                                 ) : (
-                                    <div className="space-y-2">
+                                    <div className="flex flex-col gap-3">
                                         <p className="text-sm text-fg-muted">
                                             {t('settings.privacy.noPasswordExplanation')}
                                         </p>
                                         {!codeSent ? (
-                                            <button
+                                            <Button
                                                 type="button"
+                                                variant="secondary"
                                                 onClick={handleSendCode}
                                                 disabled={sendingCode}
-                                                className="rounded-md border border-line px-4 py-2 text-sm text-fg hover:bg-canvas disabled:opacity-50"
+                                                className="self-start"
                                             >
                                                 {sendingCode ? t('settings.privacy.sendingCode') : t('settings.privacy.sendCode')}
-                                            </button>
+                                            </Button>
                                         ) : (
-                                            <label className="block text-sm">
-                                                {t('settings.privacy.codeLabel')}
+                                            <label className="block">
+                                                <span className={fieldLabelClass}>{t('settings.privacy.codeLabel')}</span>
                                                 <input
                                                     type="text"
                                                     inputMode="numeric"
+                                                    autoComplete="one-time-code"
                                                     maxLength={6}
                                                     value={code}
                                                     onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                                    className="mt-1 w-full rounded border border-line px-3 py-2"
+                                                    className={cn(fieldClass, 'tracking-widest')}
                                                 />
                                             </label>
                                         )}
                                     </div>
                                 )}
-                                <label className="block text-sm">
-                                    {t('settings.privacy.confirmPhrase', { phrase: CONFIRM_PHRASE })}
+                                <label className="block">
+                                    <span className={fieldLabelClass}>
+                                        {t('settings.privacy.confirmPhrase', { phrase: CONFIRM_PHRASE })}
+                                    </span>
                                     <input
                                         type="text"
                                         value={confirmation}
                                         onChange={(e) => setConfirmation(e.target.value)}
-                                        className="mt-1 w-full rounded border border-line px-3 py-2"
+                                        autoCapitalize="characters"
+                                        autoComplete="off"
+                                        className={fieldClass}
                                     />
                                 </label>
-                                <div className="flex gap-3">
-                                    <button
+                                {/* Отказ первым, как в диалогах подтверждения. */}
+                                <div className="flex flex-wrap gap-3">
+                                    <Button
                                         type="button"
+                                        variant="ghost"
+                                        onClick={() => setShowDeleteForm(false)}
+                                    >
+                                        {t('settings.privacy.cancel')}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="danger"
                                         onClick={handleDelete}
                                         disabled={
                                             busy ||
                                             confirmation !== CONFIRM_PHRASE ||
                                             (hasPassword ? !password : code.length !== 6)
                                         }
-                                        className="rounded-md bg-danger px-4 py-2 text-sm text-on-primary hover:bg-danger disabled:opacity-50"
                                     >
                                         {t('settings.privacy.deleteAccount')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowDeleteForm(false)}
-                                        className="text-sm text-fg-muted hover:underline"
-                                    >
-                                        {t('settings.privacy.cancel')}
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         )}

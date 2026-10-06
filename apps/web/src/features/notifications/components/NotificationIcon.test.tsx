@@ -43,16 +43,12 @@ describe('NotificationIcon', () => {
                     const icon = container.querySelector('svg');
                     expect(icon).toBeInTheDocument();
 
-                    // Property: Icon should have responsive sizing
-                    expect(icon).toHaveClass('h-4', 'w-4'); // Mobile base size
-                    expect(icon).toHaveClass('sm:h-5', 'sm:w-5'); // Tablet
-                    expect(icon).toHaveClass('md:h-6', 'md:w-6'); // Desktop
+                    // Property: Icon is neutral (identifies the category, does not judge it)
+                    expect(icon).toHaveClass('text-fg-muted');
 
-                    // Property: Container should have consistent styling with responsive sizing
-                    expect(iconContainer).toHaveClass('flex', 'items-center', 'justify-center', 'rounded-full');
-                    expect(iconContainer).toHaveClass('h-8', 'w-8'); // Mobile base size
-                    expect(iconContainer).toHaveClass('sm:h-10', 'sm:w-10'); // Tablet
-                    expect(iconContainer).toHaveClass('md:h-12', 'md:w-12'); // Desktop
+                    // Property: Container is a neutral round tile of one size
+                    expect(iconContainer).toHaveClass('flex', 'items-center', 'justify-center', 'rounded-full', 'bg-subtle');
+                    expect(iconContainer).toHaveClass('h-10', 'w-10');
                 }),
                 { numRuns: 100 }
             );
@@ -122,7 +118,7 @@ describe('NotificationIcon', () => {
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
                 expect(icon).toHaveClass('text-fg-muted');
-                expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
+                expect(icon).toHaveClass('h-5', 'w-5');
             });
 
             it('renders Trophy icon for achievement type', () => {
@@ -133,7 +129,7 @@ describe('NotificationIcon', () => {
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
                 expect(icon).toHaveClass('text-fg-muted');
-                expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
+                expect(icon).toHaveClass('h-5', 'w-5');
             });
 
             it('renders Bell icon for reminder type', () => {
@@ -144,7 +140,7 @@ describe('NotificationIcon', () => {
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
                 expect(icon).toHaveClass('text-fg-muted');
-                expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
+                expect(icon).toHaveClass('h-5', 'w-5');
             });
 
             it('renders Settings icon for system_update type', () => {
@@ -155,7 +151,7 @@ describe('NotificationIcon', () => {
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
                 expect(icon).toHaveClass('text-fg-muted');
-                expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
+                expect(icon).toHaveClass('h-5', 'w-5');
             });
 
             it('renders Star icon for new_feature type', () => {
@@ -166,7 +162,7 @@ describe('NotificationIcon', () => {
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
                 expect(icon).toHaveClass('text-fg-muted');
-                expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
+                expect(icon).toHaveClass('h-5', 'w-5');
             });
 
             it('renders Info icon for general type', () => {
@@ -177,7 +173,7 @@ describe('NotificationIcon', () => {
                 const icon = container.querySelector('svg');
                 expect(icon).toBeInTheDocument();
                 expect(icon).toHaveClass('text-fg-muted');
-                expect(icon).toHaveClass('h-4', 'w-4', 'sm:h-5', 'sm:w-5', 'md:h-6', 'md:w-6');
+                expect(icon).toHaveClass('h-5', 'w-5');
             });
         });
 
@@ -269,7 +265,7 @@ describe('NotificationIcon', () => {
                 const imgContainer = container.querySelector('.relative.rounded-full');
                 expect(imgContainer).toBeInTheDocument();
                 expect(imgContainer).toHaveClass('overflow-hidden', 'bg-subtle');
-                expect(imgContainer).toHaveClass('h-8', 'w-8', 'sm:h-10', 'sm:w-10', 'md:h-12', 'md:w-12');
+                expect(imgContainer).toHaveClass('h-10', 'w-10');
             });
         });
 
@@ -287,8 +283,8 @@ describe('NotificationIcon', () => {
                     'rounded-full',
                     'bg-subtle'
                 );
-                // Responsive sizing
-                expect(iconContainer).toHaveClass('h-8', 'w-8', 'sm:h-10', 'sm:w-10', 'md:h-12', 'md:w-12');
+                // Neutral 40 px tile
+                expect(iconContainer).toHaveClass('h-10', 'w-10');
             });
 
             it('applies custom className to icon container', () => {
@@ -321,8 +317,8 @@ describe('NotificationIcon', () => {
                 const iconContainer = container.querySelector('[aria-hidden="true"]');
                 // Should have both default and custom classes
                 expect(iconContainer).toHaveClass('flex', 'bg-primary-soft');
-                // Responsive sizing
-                expect(iconContainer).toHaveClass('h-8', 'w-8', 'sm:h-10', 'sm:w-10', 'md:h-12', 'md:w-12');
+                // Neutral 40 px tile
+                expect(iconContainer).toHaveClass('h-10', 'w-10');
             });
         });
 
@@ -393,8 +389,8 @@ describe('NotificationIcon', () => {
 
                     const iconContainer = container.querySelector('[aria-hidden="true"]');
                     expect(iconContainer).toHaveClass('rounded-full');
-                    // Responsive sizing
-                    expect(iconContainer).toHaveClass('h-8', 'w-8', 'sm:h-10', 'sm:w-10', 'md:h-12', 'md:w-12');
+                    // Neutral 40 px tile
+                    expect(iconContainer).toHaveClass('h-10', 'w-10');
                 });
             });
         });

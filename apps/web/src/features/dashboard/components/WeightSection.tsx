@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useCallback, memo, useMemo, useEffect } from 'react'
-import { Plus, Check, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react'
+import { Plus, Pencil, Check, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react'
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import type { Payload } from 'recharts/types/component/DefaultTooltipContent'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
-import { Button } from '@/shared/components/ui/Button'
+import { Card, CardTitle } from '@/shared/components/ui/Card'
+import { Button, IconButton } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
@@ -21,7 +21,7 @@ import { apiClient } from '@/shared/utils/api-client'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
-import { AXIS_STYLE, GRID_STROKE, chartColor } from '@/shared/charts/chartTheme'
+import { AXIS_STYLE, GRID_STROKE, TARGET_STROKE, TOOLTIP_CLASS, chartColor } from '@/shared/charts/chartTheme'
 
 interface WeightTrendPoint {
     date: Date
@@ -42,10 +42,10 @@ function WeightTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-line bg-surface px-3 py-2 shadow-sm">
-            <p className="text-xs font-medium text-fg mb-1">{String(label)}</p>
+        <div className={TOOLTIP_CLASS}>
+            <p className="mb-1 text-xs font-medium text-fg">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
-                <p key={entry.name} className="text-xs text-fg-muted">
+                <p key={entry.name} className="text-xs text-fg-muted tabular-nums">
                     <span
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
@@ -111,13 +111,13 @@ const WeightTrendChart = memo(function WeightTrendChart({
                     {targetWeight != null && (
                         <ReferenceLine
                             y={targetWeight}
-                            stroke={chartColor.success}
+                            stroke={TARGET_STROKE}
                             strokeDasharray="6 3"
                             strokeWidth={1}
                             label={{
                                 value: t('dashboard.weightSection.targetWithValue', { weight: targetWeight }),
                                 position: 'right',
-                                fill: chartColor['success-fg'],
+                                fill: chartColor['fg-muted'],
                                 fontSize: 11,
                             }}
                         />
@@ -133,14 +133,14 @@ const WeightTrendChart = memo(function WeightTrendChart({
                     />
                 </LineChart>
             </ResponsiveContainer>
-            <div className="flex items-center gap-4 mt-2 text-xs text-fg-muted">
+            <div className="mt-2 flex items-center gap-4 text-xs text-fg-muted">
                 <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-4 border-t-2 border-primary" />
+                    <span className="inline-block w-4 border-t-2 border-fg" aria-hidden="true" />
                     {t('dashboard.weightSection.weightLabel')}
                 </span>
                 {targetWeight != null && (
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 border-t-2 border-dashed border-success" />
+                        <span className="inline-block w-4 border-t-2 border-dashed border-fg-subtle" aria-hidden="true" />
                         {t('dashboard.weightSection.targetLabel')}
                     </span>
                 )}
@@ -276,132 +276,120 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
     }, [weightTrend])
 
     return (
-        <Card className={cn('', className)} variant="bordered">
-            <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-fg">{t('dashboard.weight.title')}</CardTitle>
-                        {showAttention && (
-                            <AttentionBadge urgency="normal" ariaLabel={t('dashboard.weight.noneToday')} />
-                        )}
-                    </div>
-                    <Button
-                        variant="ghost" size="sm" onClick={handleQuickAdd}
-                        className="h-8 w-8 p-0"
-                        aria-label={isWeightLogged ? t('dashboard.weight.change') : t('dashboard.weight.add')}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+        <Card className={cn('flex flex-col gap-4', className)}>
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <CardTitle>{t('dashboard.weight.title')}</CardTitle>
+                    {showAttention && (
+                        <AttentionBadge urgency="normal" ariaLabel={t('dashboard.weight.noneToday')} />
+                    )}
                 </div>
-            </CardHeader>
+                <IconButton
+                    variant="ghost"
+                    onClick={handleQuickAdd}
+                    aria-label={isWeightLogged ? t('dashboard.weight.change') : t('dashboard.weight.add')}
+                >
+                    {isWeightLogged
+                        ? <Pencil className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
+                        : <Plus className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />}
+                </IconButton>
+            </div>
 
-            <CardContent className="space-y-4">
-                {isEditing ? (
-                    <div className="space-y-3">
-                        <div>
-                            <label htmlFor="weight-input" className="sr-only">{t('dashboard.weight.kilograms')}</label>
-                            <Input
-                                id="weight-input" type="number" step="0.1" min="0.1" max="500"
-                                placeholder={t('dashboard.weight.placeholder')} value={inputValue}
-                                onChange={(e) => handleInputChange(e.target.value)}
-                                onKeyDown={handleKeyPress}
-                                error={validationError || undefined}
-                                autoFocus aria-label={t('dashboard.weight.kilograms')}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="primary" size="sm" onClick={handleSave}
-                                isLoading={isSaving} disabled={!!validationError || !inputValue.trim()}
-                                className="flex-1"
-                            >
-                                <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                                {t('common.save')}
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
-                                {t('common.cancel')}
-                            </Button>
-                        </div>
+            {isEditing ? (
+                <div className="space-y-3">
+                    <div>
+                        <label htmlFor="weight-input" className="sr-only">{t('dashboard.weight.kilograms')}</label>
+                        <Input
+                            id="weight-input" type="number" inputMode="decimal" step="0.1" min="0.1" max="500"
+                            placeholder={t('dashboard.weight.placeholder')} value={inputValue}
+                            onChange={(e) => handleInputChange(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            error={validationError || undefined}
+                            autoFocus aria-label={t('dashboard.weight.kilograms')}
+                        />
                     </div>
-                ) : (
-                    <div className="space-y-4">
-                        {/* Current weight info */}
-                        <div className="text-center">
-                            {isWeightLogged ? (
-                                <div className="space-y-1.5">
-                                    <div className="text-4xl font-bold text-fg">
-                                        {formatWeight(currentWeight)}
-                                        <span className="text-lg text-fg-muted ml-1">{t('dashboard.weight.kg')}</span>
-                                    </div>
-                                    <div className="flex items-center justify-center gap-2 text-success-fg">
-                                        <Check className="h-4 w-4" aria-hidden="true" />
-                                        <span className="text-sm font-medium">{t('dashboard.weightSection.recorded')}</span>
-                                    </div>
-                                    {weightChange !== null && (
-                                        <div className={cn(
-                                            'flex items-center justify-center gap-1 text-sm',
-                                            weightChange > 0 ? 'text-danger-fg' : weightChange < 0 ? 'text-success-fg' : 'text-fg-muted',
-                                        )}>
-                                            {weightChange > 0 ? <TrendingUp className="h-4 w-4" /> : weightChange < 0 ? <TrendingDown className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                                            <span>{t('dashboard.weightSection.changeSinceYesterday', { sign: weightChange > 0 ? '+' : '', amount: formatWeight(Math.abs(weightChange)) })}</span>
-                                        </div>
-                                    )}
-                                    {targetWeight != null && distanceToTarget != null && (
-                                        <div className="flex items-center justify-center gap-1.5 text-xs text-fg-muted">
-                                            <Target className="h-3.5 w-3.5 text-success-fg" aria-hidden="true" />
-                                            <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
-                                            {Math.abs(distanceToTarget) >= 0.1 ? (
-                                                <span className={distanceToTarget > 0 ? 'text-warning-fg' : 'text-success-fg'}>
-                                                    ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} {t('dashboard.weight.kg')})
-                                                </span>
-                                            ) : (
-                                                <span className="text-success-fg font-medium">{t('dashboard.weight.targetReached')}</span>
-                                            )}
-                                        </div>
-                                    )}
+                    <div className="flex gap-2">
+                        <Button variant="secondary" onClick={handleCancel} disabled={isSaving}>
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            variant="primary" onClick={handleSave}
+                            isLoading={isSaving} disabled={!!validationError || !inputValue.trim()}
+                            className="flex-1"
+                        >
+                            {t('common.save')}
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {isWeightLogged ? (
+                        <div className="space-y-1.5">
+                            <div className="flex items-baseline gap-1">
+                                <span className="type-num-xl text-fg">{formatWeight(currentWeight)}</span>
+                                <span className="text-base text-fg-muted">{t('dashboard.weight.kg')}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-success-fg">
+                                <Check className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                                <span className="text-sm font-medium">{t('dashboard.weightSection.recorded')}</span>
+                            </div>
+                            {/* Изменение с вчера — нейтрально: хорошо это или нет, зависит от цели */}
+                            {weightChange !== null && (
+                                <div className="flex items-center gap-1 text-sm text-fg tabular-nums">
+                                    {weightChange > 0
+                                        ? <TrendingUp className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
+                                        : weightChange < 0
+                                            ? <TrendingDown className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
+                                            : <Minus className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />}
+                                    <span>{t('dashboard.weightSection.changeSinceYesterday', { sign: weightChange > 0 ? '+' : '', amount: formatWeight(Math.abs(weightChange)) })}</span>
                                 </div>
-                            ) : (
-                                <div className="space-y-2 py-2">
-                                    <p className="text-sm text-fg-muted">{t('dashboard.workout.empty')}</p>
-                                    {previousWeight && (
-                                        <p className="text-xs text-fg-subtle">{t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}</p>
+                            )}
+                            {targetWeight != null && distanceToTarget != null && (
+                                <div className="flex items-center gap-1.5 text-sm text-fg-muted tabular-nums">
+                                    <Target className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                                    <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
+                                    {Math.abs(distanceToTarget) >= 0.1 ? (
+                                        <span className="text-fg">
+                                            ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} {t('dashboard.weight.kg')})
+                                        </span>
+                                    ) : (
+                                        <span className="font-medium text-success-fg">{t('dashboard.weight.targetReached')}</span>
                                     )}
-                                    {targetWeight != null && (
-                                        <div className="flex items-center justify-center gap-1.5 text-xs text-fg-muted">
-                                            <Target className="h-3.5 w-3.5 text-success-fg" aria-hidden="true" />
-                                            <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
-                                        </div>
-                                    )}
-                                    <Button
-                                        variant="outline" size="sm" onClick={handleQuickAdd}
-                                        className="text-primary border-primary/30 hover:bg-primary-soft"
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                                        {t('common.add')}
-                                    </Button>
                                 </div>
                             )}
                         </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <p className="text-sm text-fg-muted">{t('dashboard.workout.empty')}</p>
+                            {previousWeight && (
+                                <p className="text-sm text-fg-muted tabular-nums">{t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}</p>
+                            )}
+                            {targetWeight != null && (
+                                <div className="flex items-center gap-1.5 text-sm text-fg-muted tabular-nums">
+                                    <Target className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                                    <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
+                                </div>
+                            )}
+                            <Button variant="secondary" size="sm" onClick={handleQuickAdd}>
+                                <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                                {t('common.add')}
+                            </Button>
+                        </div>
+                    )}
 
-                        {/* Trend chart */}
-                        {weightTrend.length >= 2 && (
-                            <div>
-                                <WeightTrendChart data={weightTrend} targetWeight={targetWeight} />
-                                {trendChange !== null && (
-                                    <div className="text-center mt-1">
-                                        <span className={cn(
-                                            'text-xs font-medium',
-                                            trendChange < 0 ? 'text-success-fg' : trendChange > 0 ? 'text-warning-fg' : 'text-fg-muted',
-                                        )}>
-                                            {t('dashboard.weightSection.trend', { sign: trendChange < 0 ? '' : '+', amount: trendChange.toFixed(1) })}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </CardContent>
+                    {/* Тренд за 4 недели — график и изменение числом, без оценки цветом */}
+                    {weightTrend.length >= 2 && (
+                        <div className="border-t border-line pt-4">
+                            <WeightTrendChart data={weightTrend} targetWeight={targetWeight} />
+                            {trendChange !== null && (
+                                <p className="mt-1 text-sm text-fg-muted tabular-nums">
+                                    {t('dashboard.weightSection.trend', { sign: trendChange < 0 ? '' : '+', amount: trendChange.toFixed(1) })}
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
         </Card>
     )
 })

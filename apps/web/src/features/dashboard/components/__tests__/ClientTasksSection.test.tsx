@@ -110,7 +110,7 @@ describe('ClientTasksSection', () => {
             })
         })
 
-        it('highlights overdue tasks with red border', async () => {
+        it('marks overdue tasks with a status word', async () => {
             const pastDate = new Date()
             pastDate.setDate(pastDate.getDate() - 2)
 
@@ -126,11 +126,12 @@ describe('ClientTasksSection', () => {
 
             await waitFor(() => {
                 const taskItem = screen.getByRole('listitem')
-                expect(taskItem.className).toContain('border-l-danger')
+                expect(taskItem).toHaveAttribute('aria-label', expect.stringContaining('Просрочена'))
+                expect(screen.getByText('Просрочено')).toBeInTheDocument()
             })
         })
 
-        it('shows completed tasks with green styling', async () => {
+        it('shows completed tasks as done', async () => {
             const tasks = [createMockTask('done', { status: 'completed' })]
             mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
 
@@ -138,7 +139,7 @@ describe('ClientTasksSection', () => {
 
             await waitFor(() => {
                 const taskItem = screen.getByRole('listitem')
-                expect(taskItem.className).toContain('bg-success-soft')
+                expect(taskItem).toHaveAttribute('aria-label', expect.stringContaining('Выполнена'))
             })
         })
 
@@ -157,7 +158,7 @@ describe('ClientTasksSection', () => {
 
             await waitFor(() => {
                 const taskItem = screen.getByRole('listitem')
-                expect(taskItem.className).toContain('bg-success-soft')
+                expect(taskItem).toHaveAttribute('aria-label', expect.stringContaining('Выполнена'))
             })
 
             // Checkbox should be disabled

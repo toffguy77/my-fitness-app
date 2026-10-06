@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Card, Logo } from '@/shared/components/ui'
+import { ArrowLeft, MailCheck } from 'lucide-react'
 import { Input } from '@/shared/components/ui/Input'
-import { Button } from '@/shared/components/ui/Button'
+import { Button, buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
+import { AuthPanel, AuthShell, AuthStatusIcon } from '@/features/auth/components/AuthShell'
+import { cn } from '@/shared/utils/cn'
 import toast from 'react-hot-toast'
 import { requestPasswordReset } from '@/features/auth/api/passwordReset'
 import { isApiError, serverMessageFrom } from '@/shared/errors/apiErrors'
@@ -66,111 +68,88 @@ export default function ForgotPasswordPage() {
 
     if (isSubmitted) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
-                <Card className="w-full max-w-md p-8">
-                    <div className="text-center space-y-4">
-                        <div className="mx-auto w-16 h-16 bg-success-soft rounded-full flex items-center justify-center">
-                            <svg
-                                className="w-8 h-8 text-success-fg"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
-                                />
-                            </svg>
-                        </div>
+            <AuthShell
+                centered
+                logo={false}
+                icon={
+                    <AuthStatusIcon tone="success">
+                        <MailCheck className="h-7 w-7" strokeWidth={1.8} />
+                    </AuthStatusIcon>
+                }
+                title="Проверьте почту"
+                description={
+                    <>
+                        Если аккаунт с адресом <strong className="font-semibold text-fg">{email}</strong> существует, вы получите инструкции по сбросу пароля.
+                    </>
+                }
+            >
+                <p className="text-center text-sm text-fg-muted">
+                    Не получили письмо? Проверьте папку "Спам" или попробуйте снова.
+                </p>
 
-                        <h1 className="text-2xl font-bold text-fg">Проверьте почту</h1>
+                <div className="mt-8 space-y-2">
+                    <Button
+                        onClick={() => {
+                            setIsSubmitted(false)
+                            setEmail('')
+                        }}
+                        variant="secondary"
+                        size="lg"
+                        className="w-full"
+                    >
+                        Попробовать другой email
+                    </Button>
 
-                        <p className="text-fg-muted">
-                            Если аккаунт с адресом <strong>{email}</strong> существует, вы получите инструкции по сбросу пароля.
-                        </p>
-
-                        <p className="text-sm text-fg-muted">
-                            Не получили письмо? Проверьте папку "Спам" или попробуйте снова.
-                        </p>
-
-                        <div className="pt-4 space-y-2">
-                            <Button
-                                onClick={() => {
-                                    setIsSubmitted(false)
-                                    setEmail('')
-                                }}
-                                variant="outline"
-                                className="w-full"
-                            >
-                                Попробовать другой email
-                            </Button>
-
-                            <Link href="/auth" className="block">
-                                <Button variant="outline" className="w-full">
-                                    Вернуться к входу
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                </Card>
-            </div>
+                    <Link href="/auth" className={cn(buttonBase, buttonVariants.ghost, buttonSizes.lg, 'w-full')}>
+                        Вернуться к входу
+                    </Link>
+                </div>
+            </AuthShell>
         )
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
-            <Card className="w-full max-w-md p-8">
-                <div className="space-y-6">
-                    <div className="text-center space-y-4">
-                        <div className="flex justify-center">
-                            <Logo width={160} height={48} className="text-fg" />
-                        </div>
-                        <div className="space-y-2">
-                            <h1 className="text-2xl font-bold text-fg">Забыли пароль?</h1>
-                            <p className="text-fg-muted">
-                                Введите ваш email и мы отправим инструкции по сбросу пароля.
-                            </p>
-                        </div>
+        <AuthShell
+            title="Забыли пароль?"
+            description="Введите ваш email и мы отправим инструкции по сбросу пароля."
+        >
+            <AuthPanel>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                        <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-fg-muted">
+                            Email адрес
+                        </label>
+                        <Input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => {
+                                setEmail(e.target.value)
+                                setError('')
+                            }}
+                            placeholder="your.email@example.com"
+                            error={error}
+                            disabled={isLoading}
+                            autoFocus
+                            required
+                        />
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-fg mb-1">
-                                Email адрес
-                            </label>
-                            <Input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => {
-                                    setEmail(e.target.value)
-                                    setError('')
-                                }}
-                                placeholder="your.email@example.com"
-                                error={error}
-                                disabled={isLoading}
-                                autoFocus
-                                required
-                            />
-                        </div>
+                    <Button type="submit" size="lg" className="w-full" isLoading={isLoading} disabled={isLoading}>
+                        {isLoading ? 'Отправка...' : 'Отправить инструкции'}
+                    </Button>
+                </form>
+            </AuthPanel>
 
-                        <Button type="submit" className="w-full" isLoading={isLoading} disabled={isLoading}>
-                            {isLoading ? 'Отправка...' : 'Отправить инструкции'}
-                        </Button>
-                    </form>
-
-                    <div className="text-center">
-                        <Link
-                            href="/auth"
-                            className="text-sm text-primary hover:text-primary font-medium"
-                        >
-                            ← Вернуться к входу
-                        </Link>
-                    </div>
-                </div>
-            </Card>
-        </div>
+            <div className="mt-6 flex justify-center">
+                <Link
+                    href="/auth"
+                    className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary"
+                >
+                    <ArrowLeft className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                    Вернуться к входу
+                </Link>
+            </div>
+        </AuthShell>
     )
 }

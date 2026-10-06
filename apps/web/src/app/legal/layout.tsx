@@ -9,33 +9,31 @@ export default function LegalLayout({
     return (
         <div className="min-h-screen bg-canvas">
             {/* Header with navigation */}
-            <header className="bg-surface border-b border-line">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <Link href="/" className="flex items-center">
-                            <Logo width={120} height={36} className="text-fg" />
+            <header className="border-b border-line bg-nav backdrop-blur">
+                <div className="mx-auto flex h-16 max-w-content items-center justify-between gap-4 px-screen-x">
+                    <Link href="/" className="flex min-h-11 items-center" aria-label="BURCEV">
+                        <Logo width={112} height={34} className="text-fg" />
+                    </Link>
+                    <nav className="flex items-center gap-4 sm:gap-6">
+                        <Link
+                            href="/legal/terms"
+                            className="hidden min-h-11 items-center text-sm text-fg-muted transition-colors hover:text-fg sm:inline-flex"
+                        >
+                            Договор оферты
                         </Link>
-                        <nav className="flex space-x-6">
-                            <Link
-                                href="/legal/terms"
-                                className="text-sm text-fg-muted hover:text-fg transition-colors"
-                            >
-                                Договор оферты
-                            </Link>
-                            <Link
-                                href="/legal/privacy"
-                                className="text-sm text-fg-muted hover:text-fg transition-colors"
-                            >
-                                Конфиденциальность
-                            </Link>
-                            <Link
-                                href="/auth"
-                                className="text-sm text-primary hover:text-primary font-medium transition-colors"
-                            >
-                                Вход
-                            </Link>
-                        </nav>
-                    </div>
+                        <Link
+                            href="/legal/privacy"
+                            className="hidden min-h-11 items-center text-sm text-fg-muted transition-colors hover:text-fg sm:inline-flex"
+                        >
+                            Конфиденциальность
+                        </Link>
+                        <Link
+                            href="/auth"
+                            className="inline-flex min-h-11 items-center text-sm font-semibold text-primary transition-colors"
+                        >
+                            Вход
+                        </Link>
+                    </nav>
                 </div>
             </header>
 
@@ -43,32 +41,30 @@ export default function LegalLayout({
             <main>{children}</main>
 
             {/* Footer */}
-            <footer className="bg-surface border-t border-line mt-12">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div className="flex flex-col md:flex-row justify-between items-center">
-                        <p className="text-sm text-fg-muted">
-                            © 2026 BURCEV. Все права защищены.
-                        </p>
-                        <div className="flex space-x-6 mt-4 md:mt-0">
-                            <Link
-                                href="/legal/terms"
-                                className="text-sm text-fg-muted hover:text-fg"
-                            >
-                                Договор оферты
-                            </Link>
-                            <Link
-                                href="/legal/privacy"
-                                className="text-sm text-fg-muted hover:text-fg"
-                            >
-                                Конфиденциальность
-                            </Link>
-                            <a
-                                href="mailto:support@burcev.team"
-                                className="text-sm text-fg-muted hover:text-fg"
-                            >
-                                Поддержка
-                            </a>
-                        </div>
+            <footer className="mt-12 border-t border-line">
+                <div className="mx-auto flex max-w-content flex-col items-center justify-between gap-2 px-screen-x py-8 md:flex-row">
+                    <p className="text-sm text-fg-muted">
+                        © 2026 BURCEV. Все права защищены.
+                    </p>
+                    <div className="flex gap-6">
+                        <Link
+                            href="/legal/terms"
+                            className="inline-flex min-h-11 items-center text-sm text-fg-muted hover:text-fg"
+                        >
+                            Договор оферты
+                        </Link>
+                        <Link
+                            href="/legal/privacy"
+                            className="inline-flex min-h-11 items-center text-sm text-fg-muted hover:text-fg"
+                        >
+                            Конфиденциальность
+                        </Link>
+                        <a
+                            href="mailto:support@burcev.team"
+                            className="inline-flex min-h-11 items-center text-sm text-fg-muted hover:text-fg"
+                        >
+                            Поддержка
+                        </a>
                     </div>
                 </div>
             </footer>

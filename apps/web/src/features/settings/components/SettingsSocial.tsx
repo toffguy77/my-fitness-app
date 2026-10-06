@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { SocialAccountsForm } from '@/shared/components/settings'
 import { SettingsPageLayout } from './SettingsPageLayout'
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
 
 export function SettingsSocial() {
     return (
@@ -41,7 +42,7 @@ function SocialForm({ profile, onSave }: {
     }
 
     return (
-        <>
+        <div className="flex flex-col gap-8">
             <SocialAccountsForm
                 telegram={telegram}
                 instagram={instagram}
@@ -49,14 +50,10 @@ function SocialForm({ profile, onSave }: {
                 onInstagramChange={setInstagram}
             />
 
-            <button
-                onClick={handleSave}
-                disabled={saving}
-                className="mt-8 w-full rounded-lg bg-primary py-3 text-on-primary font-medium transition-colors hover:bg-primary-hover disabled:opacity-50"
-            >
+            <Button type="button" size="lg" block onClick={handleSave} disabled={saving}>
                 {saving ? t('settings.checking') : t('settings.save')}
-            </button>
-        </>
+            </Button>
+        </div>
     )
 }
 

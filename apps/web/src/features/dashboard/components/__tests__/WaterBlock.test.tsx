@@ -97,7 +97,7 @@ describe('WaterBlock', () => {
         })
     })
 
-    it('shows progress ring when glasses are logged', async () => {
+    it('shows glasses of goal when glasses are logged', async () => {
         mockApiGet.mockResolvedValue({
             glasses: 3,
             goal: 8,
@@ -109,7 +109,8 @@ describe('WaterBlock', () => {
 
         await waitFor(() => {
             expect(screen.getByText('3/8')).toBeInTheDocument()
-            expect(screen.getByText('38%')).toBeInTheDocument()
+            // Доля процентом на экран не выводится — только стаканы и полоса.
+            expect(screen.queryByText('38%')).not.toBeInTheDocument()
         })
     })
 
@@ -196,7 +197,7 @@ describe('WaterBlock', () => {
         })
     })
 
-    it('has progressbar role on the water ring', async () => {
+    it('has progressbar role on the water bar', async () => {
         mockApiGet.mockResolvedValue({
             glasses: 4,
             goal: 8,
@@ -208,7 +209,9 @@ describe('WaterBlock', () => {
 
         await waitFor(() => {
             const progressbar = screen.getByRole('progressbar')
-            expect(progressbar).toHaveAttribute('aria-valuenow', '50')
+            // Полоса считает стаканы: 4 из 8.
+            expect(progressbar).toHaveAttribute('aria-valuenow', '4')
+            expect(progressbar).toHaveAttribute('aria-valuemax', '8')
             expect(progressbar).toHaveAttribute('aria-label', 'Прогресс воды: 50%')
         })
     })

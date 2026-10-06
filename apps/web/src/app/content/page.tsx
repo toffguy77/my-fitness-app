@@ -46,8 +46,8 @@ export default async function ContentFeedPage() {
     const firstPage = await getFirstPage()
 
     return (
-        <div className="mx-auto max-w-4xl px-4 py-6 pb-20">
-            <h1 className="text-xl font-semibold text-fg mb-4">Статьи</h1>
+        <div className="mx-auto w-full max-w-content px-screen-x py-5 pb-20">
+            <h1 className="mb-4 type-title-1 text-fg">Статьи</h1>
             <FeedList
                 {...(firstPage && {
                     initialArticles: firstPage.articles,

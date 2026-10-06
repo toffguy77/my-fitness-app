@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { Button } from '@/shared/components/ui/Button'
 
 interface ErrorStateProps {
     title?: string
@@ -29,47 +30,49 @@ export function ErrorState({
 }: ErrorStateProps) {
     const isPage = variant === 'page'
 
+    // Спокойно, без красного: сбой — не вина человека. Заголовок засечками,
+    // повтор — второстепенной кнопкой (терракота — для главного действия
+    // экрана, а здесь его нет), путь домой — ссылкой.
     return (
         <div
             role="alert"
             className={
                 isPage
-                    ? 'flex min-h-[60vh] items-center justify-center px-4'
-                    : 'rounded-lg border border-line bg-surface p-6'
+                    ? 'flex min-h-[60vh] items-center justify-center px-screen-x'
+                    : 'rounded-card border border-line bg-surface p-5'
             }
         >
             <div className={isPage ? 'w-full max-w-md text-center' : 'text-center'}>
-                <h2 className={isPage ? 'text-xl font-semibold text-fg' : 'text-base font-medium text-fg'}>
+                <h2 className={isPage ? 'type-title-2 text-fg' : 'type-title-3 text-fg'}>
                     {title}
                 </h2>
                 <p className="mt-2 text-sm text-fg-muted">{description}</p>
 
                 {debugDetail && process.env.NODE_ENV !== 'production' && (
-                    <pre className="mt-4 max-h-48 overflow-auto rounded bg-subtle p-3 text-left text-xs text-fg">
+                    <pre className="mt-4 max-h-48 overflow-auto rounded-tile bg-subtle p-3 text-left text-xs text-fg">
                         {debugDetail}
                     </pre>
                 )}
 
-                <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <div className={isPage ? 'mt-6 flex flex-wrap items-center justify-center gap-3' : 'mt-4 flex flex-wrap items-center justify-center gap-3'}>
                     {onRetry && (
-                        <button
-                            type="button"
-                            onClick={onRetry}
-                            className="rounded-md bg-primary px-4 py-2 text-on-primary transition-colors hover:bg-primary-hover"
-                        >
+                        <Button type="button" variant="secondary" onClick={onRetry}>
                             {retryLabel}
-                        </button>
+                        </Button>
                     )}
                     {showHomeLink && (
-                        <Link href="/" className="text-sm text-primary hover:underline">
+                        <Link
+                            href="/"
+                            className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-primary hover:underline"
+                        >
                             На главную
                         </Link>
                     )}
                 </div>
 
                 {errorId && (
-                    <p className="mt-4 text-xs text-fg-subtle">
-                        Код ошибки: <span className="font-mono">{errorId}</span>
+                    <p className="mt-4 type-caption text-fg-subtle">
+                        Код ошибки: <span className="font-mono tabular-nums">{errorId}</span>
                     </p>
                 )}
             </div>

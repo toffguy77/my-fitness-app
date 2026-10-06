@@ -17,12 +17,14 @@ export const AppLogo = forwardRef<HTMLDivElement, AppLogoProps>(
 
         const { width, height } = sizes[size]
 
-        const baseStyles = 'inline-flex items-center justify-center transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus'
-        const interactiveStyles = onClick ? 'cursor-pointer hover:opacity-80' : ''
+        const baseStyles = 'inline-flex items-center justify-center rounded-tile transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus'
+        // Логотип-кнопка — цель нажатия не ниже 44 px, даже в размере sm (36).
+        const interactiveStyles = onClick ? 'min-h-11 cursor-pointer hover:opacity-80' : ''
 
         if (onClick) {
             return (
                 <button
+                    type="button"
                     onClick={onClick}
                     className={cn(baseStyles, interactiveStyles, className)}
                     aria-label="Go to dashboard"

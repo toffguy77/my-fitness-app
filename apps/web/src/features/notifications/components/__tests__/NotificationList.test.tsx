@@ -177,7 +177,7 @@ describe('NotificationList', () => {
             );
 
             // Should have date headers - use getAllByText since "Yesterday" appears in both header and timestamp
-            const headers = container.querySelectorAll('h2.text-xs.font-semibold');
+            const headers = container.querySelectorAll('h2');
             const headerTexts = Array.from(headers).map(h => h.textContent);
 
             expect(headerTexts).toContain('Today');
@@ -189,11 +189,11 @@ describe('NotificationList', () => {
                 <NotificationList {...defaultProps} />
             );
 
-            const headers = container.querySelectorAll('h2.text-xs.font-semibold');
+            const headers = container.querySelectorAll('h2');
             expect(headers.length).toBeGreaterThan(0);
 
             // Verify structure exists
-            const dateGroups = container.querySelectorAll('.space-y-4 > div');
+            const dateGroups = container.querySelectorAll('section');
             expect(dateGroups.length).toBeGreaterThan(0);
         });
     });
@@ -271,7 +271,7 @@ describe('NotificationList', () => {
             );
 
             // Should have regular date grouping structure
-            const dateHeaders = container.querySelectorAll('h2.text-xs.font-semibold');
+            const dateHeaders = container.querySelectorAll('h2');
             expect(dateHeaders.length).toBeGreaterThan(0);
         });
 
@@ -376,10 +376,10 @@ describe('NotificationList', () => {
 });
 
 /**
- * Responsive Design Tests
+ * Layout and states
  * Validates: Requirements 6.1, 6.2, 6.3
  */
-describe('Responsive Design', () => {
+describe('Layout and states', () => {
     const testNotifications: Notification[] = [
         {
             id: '1',
@@ -411,65 +411,24 @@ describe('Responsive Design', () => {
         onMarkAsRead: jest.fn(),
     };
 
-    it('applies mobile layout styles (< 768px)', () => {
-        const { container } = render(
-            <NotificationList {...defaultProps} />
-        );
+    it('labels each date group with an overline heading', () => {
+        render(<NotificationList {...defaultProps} />);
 
-        // Date headers: mobile font size and padding
-        const dateHeader = container.querySelector('h2.text-xs.font-semibold');
-        expect(dateHeader).toHaveClass('text-xs');
-        expect(dateHeader).toHaveClass('px-3');
-
-        // Notification groups: mobile spacing
-        const notificationGroups = container.querySelector('.space-y-4');
-        expect(notificationGroups).toBeInTheDocument();
-
-        // Items spacing: mobile
-        const itemsContainer = container.querySelector('.space-y-1');
-        expect(itemsContainer).toBeInTheDocument();
+        const dateHeaders = screen.getAllByRole('heading', { level: 2 });
+        expect(dateHeaders.length).toBeGreaterThan(0);
+        dateHeaders.forEach((header) => {
+            expect(header).toHaveClass('type-overline');
+        });
     });
 
-    it('applies tablet layout styles (768px - 1024px)', () => {
-        const { container } = render(
-            <NotificationList {...defaultProps} />
-        );
+    it('renders every notification of a group as a row', () => {
+        render(<NotificationList {...defaultProps} />);
 
-        // Date headers: tablet font size and padding
-        const dateHeader = container.querySelector('h2.text-xs.font-semibold');
-        expect(dateHeader).toHaveClass('sm:text-xs');
-        expect(dateHeader).toHaveClass('sm:px-4');
-
-        // Notification groups: tablet spacing
-        const notificationGroups = container.querySelector('.space-y-4');
-        expect(notificationGroups).toHaveClass('sm:space-y-5');
-
-        // Items spacing: tablet
-        const itemsContainer = container.querySelector('.space-y-1');
-        expect(itemsContainer).toHaveClass('sm:space-y-2');
+        expect(screen.getAllByRole('button')).toHaveLength(testNotifications.length);
     });
 
-    it('applies desktop layout styles (>= 1024px)', () => {
-        const { container } = render(
-            <NotificationList {...defaultProps} />
-        );
-
-        // Date headers: desktop font size
-        const dateHeader = container.querySelector('h2.text-xs.font-semibold');
-        expect(dateHeader).toHaveClass('md:text-sm');
-        expect(dateHeader).toHaveClass('md:px-4');
-
-        // Notification groups: desktop spacing
-        const notificationGroups = container.querySelector('.space-y-4');
-        expect(notificationGroups).toHaveClass('md:space-y-6');
-
-        // Items spacing: desktop
-        const itemsContainer = container.querySelector('.space-y-1');
-        expect(itemsContainer).toHaveClass('md:space-y-2');
-    });
-
-    it('applies responsive styles to loading state', () => {
-        const { container } = render(
+    it('shows a spinner while the first page loads', () => {
+        render(
             <NotificationList
                 {...defaultProps}
                 notifications={[]}
@@ -477,71 +436,24 @@ describe('Responsive Design', () => {
             />
         );
 
-        const loadingContainer = container.querySelector('.flex.items-center.justify-center');
-
-        // Mobile padding
-        expect(loadingContainer).toHaveClass('py-8');
-
-        // Tablet padding
-        expect(loadingContainer).toHaveClass('sm:py-10');
-
-        // Desktop padding
-        expect(loadingContainer).toHaveClass('md:py-12');
-
-        // Loading spinner: responsive sizing
-        const spinner = container.querySelector('svg.animate-spin');
-        expect(spinner).toHaveClass('h-6');
-        expect(spinner).toHaveClass('w-6');
-        expect(spinner).toHaveClass('sm:h-7');
-        expect(spinner).toHaveClass('sm:w-7');
-        expect(spinner).toHaveClass('md:h-8');
-        expect(spinner).toHaveClass('md:w-8');
+        expect(screen.getByRole('status', { name: 'Loading notifications' })).toBeInTheDocument();
+        expect(screen.getByTestId('notifications-spinner')).toHaveClass('animate-spin');
     });
 
-    it('applies responsive styles to error state', () => {
-        const { container } = render(
+    it('error state offers a retry and keeps the title in serif', () => {
+        render(
             <NotificationList
                 {...defaultProps}
                 error={new Error('Test error')}
             />
         );
 
-        const errorContainer = container.querySelector('[role="alert"]');
-
-        // Mobile padding
-        expect(errorContainer).toHaveClass('py-8');
-        expect(errorContainer).toHaveClass('px-4');
-
-        // Tablet padding
-        expect(errorContainer).toHaveClass('sm:py-10');
-        expect(errorContainer).toHaveClass('sm:px-6');
-
-        // Desktop padding
-        expect(errorContainer).toHaveClass('md:py-12');
-        expect(errorContainer).toHaveClass('md:px-8');
-
-        // Error icon: responsive sizing
-        const errorIcon = container.querySelector('svg.text-danger-fg');
-        expect(errorIcon).toHaveClass('h-10');
-        expect(errorIcon).toHaveClass('w-10');
-        expect(errorIcon).toHaveClass('sm:h-11');
-        expect(errorIcon).toHaveClass('sm:w-11');
-        expect(errorIcon).toHaveClass('md:h-12');
-        expect(errorIcon).toHaveClass('md:w-12');
-
-        // Retry button: responsive sizing
-        const retryButton = screen.getByRole('button', { name: /retry/i });
-        expect(retryButton).toHaveClass('px-4');
-        expect(retryButton).toHaveClass('py-2');
-        expect(retryButton).toHaveClass('text-sm');
-        expect(retryButton).toHaveClass('sm:px-5');
-        expect(retryButton).toHaveClass('sm:py-2.5');
-        expect(retryButton).toHaveClass('md:px-6');
-        expect(retryButton).toHaveClass('md:py-3');
-        expect(retryButton).toHaveClass('md:text-base');
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 3 })).toHaveClass('type-title-3');
+        expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
     });
 
-    it('applies responsive styles to empty state', () => {
+    it('empty state is calm: serif title and neutral icon', () => {
         const { container } = render(
             <NotificationList
                 {...defaultProps}
@@ -549,28 +461,9 @@ describe('Responsive Design', () => {
             />
         );
 
-        const emptyContainer = container.querySelector('[role="status"][aria-label="No notifications"]');
-
-        // Mobile padding
-        expect(emptyContainer).toHaveClass('py-8');
-        expect(emptyContainer).toHaveClass('px-4');
-
-        // Tablet padding
-        expect(emptyContainer).toHaveClass('sm:py-10');
-        expect(emptyContainer).toHaveClass('sm:px-6');
-
-        // Desktop padding
-        expect(emptyContainer).toHaveClass('md:py-12');
-        expect(emptyContainer).toHaveClass('md:px-8');
-
-        // Empty icon: responsive sizing
-        const emptyIcon = container.querySelector('svg.text-fg-subtle');
-        expect(emptyIcon).toHaveClass('h-12');
-        expect(emptyIcon).toHaveClass('w-12');
-        expect(emptyIcon).toHaveClass('sm:h-14');
-        expect(emptyIcon).toHaveClass('sm:w-14');
-        expect(emptyIcon).toHaveClass('md:h-16');
-        expect(emptyIcon).toHaveClass('md:w-16');
+        expect(screen.getByRole('status', { name: 'No notifications' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 3 })).toHaveClass('type-title-3');
+        expect(container.querySelector('svg.text-fg-subtle')).toBeInTheDocument();
     });
 });
 
@@ -695,7 +588,7 @@ describe('Error Handling', () => {
             const retryButton = screen.getByRole('button', { name: /retry loading notifications/i });
 
             // Check for focus-visible classes
-            expect(retryButton).toHaveClass('focus:outline-none');
+            expect(retryButton).toHaveClass('focus-visible:outline-none');
             expect(retryButton).toHaveClass('focus-visible:ring-2');
             expect(retryButton).toHaveClass('focus-visible:ring-focus');
         });
@@ -711,7 +604,7 @@ describe('Error Handling', () => {
             );
 
             const retryButton = screen.getByRole('button', { name: /retry loading notifications/i });
-            expect(retryButton).toHaveClass('min-h-[44px]');
+            expect(retryButton).toHaveClass('h-11'); // 44 px
         });
     });
 
@@ -867,31 +760,10 @@ describe('Error Handling', () => {
             );
 
             const errorTitle = screen.getByText(/ошибка загрузки уведомлений/i);
-            expect(errorTitle).toHaveClass('font-semibold');
+            expect(errorTitle).toHaveClass('type-title-3');
             expect(errorTitle).toHaveClass('text-fg');
         });
 
-        it('should apply responsive text sizing to error messages', () => {
-            const error = new Error('Test error');
-
-            render(
-                <NotificationList
-                    {...defaultProps}
-                    error={error}
-                />
-            );
-
-            const errorMessage = screen.getByText(/test error/i);
-
-            // Mobile
-            expect(errorMessage).toHaveClass('text-xs');
-
-            // Tablet
-            expect(errorMessage).toHaveClass('sm:text-sm');
-
-            // Desktop
-            expect(errorMessage).toHaveClass('md:text-sm');
-        });
     });
 
     describe('Multiple error scenarios', () => {

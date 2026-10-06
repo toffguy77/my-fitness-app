@@ -16,6 +16,8 @@ import { providersApi, providerLabel, needsLinkConfirmation } from '@/features/a
 import { storeSession, destinationFor } from '@/features/auth/utils/session'
 import { isApiError } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
+import { AuthPanel, AuthShell, FIELD } from './AuthShell'
 
 export function OAuthEmailScreen() {
     const router = useRouter()
@@ -57,15 +59,13 @@ export function OAuthEmailScreen() {
     }
 
     return (
-        <main className="flex min-h-screen flex-col justify-center bg-canvas px-6">
-            <div className="mx-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-sm">
-                <h1 className="text-lg font-semibold text-fg">{t('auth.oauth.emailTitle')}</h1>
-                <p className="mt-2 text-sm text-fg-muted">
-                    {t('auth.oauth.emailHint', { provider: providerLabel(provider) })}
-                </p>
-
-                <form onSubmit={handleSubmit} className="mt-6">
-                    <label htmlFor="oauth-email" className="block text-sm font-medium text-fg">
+        <AuthShell
+            title={t('auth.oauth.emailTitle')}
+            description={t('auth.oauth.emailHint', { provider: providerLabel(provider) })}
+        >
+            <AuthPanel>
+                <form onSubmit={handleSubmit}>
+                    <label htmlFor="oauth-email" className="mb-1.5 block text-sm font-medium text-fg-muted">
                         Email
                     </label>
                     <input
@@ -75,18 +75,21 @@ export function OAuthEmailScreen() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="user@example.com"
                         autoComplete="email"
-                        className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-focus"
+                        className={FIELD}
                     />
 
-                    <button
+                    <Button
                         type="submit"
                         disabled={!email || isSubmitting}
-                        className="mt-4 w-full rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
+                        isLoading={isSubmitting}
+                        size="lg"
+                        block
+                        className="mt-6"
                     >
                         {isSubmitting ? t('auth.oauth.continuing') : t('auth.oauth.continueAction')}
-                    </button>
+                    </Button>
                 </form>
-            </div>
-        </main>
+            </AuthPanel>
+        </AuthShell>
     )
 }

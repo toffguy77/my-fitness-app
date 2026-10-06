@@ -126,11 +126,12 @@ describe('TermsPage', () => {
         expect(metadata.description).toBe('Договор публичной оферты на оказание услуг платформы BURCEV');
     });
 
-    it('renders with proper styling classes', () => {
+    it('renders as a readable article with a single page heading', () => {
         const { container } = render(<TermsPage />);
 
         expect(container.querySelector('.min-h-screen')).toBeInTheDocument();
-        expect(container.querySelector('.bg-surface')).toBeInTheDocument();
-        expect(container.querySelector('.rounded-lg')).toBeInTheDocument();
+        expect(container.querySelector('article')).toBeInTheDocument();
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+        expect(screen.getAllByRole('heading', { level: 2 }).length).toBeGreaterThan(0);
     });
 });

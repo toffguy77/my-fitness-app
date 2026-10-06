@@ -55,8 +55,8 @@ describe('Property 9: Visual Update on Read Status Change', () => {
 
                     // Verify initial unread styling
                     let notificationElement = container.firstChild as HTMLElement;
-                    expect(notificationElement).toHaveClass('bg-primary-soft');
-                    expect(notificationElement).not.toHaveClass('opacity-70');
+                    expect(notificationElement).toHaveAttribute('data-unread', 'true');
+                    expect(notificationElement.querySelector('[role="presentation"]')).toBeInTheDocument();
 
                     // Click to mark as read - use the specific notification element
                     await user.click(notificationElement);
@@ -75,8 +75,11 @@ describe('Property 9: Visual Update on Read Status Change', () => {
                     // Verify visual styling has updated to read state
                     notificationElement = container.firstChild as HTMLElement;
                     await waitFor(() => {
-                        expect(notificationElement).toHaveClass('opacity-70');
-                        expect(notificationElement).not.toHaveClass('bg-primary-soft');
+                        expect(notificationElement).not.toHaveAttribute('data-unread');
+                        expect(notificationElement).toHaveAttribute(
+                            'aria-label',
+                            expect.stringContaining('Read notification')
+                        );
                     });
 
                     // Verify title styling changed from semibold to normal
@@ -131,7 +134,7 @@ describe('Property 9: Visual Update on Read Status Change', () => {
 
                     // Styling should update immediately (no delay)
                     const updatedElement = container.firstChild as HTMLElement;
-                    expect(updatedElement).toHaveClass('opacity-70');
+                    expect(updatedElement).not.toHaveAttribute('data-unread');
                 }
             ),
             { numRuns: 10 }

@@ -14,12 +14,12 @@ export function AuthFooter() {
     const supportEmail = 'support@burcev.team';
 
     return (
-        <footer className="mt-8 border-t border-line pt-6 text-center">
+        <footer className="mt-10 text-center">
             <p className="text-sm text-fg-muted">
                 {t('auth.needHelp')}{' '}
                 <a
                     href={`mailto:${supportEmail}`}
-                    className="text-primary hover:text-primary hover:underline"
+                    className="font-semibold text-primary hover:underline"
                 >
                     {t('auth.contactUs')}
                 </a>

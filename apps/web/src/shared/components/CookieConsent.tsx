@@ -16,7 +16,9 @@
 import { useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { Cookie } from 'lucide-react';
 import { t } from '@/shared/i18n';
+import { Button } from '@/shared/components/ui/Button';
 
 export const COOKIE_CHOICE_KEY = 'analytics-consent';
 
@@ -122,30 +124,30 @@ export function CookieConsent({ onChoice }: { onChoice?: (choice: CookieChoice) 
             // В потоке она сдвигает содержимое вниз, ничего не перекрывает и
             // видна сразу при открытии. Пропадает при прокрутке — и это
             // приемлемо: ответ нужен один раз и запоминается.
-            className="border-b border-line bg-canvas px-4 py-3 sm:px-6"
+            //
+            // Поэтому и тени нет: она у того, что лежит над экраном, а полоса
+            // лежит в нём — карточкой с линией, как любая поверхность страницы.
+            className="px-screen-x pt-3"
         >
-            <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-fg">
-                    {t('cookies.body')}{' '}
-                    <Link href="/legal/privacy" className="text-primary underline underline-offset-2">
-                        {t('cookies.policy')}
-                    </Link>
+            <div className="mx-auto flex max-w-3xl flex-col gap-3 rounded-card border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="flex items-start gap-3 text-sm text-fg">
+                    <Cookie className="mt-0.5 h-5 w-5 shrink-0 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
+                    <span>
+                        {t('cookies.body')}{' '}
+                        <Link href="/legal/privacy" className="font-semibold text-primary underline underline-offset-2">
+                            {t('cookies.policy')}
+                        </Link>
+                    </span>
                 </p>
-                <div className="flex shrink-0 gap-2">
-                    <button
-                        type="button"
-                        onClick={() => decide('denied')}
-                        className="rounded-md border border-line px-4 py-2 text-sm text-fg hover:bg-canvas"
-                    >
+                {/* Отказ и согласие — одного веса: выбор не подталкивается
+                    цветом, и терракота остаётся главному действию страницы. */}
+                <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+                    <Button type="button" variant="secondary" onClick={() => decide('denied')}>
                         {t('cookies.decline')}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => decide('granted')}
-                        className="rounded-md bg-primary px-4 py-2 text-sm text-on-primary hover:bg-primary-hover"
-                    >
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={() => decide('granted')}>
                         {t('cookies.accept')}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

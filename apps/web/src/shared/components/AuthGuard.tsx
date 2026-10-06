@@ -29,10 +29,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     if (session !== 'authenticated') {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-line-strong mx-auto mb-4" />
-                    <p className="text-fg-muted">Загрузка...</p>
+            <div className="flex min-h-screen items-center justify-center bg-canvas" role="status" aria-live="polite">
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
+                    <p className="text-sm text-fg-muted">Загрузка...</p>
                 </div>
             </div>
         )

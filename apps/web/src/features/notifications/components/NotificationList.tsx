@@ -9,8 +9,8 @@ import { useEffect, useRef, lazy, Suspense } from 'react';
 import type { Notification, NotificationCategory, NotificationError } from '../types';
 import { NotificationItem } from './NotificationItem';
 import { groupNotificationsByDate } from '../utils/dateGrouping';
-import { cn } from '@/shared/utils/cn';
 import { AlertCircle, Inbox } from 'lucide-react';
+import { Button } from '@/shared/components/ui/Button';
 
 import { t } from '@/shared/i18n'
 // Lazy load VirtualizedNotificationList for code splitting (Requirement 9.1)
@@ -91,50 +91,17 @@ export function NotificationList({
     if (isLoading && notifications.length === 0) {
         return (
             <div
-                className={cn(
-                    'flex items-center justify-center',
-                    // Responsive padding (Requirement 6.1, 6.2, 6.3)
-                    'py-8',         // Mobile
-                    'sm:py-10',     // Tablet
-                    'md:py-12'      // Desktop
-                )}
+                className="flex items-center justify-center py-12"
                 role="status"
                 aria-label="Loading notifications"
             >
                 <div className="flex flex-col items-center gap-3">
-                    <svg
-                        className={cn(
-                            'animate-spin text-primary',
-                            // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
-                            'h-6 w-6',          // Mobile
-                            'sm:h-7 sm:w-7',    // Tablet
-                            'md:h-8 md:w-8'     // Desktop
-                        )}
-                        viewBox="0 0 24 24"
+                    <span
+                        className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary"
                         aria-hidden="true"
-                    >
-                        <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="none"
-                        />
-                        <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                    </svg>
-                    <p className={cn(
-                        'text-fg-muted',
-                        // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
-                        'text-xs',          // Mobile
-                        'sm:text-sm',       // Tablet
-                        'md:text-sm'        // Desktop
-                    )}>{t('notifications.loadingList')}</p>
+                        data-testid="notifications-spinner"
+                    />
+                    <p className="text-sm text-fg-muted">{t('notifications.loadingList')}</p>
                 </div>
             </div>
         );
@@ -144,103 +111,52 @@ export function NotificationList({
     if (error) {
         return (
             <div
-                className={cn(
-                    'flex flex-col items-center justify-center',
-                    // Responsive padding (Requirement 6.1, 6.2, 6.3)
-                    'py-8 px-4',        // Mobile
-                    'sm:py-10 sm:px-6', // Tablet
-                    'md:py-12 md:px-8'  // Desktop
-                )}
+                className="flex flex-col items-center justify-center px-6 py-12 text-center"
                 role="alert"
                 aria-live="polite"
             >
-                <AlertCircle className={cn(
-                    'text-danger-fg mb-4',
-                    // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
-                    'h-10 w-10',        // Mobile
-                    'sm:h-11 sm:w-11',  // Tablet
-                    'md:h-12 md:w-12'   // Desktop
-                )} aria-hidden="true" />
-                <h3 className={cn(
-                    'font-semibold text-fg mb-2',
-                    // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
-                    'text-base',        // Mobile
-                    'sm:text-lg',       // Tablet
-                    'md:text-lg'        // Desktop
-                )}>
+                <span
+                    className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-soft"
+                    aria-hidden="true"
+                >
+                    <AlertCircle className="h-6 w-6 text-danger-fg" strokeWidth={1.8} aria-hidden="true" />
+                </span>
+                <h3 className="mb-2 type-title-3 text-fg">
                     {t('notifications.loadError')}
                 </h3>
-                <p className={cn(
-                    'text-fg-muted mb-4 text-center max-w-md',
-                    // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
-                    'text-xs',          // Mobile
-                    'sm:text-sm',       // Tablet
-                    'md:text-sm'        // Desktop
-                )}>
+                <p className="mb-5 max-w-md text-center text-sm text-fg-muted">
                     {error.message || t('notifications.loadErrorHint')}
                 </p>
-                <button
+                <Button
+                    variant="secondary"
                     onClick={onLoadMore}
-                    className={cn(
-                        'rounded-lg font-medium transition-colors',
-                        'bg-primary text-on-primary hover:bg-primary-hover',
-                        // Enhanced focus-visible styles (Requirement 6.4, 6.7)
-                        'focus:outline-none',
-                        'focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
-                        'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--ds-color-bg-surface),0_0_0_4px_var(--ds-color-focus)]',
-                        // Responsive button sizing (Requirement 6.1, 6.2, 6.3)
-                        'px-4 py-2 text-sm',        // Mobile: touch-friendly
-                        'sm:px-5 sm:py-2.5',        // Tablet: larger
-                        'md:px-6 md:py-3 md:text-base', // Desktop: optimal
-                        // Minimum touch target (Requirement 6.4)
-                        'min-h-[44px]'
-                    )}
                     aria-label="Retry loading notifications"
                     type="button"
                 >
                     {t('notifications.retry')}
-                </button>
+                </Button>
             </div>
         );
     }
 
-    // Empty state
+    // Empty state — спокойно: нейтральная плитка и заголовок засечками.
     if (notifications.length === 0) {
         return (
             <div
-                className={cn(
-                    'flex flex-col items-center justify-center',
-                    // Responsive padding (Requirement 6.1, 6.2, 6.3)
-                    'py-8 px-4',        // Mobile
-                    'sm:py-10 sm:px-6', // Tablet
-                    'md:py-12 md:px-8'  // Desktop
-                )}
+                className="flex flex-col items-center justify-center px-6 py-12 text-center"
                 role="status"
                 aria-label="No notifications"
             >
-                <Inbox className={cn(
-                    'text-fg-subtle mb-4',
-                    // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
-                    'h-12 w-12',        // Mobile
-                    'sm:h-14 sm:w-14',  // Tablet
-                    'md:h-16 md:w-16'   // Desktop
-                )} aria-hidden="true" />
-                <h3 className={cn(
-                    'font-semibold text-fg mb-2',
-                    // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
-                    'text-base',        // Mobile
-                    'sm:text-lg',       // Tablet
-                    'md:text-lg'        // Desktop
-                )}>
+                <span
+                    className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-subtle"
+                    aria-hidden="true"
+                >
+                    <Inbox className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
+                </span>
+                <h3 className="mb-2 type-title-3 text-fg">
                     {t('notifications.empty')}
                 </h3>
-                <p className={cn(
-                    'text-fg-muted text-center max-w-md',
-                    // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
-                    'text-xs',          // Mobile
-                    'sm:text-sm',       // Tablet
-                    'md:text-sm'        // Desktop
-                )}>
+                <p className="max-w-md text-center text-sm text-fg-muted">
                     {category === 'main'
                         ? t('notifications.emptyPersonal')
                         : t('notifications.emptyContent')}
@@ -259,7 +175,7 @@ export function NotificationList({
         return (
             <Suspense fallback={
                 <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-line-strong"></div>
+                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
                 </div>
             }>
                 <VirtualizedNotificationList
@@ -275,34 +191,16 @@ export function NotificationList({
 
     // Regular rendering for smaller lists
     return (
-        <div className={cn(
-            'space-y-6',
-            // Responsive spacing (Requirement 6.1, 6.2, 6.3)
-            'space-y-4',        // Mobile: tighter spacing
-            'sm:space-y-5',     // Tablet: medium spacing
-            'md:space-y-6'      // Desktop: optimal spacing
-        )}>
+        <div className="space-y-6">
             {groupedNotifications.map((group) => (
-                <div key={group.date}>
+                <section key={group.date}>
                     {/* Date header */}
-                    <h2 className={cn(
-                        'font-semibold text-fg-muted uppercase tracking-wide mb-3',
-                        // Responsive sizing and spacing (Requirement 6.1, 6.2, 6.3)
-                        'text-xs px-3',         // Mobile: compact
-                        'sm:text-xs sm:px-4',   // Tablet: standard
-                        'md:text-sm md:px-4'    // Desktop: slightly larger
-                    )}>
+                    <h2 className="mb-2 px-4 type-overline text-fg-subtle sm:px-0">
                         {group.date}
                     </h2>
 
-                    {/* Notifications in this group */}
-                    <div className={cn(
-                        'space-y-2',
-                        // Responsive spacing between items (Requirement 6.1, 6.2, 6.3)
-                        'space-y-1',        // Mobile: tight
-                        'sm:space-y-2',     // Tablet: standard
-                        'md:space-y-2'      // Desktop: standard
-                    )}>
+                    {/* Notifications in this group — одной карточкой, строки через линию */}
+                    <div className="divide-y divide-line overflow-hidden border-y border-line bg-surface sm:rounded-card sm:border">
                         {group.notifications.map((notification) => (
                             <NotificationItem
                                 key={notification.id}
@@ -311,53 +209,19 @@ export function NotificationList({
                             />
                         ))}
                     </div>
-                </div>
+                </section>
             ))}
 
             {/* Infinite scroll trigger */}
             {hasMore && (
-                <div ref={observerTarget} className={cn(
-                    'text-center',
-                    // Responsive padding (Requirement 6.1, 6.2, 6.3)
-                    'py-3',         // Mobile
-                    'sm:py-4',      // Tablet
-                    'md:py-6'       // Desktop
-                )}>
+                <div ref={observerTarget} className="py-4 text-center">
                     {isLoading && (
                         <div className="flex items-center justify-center gap-2">
-                            <svg
-                                className={cn(
-                                    'animate-spin text-primary',
-                                    // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
-                                    'h-4 w-4',          // Mobile
-                                    'sm:h-5 sm:w-5',    // Tablet
-                                    'md:h-6 md:w-6'     // Desktop
-                                )}
-                                viewBox="0 0 24 24"
+                            <span
+                                className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-primary"
                                 aria-hidden="true"
-                            >
-                                <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                    fill="none"
-                                />
-                                <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                />
-                            </svg>
-                            <span className={cn(
-                                'text-fg-muted',
-                                // Responsive text sizing (Requirement 6.1, 6.2, 6.3)
-                                'text-xs',          // Mobile
-                                'sm:text-sm',       // Tablet
-                                'md:text-sm'        // Desktop
-                            )}>{t('common.loading')}</span>
+                            />
+                            <span className="text-sm text-fg-muted">{t('common.loading')}</span>
                         </div>
                     )}
                 </div>

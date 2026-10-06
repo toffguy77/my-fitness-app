@@ -229,13 +229,13 @@ describe('NotificationsTabs', () => {
                         const activeBadge = activeTabElement?.querySelector('[aria-label*="unread notifications"]');
                         const inactiveBadge = inactiveTabElement?.querySelector('[aria-label*="unread notifications"]');
 
-                        // Active tab badge should have blue background
-                        expect(activeBadge).toHaveClass('bg-primary');
-                        expect(activeBadge).toHaveClass('text-on-primary');
+                        // Active tab badge is inverted ink (selection), not brand colour
+                        expect(activeBadge).toHaveClass('bg-fg');
+                        expect(activeBadge).toHaveClass('text-fg-inverse');
 
-                        // Inactive tab badge should have gray background
+                        // Inactive tab badge is neutral
                         expect(inactiveBadge).toHaveClass('bg-subtle');
-                        expect(inactiveBadge).toHaveClass('text-fg');
+                        expect(inactiveBadge).not.toHaveClass('bg-fg');
 
                         // Clean up
                         unmount();
@@ -582,11 +582,13 @@ describe('NotificationsTabs', () => {
             const mainTab = screen.getByRole('tab', { name: 'Основные' });
             const contentTab = screen.getByRole('tab', { name: 'Контент' });
 
-            expect(mainTab).toHaveClass('text-primary');
-            expect(mainTab).toHaveClass('border-primary');
+            // Вкладки — подчёркиванием чернилами; терракота вкладкам не достаётся.
+            expect(mainTab).toHaveAttribute('aria-selected', 'true');
+            expect(mainTab).toHaveClass('text-fg', 'border-line-strong');
+            expect(mainTab).not.toHaveClass('text-primary');
 
-            expect(contentTab).toHaveClass('text-fg-muted');
-            expect(contentTab).toHaveClass('border-transparent');
+            expect(contentTab).toHaveAttribute('aria-selected', 'false');
+            expect(contentTab).toHaveClass('text-fg-subtle', 'border-transparent');
         });
 
         it('applies different badge styling for active vs inactive tabs', () => {
@@ -604,13 +606,13 @@ describe('NotificationsTabs', () => {
             const mainBadge = mainTab.querySelector('[aria-label*="unread notifications"]');
             const contentBadge = contentTab.querySelector('[aria-label*="unread notifications"]');
 
-            // Active tab (main) should have blue badge
-            expect(mainBadge).toHaveClass('bg-primary');
-            expect(mainBadge).toHaveClass('text-on-primary');
+            // Active tab (main): inverted ink badge
+            expect(mainBadge).toHaveClass('bg-fg');
+            expect(mainBadge).toHaveClass('text-fg-inverse');
 
-            // Inactive tab (content) should have gray badge
+            // Inactive tab (content): neutral badge
             expect(contentBadge).toHaveClass('bg-subtle');
-            expect(contentBadge).toHaveClass('text-fg');
+            expect(contentBadge).not.toHaveClass('bg-fg');
         });
 
         it('has visible focus indicators', () => {
@@ -630,116 +632,35 @@ describe('NotificationsTabs', () => {
 });
 
 /**
- * Responsive Design Tests
- * Validates: Requirements 6.1, 6.2, 6.3
+ * Touch targets and layout
+ * Validates: Requirements 6.1, 6.4
  */
-describe('Responsive Design', () => {
+describe('Touch targets and layout', () => {
     const defaultProps = {
         activeTab: 'main' as const,
         onTabChange: jest.fn(),
         unreadCounts: { main: 5, content: 3 },
     };
 
-    it('applies mobile layout styles (< 768px)', () => {
-        const { container } = render(
-            <NotificationsTabs {...defaultProps} />
-        );
+    it('keeps every tab at least 44 px tall', () => {
+        render(<NotificationsTabs {...defaultProps} />);
 
-        const tabs = container.querySelectorAll('button[role="tab"]');
-        const firstTab = tabs[0] as HTMLElement;
-
-        // Mobile: compact padding and font size
-        expect(firstTab).toHaveClass('px-4');
-        expect(firstTab).toHaveClass('py-3');
-        expect(firstTab).toHaveClass('text-sm');
-
-        // Mobile: minimum touch target
-        expect(firstTab).toHaveClass('min-h-[44px]');
-
-        // Badge: mobile sizing
-        const badge = firstTab.querySelector('span[role="status"]');
-        expect(badge).toHaveClass('min-w-[20px]');
-        expect(badge).toHaveClass('h-5');
-        expect(badge).toHaveClass('px-1.5');
-        expect(badge).toHaveClass('text-xs');
-
-        // Container: mobile responsive
-        const tablist = container.querySelector('[role="tablist"]');
-        expect(tablist).toHaveClass('overflow-x-auto');
-    });
-
-    it('applies tablet layout styles (768px - 1024px)', () => {
-        const { container } = render(
-            <NotificationsTabs {...defaultProps} />
-        );
-
-        const tabs = container.querySelectorAll('button[role="tab"]');
-        const firstTab = tabs[0] as HTMLElement;
-
-        // Tablet: more spacing
-        expect(firstTab).toHaveClass('sm:px-6');
-        expect(firstTab).toHaveClass('sm:py-3.5');
-
-        // Badge: tablet sizing
-        const badge = firstTab.querySelector('span[role="status"]');
-        expect(badge).toHaveClass('sm:min-w-[22px]');
-        expect(badge).toHaveClass('sm:h-5.5');
-        expect(badge).toHaveClass('sm:px-2');
-
-        // Container: no overflow on tablet
-        const tablist = container.querySelector('[role="tablist"]');
-        expect(tablist).toHaveClass('sm:overflow-x-visible');
-    });
-
-    it('applies desktop layout styles (>= 1024px)', () => {
-        const { container } = render(
-            <NotificationsTabs {...defaultProps} />
-        );
-
-        const tabs = container.querySelectorAll('button[role="tab"]');
-        const firstTab = tabs[0] as HTMLElement;
-
-        // Desktop: optimal spacing and font size
-        expect(firstTab).toHaveClass('md:px-8');
-        expect(firstTab).toHaveClass('md:py-4');
-        expect(firstTab).toHaveClass('md:text-base');
-
-        // Desktop: hover states
-        expect(firstTab).toHaveClass('md:hover:text-fg');
-
-        // Badge: desktop sizing
-        const badge = firstTab.querySelector('span[role="status"]');
-        expect(badge).toHaveClass('md:min-w-[24px]');
-        expect(badge).toHaveClass('md:h-6');
-        expect(badge).toHaveClass('md:px-2.5');
-        expect(badge).toHaveClass('md:text-sm');
-    });
-
-    it('applies responsive styles to both tabs', () => {
-        const { container } = render(
-            <NotificationsTabs {...defaultProps} />
-        );
-
-        const tabs = container.querySelectorAll('button[role="tab"]');
-
-        // Both tabs should have responsive classes
-        tabs.forEach(tab => {
-            expect(tab).toHaveClass('px-4');
-            expect(tab).toHaveClass('sm:px-6');
-            expect(tab).toHaveClass('md:px-8');
+        screen.getAllByRole('tab').forEach((tab) => {
+            expect(tab).toHaveClass('min-h-11');
         });
     });
 
-    it('maintains touch-friendly targets on mobile', () => {
-        const { container } = render(
-            <NotificationsTabs {...defaultProps} />
-        );
+    it('lets the tab row scroll horizontally on narrow screens', () => {
+        render(<NotificationsTabs {...defaultProps} />);
 
-        const tabs = container.querySelectorAll('button[role="tab"]');
+        expect(screen.getByRole('tablist')).toHaveClass('overflow-x-auto');
+    });
 
-        // All tabs should have minimum touch target height
-        tabs.forEach(tab => {
-            expect(tab).toHaveClass('min-h-[44px]');
-        });
+    it('shows unread counts with tabular figures', () => {
+        render(<NotificationsTabs {...defaultProps} />);
+
+        const badge = screen.getByLabelText('5 unread notifications');
+        expect(badge).toHaveTextContent('5');
+        expect(badge).toHaveClass('tabular-nums');
     });
 });

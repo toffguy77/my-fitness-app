@@ -24,8 +24,9 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-canvas">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <div className="flex min-h-screen items-center justify-center bg-canvas" role="status">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
+                <span className="sr-only">{t('settings.loading')}</span>
             </div>
         )
     }
@@ -35,20 +36,20 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
             userName={userName}
             avatarUrl={profile?.avatar_url || undefined}
         >
-            <div className="w-full max-w-md mx-auto px-4 py-6">
-                {/* Back to profile */}
-                <Link
-                    href="/profile"
-                    className="mb-6 inline-flex items-center gap-1 text-sm text-fg-muted transition-colors hover:text-fg"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    {t('settings.backToProfile')}
-                </Link>
+            <div className="mx-auto flex w-full max-w-content flex-col gap-6 px-screen-x py-5">
+                {/* Заголовок экрана: назад к профилю — круглая кнопка 44 px, ниже
+                    название засечками, как у остальных экранов. */}
+                <header className="flex flex-col items-start gap-2">
+                    <Link
+                        href="/profile"
+                        aria-label={t('settings.backToProfile')}
+                        className="-ml-2.5 inline-flex h-11 w-11 items-center justify-center rounded-full text-fg transition-colors hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    >
+                        <ArrowLeft className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                    </Link>
+                    <h1 className="type-title-1 text-fg">{title}</h1>
+                </header>
 
-                {/* Page title */}
-                <h1 className="mb-8 text-2xl font-bold text-fg">{title}</h1>
-
-                {/* Page content */}
                 {children(settingsHook)}
             </div>
         </RoleShell>

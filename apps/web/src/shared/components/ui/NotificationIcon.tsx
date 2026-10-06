@@ -8,17 +8,26 @@ export interface NotificationIconProps {
     className?: string
 }
 
+/**
+ * Колокольчик в шапке — кнопка-иконка 44 px, как `IconButton` без подложки.
+ *
+ * Непрочитанное — точкой бренда с числом: это единственный «зовущий» элемент
+ * шапки. Красный здесь сообщал бы об ошибке, которой нет.
+ */
 export const NotificationIcon = forwardRef<HTMLButtonElement, NotificationIconProps>(
     ({ count = 0, onClick, className }, ref) => {
-        const baseStyles = 'relative inline-flex items-center justify-center rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus'
-        const interactiveStyles = onClick ? 'cursor-pointer hover:bg-subtle' : ''
+        const baseStyles = cn(
+            'relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg transition-colors duration-150',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus',
+        )
+        const interactiveStyles = onClick ? 'cursor-pointer touch-manipulation hover:bg-subtle' : ''
 
         const content = (
             <>
-                <Bell className="h-6 w-6 text-fg" aria-hidden="true" />
+                <Bell className="h-[22px] w-[22px]" strokeWidth={1.8} aria-hidden="true" />
                 {count > 0 && (
                     <span
-                        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-xs font-bold text-on-primary"
+                        className="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold leading-none tabular-nums text-on-primary ring-2 ring-canvas"
                         data-testid="notification-badge"
                         aria-label={`${count} unread notifications`}
                     >
@@ -32,6 +41,7 @@ export const NotificationIcon = forwardRef<HTMLButtonElement, NotificationIconPr
             return (
                 <button
                     ref={ref}
+                    type="button"
                     onClick={onClick}
                     className={cn(baseStyles, interactiveStyles, className)}
                     aria-label={count > 0 ? `Notifications (${count} unread)` : 'Notifications'}

@@ -11,6 +11,7 @@
 
 import { usePushSubscription } from '../hooks/usePushSubscription'
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
 
 export function PushSection() {
     const { state, busy, error, enable, disable } = usePushSubscription()
@@ -18,10 +19,10 @@ export function PushSection() {
     if (state === 'unknown') return null
 
     return (
-        <div className="rounded-2xl bg-surface p-4 shadow-sm" data-testid="push-section">
-            <p className="mb-1 text-sm font-medium text-fg-muted">{t('notifications.push.heading')}</p>
+        <div className="rounded-card border border-line bg-surface p-5" data-testid="push-section">
+            <h2 className="mb-1 type-title-3 text-fg">{t('notifications.push.heading')}</h2>
 
-            {error && <p className="py-2 text-sm text-danger-fg">{error}</p>}
+            {error && <p className="py-2 text-sm text-danger-fg" role="alert">{error}</p>}
 
             {state === 'unsupported' && (
                 <p className="py-2 text-sm text-fg-muted">
@@ -46,14 +47,15 @@ export function PushSection() {
                     <p className="text-sm text-fg-muted">
                         {t('notifications.push.offer')}
                     </p>
-                    <button
+                    <Button
                         type="button"
+                        variant="primary"
                         disabled={busy}
                         onClick={() => void enable()}
-                        className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
+                        className="mt-3"
                     >
                         {busy ? t('notifications.push.enabling') : t('notifications.push.enable')}
-                    </button>
+                    </Button>
                 </div>
             )}
 
@@ -62,14 +64,15 @@ export function PushSection() {
                     <p className="pr-4 text-sm text-fg-muted">
                         {t('notifications.push.enabled')}
                     </p>
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
                         disabled={busy}
                         onClick={() => void disable()}
-                        className="shrink-0 text-sm text-fg-muted hover:text-fg disabled:opacity-50"
+                        className="-mr-3 shrink-0 text-fg-muted"
                     >
                         {busy ? t('notifications.push.disabling') : t('notifications.push.disable')}
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>

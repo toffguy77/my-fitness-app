@@ -10,6 +10,8 @@
 import { useEffect, useState } from 'react'
 import { providersApi, providerLabel } from '@/features/auth/api/providers'
 import { t } from '@/shared/i18n'
+import { buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
+import { cn } from '@/shared/utils/cn'
 
 export function ProviderButtons({ mode }: { mode: 'login' | 'register' }) {
     const [providers, setProviders] = useState<string[]>([])
@@ -23,14 +25,14 @@ export function ProviderButtons({ mode }: { mode: 'login' | 'register' }) {
     return (
         <div className="mt-6">
             <div className="flex items-center gap-3" aria-hidden="true">
-                <span className="h-px flex-1 bg-subtle" />
-                <span className="text-xs text-fg-muted">
+                <span className="h-px flex-1 bg-line" />
+                <span className="type-caption text-fg-subtle">
                     {mode === 'register' ? t('auth.orRegisterWith') : t('auth.orSignInWith')}
                 </span>
-                <span className="h-px flex-1 bg-subtle" />
+                <span className="h-px flex-1 bg-line" />
             </div>
 
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 space-y-3">
                 {providers.map((provider) => (
                     <a
                         key={provider}
@@ -38,7 +40,7 @@ export function ProviderButtons({ mode }: { mode: 'login' | 'register' }) {
                         // the provider's own site.
                         href={providersApi.startUrl(provider)}
                         data-testid={`oauth-${provider}`}
-                        className="flex w-full items-center justify-center rounded-lg border border-line bg-surface py-3 text-sm font-medium text-fg transition-colors hover:bg-canvas"
+                        className={cn(buttonBase, buttonVariants.secondary, buttonSizes.lg, 'w-full')}
                     >
                         {providerLabel(provider)}
                     </a>

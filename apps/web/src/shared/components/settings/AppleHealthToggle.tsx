@@ -1,7 +1,7 @@
 'use client'
 
 import toast from 'react-hot-toast'
-import { cn } from '@/shared/utils/cn'
+import { Switch } from './Switch'
 
 export interface AppleHealthToggleProps {
     enabled: boolean
@@ -21,51 +21,22 @@ export function AppleHealthToggle({ enabled, onChange }: AppleHealthToggleProps)
 
     return (
         <div className="flex flex-col gap-3">
-            {/* Main row */}
-            <div className="flex items-center justify-between">
-                <span className="font-medium text-fg">
+            {/* Строка настройки — одной карточкой, как группы на остальных экранах. */}
+            <div className="flex min-h-14 items-center justify-between gap-4 rounded-card border border-line bg-surface px-4 py-1.5">
+                <span className="type-headline text-fg">
                     Синхронизация с Apple Здоровье
                 </span>
-
-                <div className="flex items-center gap-2">
-                    {/* Toggle switch */}
-                    <button
-                        type="button"
-                        role="switch"
-                        aria-checked={enabled}
-                        aria-label="Синхронизация с Apple Здоровье"
-                        onClick={handleToggle}
-                        className={cn(
-                            'relative inline-flex h-6 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors',
-                            enabled ? 'bg-primary' : 'bg-line'
-                        )}
-                    >
-                        <span
-                            className={cn(
-                                'inline-block h-5 w-5 rounded-full bg-surface shadow-sm transition-transform',
-                                enabled ? 'translate-x-6' : 'translate-x-0.5'
-                            )}
-                        />
-                    </button>
-
-                    {/* Chevron icon */}
-                    <svg
-                        className="h-5 w-5 text-fg-subtle"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor"
-                        aria-hidden="true"
-                    >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                </div>
+                <Switch
+                    checked={enabled}
+                    label="Синхронизация с Apple Здоровье"
+                    onChange={handleToggle}
+                />
             </div>
 
             {/* Help link */}
             <button
                 type="button"
-                className="self-start text-sm text-primary transition-colors hover:text-primary"
+                className="inline-flex min-h-11 items-center self-start px-1 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
                 Как настроить Apple Health
             </button>

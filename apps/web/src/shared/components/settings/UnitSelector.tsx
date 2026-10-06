@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import { cn } from '@/shared/utils/cn'
 
 export interface UnitSelectorProps {
@@ -13,11 +14,17 @@ const units = [
     { value: 'imperial' as const, label: 'Фунты, дюймы' },
 ]
 
+/** Два варианта — сегменты; выбранный — инверсией чернилами, не брендом. */
 export function UnitSelector({ value, onChange, disabled }: UnitSelectorProps) {
+    const headingId = useId()
     return (
         <div className="w-full">
-            <h3 className="mb-3 text-sm font-bold text-fg">Единицы измерения</h3>
-            <div className="flex flex-col gap-2">
+            <p id={headingId} className="mb-1.5 text-sm font-medium text-fg-muted">Единицы измерения</p>
+            <div
+                role="group"
+                aria-labelledby={headingId}
+                className="grid grid-cols-2 gap-1 rounded-full border border-line bg-surface p-1"
+            >
                 {units.map((unit) => {
                     const isActive = value === unit.value
                     return (
@@ -28,14 +35,13 @@ export function UnitSelector({ value, onChange, disabled }: UnitSelectorProps) {
                             onClick={() => onChange(unit.value)}
                             aria-pressed={isActive}
                             className={cn(
-                                'flex w-full items-center rounded-xl px-4 py-3 text-left font-medium transition-colors',
+                                'flex h-11 min-w-0 items-center justify-center rounded-full px-3 text-sm font-semibold transition-colors',
+                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                                 'disabled:pointer-events-none disabled:opacity-50',
-                                isActive
-                                    ? 'bg-primary text-on-primary'
-                                    : 'bg-subtle text-fg'
+                                isActive ? 'bg-fg text-fg-inverse' : 'text-fg-muted hover:text-fg'
                             )}
                         >
-                            {unit.label}
+                            <span className="truncate">{unit.label}</span>
                         </button>
                     )
                 })}

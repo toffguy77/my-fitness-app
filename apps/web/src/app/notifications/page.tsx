@@ -21,8 +21,8 @@ const NotificationsPageComponent = dynamic(
         loading: () => (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-line-strong mx-auto mb-4"></div>
-                    <p className="text-fg-muted">{t('notifications.loadingList')}</p>
+                    <div className="mx-auto mb-4 h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true"></div>
+                    <p className="text-sm text-fg-muted">{t('notifications.loadingList')}</p>
                 </div>
             </div>
         ),
@@ -41,8 +41,8 @@ export default function NotificationsPage() {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-line-strong mx-auto mb-4"></div>
-                    <p className="text-fg-muted">{t('common.loading')}</p>
+                    <div className="mx-auto mb-4 h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true"></div>
+                    <p className="text-sm text-fg-muted">{t('common.loading')}</p>
                 </div>
             </div>
         )

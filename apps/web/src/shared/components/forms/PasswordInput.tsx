@@ -5,6 +5,7 @@ import { Input, type InputProps } from '../ui/Input'
 import { Eye, EyeOff, Check, X } from 'lucide-react'
 import { PASSWORD_RULES } from '@/shared/validation/password'
 import { t } from '@/shared/i18n'
+import { cn } from '@/shared/utils/cn'
 
 export interface PasswordInputProps extends InputProps {
     showRequirements?: boolean
@@ -12,7 +13,7 @@ export interface PasswordInputProps extends InputProps {
 }
 
 export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
-    ({ showRequirements = false, showStrengthIndicator = false, error, value, onChange, ...props }, ref) => {
+    ({ showRequirements = false, showStrengthIndicator = false, error, value, onChange, className, ...props }, ref) => {
         const [showPassword, setShowPassword] = useState(false)
 
         // Состояние правил выводится из текущего значения, а не хранится
@@ -50,25 +51,36 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
                         value={value}
                         onChange={onChange}
                         error={error}
+                        className={cn('pr-12', className)}
                         {...props}
                     />
+                    {/*
+                        Кнопка стоит против поля, а не против всего блока: над полем
+                        может быть подпись (20 px строки + 6 px отступа у Input), под
+                        ним — ошибка, и «по центру блока» уезжало с поля.
+                        Область нажатия 44 px — внутри поля высотой 48.
+                    */}
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg focus:outline-none"
+                        className={cn(
+                            'absolute right-0.5 inline-flex h-11 w-11 items-center justify-center rounded-full text-fg-muted transition-colors',
+                            'hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+                            props.label ? 'top-[28px]' : 'top-0.5'
+                        )}
                         aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
                     >
                         {showPassword ? (
-                            <EyeOff className="h-5 w-5" />
+                            <EyeOff className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                         ) : (
-                            <Eye className="h-5 w-5" />
+                            <Eye className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                         )}
                     </button>
                 </div>
 
                 {showStrengthIndicator && strength && strength.label && (
                     <div className="space-y-1">
-                        <div className="h-2 bg-subtle rounded-full overflow-hidden">
+                        <div className="h-1.5 overflow-hidden rounded-full bg-track">
                             <div
                                 className={`h-full transition-all duration-300 ${strength.color}`}
                                 style={{ width: strength.width }}
@@ -89,7 +101,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
                 */}
                 {showRequirements && current.length > 0 && (
                     <div className="space-y-2 text-sm" data-testid="password-checklist">
-                        <p className="font-medium text-fg">{t('auth.validation.mustContain')}</p>
+                        <p className="font-medium text-fg-muted">{t('auth.validation.mustContain')}</p>
                         <ul className="space-y-1">
                             {PASSWORD_RULES.map((rule, index) => (
                                 <RequirementItem
@@ -119,9 +131,9 @@ function RequirementItem({ id, met, text }: RequirementItemProps) {
     return (
         <li className="flex items-center gap-2" data-testid={`password-rule-${id}`} data-met={met}>
             {met ? (
-                <Check className="h-4 w-4 text-success-fg" aria-label="Требование выполнено" />
+                <Check className="h-4 w-4 shrink-0 text-success-fg" strokeWidth={2} aria-label="Требование выполнено" />
             ) : (
-                <X className="h-4 w-4 text-fg-subtle" aria-label="Требование не выполнено" />
+                <X className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={2} aria-label="Требование не выполнено" />
             )}
             <span className={met ? 'text-success-fg' : 'text-fg-muted'}>{text}</span>
         </li>

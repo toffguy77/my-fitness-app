@@ -21,6 +21,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { chatApi } from '../api/chatApi'
 import type { Conversation } from '../types'
 import { t } from '@/shared/i18n'
+import { MessagesSquare } from 'lucide-react'
 
 // ============================================================================
 // Types
@@ -155,28 +156,32 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <p className="text-fg-subtle text-sm">{t('chat.loadingChats')}</p>
+            <div className="flex flex-col items-center justify-center gap-3 py-12" role="status">
+                <span className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
+                <p className="text-sm text-fg-muted">{t('chat.loadingChats')}</p>
             </div>
         )
     }
 
     if (sorted.length === 0) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <p className="text-fg-subtle text-sm">{t('chat.noChats')}</p>
+            <div className="flex flex-col items-center justify-center gap-3 px-8 py-12 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                    <MessagesSquare className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} />
+                </span>
+                <p className="type-title-3 text-fg">{t('chat.noChats')}</p>
             </div>
         )
     }
 
     return (
-        <ul className="divide-y divide-line">
+        <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
             {sorted.map((conv) => (
                 <li key={conv.id}>
                     <button
                         type="button"
                         onClick={() => onSelectConversation(conv)}
-                        className="flex items-center gap-3 w-full px-2 py-3 hover:bg-canvas transition-colors text-left rounded-lg"
+                        className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-subtle/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                     >
                         {/* Avatar */}
                         {conv.participant.avatar_url ? (
@@ -187,8 +192,8 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
                                 className="w-11 h-11 rounded-full object-cover shrink-0"
                             />
                         ) : (
-                            <div className="w-11 h-11 rounded-full bg-primary-soft flex items-center justify-center shrink-0">
-                                <span className="text-sm font-medium text-primary">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                                <span className="text-sm font-semibold text-fg-muted">
                                     {getInitials(conv.participant.name)}
                                 </span>
                             </div>
@@ -197,11 +202,11 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-fg truncate">
+                                <span className="truncate type-headline text-fg">
                                     {conv.participant.name}
                                 </span>
                                 {conv.last_message && (
-                                    <span className="text-xs text-fg-subtle shrink-0 ml-2">
+                                    <span className="ml-2 shrink-0 text-xs text-fg-subtle tabular-nums">
                                         {formatRelativeTime(conv.last_message.created_at)}
                                     </span>
                                 )}
@@ -211,7 +216,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
                                     {getPreview(conv)}
                                 </p>
                                 {conv.unread_count > 0 && (
-                                    <span className="ml-2 shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-danger text-on-primary text-xs font-medium">
+                                    <span className="ml-2 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-on-primary tabular-nums">
                                         {conv.unread_count}
                                     </span>
                                 )}

@@ -28,7 +28,9 @@ export const Logo: React.FC<LogoProps> = ({
             <text
                 x="100"
                 y="38"
-                fontFamily="Inter, -apple-system, sans-serif"
+                // Шрифт интерфейса из токенов (Golos Text): Inter в проекте не
+                // загружается, и надпись рисовалась системным шрифтом.
+                style={{ fontFamily: 'var(--ds-font-family-sans)' }}
                 fontWeight="700"
                 fontSize="24"
                 letterSpacing="0.15em"

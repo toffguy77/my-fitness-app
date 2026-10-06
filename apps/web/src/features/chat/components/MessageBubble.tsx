@@ -2,12 +2,17 @@
  * MessageBubble Component
  *
  * Renders a single chat message with appropriate styling based on sender and type.
- * Own messages are right-aligned with blue background; others are left-aligned with gray.
+ *
+ * Свои сообщения — справа, инверсией чернилами (`bg-fg text-fg-inverse`);
+ * сообщения собеседника — слева, бумагой с линией (`bg-surface border-line`).
+ * Терракота в переписке не тратится на пузыри: она остаётся у одного главного
+ * действия экрана — кнопки «Отправить».
  */
 
 'use client'
 
 import { useMemo } from 'react'
+import { Plus } from 'lucide-react'
 import type { Message } from '../types'
 import { FoodEntryCard } from './FoodEntryCard'
 import { FileAttachment } from './FileAttachment'
@@ -42,15 +47,16 @@ function formatTime(dateStr: string): string {
 
 export function MessageBubble({ message, isOwn, onImageAction }: MessageBubbleProps) {
     const alignment = isOwn ? 'justify-end' : 'justify-start'
-    const bubbleBg = isOwn ? 'bg-primary text-on-primary' : 'bg-subtle text-fg'
-    const timeColor = isOwn ? 'text-primary' : 'text-fg-subtle'
+    const bubbleBg = isOwn
+        ? 'bg-fg text-fg-inverse rounded-br-md'
+        : 'bg-surface text-fg border border-line rounded-bl-md'
 
     const content = useMemo(() => {
         switch (message.type) {
             case 'text':
                 return (
-                    <div className={`rounded-2xl px-4 py-2 max-w-[300px] ${bubbleBg}`}>
-                        <p className="text-sm whitespace-pre-wrap break-words">
+                    <div className={`rounded-tile px-4 py-2.5 max-w-[300px] ${bubbleBg}`}>
+                        <p className="text-[15px] leading-[22px] whitespace-pre-wrap break-words">
                             {message.content}
                         </p>
                     </div>
@@ -71,7 +77,7 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
                                 <img
                                     src={imageUrl}
                                     alt={t('chat.image')}
-                                    className="rounded-2xl max-w-full max-h-[300px] object-cover"
+                                    className="rounded-tile border border-line max-w-full max-h-[300px] object-cover"
                                     loading="lazy"
                                 />
                             </a>
@@ -80,8 +86,9 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
                             <button
                                 type="button"
                                 onClick={() => onImageAction(message)}
-                                className="mt-1.5 text-xs text-success-fg hover:text-success-fg font-medium transition-colors"
+                                className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary transition-opacity hover:opacity-80"
                             >
+                                <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                                 {t('chat.enterMacros')}
                             </button>
                         )}
@@ -100,7 +107,7 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
                                 href={message.content}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm underline text-primary"
+                                className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline"
                             >
                                 {t('chat.downloadFile')}
                             </a>
@@ -113,8 +120,8 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
 
             default:
                 return (
-                    <div className={`rounded-2xl px-4 py-2 max-w-[300px] ${bubbleBg}`}>
-                        <p className="text-sm">{message.content}</p>
+                    <div className={`rounded-tile px-4 py-2.5 max-w-[300px] ${bubbleBg}`}>
+                        <p className="text-[15px] leading-[22px]">{message.content}</p>
                     </div>
                 )
         }
@@ -124,7 +131,7 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
         <div className={`flex ${alignment} mb-2 px-4`}>
             <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                 {content}
-                <span className={`text-xs mt-0.5 ${timeColor}`}>
+                <span className="mt-1 text-xs text-fg-subtle tabular-nums">
                     {formatTime(message.created_at)}
                 </span>
             </div>

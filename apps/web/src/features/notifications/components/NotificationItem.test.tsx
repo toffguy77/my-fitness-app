@@ -46,9 +46,10 @@ describe('NotificationItem', () => {
                         />
                     );
 
-                    // Unread notifications should have blue background
+                    // Unread is marked on the row, not by a brand-coloured fill
                     const notificationElement = container.firstChild as HTMLElement;
-                    expect(notificationElement).toHaveClass('bg-primary-soft');
+                    expect(notificationElement).toHaveAttribute('data-unread', 'true');
+                    expect(notificationElement).not.toHaveClass('bg-primary-soft');
 
                     // Title should be bold/semibold for unread - use querySelector to avoid text matching issues
                     const titleElement = notificationElement.querySelector('h3');
@@ -59,9 +60,10 @@ describe('NotificationItem', () => {
                     const contentElement = notificationElement.querySelector('p');
                     expect(contentElement).toHaveClass('text-fg');
 
-                    // Should have unread indicator dot
-                    const unreadDot = notificationElement.querySelector('[role="presentation"]');
+                    // Should have a small brand-coloured unread dot
+                    const unreadDot = notificationElement.querySelector('[role="presentation"] > div');
                     expect(unreadDot).toBeInTheDocument();
+                    expect(unreadDot).toHaveClass('bg-primary', 'h-2', 'w-2');
 
                     // Should have aria-label indicating unread status
                     expect(notificationElement).toHaveAttribute(
@@ -83,9 +85,11 @@ describe('NotificationItem', () => {
                         />
                     );
 
-                    // Read notifications should have reduced opacity
+                    // Read notifications are not marked unread; muting is done with
+                    // the secondary text role, not with opacity (keeps contrast)
                     const notificationElement = container.firstChild as HTMLElement;
-                    expect(notificationElement).toHaveClass('opacity-70');
+                    expect(notificationElement).not.toHaveAttribute('data-unread');
+                    expect(notificationElement).not.toHaveClass('opacity-70');
 
                     // Title should be normal weight for read - use querySelector to avoid text matching issues
                     const titleElement = notificationElement.querySelector('h3');
@@ -179,9 +183,9 @@ describe('NotificationItem', () => {
                 />
             );
 
-            // Check unread styling
+            // Check unread marking
             const notificationElement = container.firstChild as HTMLElement;
-            expect(notificationElement).toHaveClass('bg-primary-soft');
+            expect(notificationElement).toHaveAttribute('data-unread', 'true');
 
             // Check title is bold
             const title = screen.getByText('New feedback from trainer');
@@ -211,9 +215,9 @@ describe('NotificationItem', () => {
                 />
             );
 
-            // Check read styling
+            // Check read marking
             const notificationElement = container.firstChild as HTMLElement;
-            expect(notificationElement).toHaveClass('opacity-70');
+            expect(notificationElement).not.toHaveAttribute('data-unread');
 
             // Check title is normal weight
             const title = screen.getByText('System maintenance scheduled');
@@ -507,55 +511,32 @@ describe('NotificationItem', () => {
 });
 
 /**
- * Responsive Design Tests
- * Validates: Requirements 6.1, 6.2, 6.3
+ * Row layout
+ * Validates: Requirements 6.1, 6.4
  */
-describe('Responsive Design', () => {
+describe('Row layout', () => {
     const notification = {
-        id: 'responsive-1',
+        id: 'row-1',
         userId: 'user-1',
         category: 'main' as const,
         type: 'trainer_feedback' as const,
         title: 'Test notification',
-        content: 'Testing responsive design',
+        content: 'Testing row layout',
         createdAt: new Date().toISOString(),
     };
 
-    it('applies mobile layout styles (< 768px)', () => {
-        const { container } = render(
+    it('is a list row at least 56 px tall', () => {
+        render(
             <NotificationItem
                 notification={notification}
                 onMarkAsRead={() => { }}
             />
         );
 
-        const notificationElement = container.firstChild as HTMLElement;
-
-        // Mobile: compact padding
-        expect(notificationElement).toHaveClass('p-3');
-
-        // Mobile: minimum touch target
-        expect(notificationElement).toHaveClass('min-h-[80px]');
-
-        // Title: mobile font size
-        const titleElement = notificationElement.querySelector('h3');
-        expect(titleElement).toHaveClass('text-sm');
-
-        // Content: mobile font size
-        const contentElement = notificationElement.querySelector('p');
-        expect(contentElement).toHaveClass('text-xs');
-
-        // Timestamp: mobile font size
-        const timeElement = notificationElement.querySelector('time');
-        expect(timeElement).toHaveClass('text-xs');
-
-        // Unread dot: mobile size
-        const dotElement = notificationElement.querySelector('[role="presentation"] > div');
-        expect(dotElement).toHaveClass('h-2');
-        expect(dotElement).toHaveClass('w-2');
+        expect(screen.getByRole('button')).toHaveClass('min-h-14');
     });
 
-    it('applies tablet layout styles (768px - 1024px)', () => {
+    it('shows the time with tabular figures', () => {
         const { container } = render(
             <NotificationItem
                 notification={notification}
@@ -563,63 +544,8 @@ describe('Responsive Design', () => {
             />
         );
 
-        const notificationElement = container.firstChild as HTMLElement;
-
-        // Tablet: more padding
-        expect(notificationElement).toHaveClass('sm:p-4');
-
-        // Tablet: larger touch target
-        expect(notificationElement).toHaveClass('sm:min-h-[90px]');
-
-        // Title: tablet font size
-        const titleElement = notificationElement.querySelector('h3');
-        expect(titleElement).toHaveClass('sm:text-base');
-
-        // Content: tablet font size
-        const contentElement = notificationElement.querySelector('p');
-        expect(contentElement).toHaveClass('sm:text-sm');
-
-        // Timestamp: tablet font size
-        const timeElement = notificationElement.querySelector('time');
-        expect(timeElement).toHaveClass('sm:text-xs');
-
-        // Unread dot: tablet size
-        const dotElement = notificationElement.querySelector('[role="presentation"] > div');
-        expect(dotElement).toHaveClass('sm:h-2.5');
-        expect(dotElement).toHaveClass('sm:w-2.5');
-    });
-
-    it('applies desktop layout styles (>= 1024px)', () => {
-        const { container } = render(
-            <NotificationItem
-                notification={notification}
-                onMarkAsRead={() => { }}
-            />
-        );
-
-        const notificationElement = container.firstChild as HTMLElement;
-
-        // Desktop: optimal padding
-        expect(notificationElement).toHaveClass('md:p-5');
-
-        // Desktop: hover states (unread notifications have blue hover)
-        expect(notificationElement).toHaveClass('md:hover:bg-primary-soft');
-
-        // Title: desktop font size
-        const titleElement = notificationElement.querySelector('h3');
-        expect(titleElement).toHaveClass('md:text-base');
-
-        // Content: desktop font size
-        const contentElement = notificationElement.querySelector('p');
-        expect(contentElement).toHaveClass('md:text-sm');
-
-        // Timestamp: desktop font size (slightly larger)
-        const timeElement = notificationElement.querySelector('time');
-        expect(timeElement).toHaveClass('md:text-sm');
-
-        // Unread dot: desktop size
-        const dotElement = notificationElement.querySelector('[role="presentation"] > div');
-        expect(dotElement).toHaveClass('md:h-3');
-        expect(dotElement).toHaveClass('md:w-3');
+        const timeElement = container.querySelector('time');
+        expect(timeElement).toHaveAttribute('dateTime', notification.createdAt);
+        expect(timeElement).toHaveClass('tabular-nums');
     });
 });

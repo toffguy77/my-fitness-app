@@ -15,6 +15,8 @@ import { providersApi, providerLabel } from '@/features/auth/api/providers'
 import { storeSession, destinationFor } from '@/features/auth/utils/session'
 import { isApiError } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
+import { AuthPanel, AuthShell, FIELD } from './AuthShell'
 
 export function OAuthLinkScreen() {
     const router = useRouter()
@@ -52,23 +54,23 @@ export function OAuthLinkScreen() {
     }
 
     return (
-        <main className="flex min-h-screen flex-col justify-center bg-canvas px-6">
-            <div className="mx-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-sm">
-                <h1 className="text-lg font-semibold text-fg">{t('auth.oauth.linkTitle')}</h1>
-                <p className="mt-2 text-sm text-fg-muted">
-                    {email ? (
-                        <>
-                            {t('auth.oauth.linkHintOnAddress')}{' '}
-                            <span className="font-medium text-fg">{email}</span>{' '}
-                            {t('auth.oauth.linkHintKnownEmail', { provider: providerLabel(provider) })}
-                        </>
-                    ) : (
-                        <>{t('auth.oauth.linkHintUnknownEmail', { provider: providerLabel(provider) })}</>
-                    )}
-                </p>
-
-                <form onSubmit={handleSubmit} className="mt-6">
-                    <label htmlFor="link-password" className="block text-sm font-medium text-fg">
+        <AuthShell
+            title={t('auth.oauth.linkTitle')}
+            description={
+                email ? (
+                    <>
+                        {t('auth.oauth.linkHintOnAddress')}{' '}
+                        <span className="font-semibold text-fg">{email}</span>{' '}
+                        {t('auth.oauth.linkHintKnownEmail', { provider: providerLabel(provider) })}
+                    </>
+                ) : (
+                    <>{t('auth.oauth.linkHintUnknownEmail', { provider: providerLabel(provider) })}</>
+                )
+            }
+        >
+            <AuthPanel>
+                <form onSubmit={handleSubmit}>
+                    <label htmlFor="link-password" className="mb-1.5 block text-sm font-medium text-fg-muted">
                         {t('auth.password')}
                     </label>
                     <input
@@ -77,32 +79,38 @@ export function OAuthLinkScreen() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="current-password"
-                        className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm text-fg outline-none focus:ring-2 focus:ring-focus"
+                        className={FIELD}
                     />
 
-                    <button
+                    <Button
                         type="submit"
                         disabled={!password || isSubmitting}
-                        className="mt-4 w-full rounded-lg bg-primary py-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
+                        isLoading={isSubmitting}
+                        size="lg"
+                        block
+                        className="mt-6"
                     >
                         {isSubmitting ? t('auth.oauth.linking') : t('auth.oauth.linkAction')}
-                    </button>
+                    </Button>
                 </form>
 
-                <button
+                <Button
+                    variant="ghost"
+                    size="lg"
+                    block
                     onClick={() => router.replace('/auth')}
-                    className="mt-4 w-full text-sm text-fg-muted hover:text-fg"
+                    className="mt-2 text-fg-muted"
                 >
                     {t('auth.oauth.signInNormally')}
-                </button>
+                </Button>
 
                 <p className="mt-4 text-center text-sm text-fg-muted">
                     {t('auth.oauth.forgotPassword')}{' '}
-                    <a href="/forgot-password" className="text-primary hover:underline">
+                    <a href="/forgot-password" className="font-semibold text-primary hover:underline">
                         {t('auth.oauth.recover')}
                     </a>
                 </p>
-            </div>
-        </main>
+            </AuthPanel>
+        </AuthShell>
     )
 }

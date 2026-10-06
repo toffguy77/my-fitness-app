@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { JsonLd } from '@/shared/components/JsonLd'
 import { EXPERT_AUTHOR } from '@/shared/constants/author'
 import { ArticleAuthor } from '@/features/content/components/ArticleAuthor'
@@ -56,27 +57,35 @@ export default async function AuthorPage() {
     }
 
     return (
-        <main className="mx-auto max-w-3xl px-4 py-8">
+        <main className="mx-auto max-w-content px-screen-x py-10 sm:py-14">
             <JsonLd data={profileJsonLd} />
 
-            <h1 className="mb-4 text-2xl font-bold text-fg">{EXPERT_AUTHOR.name}</h1>
+            <h1 className="mb-6 type-display text-fg">{EXPERT_AUTHOR.name}</h1>
             <ArticleAuthor author={EXPERT_AUTHOR} />
 
             {articles.length > 0 && (
-                <section className="mt-10">
-                    <h2 className="mb-4 text-lg font-semibold text-fg">Статьи</h2>
-                    <ul className="space-y-3">
+                <section className="mt-12">
+                    <h2 className="mb-4 type-title-2 text-fg">Статьи</h2>
+                    <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
                         {articles.map((article) => (
-                            <li key={article.id}>
-                                <Link
-                                    href={articlePath(article)}
-                                    className="font-medium text-primary hover:underline"
-                                >
-                                    {article.title}
-                                </Link>
-                                {article.excerpt && (
-                                    <p className="text-sm text-fg-muted">{article.excerpt}</p>
-                                )}
+                            <li
+                                key={article.id}
+                                className="relative flex min-h-14 items-center gap-3 px-4 py-3 transition-colors hover:bg-subtle/60"
+                            >
+                                <div className="min-w-0 flex-1">
+                                    {/* Растянутая ссылка: вся строка нажимается, а имя
+                                        ссылки — только заголовок статьи. */}
+                                    <Link
+                                        href={articlePath(article)}
+                                        className="block type-title-3 text-fg after:absolute after:inset-0 after:content-['']"
+                                    >
+                                        {article.title}
+                                    </Link>
+                                    {article.excerpt && (
+                                        <p className="mt-1 text-sm text-fg-muted">{article.excerpt}</p>
+                                    )}
+                                </div>
+                                <ChevronRight className="h-5 w-5 shrink-0 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                             </li>
                         ))}
                     </ul>
