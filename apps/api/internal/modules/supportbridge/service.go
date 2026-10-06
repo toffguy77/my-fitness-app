@@ -271,6 +271,19 @@ func (s *Service) Healthy(ctx context.Context) error {
 	return nil
 }
 
+// Announce пишет в общую ленту группы — то, что касается всех кураторов, а не
+// одного клиента: темы на клиента у заявки ещё нет, и заводить её ради
+// оповещения значило бы плодить темы людям, которых никто не взял.
+func (s *Service) Announce(ctx context.Context, text string) error {
+	if !s.Enabled() {
+		return nil
+	}
+	if _, err := s.sender.SendToTopic(ctx, s.groupID, 0, text); err != nil {
+		return fmt.Errorf("сообщение в группу кураторов: %w", err)
+	}
+	return nil
+}
+
 // TargetForReply — форма, в которой мост нужен поддержке.
 //
 // Возвращает клиента, признак «отвечать в Telegram» и признак «адресат найден».

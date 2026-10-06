@@ -57,6 +57,11 @@ const (
 	// Право кончилось. Уходит обеим сторонам: куратор, не знающий о
 	// прекращении, продолжит работу, за которую больше не платят.
 	TypeCuratorAccessEnded NotificationType = "curator_access_ended"
+
+	// Человек попросил куратора. Заявка без оповещения лежит в очереди, пока
+	// кто-нибудь туда не заглянет, — так единственная за две недели пролежала
+	// неделю.
+	TypeCuratorRequested NotificationType = "curator_requested"
 )
 
 // IsValid checks if the notification type is valid
@@ -65,7 +70,7 @@ func (t NotificationType) IsValid() bool {
 	case TypeTrainerFeedback, TypeAchievement, TypeReminder, TypeSystemUpdate, TypeNewFeature, TypeGeneral, TypeNewContent,
 		TypePlanUpdated, TypeTaskAssigned, TypeTaskOverdue, TypeFeedbackReceived,
 		TypeExportReady, TypeClientLeft, TypeSupportEscalated,
-		TypeCuratorAccessEnding, TypeCuratorAccessEnded:
+		TypeCuratorAccessEnding, TypeCuratorAccessEnded, TypeCuratorRequested:
 		return true
 	}
 	return false

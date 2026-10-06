@@ -133,6 +133,7 @@ func TestCreate_StoresCaptureSource(t *testing.T) {
 					// Шесть полей источника перехода, добавленных миграцией 078.
 					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					sqlmock.AnyArg(),
 				).
 				WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 					AddRow("lead-9", time.Now(), time.Now()))
@@ -172,6 +173,8 @@ func TestCreate_DefaultsCaptureSourceToContactStep(t *testing.T) {
 			// Шесть полей источника перехода, добавленных миграцией 078.
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			// Заявка ли это на куратора (миграция 089).
+			false,
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 			AddRow("lead-10", time.Now(), time.Now()))
@@ -520,6 +523,7 @@ func TestCreate_StoresTheCampaignItCameFrom(t *testing.T) {
 			1800.0, 120.0, 50.0, 200.0, 8,
 			"contact", "landing", true, true, "contact_step",
 			"yandex", "cpc", "autumn", nil, nil, "yclid-1",
+			false,
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 			AddRow("lead-7", time.Now(), time.Now()))

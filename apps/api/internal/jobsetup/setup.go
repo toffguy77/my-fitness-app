@@ -365,6 +365,17 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// Заявка на куратора, которую никто не взял, поднимается ещё раз. Порог —
+	// внутри работы; интервал говорит лишь о том, как часто мы смотрим.
+	registry.MustRegister(jobs.Job{
+		Name:     "leads.raise-unhandled-curator-requests",
+		Interval: 15 * time.Minute,
+		Timeout:  time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Leads.RaiseUnhandledCuratorRequests(ctx, leads.CuratorRequestRaiseAfter)
+		},
+	})
+
 	// Support chats hold what people typed before they had accounts, so they
 	// are not kept forever either.
 	registry.MustRegister(jobs.Job{

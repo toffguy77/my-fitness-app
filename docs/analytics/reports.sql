@@ -13,8 +13,11 @@
 -- accounts" — a report that shows fivefold growth out of nothing is worse than
 -- no report, because somebody will act on it.
 --
+-- Since migration 088 `live_users` holds clients only: curators and admins
+-- use ordinary mail addresses and are told apart by role.
+--
 -- The anonymous half of the funnel survives the filter: an event with no user
--- passes, only events tied to a service account are dropped.
+-- passes unless its browser was later linked to staff or a service account.
 
 -- ---------------------------------------------------------------------------
 -- 1. Registration funnel: landing page → registration, by week.
