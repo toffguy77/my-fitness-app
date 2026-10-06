@@ -9,10 +9,29 @@ import type { ArticleCard } from '@/features/content/types'
 
 const PAGE_SIZE = 20
 
-export function FeedList() {
-    const [articles, setArticles] = useState<ArticleCard[]>([])
-    const [total, setTotal] = useState(0)
-    const [loading, setLoading] = useState(true)
+/** What is on screen: which feed, and which category of it. */
+function feedKey(source: 'personal' | 'public', category: string | null): string {
+    return `${source}:${category ?? ''}`
+}
+
+export interface FeedListProps {
+    /**
+     * The first page of the public feed, fetched on the server so the links
+     * are in the HTML a search engine reads. Shown as is; the browser asks
+     * again only for something else — a category, or a signed-in reader's
+     * own feed.
+     */
+    initialArticles?: ArticleCard[]
+    initialTotal?: number
+}
+
+export function FeedList({ initialArticles, initialTotal }: FeedListProps = {}) {
+    const [articles, setArticles] = useState<ArticleCard[]>(initialArticles ?? [])
+    const [total, setTotal] = useState(initialTotal ?? initialArticles?.length ?? 0)
+    const [loading, setLoading] = useState(initialArticles === undefined)
+    const [shownKey, setShownKey] = useState<string | null>(
+        initialArticles === undefined ? null : feedKey('public', null),
+    )
     const [loadingMore, setLoadingMore] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [category, setCategory] = useState<string | null>(null)
@@ -29,7 +48,13 @@ export function FeedList() {
         [session]
     )
 
+    const wantedKey = feedKey(session === 'authenticated' ? 'personal' : 'public', category)
+
     useEffect(() => {
+        // Already on screen — the server's first page, while the session is
+        // still being restored or turns out to be a guest's.
+        if (wantedKey === shownKey) return
+
         let cancelled = false
 
         // The whole load, including clearing the previous category's articles,
@@ -45,6 +70,7 @@ export function FeedList() {
                 if (cancelled) return
                 setArticles(res.articles)
                 setTotal(res.total)
+                setShownKey(wantedKey)
             } catch (err) {
                 if (cancelled) return
                 setArticles([])
@@ -57,7 +83,7 @@ export function FeedList() {
 
         load()
         return () => { cancelled = true }
-    }, [category, fetchArticles])
+    }, [category, fetchArticles, wantedKey, shownKey])
 
     const handleLoadMore = async () => {
         setLoadingMore(true)
