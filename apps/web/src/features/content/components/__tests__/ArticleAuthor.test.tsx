@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { ArticleAuthor } from '../ArticleAuthor'
 import { EXPERT_AUTHOR } from '@/shared/constants/author'
 
@@ -28,5 +28,30 @@ describe('ArticleAuthor', () => {
             'src',
             expect.stringContaining('sergey-burcev.jpg'),
         )
+    })
+
+    // В подписи статьи фото только отмечает автора — нажимать там нечего.
+    it('does not make the photo a button in an article byline', () => {
+        render(<ArticleAuthor author={EXPERT_AUTHOR} />)
+
+        expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    it('enlarges the photo on click and shrinks it on the next click', () => {
+        render(<ArticleAuthor author={EXPERT_AUTHOR} zoomablePhoto />)
+
+        const button = screen.getByRole('button', { name: 'Сергей Бурцев' })
+        const photo = screen.getByRole('img', { name: 'Сергей Бурцев' })
+        expect(button).toHaveAttribute('aria-pressed', 'false')
+        expect(photo).toHaveClass('h-12', 'w-12')
+
+        fireEvent.click(button)
+        expect(button).toHaveAttribute('aria-pressed', 'true')
+        expect(photo).toHaveClass('h-64', 'w-64')
+        expect(photo).not.toHaveClass('h-12')
+
+        fireEvent.click(button)
+        expect(button).toHaveAttribute('aria-pressed', 'false')
+        expect(photo).toHaveClass('h-12', 'w-12')
     })
 })
