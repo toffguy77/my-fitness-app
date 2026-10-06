@@ -128,16 +128,14 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                         // Use within() to query only this container
                         const containerQueries = within(container)
 
-                        // Should display current calories
-                        expect(containerQueries.getByText(nutrition.calories.toString())).toBeInTheDocument()
+                        // Съеденное и норма — подписью под шкалой
+                        expect(containerQueries.getByTestId('calorie-value')).toHaveTextContent(nutrition.calories.toString())
+                        expect(containerQueries.getByText(`из ${weeklyPlan.caloriesGoal}`, { exact: false })).toBeInTheDocument()
 
-                        // Should display calorie goal
-                        expect(containerQueries.getByText(`из ${weeklyPlan.caloriesGoal} ккал`)).toBeInTheDocument()
-
-                        // Should display macro values
-                        expect(containerQueries.getByText(`${nutrition.protein}г / ${weeklyPlan.proteinGoal}г`)).toBeInTheDocument()
-                        expect(containerQueries.getByText(`${nutrition.fat}г / ${weeklyPlan.fatGoal}г`)).toBeInTheDocument()
-                        expect(containerQueries.getByText(`${nutrition.carbs}г / ${weeklyPlan.carbsGoal}г`)).toBeInTheDocument()
+                        // Макросы: «съедено из нормы» под остатком
+                        expect(containerQueries.getByTestId('macro-remaining-protein')).toHaveTextContent(`${nutrition.protein} из ${weeklyPlan.proteinGoal} г`)
+                        expect(containerQueries.getByTestId('macro-remaining-fat')).toHaveTextContent(`${nutrition.fat} из ${weeklyPlan.fatGoal} г`)
+                        expect(containerQueries.getByTestId('macro-remaining-carbs')).toHaveTextContent(`${nutrition.carbs} из ${weeklyPlan.carbsGoal} г`)
 
                         // Should display macro labels
                         expect(containerQueries.getByText('Белки')).toBeInTheDocument()
@@ -271,9 +269,9 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                         // Use within() to query only this container
                         const containerQueries = within(container)
 
-                        // Should show empty state message
-                        expect(containerQueries.getByText('Не записано')).toBeInTheDocument()
-                        expect(containerQueries.getByText('Добавить')).toBeInTheDocument()
+                        // Пустой день: остаток равен норме, запись — в одно касание
+                        expect(containerQueries.getByTestId('calorie-remaining')).toHaveTextContent(String(weeklyPlan.caloriesGoal))
+                        expect(containerQueries.getByRole('button', { name: 'Записать еду' })).toBeInTheDocument()
 
                         // Clean up this iteration
                         unmount()
@@ -334,14 +332,14 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                         const containerQueries = within(container)
 
                         // Find and click the quick add button
-                        const quickAddButton = containerQueries.getByLabelText('Добавить еду')
+                        const quickAddButton = containerQueries.getByRole('button', { name: 'Записать еду' })
                         expect(quickAddButton).toBeInTheDocument()
 
                         // Simulate click (this will set window.location.href)
                         quickAddButton.click()
 
                         // Should navigate to food tracker with date parameter
-                        expect(mockLocation.href).toBe(`/food-tracker?date=${dateStr}`)
+                        expect(mockLocation.href).toBe(`/food-tracker?date=${dateStr}&add=search`)
 
                         // Clean up this iteration
                         unmount()

@@ -45,7 +45,7 @@ describe('FooterNavigation', () => {
 
             const dashboardItem = container.querySelector('[data-testid="nav-item-dashboard"]')
             expect(dashboardItem).toHaveAttribute('aria-current', 'page')
-            expect(dashboardItem).toHaveClass('text-primary')
+            expect(dashboardItem).toHaveClass('text-fg')
         })
 
         it('should mark Workout item as disabled', () => {
@@ -90,7 +90,7 @@ describe('FooterNavigation', () => {
             // Chat should now be active
             const updatedChatItem = container.querySelector('[data-testid="nav-item-chat"]')
             expect(updatedChatItem).toHaveAttribute('aria-current', 'page')
-            expect(updatedChatItem).toHaveClass('text-primary')
+            expect(updatedChatItem).toHaveClass('text-fg')
         })
 
         it('should call onNavigate callback when provided', () => {
@@ -119,7 +119,7 @@ describe('FooterNavigation', () => {
 
             const chatItem = container.querySelector('[data-testid="nav-item-chat"]')
             expect(chatItem).toHaveAttribute('aria-current', 'page')
-            expect(chatItem).toHaveClass('text-primary')
+            expect(chatItem).toHaveClass('text-fg')
         })
 
         it('should have fixed positioning at bottom', () => {
@@ -147,11 +147,11 @@ describe('FooterNavigation', () => {
             expect(nav).toHaveClass('border-line')
         })
 
-        it('should have white background', () => {
+        it('should have the navigation surface background', () => {
             const { container } = render(<FooterNavigation />)
 
             const nav = container.querySelector('[data-testid="footer-navigation"]')
-            expect(nav).toHaveClass('bg-surface')
+            expect(nav).toHaveClass('bg-nav')
         })
 
         it('should have proper ARIA label', () => {

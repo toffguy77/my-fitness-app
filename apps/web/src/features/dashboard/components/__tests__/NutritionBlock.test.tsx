@@ -6,7 +6,6 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { NutritionBlock } from '../NutritionBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import type { DailyMetrics, NutritionData, WeeklyPlan } from '../../types'
@@ -109,18 +108,29 @@ describe('NutritionBlock', () => {
         window.history.pushState({}, '', '/')
     })
 
-    describe('Basic Rendering', () => {
-        it('renders nutrition block with title and quick add button', () => {
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
+    const renderWith = (nutrition: Partial<NutritionData> | undefined, plan: WeeklyPlan | null = mockWeeklyPlan) => {
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
+            ...mockStoreDefaults,
+            dailyData: {
+                [mockDateStr]: {
+                    ...mockDailyData,
+                    nutrition: nutrition === undefined ? (undefined as unknown as NutritionData) : { ...mockDailyData.nutrition, ...nutrition },
+                },
+            },
+            weeklyPlan: plan,
+        }))
+        return render(<NutritionBlock date={mockDate} />)
+    }
 
-            render(<NutritionBlock date={mockDate} />)
+    describe('Basic Rendering', () => {
+        it('показывает заголовок, ссылку на дневник и быструю запись тремя способами', () => {
+            renderWith({})
 
             expect(screen.getByText('Питание')).toBeInTheDocument()
-            expect(screen.getByLabelText('Добавить еду')).toBeInTheDocument()
+            expect(screen.getByLabelText('Открыть дневник питания')).toHaveAttribute('href', `/food-tracker?date=${mockDateStr}`)
+            expect(screen.getByRole('button', { name: 'Записать еду' })).toBeInTheDocument()
+            expect(screen.getByRole('button', { name: 'Распознать еду по фото' })).toBeInTheDocument()
+            expect(screen.getByRole('button', { name: 'Сканировать штрихкод' })).toBeInTheDocument()
         })
 
         it('applies custom className when provided', () => {
@@ -129,300 +139,114 @@ describe('NutritionBlock', () => {
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
             }))
-
             const { container } = render(<NutritionBlock date={mockDate} className="custom-class" />)
-
             expect(container.firstChild).toHaveClass('custom-class')
         })
     })
 
-    describe('Calorie Display', () => {
-        it('displays current calories and goal correctly', () => {
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
+    describe('Калории', () => {
+        it('главное число — остаток, съеденное и норма — подписью', () => {
+            renderWith({})
 
-            render(<NutritionBlock date={mockDate} />)
-
-            expect(screen.getByText('1500')).toBeInTheDocument()
-            expect(screen.getByText('из 2000 ккал')).toBeInTheDocument()
-            expect(screen.getByText('75.0%')).toBeInTheDocument()
+            expect(screen.getByTestId('calorie-remaining')).toHaveTextContent('500')
+            expect(screen.getByText('ккал ещё можно', { exact: false })).toBeInTheDocument()
+            expect(screen.getByTestId('calorie-value')).toHaveTextContent('1500')
+            expect(screen.getByText('из 2000', { exact: false })).toBeInTheDocument()
+            expect(screen.getByRole('img', { name: 'Калории: съедено 1500 из 2000, осталось 500' })).toBeInTheDocument()
         })
 
-        it('shows warning when calorie goal is exceeded', () => {
-            const overGoalData = {
-                ...mockDailyData,
-                nutrition: {
-                    ...mockDailyData.nutrition,
-                    calories: 2500, // Exceeds 2000 goal
-                },
-            }
+        it('сверх нормы — превышение со знаком, пометка и предупреждение', () => {
+            renderWith({ calories: 2500 })
 
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: overGoalData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
+            expect(screen.getByTestId('calorie-remaining')).toHaveTextContent('+500')
+            expect(screen.getByText('ккал сверх нормы', { exact: false })).toBeInTheDocument()
+            expect(screen.getByRole('alert')).toHaveTextContent('Превышена дневная норма калорий')
+        })
 
-            render(<NutritionBlock date={mockDate} />)
-
-            expect(screen.getByText('Превышена дневная норма калорий')).toBeInTheDocument()
-            expect(screen.getByText('125.0%')).toBeInTheDocument()
+        it('шкала не заполняется больше чем на 100%', () => {
+            const { container } = renderWith({ calories: 5000 })
+            const arcs = container.querySelectorAll('[role="img"] path')
+            expect(arcs[1].getAttribute('stroke-dasharray')).toBe('100 100')
         })
 
         it('нулевая норма — это не норма: доля от неё не показывается', () => {
-            // Ноль калорий как цель давал деление на ноль в процентах и красный
-            // цвет «ниже нормы» на любом дне. Такой план — отсутствие нормы.
-            const zeroGoalPlan = {
-                ...mockWeeklyPlan,
-                caloriesGoal: 0,
-            }
+            // Ноль калорий как цель давал деление на ноль и оценку «ниже нормы»
+            // на любом дне. Такой план — отсутствие нормы.
+            renderWith({}, { ...mockWeeklyPlan, caloriesGoal: 0 })
 
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: zeroGoalPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            expect(screen.queryByText(/из.*ккал/)).not.toBeInTheDocument()
+            expect(screen.queryByTestId('calorie-remaining')).not.toBeInTheDocument()
             expect(screen.getByText('Норма не посчитана')).toBeInTheDocument()
         })
-    })
 
-    describe('Macro Breakdown', () => {
-        it('displays all macro nutrients with correct values', () => {
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            // Check macro labels
-            expect(screen.getByText('Белки')).toBeInTheDocument()
-            expect(screen.getByText('Жиры')).toBeInTheDocument()
-            expect(screen.getByText('Углеводы')).toBeInTheDocument()
-
-            // Check macro values
-            expect(screen.getByText('120г / 150г')).toBeInTheDocument() // Protein
-            expect(screen.getByText('50г / 67г')).toBeInTheDocument()   // Fat
-            expect(screen.getByText('180г / 250г')).toBeInTheDocument() // Carbs
-
-            // Check macro percentages
-            expect(screen.getByText('80.0%')).toBeInTheDocument() // Protein: 120/150
-            expect(screen.getByText('74.6%')).toBeInTheDocument() // Fat: 50/67
-            expect(screen.getByText('72.0%')).toBeInTheDocument() // Carbs: 180/250
-        })
-
-        it('shows over-goal styling for macros exceeding targets', () => {
-            const overMacroData = {
-                ...mockDailyData,
-                nutrition: {
-                    calories: 1500,
-                    protein: 200, // Exceeds 150 goal
-                    fat: 80,      // Exceeds 67 goal
-                    carbs: 180,
-                },
-            }
-
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: overMacroData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            expect(screen.getByText('200г / 150г')).toBeInTheDocument()
-            expect(screen.getByText('80г / 67г')).toBeInTheDocument()
-            expect(screen.getByText('133.3%')).toBeInTheDocument() // Protein
-            expect(screen.getByText('119.4%')).toBeInTheDocument() // Fat
-        })
-
-        it.skip('handles zero macro goals gracefully', () => {
-            const zeroMacroPlan = {
-                ...mockWeeklyPlan,
-                proteinGoal: 0,
-                fatGoal: 0,
-                carbsGoal: 0,
-            }
-
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: zeroMacroPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            // When goals are zero, the component should still display the values
-            // but the percentage calculation should handle division by zero
-            expect(screen.getByText(/120.*г.*\/.*0.*г/)).toBeInTheDocument()
-            expect(screen.getByText(/50.*г.*\/.*0.*г/)).toBeInTheDocument()
-            expect(screen.getByText(/180.*г.*\/.*0.*г/)).toBeInTheDocument()
-        })
-    })
-
-    describe('Empty State', () => {
-        it('shows empty state when no nutrition data is logged', () => {
-            const emptyData = {
-                ...mockDailyData,
-                nutrition: {
-                    calories: 0,
-                    protein: 0,
-                    fat: 0,
-                    carbs: 0,
-                },
-                completionStatus: {
-                    ...mockDailyData.completionStatus,
-                    nutritionFilled: false,
-                },
-            }
-
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: emptyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            expect(screen.getByText('Не записано')).toBeInTheDocument()
-            // Use more specific selector for the empty state button
-            expect(screen.getByText('Добавить')).toBeInTheDocument()
-        })
-
-        it('does not show empty state when calories are logged', () => {
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            expect(screen.queryByText('Не записано')).not.toBeInTheDocument()
-        })
-    })
-
-    describe('Navigation and Interactions', () => {
-        it.skip('navigates to food tracker when quick add button is clicked', async () => {
-            const user = userEvent.setup()
-
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            const quickAddButton = screen.getByLabelText('Добавить еду')
-            await user.click(quickAddButton)
-
-            await waitFor(() => {
-                expect(window.location.href).toContain(`/food-tracker?date=${mockDateStr}`)
+        // Раньше здесь проверялся светофор на калориях. Он снят намеренно: цвет в
+        // блоке питания опознаёт показатель, а доля от нормы видна остатком и
+        // пометкой о превышении.
+        it('не окрашивает калории оценкой доли от нормы', () => {
+            const seen = new Set<string>()
+            ;[1000, 1600, 2000, 2200].forEach((calories) => {
+                const { container, unmount } = renderWith({ calories })
+                const arc = container.querySelectorAll('[role="img"] path')[1]
+                seen.add(`${arc?.getAttribute('stroke')}|${screen.getByTestId('calorie-remaining').className}`)
+                unmount()
             })
-        })
-
-        it.skip('navigates to food tracker when empty state button is clicked', async () => {
-            const user = userEvent.setup()
-
-            const emptyData = {
-                ...mockDailyData,
-                nutrition: {
-                    calories: 0,
-                    protein: 0,
-                    fat: 0,
-                    carbs: 0,
-                },
-            }
-
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: emptyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            // Get the button with text content (not aria-label) - this is the empty state button
-            const addFoodButton = screen.getByText('Добавить еду')
-            await user.click(addFoodButton)
-
-            await waitFor(() => {
-                expect(window.location.href).toContain(`/food-tracker?date=${mockDateStr}`)
-            })
-        })
-
-        it.skip('handles navigation errors gracefully', async () => {
-            const user = userEvent.setup()
-            const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { })
-
-            // Save original location
-            const originalHref = window.location.href
-
-            // Mock location.href setter to throw error. `window.location` is not
-            // optional in the DOM types, so replacing it needs a window that
-            // admits it — named here rather than switched off with `any`.
-            const mutableWindow = window as unknown as { location?: unknown }
-            delete mutableWindow.location
-            mutableWindow.location = {
-                get href() { return '' },
-                set href(value) {
-                    throw new Error('Navigation failed')
-                }
-            }
-
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            const quickAddButton = screen.getByLabelText('Добавить еду')
-            await user.click(quickAddButton)
-
-            await waitFor(() => {
-                expect(consoleSpy).toHaveBeenCalled()
-                const calls = consoleSpy.mock.calls
-                const hasNavigationError = calls.some(call =>
-                    call[0] === 'Navigation failed:' && call[1] instanceof Error
-                )
-                expect(hasNavigationError).toBe(true)
-            })
-
-            consoleSpy.mockRestore()
-
-            // Restore normal location mock
-            delete mutableWindow.location
-            mutableWindow.location = { href: originalHref }
+            expect(seen.size).toBe(1)
         })
     })
 
-    describe('Data Handling', () => {
-        it('handles missing daily data gracefully', () => {
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: {}, // No data for the date
-                weeklyPlan: mockWeeklyPlan,
-            }))
+    describe('Макросы', () => {
+        it('показывает остаток по каждому макросу в граммах и «съедено из нормы»', () => {
+            renderWith({})
 
-            render(<NutritionBlock date={mockDate} />)
-
-            // Should show empty state
-            expect(screen.getByText('Не записано')).toBeInTheDocument()
-            expect(screen.getByText('0')).toBeInTheDocument() // Calories
-            expect(screen.getByText('из 2000 ккал')).toBeInTheDocument()
+            const protein = screen.getByTestId('macro-remaining-protein')
+            expect(protein).toHaveTextContent('Белки')
+            expect(protein).toHaveTextContent('30г')
+            expect(protein).toHaveTextContent('120 из 150 г')
+            expect(screen.getByTestId('macro-remaining-fat')).toHaveTextContent('17г')
+            expect(screen.getByTestId('macro-remaining-carbs')).toHaveTextContent('70г')
         })
 
+        it('сверх нормы остаток не уходит в минус: превышение и пометка', () => {
+            renderWith({ protein: 200 })
+
+            const protein = screen.getByTestId('macro-remaining-protein')
+            expect(protein).toHaveTextContent('+50г')
+            expect(protein).toHaveTextContent('сверх нормы')
+        })
+
+        it('полосы названы для экранного диктора', () => {
+            renderWith({})
+
+            const bar = screen.getByRole('progressbar', { name: 'Белки: осталось 30 г, съедено 120 из 150 г' })
+            expect(bar).toHaveAttribute('aria-valuenow', '120')
+            expect(bar).toHaveAttribute('aria-valuemin', '0')
+            expect(bar).toHaveAttribute('aria-valuemax', '150')
+        })
+
+        // Цвет каждой полосы — цвет её нутриента. Ожидаемое значение берётся из
+        // того же модуля, что и реализация: второй цвет жиров, появившись где
+        // угодно, уронит этот тест, а не доживёт до прода.
+        it('красит заливку каждой полосы цветом её нутриента', () => {
+            const { container } = renderWith({})
+            const fills = Array.from(container.querySelectorAll<HTMLElement>('[role="progressbar"]'))
+                .map((el) => (el.firstElementChild as HTMLElement).style.backgroundColor)
+
+            expect(fills).toEqual([
+                hexToRgb(MACRO_COLORS.protein),
+                hexToRgb(MACRO_COLORS.fat),
+                hexToRgb(MACRO_COLORS.carbs),
+            ])
+        })
+
+        it('без записей за день остаток равен норме', () => {
+            renderWith(undefined)
+
+            expect(screen.getByTestId('calorie-value')).toHaveTextContent('0')
+            expect(screen.getByTestId('calorie-remaining')).toHaveTextContent('2000')
+            expect(screen.getByTestId('macro-remaining-protein')).toHaveTextContent('150г')
+        })
+    })
+
+    describe('Без нормы', () => {
         // Этот тест закреплял дефект: без плана куратора и без расчёта
         // показывались 2000/150/67/250 — придуманные числа, выданные за личную
         // норму человека. На проде их видели 16 клиентов из 18.
@@ -515,145 +339,9 @@ describe('NutritionBlock', () => {
             rerender(<NutritionBlock date={new Date('2024-01-15')} />)
 
             await waitFor(() => expect(mockGetTargets).toHaveBeenCalledTimes(2))
-            expect(await screen.findByText('из 2345 ккал')).toBeInTheDocument()
+            expect(await screen.findByTestId('calorie-remaining')).toHaveTextContent('845')
             expect(screen.queryByText('Норма не посчитана')).not.toBeInTheDocument()
         })
 
-        it('handles missing nutrition data in daily data', () => {
-            const dataWithoutNutrition = {
-                ...mockDailyData,
-                nutrition: undefined as unknown as NutritionData,
-            }
-
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: dataWithoutNutrition },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            // Should show zero values
-            expect(screen.getByText('0')).toBeInTheDocument() // Calories
-            expect(screen.getByText('0г / 150г')).toBeInTheDocument() // Protein
-            expect(screen.getByText('0г / 67г')).toBeInTheDocument()  // Fat
-            expect(screen.getByText('0г / 250г')).toBeInTheDocument() // Carbs
-        })
-    })
-
-    describe('Accessibility', () => {
-        it('has proper ARIA labels for progress bars', () => {
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            // Check macro progress bars have proper ARIA attributes
-            const proteinProgressBar = screen.getByLabelText('Белки: 120 из 150 г')
-            const fatProgressBar = screen.getByLabelText('Жиры: 50 из 67 г')
-            const carbsProgressBar = screen.getByLabelText('Углеводы: 180 из 250 г')
-
-            expect(proteinProgressBar).toHaveAttribute('role', 'progressbar')
-            expect(proteinProgressBar).toHaveAttribute('aria-valuenow', '120')
-            expect(proteinProgressBar).toHaveAttribute('aria-valuemin', '0')
-            expect(proteinProgressBar).toHaveAttribute('aria-valuemax', '150')
-
-            expect(fatProgressBar).toHaveAttribute('aria-valuenow', '50')
-            expect(carbsProgressBar).toHaveAttribute('aria-valuenow', '180')
-        })
-
-        it('has proper button labels', () => {
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            expect(screen.getByLabelText('Добавить еду')).toBeInTheDocument()
-        })
-    })
-
-    describe('Visual States', () => {
-        // Раньше здесь проверялся светофор на калориях: красный при 50% нормы,
-        // жёлтый при 80%, зелёный при 100%, оранжевый при превышении. Он снят
-        // намеренно. Цвет в блоке питания опознаёт нутриент, и пока он же
-        // оценивал выполнение нормы, две работы сталкивались: с одного взгляда
-        // не читалась ни та, ни другая. Доля от нормы по-прежнему видна —
-        // процентом под числом и пометкой о превышении.
-        it('не окрашивает калории оценкой доли от нормы', () => {
-            const shares = [1000, 1600, 2000, 2200] // 50%, 80%, 100%, 110% нормы
-            const seen = new Set<string>()
-
-            shares.forEach((calories) => {
-                mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                    ...mockStoreDefaults,
-                    dailyData: {
-                        [mockDateStr]: {
-                            ...mockDailyData,
-                            nutrition: { ...mockDailyData.nutrition, calories },
-                        },
-                    },
-                    weeklyPlan: mockWeeklyPlan,
-                }))
-
-                const { container, unmount } = render(<NutritionBlock date={mockDate} />)
-                const calorieValue = container.querySelector('[data-testid="calorie-value"]')
-                expect(calorieValue).not.toBeNull()
-                seen.add(calorieValue!.className)
-                unmount()
-            })
-
-            expect(seen.size).toBe(1)
-        })
-
-        // Цвет каждой полосы — цвет её нутриента, а не общий синий. Ожидаемое
-        // значение берётся из того же модуля, что и реализация: второй цвет
-        // жиров, появившись где угодно, уронит этот тест, а не доживёт до прода.
-        it('красит заливку каждой полосы цветом её нутриента', () => {
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: mockDailyData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            const { container } = render(<NutritionBlock date={mockDate} />)
-            const fills = Array.from(
-                container.querySelectorAll<HTMLElement>('[role="progressbar"]')
-            ).map((el) => el.style.backgroundColor)
-
-            expect(fills).toEqual([
-                hexToRgb(MACRO_COLORS.protein),
-                hexToRgb(MACRO_COLORS.fat),
-                hexToRgb(MACRO_COLORS.carbs),
-            ])
-        })
-
-        it('caps visual progress at 150% for very high values', () => {
-            const veryHighCalorieData = {
-                ...mockDailyData,
-                nutrition: {
-                    ...mockDailyData.nutrition,
-                    calories: 5000, // 250% of goal
-                },
-            }
-
-            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
-                ...mockStoreDefaults,
-                dailyData: { [mockDateStr]: veryHighCalorieData },
-                weeklyPlan: mockWeeklyPlan,
-            }))
-
-            render(<NutritionBlock date={mockDate} />)
-
-            // Should still show actual percentage in text
-            expect(screen.getByText('250.0%')).toBeInTheDocument()
-
-            // But visual progress should be capped (this would need to be tested via the SVG attributes)
-        })
     })
 })

@@ -80,6 +80,42 @@ export const ru = {
         fatShort: 'Ж',
         carbsShort: 'У',
     },
+    // Общие компоненты дизайн-системы (shared/components/ui).
+    ui: {
+        macroRemaining: {
+            left: 'осталось',
+            over: 'сверх нормы',
+            ofGoal: '{eaten} из {goal} г',
+            aria: '{label}: осталось {left} г, съедено {eaten} из {goal} г',
+            overAria: '{label}: сверх нормы на {over} г, съедено {eaten} из {goal} г',
+        },
+        weekDots: {
+            summary: '{inside} из {total}',
+            inNorm: 'в норме',
+            legendBand: 'норма ±{tolerance}%',
+            legendInside: 'в норме',
+            legendOutside: 'мимо нормы',
+            dayAria: '{day}: {state}',
+            stateInside: 'в пределах нормы',
+            stateAbove: 'выше нормы на {percent}%',
+            stateBelow: 'ниже нормы на {percent}%',
+            stateNoData: 'нет данных',
+            stateToday: 'сегодня, день ещё идёт',
+        },
+        quickAdd: {
+            groupAria: 'Быстрая запись еды',
+            log: 'Записать еду',
+            search: 'Поиск',
+            searchAria: 'Найти продукт',
+            barcode: 'Код',
+            barcodeAria: 'Сканировать штрихкод',
+            photo: 'Фото',
+            photoAria: 'Распознать еду по фото',
+        },
+        coach: {
+            reply: 'Ответить',
+        },
+    },
     foodTracker: {
         tabs: {
             search: 'Поиск',
@@ -700,6 +736,24 @@ export const ru = {
             empty: 'Не записано',
             addToDiaryAria: 'Добавить еду в дневник питания',
             add: 'Добавить',
+            diary: 'Дневник',
+            diaryAria: 'Открыть дневник питания',
+            remaining: 'ккал ещё можно',
+            overBy: 'ккал сверх нормы',
+            eatenWord: 'съедено',
+            ofGoal: 'из {goal}',
+            arcAria: 'Калории: съедено {eaten} из {goal}, осталось {left}',
+            arcOverAria: 'Калории: съедено {eaten} из {goal}, сверх нормы на {over}',
+        },
+        week: {
+            title: 'Неделя',
+        },
+        greeting: {
+            morning: 'Доброе утро',
+            day: 'Добрый день',
+            evening: 'Добрый вечер',
+            night: 'Доброй ночи',
+            withName: '{greeting}, {name}',
         },
         calendar: {
             monday: 'Понедельник',

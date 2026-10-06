@@ -40,12 +40,13 @@ import { ClientTasksSection } from '@/features/dashboard/components/ClientTasksS
 import { CuratorFeedbackSection } from '@/features/dashboard/components/CuratorFeedbackSection'
 import { CuratorCard } from '@/features/dashboard/components/CuratorCard'
 import { FirstWeekChecklist } from '@/features/dashboard/components/FirstWeekChecklist'
+import { DashboardGreeting } from '@/features/dashboard/components/DashboardGreeting'
 import { useOnboardingState } from '@/features/dashboard/hooks/useOnboardingState'
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import { dashboardApi } from '@/features/dashboard/api/dashboardApi'
 import { messageForOr } from '@/shared/errors/apiErrors'
 import toast from 'react-hot-toast'
-import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
+import { WeekCaloriesCard } from '@/features/nutrition-calc/components/WeekCaloriesCard'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { TargetVsActual } from '@/features/nutrition-calc/types'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
@@ -227,7 +228,9 @@ export default function DashboardPage() {
             avatarUrl={avatarUrl}
             activeNavItem="dashboard"
         >
-            <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 md:space-y-6 p-3 sm:p-4 md:p-6">
+            <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 md:space-y-6 px-screen-x py-5 sm:p-6">
+                <DashboardGreeting name={profileName || userData.name} />
+
                 {/* Куратор — первым блоком.
                     Это главное отличие продукта от бесплатного счётчика калорий,
                     и до сих пор он лежал в самом низу страницы, свёрнутый, а у
@@ -288,10 +291,10 @@ export default function DashboardPage() {
                     className="w-full"
                 />
 
-                {/* KBJU Weekly Chart — по той же причине не новичку */}
+                {/* Неделя точками — по той же причине не новичку */}
                 {!onboarding.isLoading && !showsFirstWeek && (
                     <ErrorBoundary variant="inline" label="dashboard-kbju-chart">
-                        <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
+                        <WeekCaloriesCard data={kbjuHistory} className="w-full" />
                     </ErrorBoundary>
                 )}
 

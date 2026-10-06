@@ -47,6 +47,14 @@
         outline-offset: 2px;
     }
 
+    /* Отступ кольца фокуса — цветом поверхности, а не белым: на тёмной теме
+       белая рамка вокруг кнопки выглядит как ошибка вёрстки. */
+    *,
+    ::before,
+    ::after {
+        --tw-ring-offset-color: var(--ds-color-bg-surface);
+    }
+
     ::selection {
         background-color: var(--ds-color-primary-soft);
     }

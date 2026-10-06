@@ -39,7 +39,7 @@ describe('NavigationItem', () => {
                         // Property: Active items should have distinct visual styling
                         if (navData.isActive) {
                             // Active state: accent color (blue-600)
-                            expect(navItem).toHaveClass('text-primary')
+                            expect(navItem).toHaveClass('text-fg')
 
                             // Active state should have aria-current attribute
                             expect(navItem).toHaveAttribute('aria-current', 'page')
@@ -49,7 +49,7 @@ describe('NavigationItem', () => {
                             expect(label).toHaveClass('font-semibold')
                         } else {
                             // Inactive state: grey color
-                            expect(navItem).toHaveClass('text-fg-muted')
+                            expect(navItem).toHaveClass('text-fg-subtle')
 
                             // Should not have aria-current
                             expect(navItem).not.toHaveAttribute('aria-current')
@@ -236,7 +236,7 @@ describe('NavigationItem', () => {
             )
 
             const navItem = container.querySelector('[data-testid="nav-item-dashboard"]')
-            expect(navItem).toHaveClass('text-primary')
+            expect(navItem).toHaveClass('text-fg')
             expect(navItem).toHaveAttribute('aria-current', 'page')
 
             const label = navItem?.querySelector(':scope > span:last-of-type')

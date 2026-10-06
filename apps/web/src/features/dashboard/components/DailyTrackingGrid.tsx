@@ -134,8 +134,9 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
             {/* Mobile: single column, stacked blocks */}
             {/* Tablet+: three-column grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-                {/* Nutrition Block */}
-                <div className="col-span-1">
+                {/* Питание — главный блок дня: на планшете и шире во всю строку
+                    сетки из двух колонок, на десктопе — половина из четырёх. */}
+                <div className="col-span-1 sm:col-span-2">
                     <NutritionBlock
                         date={date}
                         className="h-full"

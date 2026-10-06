@@ -16,7 +16,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         return (
             <div className="w-full">
                 {label && (
-                    <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-fg">
+                    <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium text-fg-muted">
                         {label}
                     </label>
                 )}
@@ -28,9 +28,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                     aria-invalid={!!error}
                     aria-describedby={error ? errorId : helperId}
                     className={cn(
-                        'flex h-10 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm',
+                        // 16 px текста — iOS не увеличивает страницу при фокусе.
+                        'flex h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums',
                         'placeholder:text-fg-subtle',
-                        'focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2',
+                        'transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30',
                         'disabled:cursor-not-allowed disabled:opacity-50',
                         error && 'border-danger focus:ring-danger',
                         className
