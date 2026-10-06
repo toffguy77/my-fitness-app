@@ -133,6 +133,8 @@ func TestCreate_StoresCaptureSource(t *testing.T) {
 					// Шесть полей источника перехода, добавленных миграцией 078.
 					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					// Реферер и страница входа (миграция 091).
+					sqlmock.AnyArg(), sqlmock.AnyArg(),
 					sqlmock.AnyArg(),
 				).
 				WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
@@ -173,6 +175,8 @@ func TestCreate_DefaultsCaptureSourceToContactStep(t *testing.T) {
 			// Шесть полей источника перехода, добавленных миграцией 078.
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			// Реферер и страница входа (миграция 091).
+			sqlmock.AnyArg(), sqlmock.AnyArg(),
 			// Заявка ли это на куратора (миграция 089).
 			false,
 		).
@@ -316,13 +320,13 @@ func leadRow(id string) *sqlmock.Rows {
 		"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
 		"last_step", "source", "data_consent", "contact_consent",
 		"utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
-		"yandex_click_id", "metrika_client_id",
+		"yandex_click_id", "metrika_client_id", "referrer", "landing_page",
 		"handled_at", "created_at", "updated_at",
 	}).AddRow(
 		id, "guest@example.com", "Гость", "female", time.Date(1990, 5, 1, 0, 0, 0, 0, time.UTC),
 		175.0, 70.0, "moderate", "loss", 1800.0, 120.0, 50.0, 200.0, 8,
 		"contact", "landing", true, true,
-		"yandex", "cpc", "autumn", "", "", "yclid-1", "cid-42",
+		"yandex", "cpc", "autumn", "", "", "yclid-1", "cid-42", "https://dzen.ru/a/xyz", "/content/x",
 		nil, time.Now(), time.Now(),
 	)
 }
@@ -336,7 +340,7 @@ func queueRow(id string, ageDays int, reminderSent bool, conversationID string) 
 		"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
 		"last_step", "source", "data_consent", "contact_consent",
 		"utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
-		"yandex_click_id", "metrika_client_id",
+		"yandex_click_id", "metrika_client_id", "referrer", "landing_page",
 		"handled_at", "created_at", "updated_at",
 		"age_days", "reminder_sent", "conversation_id",
 	})
@@ -348,7 +352,7 @@ func queueRow(id string, ageDays int, reminderSent bool, conversationID string) 
 		id, "guest@example.com", "Гость", "female", time.Date(1990, 5, 1, 0, 0, 0, 0, time.UTC),
 		175.0, 70.0, "moderate", "loss", 1800.0, 120.0, 50.0, 200.0, 8,
 		"contact", "landing", true, true,
-		"yandex", "cpc", "autumn", "", "", "yclid-1", "cid-42",
+		"yandex", "cpc", "autumn", "", "", "yclid-1", "cid-42", "https://dzen.ru/a/xyz", "/content/x",
 		nil, time.Now(), time.Now(),
 		ageDays, reminderSent, conv,
 	)
@@ -523,6 +527,7 @@ func TestCreate_StoresTheCampaignItCameFrom(t *testing.T) {
 			1800.0, 120.0, 50.0, 200.0, 8,
 			"contact", "landing", true, true, "contact_step",
 			"yandex", "cpc", "autumn", nil, nil, "yclid-1",
+			nil, nil,
 			false,
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
@@ -628,7 +633,8 @@ func TestClaim_KeepsWhereTheyCameFromAfterTheLeadIsGone(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec("UPDATE user_consents SET user_id").WillReturnResult(sqlmock.NewResult(0, 2))
 	mock.ExpectExec("INSERT INTO user_attribution").
-		WithArgs(int64(42), "cid-42", "yclid-1", "yandex", "cpc", "autumn", nil, nil).
+		WithArgs(int64(42), "cid-42", "yclid-1", "yandex", "cpc", "autumn", nil, nil,
+			"https://dzen.ru/a/xyz", "/content/x").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE FROM leads").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
@@ -650,14 +656,14 @@ func TestClaim_KeepsWhatIsKnownWithoutABrowserIdentifier(t *testing.T) {
 		"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
 		"last_step", "source", "data_consent", "contact_consent",
 		"utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
-		"yandex_click_id", "metrika_client_id",
+		"yandex_click_id", "metrika_client_id", "referrer", "landing_page",
 		"handled_at", "created_at", "updated_at",
 	}).AddRow(
 		"lead-9", "guest@example.com", "Гость", "female",
 		time.Date(1990, 5, 1, 0, 0, 0, 0, time.UTC),
 		175.0, 70.0, "moderate", "loss", 1800.0, 120.0, 50.0, 200.0, 8,
 		"contact", "", true, true,
-		"", "", "", "", "", "", "",
+		"", "", "", "", "", "", "", "", "",
 		nil, time.Now(), time.Now(),
 	)
 
@@ -665,7 +671,7 @@ func TestClaim_KeepsWhatIsKnownWithoutABrowserIdentifier(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec("UPDATE user_consents SET user_id").WillReturnResult(sqlmock.NewResult(0, 2))
 	mock.ExpectExec("INSERT INTO user_attribution").
-		WithArgs(int64(42), nil, nil, nil, nil, nil, nil, nil).
+		WithArgs(int64(42), nil, nil, nil, nil, nil, nil, nil, nil, nil).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE FROM leads").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()

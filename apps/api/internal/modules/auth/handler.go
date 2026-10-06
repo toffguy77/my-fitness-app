@@ -47,6 +47,9 @@ func (h *Handler) WithAnalytics(recorder EventRecorder) *Handler {
 // two modules do not depend on each other's types.
 type LeadClaimer interface {
 	ClaimInto(ctx context.Context, token string, userID int64) error
+	// RecordFirstTouch keeps where a new account came from, unless the
+	// claimed lead already did.
+	RecordFirstTouch(ctx context.Context, userID int64, a leads.Attribution) error
 }
 
 // WithLeads attaches the claimer used when a registration carries a lead token.
@@ -55,17 +58,41 @@ func (h *Handler) WithLeads(claimer LeadClaimer) *Handler {
 	return h
 }
 
-// claimLead carries a guest onboarding attempt onto the new account.
+// carryArrival brings onto a new account what is known from before it existed:
+// the guest's lead, if they saved one, and then the first touch the browser
+// kept for thirty days (leads.FirstTouchCookieName).
 //
-// Best effort by design: the account already exists, and failing the
-// registration because a lead could not be moved would cost the user the
-// account they just created over data they can re-enter.
-func (h *Handler) claimLead(c *gin.Context, token string, userID int64) {
-	if h.leads == nil {
+// Every way into an account calls this — TestEveryAccountPathCarriesArrival
+// holds that. Without it a registration by password, by a link in a letter or
+// through a provider, with no lead before it, came from nowhere.
+//
+// The lead goes first: it was saved during the visit that converted, and the
+// first touch only fills in what nothing else recorded. Best effort
+// throughout — the account exists, and losing where somebody came from must
+// not cost them it.
+func carryArrival(c *gin.Context, claimer LeadClaimer, log *logger.Logger, userID int64, leadToken string) {
+	if claimer == nil {
 		return
 	}
-	if err := h.leads.ClaimInto(c.Request.Context(), token, userID); err != nil {
-		h.log.Errorw("Failed to carry onboarding lead onto new account",
+	ctx := c.Request.Context()
+
+	if leadToken != "" {
+		if err := claimer.ClaimInto(ctx, leadToken, userID); err != nil {
+			log.Errorw("Failed to carry onboarding lead onto new account",
+				"error", err, "user_id", userID)
+		}
+	}
+
+	raw, err := c.Cookie(leads.FirstTouchCookieName)
+	if err != nil || raw == "" {
+		return
+	}
+	touch := leads.FirstTouchFromCookie(raw)
+	if touch == (leads.Attribution{}) {
+		return
+	}
+	if err := claimer.RecordFirstTouch(ctx, userID, touch); err != nil {
+		log.Errorw("Failed to record where a new account came from",
 			"error", err, "user_id", userID)
 	}
 }
@@ -220,9 +247,7 @@ func (h *Handler) Register(c *gin.Context) {
 	// Carry across what they entered before registering. Best effort: the
 	// account exists, and failing the registration over a lost lead would cost
 	// them the account they just made.
-	if req.LeadToken != "" {
-		h.claimLead(c, req.LeadToken, result.User.ID)
-	}
+	carryArrival(c, h.leads, h.log, result.User.ID, req.LeadToken)
 
 	telemetry.Record(telemetry.EventUserRegistered)
 	h.recordSignUp(c, req.VisitorID, result.User.ID)
@@ -334,9 +359,7 @@ func (h *Handler) ConsumeMagicLink(c *gin.Context) {
 				leadToken = fromCookie
 			}
 		}
-		if leadToken != "" {
-			h.claimLead(c, leadToken, result.User.ID)
-		}
+		carryArrival(c, h.leads, h.log, result.User.ID, leadToken)
 	}
 
 	h.setRefreshCookie(c, result.RefreshToken, false)

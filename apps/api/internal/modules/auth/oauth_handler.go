@@ -208,12 +208,10 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 	// A registration through a provider carries the guest's answers across in
 	// the same way a password registration does; without this, one of the two
 	// paths would silently ask everything again.
-	if outcome.Result == OAuthRegistered && h.leads != nil {
-		if token, err := c.Cookie(leadCookie); err == nil && token != "" {
-			if err := h.leads.ClaimInto(c.Request.Context(), token, outcome.User.User.ID); err != nil {
-				h.log.Errorw("Failed to carry onboarding lead onto provider account",
-					"error", err, "user_id", outcome.User.User.ID)
-			}
+	if outcome.Result == OAuthRegistered {
+		token, _ := c.Cookie(leadCookie)
+		carryArrival(c, h.leads, h.log, outcome.User.User.ID, token)
+		if token != "" {
 			c.SetCookie(leadCookie, "", -1, "/", "", true, true)
 		}
 	}

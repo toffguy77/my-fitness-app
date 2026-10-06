@@ -177,6 +177,10 @@ export interface Lead {
         utm_term?: string
         yandex_click_id?: string
         metrika_client_id?: string
+        /** Внешняя страница, с которой пришли: Дзен и поиск меток не ставят. */
+        referrer?: string
+        /** Первая страница, открытая на сайте. */
+        landing_page?: string
     }
     consents: { data_processing: boolean; contact: boolean }
     handled_at?: string

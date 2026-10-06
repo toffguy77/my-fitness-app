@@ -419,10 +419,12 @@ leads.handled_at timestamp with time zone
 leads.handled_by bigint
 leads.height_cm numeric
 leads.id uuid NOT NULL DEFAULT gen_random_uuid()
+leads.landing_page text
 leads.last_step text NOT NULL DEFAULT 'contact'
 leads.metrika_client_id text
 leads.name text
 leads.protein numeric
+leads.referrer text
 leads.reminder_sent_at timestamp with time zone
 leads.sex text
 leads.source text
@@ -686,7 +688,9 @@ telegram_links.linked_at timestamp with time zone NOT NULL DEFAULT now()
 telegram_links.user_id bigint NOT NULL
 telegram_links.username text
 user_attribution.created_at timestamp with time zone NOT NULL DEFAULT now()
+user_attribution.landing_page text
 user_attribution.metrika_client_id text
+user_attribution.referrer text
 user_attribution.user_id bigint NOT NULL
 user_attribution.utm_campaign text
 user_attribution.utm_content text

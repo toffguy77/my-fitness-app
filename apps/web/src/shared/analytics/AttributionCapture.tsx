@@ -10,9 +10,9 @@ import { captureAttribution } from './attribution'
  * point anywhere, and by the time the wizard reaches its contact step the query
  * string is long gone from the address bar.
  *
- * Not gated on consent. The tags go to session storage and to our own
- * database; nothing is sent to a third party, and nothing here identifies a
- * person — it says which advertisement they followed.
+ * Not gated on consent. The tags, the referring page and the landing page go
+ * to a first-party cookie and to our own database; nothing is sent to a third
+ * party, and nothing here identifies a person — it says where they came from.
  */
 export function AttributionCapture() {
     useEffect(() => {
