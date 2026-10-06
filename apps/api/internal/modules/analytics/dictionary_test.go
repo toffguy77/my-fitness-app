@@ -182,3 +182,34 @@ func TestFirstFoodEntry_DeclaresNoProperties(t *testing.T) {
 	assert.Contains(t, Dictionary[EventFoodEntryCreated].Optional, "method")
 	assert.Contains(t, Dictionary[EventFoodEntryCreated].Optional, "meal_type")
 }
+
+// Расчёт на открытой странице калькулятора — своё событие: под именем
+// onboarding_result_shown он засорил бы воронку мастера людьми, которые в
+// мастер не заходили.
+func TestValidate_CalculatorResult(t *testing.T) {
+	err := Validate(Event{
+		Name:       EventCalculatorResult,
+		Properties: map[string]any{"goal": "loss", "activity_level": "moderate"},
+	}, true)
+	assert.NoError(t, err)
+
+	err = Validate(Event{Name: EventCalculatorResult, Properties: map[string]any{"goal": "loss"}}, true)
+	assert.ErrorIs(t, err, apperrors.ErrValidation, "без уровня активности расчёт не с чем сравнить")
+}
+
+// Куда повёл блок под статьёй. Значения перечислены, как у place.
+func TestValidate_ArticleCtaClicked(t *testing.T) {
+	for _, target := range []string{"calculator", "pricing"} {
+		err := Validate(Event{
+			Name:       EventArticleCtaClicked,
+			Properties: map[string]any{"target": target},
+		}, true)
+		assert.NoError(t, err, target)
+	}
+
+	err := Validate(Event{Name: EventArticleCtaClicked, Properties: map[string]any{"target": "other"}}, true)
+	assert.ErrorIs(t, err, apperrors.ErrValidation)
+
+	err = Validate(Event{Name: EventArticleCtaClicked}, true)
+	assert.ErrorIs(t, err, apperrors.ErrValidation)
+}

@@ -126,6 +126,9 @@ export default defineConfig<SessionOptions>({
         'tests/forgot-password.spec.ts',
         'tests/reset-password.spec.ts',
         'tests/legal-pages.spec.ts',
+        // Что получает робот без JavaScript. Заводит свою статью под
+        // куратором и удаляет её сама.
+        'tests/seo-without-javascript.spec.ts',
         // Сам заводит сессию под нужную роль на каждую проверку, поэтому
         // живёт здесь, а не в проектах с предустановленной ролью.
         'tests/uploads.spec.ts',

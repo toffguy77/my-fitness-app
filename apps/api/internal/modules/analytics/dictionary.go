@@ -50,6 +50,11 @@ const (
 	// принимается на глаз: сколько людей вообще хочет куратора — неизвестно.
 	EventCuratorOfferShown   = "curator_offer_shown"
 	EventCuratorOfferClicked = "curator_offer_clicked"
+
+	// Публичные страницы для поиска: калькулятор и статьи. Свои имена, чтобы
+	// не смешиваться с воронкой мастера.
+	EventCalculatorResult  = "calculator_result"
+	EventArticleCtaClicked = "article_cta_clicked"
 )
 
 // Definition declares one event.
@@ -154,6 +159,15 @@ var Dictionary = map[string]Definition{
 	EventCuratorOfferClicked: {
 		Required: []string{"place"},
 		Values:   map[string][]string{"place": {"chat", "dashboard"}},
+	},
+
+	// Те же свойства, что у onboarding_result_shown, но обязательные: расчёт
+	// без цели и активности не с чем сравнить.
+	EventCalculatorResult: {Required: []string{"goal", "activity_level"}},
+	// target — куда повёл блок под статьёй.
+	EventArticleCtaClicked: {
+		Required: []string{"target"},
+		Values:   map[string][]string{"target": {"calculator", "pricing"}},
 	},
 }
 

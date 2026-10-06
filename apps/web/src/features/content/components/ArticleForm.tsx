@@ -47,6 +47,8 @@ export function ArticleForm({
 }: ArticleFormProps) {
     const [title, setTitle] = useState(article?.title ?? '')
     const [excerpt, setExcerpt] = useState(article?.excerpt ?? '')
+    // Left empty for a new article, the server makes the address from the title.
+    const [slug, setSlug] = useState(article?.slug ?? '')
     const [category, setCategory] = useState<ContentCategory>(
         article?.category ?? 'general'
     )
@@ -130,8 +132,10 @@ export function ArticleForm({
         }
         setCoverImageError('')
 
+        const chosenSlug = slug.trim()
         if (article) {
             const data: UpdateArticleRequest = {
+                ...(chosenSlug && chosenSlug !== article.slug && { slug: chosenSlug }),
                 title: title.trim(),
                 excerpt: excerpt.trim() || undefined,
                 category,
@@ -142,6 +146,7 @@ export function ArticleForm({
             onSave(data)
         } else {
             const data: CreateArticleRequest = {
+                ...(chosenSlug && { slug: chosenSlug }),
                 title: title.trim(),
                 excerpt: excerpt.trim() || undefined,
                 category,
@@ -201,6 +206,35 @@ export function ArticleForm({
                     placeholder="Введите заголовок статьи"
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
+            </div>
+
+            {/* Address */}
+            <div>
+                <label
+                    htmlFor="article-slug"
+                    className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                    Адрес статьи
+                </label>
+                <div className="flex items-center gap-1 text-sm text-gray-500">
+                    <span>/content/</span>
+                    <input
+                        id="article-slug"
+                        type="text"
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                        disabled={article?.status === 'published'}
+                        placeholder="сформируется из заголовка"
+                        pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                        maxLength={80}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                    />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                    {article?.status === 'published'
+                        ? 'Адрес опубликованной статьи не меняется: он уже в ссылках и в поиске.'
+                        : 'Латинские буквы, цифры и дефисы. После публикации адрес не меняется.'}
+                </p>
             </div>
 
             {/* Excerpt */}

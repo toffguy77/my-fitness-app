@@ -92,10 +92,11 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 			calories, protein, fat, carbs, water_glasses,
 			last_step, source, data_consent, contact_consent, capture_source,
 			utm_source, utm_medium, utm_campaign, utm_content, utm_term, yandex_click_id,
+			referrer, landing_page,
 			curator_requested_at
 		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-		          $19,$20,$21,$22,$23,$24,
-		          CASE WHEN $25::boolean THEN NOW() END)
+		          $19,$20,$21,$22,$23,$24,$25,$26,
+		          CASE WHEN $27::boolean THEN NOW() END)
 		RETURNING id, created_at, updated_at`,
 		email, nullIfEmpty(in.Name),
 		nullIfEmpty(in.Parameters.Sex), nullIfEmpty(in.Parameters.BirthDate),
@@ -110,6 +111,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 		nullIfEmpty(in.Attribution.UTMSource), nullIfEmpty(in.Attribution.UTMMedium),
 		nullIfEmpty(in.Attribution.UTMCampaign), nullIfEmpty(in.Attribution.UTMContent),
 		nullIfEmpty(in.Attribution.UTMTerm), nullIfEmpty(in.Attribution.YandexClickID),
+		nullIfEmpty(clip(in.Attribution.Referrer)), nullIfEmpty(clip(in.Attribution.LandingPage)),
 		isCuratorRequestStep(step),
 	).Scan(&lead.ID, &lead.CreatedAt, &lead.UpdatedAt)
 	if err != nil {
@@ -240,8 +242,9 @@ func (s *Service) Claim(ctx context.Context, token string, userID int64) (*Lead,
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO user_attribution (
 			user_id, metrika_client_id, yandex_click_id,
-			utm_source, utm_medium, utm_campaign, utm_content, utm_term
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+			utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+			referrer, landing_page
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 		ON CONFLICT (user_id) DO NOTHING`,
 		userID,
 		nullIfEmpty(lead.Attribution.MetrikaClientID),
@@ -249,6 +252,7 @@ func (s *Service) Claim(ctx context.Context, token string, userID int64) (*Lead,
 		nullIfEmpty(lead.Attribution.UTMSource), nullIfEmpty(lead.Attribution.UTMMedium),
 		nullIfEmpty(lead.Attribution.UTMCampaign), nullIfEmpty(lead.Attribution.UTMContent),
 		nullIfEmpty(lead.Attribution.UTMTerm),
+		nullIfEmpty(lead.Attribution.Referrer), nullIfEmpty(lead.Attribution.LandingPage),
 	); err != nil {
 		return nil, fmt.Errorf("keep attribution: %w", err)
 	}
@@ -379,7 +383,7 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 		       page.last_step, page.source, page.data_consent, page.contact_consent,
 		       page.utm_source, page.utm_medium, page.utm_campaign,
 		       page.utm_content, page.utm_term, page.yandex_click_id,
-		       page.metrika_client_id,
+		       page.metrika_client_id, page.referrer, page.landing_page,
 		       page.handled_at, page.created_at, page.updated_at,
 		       EXTRACT(DAY FROM NOW() - page.created_at)::int,
 		       page.reminder_sent_at IS NOT NULL,
@@ -398,6 +402,8 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 		           COALESCE(l.utm_term, '') AS utm_term,
 		           COALESCE(l.yandex_click_id, '') AS yandex_click_id,
 		           COALESCE(l.metrika_client_id, '') AS metrika_client_id,
+		           COALESCE(l.referrer, '') AS referrer,
+		           COALESCE(l.landing_page, '') AS landing_page,
 		           l.handled_at, l.created_at, l.updated_at, l.reminder_sent_at
 		    FROM leads l
 		    WHERE ($1::boolean OR l.handled_at IS NULL)
@@ -416,7 +422,7 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 		var e QueueEntry
 		var conversationID sql.NullString
 
-		// The base 21 columns share scanLead's destination order with byID
+		// The base 23 columns share scanLead's destination order with byID
 		// and DueReminders, instead of repeating it a third time here: a
 		// column added to one query and not the other used to be a silent
 		// field-shift (each Scan call still succeeds — dest count and types
@@ -495,6 +501,7 @@ func (s *Service) DueReminders(ctx context.Context) ([]Lead, error) {
 		       COALESCE(utm_campaign, ''), COALESCE(utm_content, ''),
 		       COALESCE(utm_term, ''), COALESCE(yandex_click_id, ''),
 		       COALESCE(metrika_client_id, ''),
+		       COALESCE(referrer, ''), COALESCE(landing_page, ''),
 		       handled_at, created_at, updated_at
 		FROM leads
 		WHERE reminder_sent_at IS NULL
@@ -554,6 +561,7 @@ func (s *Service) byID(ctx context.Context, leadID string) (*Lead, error) {
 		       COALESCE(utm_campaign, ''), COALESCE(utm_content, ''),
 		       COALESCE(utm_term, ''), COALESCE(yandex_click_id, ''),
 		       COALESCE(metrika_client_id, ''),
+		       COALESCE(referrer, ''), COALESCE(landing_page, ''),
 		       handled_at, created_at, updated_at
 		FROM leads WHERE id = $1`, leadID)
 
@@ -568,13 +576,13 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
-// scanLead reads the 21 columns every lead query selects, in the one order
+// scanLead reads the 23 columns every lead query selects, in the one order
 // they are declared here. extra takes destinations for whatever additional
-// columns a caller's own SELECT appends after those 21 (Queue's AgeDays,
+// columns a caller's own SELECT appends after those 23 (Queue's AgeDays,
 // ReminderSent and conversation id) — appended to the same Scan call, not a
 // second one: database/sql requires every call to Scan to supply a
 // destination for every column the row actually has, so a caller cannot
-// scan the base 21 here and the rest itself.
+// scan the base 23 here and the rest itself.
 func scanLead(row scanner, extra ...any) (*Lead, error) {
 	var lead Lead
 	var birthDate sql.NullTime
@@ -591,6 +599,7 @@ func scanLead(row scanner, extra ...any) (*Lead, error) {
 		&lead.Attribution.UTMCampaign, &lead.Attribution.UTMContent,
 		&lead.Attribution.UTMTerm, &lead.Attribution.YandexClickID,
 		&lead.Attribution.MetrikaClientID,
+		&lead.Attribution.Referrer, &lead.Attribution.LandingPage,
 		&handledAt, &lead.CreatedAt, &lead.UpdatedAt,
 	}
 	dest = append(dest, extra...)

@@ -20,17 +20,42 @@ describe('TermsPage', () => {
         expect(screen.getByRole('heading', { name: /8\. реквизиты исполнителя/i })).toBeInTheDocument();
     });
 
-    it('displays company information', () => {
-        render(<TermsPage />);
+    // Исполнитель — реальное лицо. С заглушкой «ООО BURCEV, ИНН 1234567890»
+    // стороны договора не существовало, и платёжный сервис отказал бы в
+    // подключении.
+    it('names the contractor with real requisites', () => {
+        const { container } = render(<TermsPage />);
+        const text = container.textContent ?? '';
 
-        expect(screen.getAllByText(/ООО "BURCEV"/i).length).toBeGreaterThan(0);
+        expect(text).toContain('Индивидуальный предприниматель Бурцев Сергей Викторович');
+        expect(text).toContain('572006540445');
+        expect(text).toContain('324774600419913');
+        expect(text).toContain('108826');
+        expect(text).toContain('ул. Александры Монаховой, д. 90, корп. 1, кв. 145');
         expect(screen.getByText(/legal@burcev\.team/i)).toBeInTheDocument();
+    });
+
+    it('carries no placeholder requisites', () => {
+        const { container } = render(<TermsPage />);
+        const text = container.textContent ?? '';
+
+        expect(text).not.toContain('1234567890');
+        expect(text).not.toMatch(/ООО/);
+    });
+
+    // Банковские реквизиты идут в счета, а не на страницу.
+    it('does not publish the bank account', () => {
+        const { container } = render(<TermsPage />);
+        const text = container.textContent ?? '';
+
+        expect(text).not.toContain('40802810700006363895');
+        expect(text).not.toMatch(/БИК/);
     });
 
     it('displays last update date', () => {
         render(<TermsPage />);
 
-        expect(screen.getByText(/дата последнего обновления: 26 января 2026 г\./i)).toBeInTheDocument();
+        expect(screen.getByText(/дата последнего обновления: 6 октября 2026 г\./i)).toBeInTheDocument();
     });
 
     it('называет состав платной услуги', () => {

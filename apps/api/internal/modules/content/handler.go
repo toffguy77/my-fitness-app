@@ -60,6 +60,34 @@ func (h *Handler) parseArticleID(c *gin.Context) (string, bool) {
 	return id, true
 }
 
+// parsePublicArticleRef extracts the :id URL param of a public article: its
+// slug, or the UUID it was addressed by before slugs existed. Anything else is
+// a 400 without a trip to the database.
+func (h *Handler) parsePublicArticleRef(c *gin.Context) (string, bool) {
+	ref := c.Param("id")
+	if _, err := uuid.Parse(ref); err == nil || ValidSlug(ref) {
+		return ref, true
+	}
+	response.Error(c, http.StatusBadRequest, "Неверный адрес статьи")
+	return "", false
+}
+
+// refuseSlug answers the two ways an article's address can be refused, and
+// reports whether it did.
+func (h *Handler) refuseSlug(c *gin.Context, err error) bool {
+	switch {
+	case errors.Is(err, apperrors.ErrValidation):
+		response.Error(c, http.StatusBadRequest,
+			"Адрес статьи может состоять только из строчных латинских букв, цифр и дефисов")
+		return true
+	case errors.Is(err, apperrors.ErrConflict):
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+			"Этот адрес уже занят, или статья опубликована и её адрес менять нельзя", nil)
+		return true
+	}
+	return false
+}
+
 // getUserID extracts the authenticated user ID from the Gin context
 func (h *Handler) getUserID(c *gin.Context) (int64, bool) {
 	userIDInterface, exists := c.Get("user_id")
@@ -105,6 +133,9 @@ func (h *Handler) CreateArticle(c *gin.Context) {
 
 	article, err := h.service.CreateArticle(c.Request.Context(), userID, req)
 	if err != nil {
+		if h.refuseSlug(c, err) {
+			return
+		}
 		// Тело статьи хранится в S3. Без него сохранять некуда — но это
 		// выключенная возможность, а не поломка: 500 предлагает повторить
 		// запрос, который не может получиться.
@@ -194,6 +225,9 @@ func (h *Handler) UpdateArticle(c *gin.Context) {
 
 	article, err := h.service.UpdateArticle(c.Request.Context(), userID, articleID, req, h.isAdmin(c))
 	if err != nil {
+		if h.refuseSlug(c, err) {
+			return
+		}
 		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
@@ -504,6 +538,9 @@ func (h *Handler) GetFeedArticle(c *gin.Context) {
 
 // --- Public handlers (no auth required) ---
 
+// maxPublicFeedLimit bounds one page of the public feed.
+const maxPublicFeedLimit = 100
+
 // GetPublicFeed handles GET /api/v1/public/content
 func (h *Handler) GetPublicFeed(c *gin.Context) {
 	category := c.Query("category")
@@ -514,6 +551,10 @@ func (h *Handler) GetPublicFeed(c *gin.Context) {
 			limit = l
 		}
 	}
+	// Anybody can call this, without an account. Trimmed rather than refused:
+	// a caller asking for more still gets the first page and can walk on with
+	// offset, which is what the sitemap does.
+	limit = min(limit, maxPublicFeedLimit)
 
 	offset := 0
 	if offsetStr := c.DefaultQuery("offset", "0"); offsetStr != "" {
@@ -532,9 +573,10 @@ func (h *Handler) GetPublicFeed(c *gin.Context) {
 	response.Success(c, http.StatusOK, result)
 }
 
-// GetPublicArticle handles GET /api/v1/public/content/:id
+// GetPublicArticle handles GET /api/v1/public/content/:id, where :id is the
+// article's slug or its UUID.
 func (h *Handler) GetPublicArticle(c *gin.Context) {
-	articleID, ok := h.parseArticleID(c)
+	articleID, ok := h.parsePublicArticleRef(c)
 	if !ok {
 		return
 	}

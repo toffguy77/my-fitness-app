@@ -101,15 +101,27 @@ describe('страница тарифов открыта поиску', () => {
         const rules = robots().rules
         const list = Array.isArray(rules) ? rules : [rules]
 
+        // Прочитано так, как читает робот: по префиксу. Перечислять /pricing в
+        // Allow не нужно — Allow: / его покрывает.
         for (const rule of list) {
             const disallow = rule?.disallow
             const closed = Array.isArray(disallow) ? disallow : disallow ? [disallow] : []
-            expect(closed).not.toContain('/pricing')
+            expect(closed.some((prefix) => '/pricing'.startsWith(prefix))).toBe(false)
 
             const allow = rule?.allow
             const open = Array.isArray(allow) ? allow : allow ? [allow] : []
-            expect(open).toContain('/pricing')
+            expect(open.some((prefix) => '/pricing'.startsWith(prefix))).toBe(true)
         }
+    })
+
+    // Эквайринг проверяет, что продавец назван на странице, где продаётся.
+    it('называет продавца внизу страницы', async () => {
+        await renderPricing()
+
+        const footer = screen.getByRole('contentinfo')
+        expect(footer).toHaveTextContent('ИП Бурцев С. В.')
+        expect(footer).toHaveTextContent('ИНН 572006540445')
+        expect(footer).toHaveTextContent('ОГРНИП 324774600419913')
     })
 
     it('присутствует в карте сайта', async () => {

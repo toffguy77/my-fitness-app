@@ -12,6 +12,8 @@ type CreateArticleRequest struct {
 	Category      string  `json:"category" binding:"required"`
 	AudienceScope string  `json:"audience_scope" binding:"required"`
 	ClientIDs     []int64 `json:"client_ids,omitempty"`
+	// Slug is the article's address. Left out, it is made from the title.
+	Slug *string `json:"slug,omitempty"`
 }
 
 type UpdateArticleRequest struct {
@@ -22,6 +24,9 @@ type UpdateArticleRequest struct {
 	AudienceScope *string `json:"audience_scope,omitempty"`
 	ClientIDs     []int64 `json:"client_ids,omitempty"`
 	CoverImageURL *string `json:"cover_image_url,omitempty"`
+	// Slug may change only while the article is unpublished: a published
+	// address is already in links and in search.
+	Slug *string `json:"slug,omitempty"`
 }
 
 type ScheduleArticleRequest struct {
@@ -32,6 +37,7 @@ type ScheduleArticleRequest struct {
 
 type Article struct {
 	ID            string     `json:"id"`
+	Slug          string     `json:"slug"`
 	AuthorID      int64      `json:"author_id"`
 	AuthorName    string     `json:"author_name"`
 	Title         string     `json:"title"`
@@ -49,13 +55,19 @@ type Article struct {
 }
 
 type ArticleCard struct {
-	ID            string     `json:"id"`
+	ID string `json:"id"`
+	// Slug is present only when the article has a public address. A card for
+	// an article meant for one curator's clients links by id: its public page
+	// would not find it.
+	Slug          string     `json:"slug,omitempty"`
 	AuthorName    string     `json:"author_name"`
 	Title         string     `json:"title"`
 	Excerpt       string     `json:"excerpt"`
 	CoverImageURL string     `json:"cover_image_url,omitempty"`
 	Category      string     `json:"category"`
 	PublishedAt   *time.Time `json:"published_at,omitempty"`
+	// UpdatedAt is when the article last changed: the sitemap's lastmod.
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
 type ArticlesListResponse struct {

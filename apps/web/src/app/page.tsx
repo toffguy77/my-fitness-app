@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Logo } from '@/shared/components/ui'
 import { JsonLd } from '@/shared/components/JsonLd'
+import { SellerLine } from '@/shared/components/SellerLine'
 import { AuthRedirect } from './_components/AuthRedirect'
 import { SupportLink } from '@/shared/components/SupportLink'
 import { SupportWidget } from '@/features/support/components/SupportWidget'
@@ -235,6 +236,9 @@ export default async function Home({
                             className="flex gap-6 text-sm text-gray-500"
                         >
                             <SupportLink className="hover:text-gray-700" />
+                            <Link href="/kalkulyator-kbzhu" className="hover:text-gray-700">
+                                {t('landing.footer.calculator')}
+                            </Link>
                             <Link href="/content" className="hover:text-gray-700">
                                 {t('landing.footer.articles')}
                             </Link>
@@ -249,6 +253,7 @@ export default async function Home({
                             {new Date().getFullYear()} BURCEV
                         </p>
                     </div>
+                    <SellerLine className="mx-auto mt-4 max-w-5xl text-center text-xs text-gray-400 sm:text-left" />
                 </footer>
             </div>
 

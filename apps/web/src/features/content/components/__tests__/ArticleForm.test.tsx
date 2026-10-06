@@ -28,6 +28,7 @@ const S3_COVER_URL = 'https://storage.yandexcloud.net/curator-content/cover-imag
 
 const baseArticle: Article = {
     id: 'article-1',
+    slug: 'test-title',
     author_id: 1,
     author_name: 'Author',
     title: 'Test Title',
@@ -101,6 +102,52 @@ describe('ArticleForm', () => {
                 category: 'nutrition',
             })
         )
+    })
+
+    describe('the article address', () => {
+        it('is made from the title when left empty', async () => {
+            const user = userEvent.setup()
+            render(<ArticleForm onSave={onSave} />)
+
+            await user.type(screen.getByLabelText(/Заголовок/), 'New Article')
+            fireEvent.click(screen.getByText('Сохранить черновик'))
+
+            expect(onSave.mock.calls[0][0]).not.toHaveProperty('slug')
+        })
+
+        it('is sent when chosen by hand', async () => {
+            const user = userEvent.setup()
+            render(<ArticleForm onSave={onSave} />)
+
+            await user.type(screen.getByLabelText(/Заголовок/), 'New Article')
+            await user.type(screen.getByLabelText('Адрес статьи'), 'raschet-kbzhu')
+            fireEvent.click(screen.getByText('Сохранить черновик'))
+
+            expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ slug: 'raschet-kbzhu' }))
+        })
+
+        it('shows the current address of a draft and sends it only when changed', async () => {
+            const user = userEvent.setup()
+            render(<ArticleForm article={baseArticle} onSave={onSave} />)
+
+            const field = screen.getByLabelText('Адрес статьи')
+            expect(field).toHaveValue('test-title')
+            fireEvent.click(screen.getByText('Сохранить черновик'))
+            expect(onSave.mock.calls[0][0]).not.toHaveProperty('slug')
+
+            await user.clear(field)
+            await user.type(field, 'novyy-adres')
+            fireEvent.click(screen.getByText('Сохранить черновик'))
+            expect(onSave.mock.calls[1][0]).toEqual(expect.objectContaining({ slug: 'novyy-adres' }))
+        })
+
+        // Адрес опубликованной статьи уже в ссылках и в поиске: сервер его
+        // не сменит, и форма не делает вид, что может.
+        it('cannot be edited once the article is published', () => {
+            render(<ArticleForm article={{ ...baseArticle, status: 'published' }} onSave={onSave} />)
+
+            expect(screen.getByLabelText('Адрес статьи')).toBeDisabled()
+        })
     })
 
     it('disables save button when title is empty', () => {

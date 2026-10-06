@@ -141,6 +141,28 @@ describe('Посадочная страница', () => {
         expect(labels.every(Boolean)).toBe(true)
         expect(new Set(labels).size).toBe(2)
     })
+
+    // Эквайринг проверяет, что продавец назван на сайте, а не только в оферте.
+    it('называет продавца в подвале', async () => {
+        render(await Home({ features: {} }))
+
+        const footer = screen.getByRole('contentinfo')
+        expect(footer).toHaveTextContent('ИП Бурцев С. В.')
+        expect(footer).toHaveTextContent('ИНН 572006540445')
+        expect(footer).toHaveTextContent('ОГРНИП 324774600419913')
+    })
+
+    // Открытая страница калькулятора получает ссылку с главной: без неё робот
+    // находит её только по карте сайта, и вес главной до неё не доходит.
+    it('ведёт из подвала на открытый калькулятор КБЖУ', async () => {
+        render(await Home({ features: {} }))
+
+        const footerNav = screen.getByRole('navigation', { name: 'Дополнительные ссылки' })
+        expect(within(footerNav).getByRole('link', { name: 'Калькулятор КБЖУ' })).toHaveAttribute(
+            'href',
+            '/kalkulyator-kbzhu',
+        )
+    })
 })
 
 // Настоящий путь enabledFeatures(): без props.features страница сама зовёт

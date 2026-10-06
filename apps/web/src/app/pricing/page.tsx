@@ -4,6 +4,7 @@ import { Check } from 'lucide-react'
 import { enabledFeatures } from '@/shared/api/features'
 import { PricingRequestForm } from '@/features/onboarding/components/PricingRequestForm'
 import { t } from '@/shared/i18n'
+import { SellerLine } from '@/shared/components/SellerLine'
 
 /**
  * Страница тарифов — та, на которую ссылается публичная оферта.
@@ -107,6 +108,10 @@ export default async function PricingPage({
                 <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
                     <PricingRequestForm />
                 </section>
+
+                <footer className="border-t border-gray-200 pt-6">
+                    <SellerLine className="text-xs text-gray-400" />
+                </footer>
             </div>
         </div>
     )

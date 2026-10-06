@@ -54,9 +54,21 @@ function ageLabel(ageDays: number): string {
  * for the conversion upload, not for a person to read.
  */
 function campaignOf(lead: Lead): string | null {
-    const { utm_source, utm_medium, utm_campaign } = lead.attribution ?? {}
+    const { utm_source, utm_medium, utm_campaign, referrer } = lead.attribution ?? {}
     const parts = [utm_source, utm_medium, utm_campaign].filter(Boolean)
-    return parts.length > 0 ? parts.join(' · ') : null
+    if (parts.length > 0) return parts.join(' · ')
+    // Search and Dzen put no tags on their links; the site they came from is
+    // the answer then.
+    return hostOf(referrer)
+}
+
+function hostOf(referrer?: string): string | null {
+    if (!referrer) return null
+    try {
+        return new URL(referrer).hostname
+    } catch {
+        return null
+    }
 }
 
 export function LeadList() {

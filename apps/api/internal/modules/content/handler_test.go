@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/burcev/api/internal/config"
@@ -526,16 +527,136 @@ func TestHandler_GetPublicArticle(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 
-	t.Run("invalid uuid format returns 400 not 500", func(t *testing.T) {
-		handler, _ := setupContentTestHandler()
+	t.Run("neither an id nor a slug returns 400 not 500", func(t *testing.T) {
+		handler, mock := setupContentTestHandler()
+		called := false
+		mock.getPublicArticleFunc = func(ctx context.Context, articleID string) (*Article, error) {
+			called = true
+			return &Article{}, nil
+		}
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodGet, "/public/content/nonexistent-id", nil)
-		c.Params = gin.Params{{Key: "id", Value: "nonexistent-id"}}
+		c.Request = httptest.NewRequest(http.MethodGet, "/public/content/x", nil)
+		c.Params = gin.Params{{Key: "id", Value: "Not_A Slug"}}
 
 		handler.GetPublicArticle(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.False(t, called)
 	})
+
+	t.Run("a slug is looked up as such", func(t *testing.T) {
+		handler, mock := setupContentTestHandler()
+		var asked string
+		mock.getPublicArticleFunc = func(ctx context.Context, articleID string) (*Article, error) {
+			asked = articleID
+			return &Article{ID: "a1", Slug: articleID}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/public/content/raschet-kbzhu", nil)
+		c.Params = gin.Params{{Key: "id", Value: "raschet-kbzhu"}}
+
+		handler.GetPublicArticle(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "raschet-kbzhu", asked)
+		assert.Contains(t, w.Body.String(), `"slug":"raschet-kbzhu"`)
+	})
+}
+
+func TestHandler_UpdateArticle_SlugOutcomes(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"malformed slug is 400", fmt.Errorf("slug: %w", apperrors.ErrValidation), http.StatusBadRequest},
+		{"published or taken slug is 409", fmt.Errorf("slug: %w", apperrors.ErrConflict), http.StatusConflict},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, mock := setupContentTestHandler()
+			mock.updateArticleFunc = func(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest, isAdmin bool) (*Article, error) {
+				return nil, tc.err
+			}
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodPut, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1",
+				strings.NewReader(`{"slug":"novyy-adres"}`))
+			c.Request.Header.Set("Content-Type", "application/json")
+			c.Set("user_id", int64(1))
+			c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
+
+			handler.UpdateArticle(c)
+
+			assert.Equal(t, tc.want, w.Code)
+		})
+	}
+}
+
+func TestHandler_CreateArticle_SlugOutcomes(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"malformed slug is 400", fmt.Errorf("slug: %w", apperrors.ErrValidation), http.StatusBadRequest},
+		{"taken slug is 409", fmt.Errorf("slug: %w", apperrors.ErrConflict), http.StatusConflict},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, mock := setupContentTestHandler()
+			mock.createArticleFunc = func(ctx context.Context, authorID int64, req CreateArticleRequest) (*Article, error) {
+				return nil, tc.err
+			}
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodPost, "/content/articles",
+				strings.NewReader(`{"title":"T","category":"nutrition","audience_scope":"all","slug":"raschet"}`))
+			c.Request.Header.Set("Content-Type", "application/json")
+			c.Set("user_id", int64(1))
+
+			handler.CreateArticle(c)
+
+			assert.Equal(t, tc.want, w.Code)
+		})
+	}
+}
+
+// The public feed answers anybody, without an account. An unbounded limit let
+// one request ask the database and the image proxy for everything at once.
+func TestHandler_GetPublicFeed_CapsLimit(t *testing.T) {
+	cases := map[string]int{
+		"100000": 100,
+		"101":    100,
+		"100":    100,
+		"20":     20,
+		"":       20,
+		"-5":     20,
+		"abc":    20,
+	}
+	for raw, want := range cases {
+		t.Run("limit="+raw, func(t *testing.T) {
+			handler, mock := setupContentTestHandler()
+			got := -1
+			mock.getPublicFeedFunc = func(ctx context.Context, category string, limit int, offset int) (*FeedResponse, error) {
+				got = limit
+				return &FeedResponse{Articles: []ArticleCard{}}, nil
+			}
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodGet, "/public/content?limit="+raw, nil)
+
+			handler.GetPublicFeed(c)
+
+			assert.Equal(t, http.StatusOK, w.Code)
+			assert.Equal(t, want, got)
+		})
+	}
 }

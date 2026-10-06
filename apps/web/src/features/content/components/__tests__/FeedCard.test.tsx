@@ -87,6 +87,11 @@ describe('FeedCard', () => {
         expect(link).toHaveAttribute('href', '/content/article-1');
     });
 
+    it('links to the readable address when the article has one', () => {
+        render(<FeedCard article={{ ...baseArticle, slug: 'kak-pravilno-pitatsya' }} />);
+        expect(screen.getByRole('link')).toHaveAttribute('href', '/content/kak-pravilno-pitatsya');
+    });
+
     it('shows cover image when provided', () => {
         const articleWithCover: ArticleCard = {
             ...baseArticle,

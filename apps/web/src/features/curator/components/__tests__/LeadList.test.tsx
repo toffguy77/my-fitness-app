@@ -251,6 +251,25 @@ describe('Источник перехода в списке заявок', () =>
         expect(await screen.findByText('Источник перехода неизвестен')).toBeInTheDocument()
     })
 
+    // Дзен и поиск меток не ставят: без реферера такая заявка была бы
+    // «неизвестно откуда», хотя откуда — известно.
+    it('называет сайт, с которого пришёл человек без меток', async () => {
+        respondWith([makeLead({ attribution: { referrer: 'https://dzen.ru/a/xyz' } })])
+
+        render(<LeadList />)
+
+        expect(await screen.findByText('dzen.ru')).toBeInTheDocument()
+    })
+
+    it('предпочитает метки кампании реферу', async () => {
+        respondWith([makeLead({ attribution: { utm_source: 'yandex', referrer: 'https://ya.ru/' } })])
+
+        render(<LeadList />)
+
+        expect(await screen.findByText('yandex')).toBeInTheDocument()
+        expect(screen.queryByText('ya.ru')).not.toBeInTheDocument()
+    })
+
     // Идентификатор клика — для загрузки конверсий, а не для чтения человеком.
     it('не показывает идентификатор рекламного перехода', async () => {
         respondWith([makeLead({ attribution: { utm_source: 'yandex', yandex_click_id: 'yclid-1' } })])
