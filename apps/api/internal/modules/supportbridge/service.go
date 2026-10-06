@@ -49,10 +49,21 @@ type Service struct {
 	// members и messenger могут быть nil: без них состав не ведётся.
 	members   Membership
 	messenger Messenger
+	// alertsThreadID — тема для служебных оповещений бота. Ноль — общая лента.
+	alertsThreadID int64
 }
 
 func NewService(db *sql.DB, sender Sender, log *logger.Logger, groupID int64, appURL string) *Service {
 	return &Service{db: db, sender: sender, log: log, groupID: groupID, appURL: appURL}
+}
+
+// WithAlertsTopic задаёт тему для служебных оповещений бота.
+//
+// Ноль оставляет прежнее поведение — общую ленту: тема, которой нет, означала
+// бы отказ Telegram на каждое оповещение.
+func (s *Service) WithAlertsTopic(threadID int64) *Service {
+	s.alertsThreadID = threadID
+	return s
 }
 
 // Enabled отвечает, настроен ли мост вообще.
@@ -271,15 +282,34 @@ func (s *Service) Healthy(ctx context.Context) error {
 	return nil
 }
 
-// Announce пишет в общую ленту группы — то, что касается всех кураторов, а не
-// одного клиента: темы на клиента у заявки ещё нет, и заводить её ради
+// Announce пишет оповещение бота в группу кураторов — то, что касается всех, а
+// не одного клиента: темы на клиента у заявки ещё нет, и заводить её ради
 // оповещения значило бы плодить темы людям, которых никто не взял.
+//
+// Адресат — тема оповещений (`WithAlertsTopic`), а не общая лента: в общей
+// ленте участники проекта разговаривают между собой, и оповещение бота там
+// теряется среди их сообщений. Ровно это и случилось с заявкой, из-за которой
+// оповещение появилось.
+//
+// Если тема недостижима — её переименовали, закрыли, удалили, — оповещение
+// уходит в общую ленту: лучше не на своём месте, чем нигде. Отказ попадает в
+// журнал предупреждением, иначе исчезновение темы осталось бы незаметным.
 func (s *Service) Announce(ctx context.Context, text string) error {
 	if !s.Enabled() {
 		return nil
 	}
-	if _, err := s.sender.SendToTopic(ctx, s.groupID, 0, text); err != nil {
+	_, err := s.sender.SendToTopic(ctx, s.groupID, s.alertsThreadID, text)
+	if err == nil {
+		return nil
+	}
+	if s.alertsThreadID == 0 {
 		return fmt.Errorf("сообщение в группу кураторов: %w", err)
+	}
+
+	s.log.Warnw("Тема оповещений недостижима, пишем в общую ленту группы",
+		"thread_id", s.alertsThreadID, "error", fmt.Sprint(err))
+	if _, fallbackErr := s.sender.SendToTopic(ctx, s.groupID, 0, text); fallbackErr != nil {
+		return fmt.Errorf("сообщение в группу кураторов: %w", fallbackErr)
 	}
 	return nil
 }

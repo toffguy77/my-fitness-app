@@ -2,6 +2,7 @@ package supportbridge
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -74,6 +75,84 @@ func TestSaveIncomingWithoutStorage(t *testing.T) {
 		SaveIncoming(context.Background(), 1, "file", "имя.jpg")
 
 	assert.ErrorIs(t, err, ErrStorageOff)
+}
+
+// Оповещение бота уходит в свою тему, а не в общую ленту.
+//
+// В общей ленте группы разговаривают участники проекта: сообщение бота там
+// теряется среди их сообщений — с этого и началась тема оповещений.
+func TestAnnounceGoesToTheAlertsTopic(t *testing.T) {
+	sender := &recordingSender{}
+	service := NewService(nil, sender, logger.New(), -100, "").WithAlertsTopic(72)
+
+	require.NoError(t, service.Announce(context.Background(), "заявка"))
+
+	require.Len(t, sender.threads, 1)
+	assert.Equal(t, int64(72), sender.threads[0], "оповещение ушло не в тему оповещений")
+}
+
+// Без заданной темы поведение прежнее — общая лента.
+//
+// Так живёт среда, где тему ещё не создали: оповещение должно приходить, а не
+// упираться в тему, которой нет.
+func TestAnnounceWithoutATopicGoesToTheGeneralFeed(t *testing.T) {
+	sender := &recordingSender{}
+	service := NewService(nil, sender, logger.New(), -100, "")
+
+	require.NoError(t, service.Announce(context.Background(), "заявка"))
+
+	require.Len(t, sender.threads, 1)
+	assert.Equal(t, int64(0), sender.threads[0])
+}
+
+// Исчезнувшая тема не должна стоить оповещения.
+//
+// Тему закрывают и удаляют в интерфейсе Telegram, и код об этом не узнает.
+// Заявка, о которой никому не сказали, — ровно тот дефект, из-за которого
+// оповещение появилось, поэтому оно уходит в общую ленту.
+func TestAnnounceFallsBackToTheGeneralFeed(t *testing.T) {
+	sender := &recordingSender{failThread: 72}
+	service := NewService(nil, sender, logger.New(), -100, "").WithAlertsTopic(72)
+
+	require.NoError(t, service.Announce(context.Background(), "заявка"))
+
+	assert.Equal(t, []int64{72, 0}, sender.threads,
+		"после отказа темы оповещение должно уйти в общую ленту")
+}
+
+// Отказ на обоих путях возвращается ошибкой: заявка в журнале — последнее, что
+// остаётся, когда сказать о ней не удалось вовсе.
+func TestAnnounceReportsWhenNothingGetsThrough(t *testing.T) {
+	sender := &recordingSender{failThread: 72, failGeneral: true}
+	service := NewService(nil, sender, logger.New(), -100, "").WithAlertsTopic(72)
+
+	assert.Error(t, service.Announce(context.Background(), "заявка"))
+
+	sender = &recordingSender{failGeneral: true}
+	service = NewService(nil, sender, logger.New(), -100, "")
+	assert.Error(t, service.Announce(context.Background(), "заявка"))
+	assert.Len(t, sender.threads, 1, "без темы оповещений второй попытки быть не должно")
+}
+
+// recordingSender запоминает, в какую тему ушло сообщение, и умеет отказывать
+// по теме: отказ Telegram на конкретную тему — то, что отличает исчезнувшую
+// тему от недоступной группы.
+type recordingSender struct {
+	noSender
+	threads     []int64
+	failThread  int64
+	failGeneral bool
+}
+
+func (r *recordingSender) SendToTopic(_ context.Context, _ int64, threadID int64, _ string) (int64, error) {
+	r.threads = append(r.threads, threadID)
+	if threadID != 0 && threadID == r.failThread {
+		return 0, errors.New("message thread not found")
+	}
+	if threadID == 0 && r.failGeneral {
+		return 0, errors.New("chat not found")
+	}
+	return 1, nil
 }
 
 type noSender struct{}

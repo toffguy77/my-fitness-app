@@ -213,6 +213,11 @@ type Config struct {
 	// TelegramSupportGroupID — форум-группа кураторов. Ноль означает, что мост
 	// выключен: переписка идёт по-старому, а не ломается.
 	TelegramSupportGroupID int64
+	// TelegramAlertsThreadID — тема той же группы, куда бот пишет служебные
+	// оповещения: заявку на куратора и напоминание о ней. Отдельная тема нужна
+	// потому, что в общей ленте такие сообщения путаются с разговором
+	// участников проекта и теряются. Ноль — писать в общую ленту, как раньше.
+	TelegramAlertsThreadID int64
 	SupportModel           string
 	// LLMBaseURL и LLMAuthScheme описывают поставщика модели. Вместе, а не по
 	// отдельности: адрес без схемы авторизации — это запрос, который отклонят.
@@ -405,6 +410,7 @@ func Load() (*Config, error) {
 		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
 		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
 		TelegramSupportGroupID:    getEnvAsInt64("TELEGRAM_SUPPORT_GROUP_ID", 0),
+		TelegramAlertsThreadID:    getEnvAsInt64("TELEGRAM_ALERTS_THREAD_ID", 0),
 		SupportModel:              getEnv("SUPPORT_MODEL", ""),
 		SupportDailyLimit:         getEnvAsInt("SUPPORT_DAILY_LIMIT", 500),
 		NotificationEmailDelay:    getEnvAsDuration("NOTIFICATION_EMAIL_DELAY", 0),
