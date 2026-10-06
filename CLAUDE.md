@@ -186,6 +186,11 @@ from documentation nobody is reading any more.
 The prefix sent to the model must stay byte-stable: a timestamp, a request id or
 a varying greeting before the cache point turns every question into a cache miss.
 
+**Оповещения бота в группу кураторов идут своей темой** — через
+`supportbridge.Announce` (тема из `TELEGRAM_ALERTS_THREAD_ID`, на проде
+«Alerts»), а не `SendToTopic(..., 0, ...)` напрямую. Общая лента группы — место
+разговора участников проекта, и сообщение бота там теряется среди их сообщений.
+
 ## Routing: локально и в тестах через прокси
 
 В проде Traefik раздаёт по путям: `/api/v1`, `/ws`, `/health`, `/ready` идут
