@@ -68,27 +68,45 @@ func (s *Service) CreateCuratorRequest(ctx context.Context, userID int64, captur
 	email = strings.ToLower(strings.TrimSpace(email))
 
 	lead := &Lead{Email: email, Name: name.String, LastStep: "curator_request", Source: "product"}
+	req := curatorRequest{Email: email, CaptureSource: captureSource, UserID: &userID}
 
+	// Оповещение — только когда строка впервые становится заявкой: повторное
+	// нажатие той же кнопки не новость, а гостевая анкета, превратившаяся в
+	// просьбу о кураторе, — новость.
+	var wasRequested bool
 	err = s.db.QueryRowContext(ctx, `
-		UPDATE leads
+		WITH open AS (
+			SELECT id, curator_requested_at IS NOT NULL AS was_requested
+			  FROM leads
+			 WHERE email = $1 AND handled_at IS NULL
+			 FOR UPDATE
+		)
+		UPDATE leads l
 		   SET capture_source = $2, last_step = 'curator_request', contact_consent = true,
+		       curator_requested_at = COALESCE(l.curator_requested_at, now()),
 		       updated_at = now()
-		 WHERE email = $1 AND handled_at IS NULL
-		RETURNING id, created_at, updated_at`,
+		  FROM open
+		 WHERE l.id = open.id
+		RETURNING l.id, l.created_at, l.updated_at, open.was_requested`,
 		email, captureSource,
-	).Scan(&lead.ID, &lead.CreatedAt, &lead.UpdatedAt)
+	).Scan(&lead.ID, &lead.CreatedAt, &lead.UpdatedAt, &wasRequested)
 	switch {
 	case err == nil:
 		s.log.Infow("Curator request updated an open lead",
 			"user_id", userID, "lead_id", lead.ID, "capture_source", captureSource)
+		if !wasRequested {
+			req.LeadID = lead.ID
+			s.announce(ctx, req, 0)
+		}
 		return lead, nil
 	case !errors.Is(err, sql.ErrNoRows):
 		return nil, fmt.Errorf("обновить заявку на куратора: %w", err)
 	}
 
 	err = s.db.QueryRowContext(ctx, `
-		INSERT INTO leads (email, name, last_step, source, data_consent, contact_consent, capture_source)
-		VALUES ($1, $2, 'curator_request', 'product', true, true, $3)
+		INSERT INTO leads (email, name, last_step, source, data_consent, contact_consent, capture_source,
+		                   curator_requested_at)
+		VALUES ($1, $2, 'curator_request', 'product', true, true, $3, now())
 		RETURNING id, created_at, updated_at`,
 		email, nullIfEmpty(name.String), captureSource,
 	).Scan(&lead.ID, &lead.CreatedAt, &lead.UpdatedAt)
@@ -97,5 +115,7 @@ func (s *Service) CreateCuratorRequest(ctx context.Context, userID int64, captur
 	}
 
 	s.log.Infow("Curator request saved", "user_id", userID, "capture_source", captureSource)
+	req.LeadID = lead.ID
+	s.announce(ctx, req, 0)
 	return lead, nil
 }

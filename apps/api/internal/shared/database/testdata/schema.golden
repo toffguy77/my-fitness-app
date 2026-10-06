@@ -72,6 +72,7 @@ INDEX leads idx_leads_created_at btree (created_at)
 INDEX leads idx_leads_email btree (email)
 INDEX leads idx_leads_handled_by btree (handled_by)
 INDEX leads idx_leads_metrika_client_id btree (metrika_client_id) WHERE (metrika_client_id IS NOT NULL)
+INDEX leads idx_leads_open_curator_requests btree (curator_requested_at) WHERE ((curator_requested_at IS NOT NULL) AND (handled_at IS NULL) AND (curator_request_raised_at IS NULL))
 INDEX leads idx_leads_reminder btree (reminder_sent_at, contact_consent)
 INDEX leads idx_leads_utm_campaign btree (utm_campaign) WHERE (utm_campaign IS NOT NULL)
 INDEX leads leads_pkey btree (id)
@@ -406,6 +407,8 @@ leads.capture_source text
 leads.carbs numeric
 leads.contact_consent boolean NOT NULL DEFAULT false
 leads.created_at timestamp with time zone NOT NULL DEFAULT now()
+leads.curator_request_raised_at timestamp with time zone
+leads.curator_requested_at timestamp with time zone
 leads.data_consent boolean NOT NULL DEFAULT false
 leads.email text NOT NULL
 leads.fat numeric

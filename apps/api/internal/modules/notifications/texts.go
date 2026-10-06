@@ -30,6 +30,8 @@ const (
 	TextReportReceived   TextCode = "report_received"
 	TextCuratorFeedback  TextCode = "curator_feedback"
 	TextSupportEscalated TextCode = "support_escalated"
+	TextCuratorRequested TextCode = "curator_requested"
+	TextCuratorWaiting   TextCode = "curator_waiting"
 )
 
 type text struct {
@@ -61,6 +63,14 @@ var texts = map[string]map[TextCode]text{
 		TextSupportEscalated: {
 			Title:   "Обращение ждёт ответа",
 			Content: "Бот не смог ответить: {reason}",
+		},
+		TextCuratorRequested: {
+			Title:   "Заявка на куратора",
+			Content: "{who} просит куратора",
+		},
+		TextCuratorWaiting: {
+			Title:   "Заявка на куратора ждёт",
+			Content: "{who} просит куратора, а заявку никто не взял",
 		},
 	},
 	"en": {},

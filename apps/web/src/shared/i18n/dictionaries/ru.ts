@@ -978,6 +978,7 @@ export const ru = {
             system_update: 'Системные сообщения',
             general: 'Прочее',
             support_escalated: 'Обращение в поддержку',
+            curator_requested: 'Заявка на куратора',
         },
         delivery: {
             loadFailed: 'Не удалось загрузить настройки доставки',
