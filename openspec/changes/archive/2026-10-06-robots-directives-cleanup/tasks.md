@@ -5,4 +5,4 @@
 
 ## 2. Живая проверка
 
-- [ ] 2.1 После выкатки: `curl -s https://new.burcev.team/robots.txt | grep -ciE '^(host|crawl-delay)'` = 0, затем прод. Проверка файла в Вебмастере («Анализ robots.txt») без ошибок.
+- [x] 2.1 После выкатки: `curl -s https://new.burcev.team/robots.txt | grep -ciE '^(host|crawl-delay)'` = 0, затем прод. Проверка файла в Вебмастере («Анализ robots.txt») без ошибок. *Проверено 2026-10-06 на dev и на проде (`v2026.10.06+31a71d72`).*

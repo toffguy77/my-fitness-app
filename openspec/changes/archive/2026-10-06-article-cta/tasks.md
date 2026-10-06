@@ -10,4 +10,4 @@
 
 ## 3. Живая проверка
 
-- [ ] 3.1 E2E `seo-without-javascript.spec.ts`: в статье без JavaScript есть ссылки на `/kalkulyator-kbzhu` и `/pricing`. После выкатки — `curl` статьи на dev и проде содержит `href="/kalkulyator-kbzhu"`.
+- [x] 3.1 E2E `seo-without-javascript.spec.ts`: в статье без JavaScript есть ссылки на `/kalkulyator-kbzhu` и `/pricing`. После выкатки — `curl` статьи на dev и проде содержит `href="/kalkulyator-kbzhu"`. *Проверено 2026-10-06 на dev и на проде (`v2026.10.06+31a71d72`).*

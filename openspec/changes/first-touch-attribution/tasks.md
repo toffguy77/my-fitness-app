@@ -22,4 +22,4 @@
 
 ## 5. Живая проверка
 
-- [ ] 5.1 После выкатки на dev: зайти с `Referer: https://dzen.ru/a/test` на статью, сохранить заявку — в `leads.referrer` `https://dzen.ru/a/test` (запрос через `db.sh`). Зарегистрироваться паролем без заявки — строка `user_attribution` с реферером. Учётную запись удалить. Затем на проде — проверка заполнения на живом трафике через неделю (`SELECT count(*) FILTER (WHERE referrer IS NOT NULL) FROM leads WHERE created_at > выкатка`).
+- [ ] 5.1 После выкатки на dev: зайти с `Referer: https://dzen.ru/a/test` на статью, сохранить заявку — в `leads.referrer` `https://dzen.ru/a/test` (запрос через `db.sh`). Зарегистрироваться паролем без заявки — строка `user_attribution` с реферером. Учётную запись удалить. *Dev проверен 2026-10-06 браузером: cookie `first_touch` с реферером без строки запроса, 30 дней; заявка `e2e-lead-seo-…@burcev.test` хранит `referrer` и `landing_page`.* Затем на проде — проверка заполнения на живом трафике через неделю (`SELECT count(*) FILTER (WHERE referrer IS NOT NULL) FROM leads WHERE created_at > выкатка`).
