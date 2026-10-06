@@ -10,13 +10,29 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net/url"
 
 	"github.com/burcev/api/internal/shared/httpx"
 	"net/http"
 	"time"
 )
+
+// withoutRequestURL strips the request URL from a transport error.
+//
+// The URL carries the bot token, and every caller of this package logs the
+// error it gets back. A refused connection would therefore write the token
+// into the log, where it outlives the incident that produced it. The cause —
+// timeout, refused connection, DNS — survives; only the address is dropped.
+func withoutRequestURL(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.Err != nil {
+		return urlErr.Err
+	}
+	return err
+}
 
 // Client talks to the Telegram Bot API.
 type Client struct {
@@ -107,7 +123,7 @@ func (c *Client) SendMessage(ctx context.Context, chatID int64, text string) err
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("send message: %w", err)
+		return fmt.Errorf("send message: %w", withoutRequestURL(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -153,7 +169,7 @@ func (c *Client) VerifyWebhook(ctx context.Context, expectedURL string) error {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("ask telegram about the webhook: %w", err)
+		return fmt.Errorf("ask telegram about the webhook: %w", withoutRequestURL(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -220,7 +236,7 @@ func (c *Client) call(ctx context.Context, method string, payload map[string]any
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("call %s: %w", method, err)
+		return nil, fmt.Errorf("call %s: %w", method, withoutRequestURL(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 

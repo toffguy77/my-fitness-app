@@ -410,8 +410,11 @@ func main() {
 
 		// Мост переписки: тема на клиента. Без заданной группы выключен —
 		// переписка идёт по-старому, а не ломается.
+		// Оповещения бота идут в свою тему: в общей ленте группы разговаривают
+		// участники проекта, и сообщение бота там теряется.
 		bridge = supportbridge.NewService(db.DB, telegram.NewClient(cfg.TelegramBotToken),
-			log, cfg.TelegramSupportGroupID, appOrigin(cfg.AppDomain))
+			log, cfg.TelegramSupportGroupID, appOrigin(cfg.AppDomain)).
+			WithAlertsTopic(cfg.TelegramAlertsThreadID)
 		accountService.WithTopics(bridge)
 		// Ответы куратора из темы: мост говорит, кому и куда, а доставка
 		// кладёт ответ в переписку платформы от его имени.
@@ -449,8 +452,8 @@ func main() {
 	}
 
 	// Заявка на куратора зовёт людей: суперадминов — уведомлением, кураторов —
-	// в общей ленте их группы. Без этого она лежала в очереди, пока туда не
-	// заглянут, и единственная за две недели пролежала неделю.
+	// сообщением в тему оповещений их группы. Без этого она лежала в очереди,
+	// пока туда не заглянут, и единственная за две недели пролежала неделю.
 	var curatorsGroup leads.GroupAnnouncer
 	if bridge != nil && bridge.Enabled() {
 		curatorsGroup = bridge

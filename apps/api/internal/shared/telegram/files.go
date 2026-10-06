@@ -44,7 +44,7 @@ func (c *Client) DownloadFile(ctx context.Context, fileID string) ([]byte, error
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("download file: %w", err)
+		return nil, fmt.Errorf("download file: %w", withoutRequestURL(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {

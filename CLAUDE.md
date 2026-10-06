@@ -186,6 +186,11 @@ from documentation nobody is reading any more.
 The prefix sent to the model must stay byte-stable: a timestamp, a request id or
 a varying greeting before the cache point turns every question into a cache miss.
 
+**Оповещения бота в группу кураторов идут своей темой** — через
+`supportbridge.Announce` (тема из `TELEGRAM_ALERTS_THREAD_ID`, на проде
+«Alerts»), а не `SendToTopic(..., 0, ...)` напрямую. Общая лента группы — место
+разговора участников проекта, и сообщение бота там теряется среди их сообщений.
+
 ## Routing: локально и в тестах через прокси
 
 В проде Traefik раздаёт по путям: `/api/v1`, `/ws`, `/health`, `/ready` идут
@@ -210,6 +215,15 @@ Merging into `main` requires these checks by name, through a repository ruleset:
 makes its required check unsatisfiable: every pull request then reports
 mergeable and blocked at the same time, with nothing failing and nothing
 saying why. If a job has to be renamed, change the ruleset in the same breath.
+
+## Release Notes in Telegram
+
+A release PR into `main` needs a `## Что нового` section in its body, written
+for the whole team — no migration numbers, package versions or PR references.
+After the merge, `.github/workflows/release-notify.yml` waits until prod's
+`/ready` reports the merged commit, then posts that section to the team group
+(topic «Releases»). Without the section the workflow fails instead of posting
+the technical body. Preview: `node scripts/release-notify.mjs <PR> --dry-run`.
 
 ## Служебные учётки
 

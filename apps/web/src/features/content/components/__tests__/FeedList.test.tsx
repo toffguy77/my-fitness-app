@@ -10,18 +10,22 @@ import type { ArticleCard } from '@/features/content/types'
 
 // Mock the content API — both authenticated and public
 const mockGetFeed = jest.fn()
+// Both sources answer through mockGetFeed; these record which one was asked.
+const mockPersonalFeed = jest.fn((...args: unknown[]) => mockGetFeed(...args))
+const mockPublicFeed = jest.fn((...args: unknown[]) => mockGetFeed(...args))
 jest.mock('@/features/content/api/contentApi', () => ({
     contentApi: {
-        getFeed: (...args: Parameters<typeof mockGetFeed>) => mockGetFeed(...args),
+        getFeed: (...args: unknown[]) => mockPersonalFeed(...args),
     },
     publicContentApi: {
-        getFeed: (...args: Parameters<typeof mockGetFeed>) => mockGetFeed(...args),
+        getFeed: (...args: unknown[]) => mockPublicFeed(...args),
     },
 }))
 
 // The session is the server's answer now, not a look in storage.
+const mockUseSession = jest.fn(() => 'anonymous')
 jest.mock('@/shared/hooks/useSession', () => ({
-    useSession: jest.fn(() => 'anonymous'),
+    useSession: () => mockUseSession(),
 }))
 
 // Mock sub-components to simplify testing
@@ -53,6 +57,58 @@ const createArticles = (count: number): ArticleCard[] =>
 describe('FeedList', () => {
     beforeEach(() => {
         jest.clearAllMocks()
+        mockUseSession.mockReturnValue('anonymous')
+    })
+
+    // The page fetches the first page on the server, so the links are in the
+    // HTML a search engine reads. The browser must not throw that away.
+    describe('with articles from the server', () => {
+        const initial = createArticles(2)
+
+        it('shows them at once, without a spinner or a second request', async () => {
+            render(<FeedList initialArticles={initial} initialTotal={2} />)
+
+            expect(screen.getByTestId('feed-card-article-1')).toBeInTheDocument()
+            expect(document.querySelector('.animate-spin')).toBeFalsy()
+            await new Promise((r) => setTimeout(r, 0))
+            expect(mockPublicFeed).not.toHaveBeenCalled()
+        })
+
+        it('waits for the session without throwing the articles away', async () => {
+            mockUseSession.mockReturnValue('restoring')
+            render(<FeedList initialArticles={initial} initialTotal={2} />)
+
+            await new Promise((r) => setTimeout(r, 0))
+            expect(screen.getByTestId('feed-card-article-1')).toBeInTheDocument()
+            expect(mockPublicFeed).not.toHaveBeenCalled()
+        })
+
+        it('asks for a category when one is chosen', async () => {
+            mockGetFeed.mockResolvedValue({ articles: [], total: 0 })
+            render(<FeedList initialArticles={initial} initialTotal={2} />)
+
+            fireEvent.click(screen.getByText('Nutrition'))
+
+            await waitFor(() =>
+                expect(mockPublicFeed).toHaveBeenCalledWith('nutrition', expect.any(Number), 0),
+            )
+        })
+
+        it('replaces them with the personal feed of a signed-in reader', async () => {
+            mockUseSession.mockReturnValue('authenticated')
+            mockGetFeed.mockResolvedValue({ articles: createArticles(3), total: 3 })
+            render(<FeedList initialArticles={initial} initialTotal={2} />)
+
+            await waitFor(() => expect(screen.getByTestId('feed-card-article-3')).toBeInTheDocument())
+            expect(mockPersonalFeed).toHaveBeenCalled()
+            expect(mockPublicFeed).not.toHaveBeenCalled()
+        })
+
+        it('offers more when the server says there are more', () => {
+            render(<FeedList initialArticles={initial} initialTotal={25} />)
+
+            expect(screen.getByText('Загрузить ещё')).toBeInTheDocument()
+        })
     })
 
     it('shows loading spinner initially', () => {

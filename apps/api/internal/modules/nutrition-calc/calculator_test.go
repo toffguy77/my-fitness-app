@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCalculateBMR_Male(t *testing.T) {
@@ -166,4 +168,25 @@ func TestCalculateTargets_NoWorkout_Maintain(t *testing.T) {
 	if targets.Calories < 1800 || targets.Calories > 1900 {
 		t.Errorf("expected calories ~1850, got %f", targets.Calories)
 	}
+}
+
+// The worked example on the public calculator page
+// (apps/web/src/app/kalkulyator-kbzhu/page.tsx) is this calculation. If the
+// formula changes, the page is wrong until its example is recomputed.
+func TestCalculatorPageExample(t *testing.T) {
+	got := CalculateTargets(UserProfile{
+		BirthDate:     time.Now().AddDate(-30, 0, -1),
+		Sex:           SexFemale,
+		HeightCm:      168,
+		WeightKg:      65,
+		ActivityLevel: ActivityModerate,
+		Goal:          GoalLoss,
+	}, nil)
+
+	assert.InDelta(t, 1389, got.BMR, 0.5)
+	assert.InDelta(t, 2153, got.TDEE, 0.5)
+	assert.InDelta(t, 1830, got.Calories, 1)
+	assert.InDelta(t, 117, got.Protein, 0.5)
+	assert.InDelta(t, 51, got.Fat, 0.5)
+	assert.InDelta(t, 226, got.Carbs, 0.5)
 }

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import type { ArticleCard, ContentCategory } from '@/features/content/types'
 import { CATEGORY_LABELS } from '@/features/content/types'
+import { articlePath } from '@/features/content/utils/articlePath'
 
 export interface FeedCardProps {
     article: ArticleCard
@@ -41,7 +42,7 @@ function isTrustedImageUrl(url: string): boolean {
 export function FeedCard({ article }: FeedCardProps) {
     return (
         <Link
-            href={`/content/${article.id}`}
+            href={articlePath(article)}
             className="block rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
         >
             {article.cover_image_url && isTrustedImageUrl(article.cover_image_url) && (

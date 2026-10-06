@@ -8,6 +8,7 @@ INDEX analytics_identities idx_analytics_identities_user btree (user_id)
 INDEX article_audience article_audience_pkey btree (article_id, client_id)
 INDEX article_audience idx_article_audience_client btree (client_id)
 INDEX articles articles_pkey btree (id)
+INDEX articles articles_slug_key btree (slug)
 INDEX articles idx_articles_author btree (author_id)
 INDEX articles idx_articles_category btree (category)
 INDEX articles idx_articles_published_at btree (published_at DESC)
@@ -223,6 +224,7 @@ articles.excerpt character varying
 articles.id uuid NOT NULL DEFAULT gen_random_uuid()
 articles.published_at timestamp with time zone
 articles.scheduled_at timestamp with time zone
+articles.slug text NOT NULL
 articles.status USER-DEFINED NOT NULL DEFAULT 'draft'_status
 articles.title character varying NOT NULL
 articles.updated_at timestamp with time zone NOT NULL DEFAULT now()
@@ -417,10 +419,12 @@ leads.handled_at timestamp with time zone
 leads.handled_by bigint
 leads.height_cm numeric
 leads.id uuid NOT NULL DEFAULT gen_random_uuid()
+leads.landing_page text
 leads.last_step text NOT NULL DEFAULT 'contact'
 leads.metrika_client_id text
 leads.name text
 leads.protein numeric
+leads.referrer text
 leads.reminder_sent_at timestamp with time zone
 leads.sex text
 leads.source text
@@ -684,7 +688,9 @@ telegram_links.linked_at timestamp with time zone NOT NULL DEFAULT now()
 telegram_links.user_id bigint NOT NULL
 telegram_links.username text
 user_attribution.created_at timestamp with time zone NOT NULL DEFAULT now()
+user_attribution.landing_page text
 user_attribution.metrika_client_id text
+user_attribution.referrer text
 user_attribution.user_id bigint NOT NULL
 user_attribution.utm_campaign text
 user_attribution.utm_content text

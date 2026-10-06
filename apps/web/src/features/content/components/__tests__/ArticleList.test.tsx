@@ -38,6 +38,7 @@ const mockDeleteArticle = contentApi.deleteArticle as jest.Mock
 
 const createArticle = (overrides: Partial<Article> = {}): Article => ({
     id: '1',
+    slug: 'test-article',
     author_id: 1,
     author_name: 'Author',
     title: 'Test Article',

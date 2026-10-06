@@ -78,3 +78,34 @@ func TestUpdate_TextlessUpdatesParseWithoutAMessage(t *testing.T) {
 
 	assert.Nil(t, update.Message)
 }
+
+// A transport failure must not carry the bot token out of the package.
+//
+// Every caller logs the error it gets back, and the request URL contains the
+// token: an unreachable Telegram would print the bot's credentials into the
+// log, where they stay long after the outage is over.
+func TestTransportErrorsKeepTheTokenOut(t *testing.T) {
+	const token = "8365292650:AAF-secret-token"
+	// Адрес, по которому никто не слушает: отказ происходит в транспорте, а
+	// значит в ошибке оказывается полный адрес запроса вместе с токеном.
+	client := NewClient(token)
+	client.baseURL = "http://127.0.0.1:1"
+
+	ctx := context.Background()
+
+	err := client.SendMessage(ctx, 42, "текст")
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), token, "токен бота попал в текст ошибки")
+
+	_, err = client.SendToTopic(ctx, -100, 7, "текст")
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), token, "токен бота попал в текст ошибки")
+
+	err = client.VerifyWebhook(ctx, "https://burcev.team/hook")
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), token, "токен бота попал в текст ошибки")
+
+	_, err = client.DownloadFile(ctx, "file-id")
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), token, "токен бота попал в текст ошибки")
+}

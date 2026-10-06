@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { LEGAL_DOCUMENTS_UPDATED, SELLER } from '@/shared/constants/legal';
 
 export const metadata: Metadata = {
     title: 'Договор публичной оферты | BURCEV',
@@ -20,7 +21,7 @@ export default function TermsPage() {
                         </h2>
                         <p className="text-gray-700 mb-4">
                             Настоящий документ является официальным предложением (публичной офертой)
-                            ООО "BURCEV" (далее — "Исполнитель") для физических лиц (далее — "Пользователь")
+                            {SELLER.fullName} (далее — "Исполнитель") для физических лиц (далее — "Пользователь")
                             заключить договор на оказание услуг по предоставлению доступа к платформе
                             отслеживания питания и фитнеса BURCEV (далее — "Платформа").
                         </p>
@@ -164,25 +165,25 @@ export default function TermsPage() {
                             8. Реквизиты Исполнителя
                         </h2>
                         <p className="text-gray-700 mb-2">
-                            <strong>ООО "BURCEV"</strong>
+                            <strong>{SELLER.fullName}</strong>
                         </p>
                         <p className="text-gray-700 mb-2">
-                            ИНН: 1234567890
+                            ИНН: {SELLER.inn}
                         </p>
                         <p className="text-gray-700 mb-2">
-                            ОГРН: 1234567890123
+                            ОГРНИП: {SELLER.ogrnip}
                         </p>
                         <p className="text-gray-700 mb-2">
-                            Адрес: Россия, г. Москва
+                            Адрес: {SELLER.address}
                         </p>
                         <p className="text-gray-700 mb-2">
-                            Email: legal@burcev.team
+                            Email: {SELLER.email}
                         </p>
                     </section>
 
                     <div className="mt-12 pt-8 border-t border-gray-200">
                         <p className="text-sm text-gray-500">
-                            Дата последнего обновления: 26 января 2026 г.
+                            Дата последнего обновления: {LEGAL_DOCUMENTS_UPDATED}
                         </p>
                     </div>
                 </div>

@@ -1,0 +1,2 @@
+ALTER TABLE articles DROP CONSTRAINT IF EXISTS articles_slug_key;
+ALTER TABLE articles DROP COLUMN IF EXISTS slug;

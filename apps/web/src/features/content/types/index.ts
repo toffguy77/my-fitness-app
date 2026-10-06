@@ -6,6 +6,8 @@ export type AudienceScope = 'all' | 'my_clients' | 'selected'
 
 export interface Article {
   id: string
+  /** The article's address; assigned on creation, fixed once published. */
+  slug: string
   author_id: number
   author_name: string
   title: string
@@ -24,16 +26,21 @@ export interface Article {
 
 export interface ArticleCard {
   id: string
+  /** Present only when the article has a public address. */
+  slug?: string
   author_name: string
   title: string
   excerpt: string
   cover_image_url?: string
   category: ContentCategory
   published_at?: string
+  /** When the article last changed — the sitemap's lastmod. */
+  updated_at?: string
 }
 
 export interface CreateArticleRequest {
   title: string
+  slug?: string
   excerpt?: string
   body?: string
   category: ContentCategory
@@ -44,6 +51,7 @@ export interface CreateArticleRequest {
 
 export interface UpdateArticleRequest {
   title?: string
+  slug?: string
   excerpt?: string
   body?: string
   category?: ContentCategory

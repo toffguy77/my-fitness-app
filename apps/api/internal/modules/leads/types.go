@@ -56,6 +56,13 @@ type Attribution struct {
 
 	YandexClickID   string `json:"yandex_click_id,omitempty"`
 	MetrikaClientID string `json:"metrika_client_id,omitempty"`
+
+	// Referrer is the external page a link was followed from — origin and
+	// path, no query. Search and Dzen put no tags on their links; without it
+	// their visitors are attributed to nobody.
+	Referrer string `json:"referrer,omitempty"`
+	// LandingPage is the first page opened here.
+	LandingPage string `json:"landing_page,omitempty"`
 }
 
 // Lead is a saved onboarding attempt.

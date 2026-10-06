@@ -2,11 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { ArrowLeft } from 'lucide-react'
 import { contentApi, publicContentApi } from '@/features/content/api/contentApi'
-import { CATEGORY_LABELS } from '@/features/content/types'
+import { ArticleContent } from './ArticleContent'
 import type { Article } from '@/features/content/types'
 
 // ============================================================================
@@ -108,51 +106,10 @@ export function ArticleView({ articleId }: ArticleViewProps) {
         )
     }
 
-    const publishedDate = article.published_at
-        ? new Date(article.published_at).toLocaleDateString('ru-RU', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-          })
-        : null
-
     return (
-        <div className="mx-auto max-w-3xl px-4 py-6">
-            {/* Back button + Category badge */}
-            <div className="mb-4 flex items-center gap-3">
-                <Link
-                    href="/content"
-                    className="inline-flex items-center gap-1 text-sm text-blue-600"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Назад
-                </Link>
-
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                    {CATEGORY_LABELS[article.category] ?? article.category}
-                </span>
-            </div>
-
-            {/* Title */}
-            <h1 className="mb-3 text-2xl font-bold text-gray-900">
-                {article.title}
-            </h1>
-
-            {/* Author and date */}
-            <p className="mb-5 text-sm text-gray-500">
-                {article.author_name}
-                {publishedDate && <> &middot; {publishedDate}</>}
-            </p>
-
-            {/* Separator */}
-            <hr className="mb-6 border-gray-200" />
-
-            {/* Markdown body */}
-            <div className="prose max-w-none text-gray-800 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_p]:mb-3 [&_p]:leading-relaxed [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_a]:text-blue-600 [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-gray-600 [&_blockquote]:mb-3 [&_img]:rounded-lg [&_img]:my-4 [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded [&_pre]:bg-gray-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_table]:w-full [&_table]:mb-3 [&_th]:border [&_th]:border-gray-300 [&_th]:px-3 [&_th]:py-1 [&_th]:bg-gray-50 [&_td]:border [&_td]:border-gray-300 [&_td]:px-3 [&_td]:py-1">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {article.body ?? ''}
-                </ReactMarkdown>
-            </div>
-        </div>
+        <ArticleContent
+            article={article}
+            byline={article.author_name ? <p>{article.author_name}</p> : null}
+        />
     )
 }
