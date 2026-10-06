@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { LEGAL_DOCUMENTS_UPDATED, SELLER } from '@/shared/constants/legal';
 
 export const metadata: Metadata = {
     title: 'Политика конфиденциальности | BURCEV',
@@ -18,10 +19,10 @@ export default function PrivacyPage() {
                         <h2 className="text-2xl font-semibold text-gray-900 mb-4">
                             1. Общие положения
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="text-gray-700 mb-4" data-testid="privacy-intro">
                             Настоящая Политика конфиденциальности определяет порядок обработки и защиты
                             персональных данных пользователей платформы BURCEV (далее — "Платформа"),
-                            принадлежащей ООО "BURCEV" (далее — "Оператор").
+                            принадлежащей {SELLER.fullName} (далее — "Оператор").
                         </p>
                         <p className="text-gray-700 mb-4">
                             Используя Платформу, вы соглашаетесь с условиями настоящей Политики
@@ -254,12 +255,17 @@ export default function PrivacyPage() {
                         <h2 className="text-2xl font-semibold text-gray-900 mb-4">
                             11. Контактная информация
                         </h2>
-                        <p className="text-gray-700 mb-2">
-                            <strong>Оператор персональных данных:</strong> ООО "BURCEV"
-                        </p>
-                        <p className="text-gray-700 mb-2">
-                            <strong>Адрес:</strong> Россия, г. Москва
-                        </p>
+                        <div data-testid="privacy-operator">
+                            <p className="text-gray-700 mb-2">
+                                <strong>Оператор персональных данных:</strong> {SELLER.fullName}
+                            </p>
+                            <p className="text-gray-700 mb-2">
+                                <strong>ИНН:</strong> {SELLER.inn}, <strong>ОГРНИП:</strong> {SELLER.ogrnip}
+                            </p>
+                            <p className="text-gray-700 mb-2">
+                                <strong>Адрес:</strong> {SELLER.address}
+                            </p>
+                        </div>
                         <p className="text-gray-700 mb-2">
                             <strong>Email:</strong> privacy@burcev.team
                         </p>
@@ -270,7 +276,7 @@ export default function PrivacyPage() {
 
                     <div className="mt-12 pt-8 border-t border-gray-200">
                         <p className="text-sm text-gray-500">
-                            Дата последнего обновления: 26 января 2026 г.
+                            Дата последнего обновления: {LEGAL_DOCUMENTS_UPDATED}
                         </p>
                     </div>
                 </div>

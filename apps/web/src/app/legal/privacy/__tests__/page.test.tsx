@@ -53,7 +53,24 @@ describe('PrivacyPage', () => {
     it('displays last update date', () => {
         render(<PrivacyPage />);
 
-        expect(screen.getByText(/дата последнего обновления: 26 января 2026 г\./i)).toBeInTheDocument();
+        expect(screen.getByText(/дата последнего обновления: 6 октября 2026 г\./i)).toBeInTheDocument();
+    });
+
+    // 152-ФЗ: субъект должен знать, кто обрабатывает его данные. Названное
+    // раньше ООО не существовало.
+    it('names the real operator of personal data', () => {
+        render(<PrivacyPage />);
+
+        const operator = screen.getByTestId('privacy-operator');
+        expect(operator).toHaveTextContent('Бурцев Сергей Викторович');
+        expect(operator).toHaveTextContent('572006540445');
+        expect(operator).toHaveTextContent('324774600419913');
+        expect(operator).toHaveTextContent('108826');
+        expect(operator.textContent).not.toMatch(/ООО/);
+
+        const intro = screen.getByTestId('privacy-intro');
+        expect(intro).toHaveTextContent('Бурцев Сергей Викторович');
+        expect(intro.textContent).not.toMatch(/ООО/);
     });
 
     it('has correct metadata', () => {
