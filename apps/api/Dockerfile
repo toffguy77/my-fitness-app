@@ -34,13 +34,21 @@ WORKDIR /app
 
 # Copy go mod files
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
+# Build the application.
+#
+# `-a -installsuffix cgo` убраны: это приём времён, когда стандартную
+# библиотеку приходилось пересобирать без cgo. CGO_ENABLED=0 делает это сам, а
+# `-a` запрещал пользоваться кэшем компилятора. Кэш теперь живёт между
+# сборками в кэше BuildKit (не в образе), и неизменившиеся пакеты не
+# пересобираются: на сервере `go build` занимал больше семи минут.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -o server ./cmd/server
 
 # Development stage
 FROM ${BASE_REGISTRY}/library/golang:1.26-alpine AS development
@@ -69,7 +77,7 @@ WORKDIR /app
 
 # Copy go mod files
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 # Copy source code
 COPY . .
