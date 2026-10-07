@@ -31,7 +31,7 @@ const NotificationsPageComponent = dynamic(
 )
 
 export default function NotificationsPage() {
-    // Signed-out visitors are redirected by middleware.ts before this page
+    // Signed-out visitors are redirected by proxy.ts before this page
     // renders. What is left is the wait while the session is minted from the
     // cookie — a real state, and showing the sign-in screen during it would
     // flash it at somebody who is signed in.

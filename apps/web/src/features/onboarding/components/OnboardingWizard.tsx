@@ -63,7 +63,7 @@ export function OnboardingWizard() {
         setAppleHealth,
     } = useOnboardingStore()
 
-    // Signed-out visitors never reach this page: middleware.ts redirects
+    // Signed-out visitors never reach this page: proxy.ts redirects
     // them before it renders.
 
     // Pre-populate store from existing profile on mount

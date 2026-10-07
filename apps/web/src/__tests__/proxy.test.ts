@@ -7,7 +7,7 @@
  * а на стенде разработки он сделал бы localhost недоступным по http на год
  * вперёд, включая чужие проекты на том же адресе.
  */
-import { applySecurityHeaders } from '../middleware'
+import { applySecurityHeaders } from '../proxy'
 
 function headersFor(secure: boolean): Headers {
     const headers = new Headers()

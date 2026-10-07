@@ -3,7 +3,7 @@
  * Публичная статья по такому адресу отвечает 301 на адрес со slug; всё
  * остальное проходит к странице как есть.
  */
-import { legacyArticleRedirect } from '../middleware'
+import { legacyArticleRedirect } from '../proxy'
 
 const UUID = 'f4a2a36d-53ed-428a-aa27-4c31a66fd960'
 

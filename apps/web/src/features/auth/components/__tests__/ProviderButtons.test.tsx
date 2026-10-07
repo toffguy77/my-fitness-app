@@ -28,7 +28,7 @@ describe('ProviderButtons', () => {
 
     // The sign-in must stay a link, not a form submission.
     //
-    // The Content-Security-Policy in src/middleware.ts sets form-action 'self',
+    // The Content-Security-Policy in src/proxy.ts sets form-action 'self',
     // so a <form> posting to a provider's domain would be blocked by the
     // browser — and blocked silently, with the button simply doing nothing.
     // A plain navigation is not restricted by any directive we set, which is

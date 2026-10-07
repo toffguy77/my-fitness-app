@@ -153,7 +153,7 @@ describe('DashboardPage', () => {
     })
 
     describe('Authentication Check (Requirement 1.1)', () => {
-        // The redirect for a signed-out visitor happens in middleware.ts,
+        // The redirect for a signed-out visitor happens in proxy.ts,
         // before this page renders. What is left here is not mistaking a cold
         // cache for a missing session.
         it('does not send anybody to sign in over an empty profile cache', async () => {

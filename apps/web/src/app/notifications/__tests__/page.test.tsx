@@ -1,7 +1,7 @@
 /**
  * Who gets to see the notifications page.
  *
- * The redirect for a signed-out visitor moved to middleware.ts, which runs
+ * The redirect for a signed-out visitor moved to proxy.ts, which runs
  * before the page is rendered at all. What the page still has to get right is
  * the wait while the session is minted from the cookie: showing nothing during
  * it is correct, showing the sign-in screen is not.
