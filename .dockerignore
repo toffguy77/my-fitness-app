@@ -18,6 +18,11 @@ build
 .env.test.local
 .env.production.local
 .env*.local
+# Шаблоны выше действуют только в корне контекста. apps/web/.env.local лежит
+# в git (секретов в нём нет, это настройки разработки), и без шаблонов с **/
+# он попадал в сборку прода: Next печатал «Environments: .env.local».
+**/.env
+**/.env*.local
 
 # Testing
 coverage

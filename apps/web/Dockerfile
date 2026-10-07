@@ -10,7 +10,13 @@
 # — это `--build-arg BASE_REGISTRY=docker.io` и ничего больше.
 ARG BASE_REGISTRY=mirror.gcr.io
 
-FROM ${BASE_REGISTRY}/library/node:20-alpine AS base
+# Node 24 — действующий LTS. На 20-й (поддержка кончилась 2026-04-30) npm ci
+# каждый раз предупреждал EBADENGINE: часть зависимостей требует node >= 22.
+FROM ${BASE_REGISTRY}/library/node:24-alpine AS base
+
+# Сообщение «New major version of npm available» в журнале сборки — шум: npm
+# здесь тот, что пришёл с образом, и обновлять его внутри сборки никто не будет.
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 # Security: Update packages and install security updates
 # DL3018 asks for pinned apk versions. We deliberately do not pin: the base
@@ -56,8 +62,13 @@ COPY packages/utils/package.json ./packages/utils/
 COPY packages/config/package.json ./packages/config/
 
 # Install all dependencies (workspaces require dev deps for build)
-RUN npm ci --ignore-scripts && \
-    npm cache clean --force
+# Кэш npm кладётся во временный каталог и удаляется тем же слоем. Прежний
+# `npm cache clean --force` делал то же самое, но печатал «using --force
+# Recommended protections disabled». Аудит и призыв к пожертвованиям выключены
+# по той же причине: уязвимости проверяет CI (Comprehensive Security Scan), а
+# здесь отчёт о dev-зависимостях только засорял журнал.
+RUN npm ci --ignore-scripts --no-audit --no-fund --cache /tmp/npm-cache && \
+    rm -rf /tmp/npm-cache
 
 # Development stage (context must be repo root)
 FROM base AS development
@@ -99,8 +110,9 @@ ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 ENV NEXT_PUBLIC_YANDEX_METRIKA_ID=$NEXT_PUBLIC_YANDEX_METRIKA_ID
 ENV NEXT_PUBLIC_TELEGRAM_BOT=$NEXT_PUBLIC_TELEGRAM_BOT
 
-# Build the web application
-RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build --workspace=apps/web
+# Build the web application. Размер кучи задаёт сам скрипт build в
+# apps/web/package.json: NODE_OPTIONS, выставленный здесь, он перезаписывал.
+RUN npm run build --workspace=apps/web
 
 # Production runtime stage - minimal and secure
 FROM base AS runner
