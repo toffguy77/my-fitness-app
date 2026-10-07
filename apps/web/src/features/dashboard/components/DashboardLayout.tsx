@@ -41,7 +41,7 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
         className
     }, ref) => {
         const router = useRouter()
-        const { unreadCounts, fetchUnreadCounts, startPolling, stopPolling } = useNotificationsStore()
+        const { unreadCounts, startPolling, stopPolling } = useNotificationsStore()
 
         // Monitor online/offline status
         useOnlineStatus()
@@ -49,15 +49,15 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
         // Calculate total unread count
         const totalUnreadCount = unreadCounts.main + unreadCounts.content
 
-        // Fetch unread counts on mount and start polling
+        // Start polling the bell's counters; its first poll fetches them at once
+        // (a separate fetch here asked for the same counters a second time).
         useEffect(() => {
-            fetchUnreadCounts()
             startPolling()
 
             return () => {
                 stopPolling()
             }
-        }, [fetchUnreadCounts, startPolling, stopPolling])
+        }, [startPolling, stopPolling])
 
         // Listen for content notification WebSocket events
         useContentNotificationWS()

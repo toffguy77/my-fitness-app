@@ -90,7 +90,6 @@ export default function DashboardPage() {
         fetchTasks,
         startPolling,
         stopPolling,
-        setOfflineStatus,
         loadFromCache,
         targetsVersion,
     } = useDashboardStore()
@@ -122,9 +121,11 @@ export default function DashboardPage() {
             .catch(() => {})
     }, [userId, targetsVersion])
 
-    // Fetch dashboard data on mount
+    // Fetch dashboard data on mount — keyed on the id, like the effects above:
+    // the cache paints the user and the server settles it with an equal object,
+    // which used to fetch the week, the plan and the tasks a second time.
     useEffect(() => {
-        if (!userData) return
+        if (!userId) return
 
         const fetchData = async () => {
             try {
@@ -138,8 +139,8 @@ export default function DashboardPage() {
                     fetchTasks(),
                 ])
 
-                // Start polling for real-time updates
-                startPolling(30000) // Poll every 30 seconds
+                // Keep them fresh from here on; the first fetch is above.
+                startPolling(30000, { immediate: false })
             } catch (error) {
                 console.error('Failed to fetch dashboard data:', error)
             }
@@ -152,7 +153,7 @@ export default function DashboardPage() {
             stopPolling()
         }
     }, [
-        userData,
+        userId,
         selectedWeek,
         fetchWeekData,
         fetchWeeklyPlan,
@@ -162,19 +163,8 @@ export default function DashboardPage() {
         loadFromCache,
     ])
 
-    // Handle online/offline status
-    useEffect(() => {
-        const handleOnline = () => setOfflineStatus(false)
-        const handleOffline = () => setOfflineStatus(true)
-
-        window.addEventListener('online', handleOnline)
-        window.addEventListener('offline', handleOffline)
-
-        return () => {
-            window.removeEventListener('online', handleOnline)
-            window.removeEventListener('offline', handleOffline)
-        }
-    }, [setOfflineStatus])
+    // Online/offline is watched by the shell (DashboardLayout → useOnlineStatus):
+    // a second pair of listeners here reported every change twice.
 
     const [submittingReport, setSubmittingReport] = useState(false)
 

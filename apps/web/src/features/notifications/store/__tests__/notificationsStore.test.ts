@@ -33,18 +33,12 @@ describe('notificationsStore', () => {
         const { result } = renderHook(() => useNotificationsStore());
         act(() => {
             result.current.stopPolling();
-            useNotificationsStore.setState({
-                notifications: { main: [], content: [] },
-                unreadCounts: { main: 0, content: 0 },
-                isLoading: false,
-                error: null,
-                hasMore: { main: true, content: true },
-                pollingIntervalId: null,
-                isOffline: false,
-                retryCount: 0,
-            });
+            // reset() also forgets list requests a previous test left pending
+            result.current.reset();
         });
         jest.clearAllMocks();
+        // Queued responses a previous test did not use must not leak into this one
+        mockApiClient.get.mockReset();
         jest.clearAllTimers();
     });
 
@@ -158,33 +152,18 @@ describe('notificationsStore', () => {
                 hasMore: false,
             };
 
-            const mockEmptyResponse: GetNotificationsResponse = {
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            };
 
             const mockUnreadCounts: UnreadCountsResponse = {
                 main: 1,
                 content: 0,
             };
 
-            const mockBothBatches: GetNotificationsResponse = {
-                notifications: [...firstBatch, ...secondBatch],
-                total: 2,
-                hasMore: false,
-            };
 
-            // pollForUpdates (called after each fetchNotifications) replaces data with server response
+            // After each page only the counters are refreshed — not both lists again
             mockApiClient.get
                 .mockResolvedValueOnce(mockResponse1)     // fetchNotifications('main', 0)
-                .mockResolvedValueOnce(mockResponse1)     // pollForUpdates → main (keeps firstBatch)
-                .mockResolvedValueOnce(mockEmptyResponse) // pollForUpdates → content
-                .mockResolvedValueOnce(mockUnreadCounts)  // pollForUpdates → counts
-                .mockResolvedValueOnce(mockResponse2)     // fetchNotifications('main', 1)
-                .mockResolvedValueOnce(mockBothBatches)   // pollForUpdates → main (server now has both)
-                .mockResolvedValueOnce(mockEmptyResponse) // pollForUpdates → content
-                .mockResolvedValueOnce(mockUnreadCounts); // pollForUpdates → counts
+                .mockResolvedValueOnce(mockUnreadCounts)  // counters
+                .mockResolvedValueOnce(mockResponse2);    // fetchNotifications('main', 1) — counters are fresh
 
             const { result } = renderHook(() => useNotificationsStore());
 
@@ -299,13 +278,12 @@ describe('notificationsStore', () => {
                 expect(result.current.isLoading).toBe(false);
             }, { timeout: 2000 });
 
-            // Count calls to the main notifications endpoint
-            // Should be 2: one from fetchNotifications, one from pollForUpdates
-            // (not 3, which would indicate the duplicate call wasn't prevented)
+            // One request for the main list: the duplicate was turned away,
+            // and loading a list refreshes only the counters, not the lists
             const mainNotificationsCalls = mockApiClient.get.mock.calls.filter(
                 call => call[0].includes('/notifications?category=main')
             );
-            expect(mainNotificationsCalls.length).toBe(2);
+            expect(mainNotificationsCalls.length).toBe(1);
         });
 
         it('should not fetch if no more data available', async () => {
@@ -699,12 +677,15 @@ describe('notificationsStore', () => {
                 createdAt: '2024-01-15T10:00:00Z',
             };
 
+            // The main list is open (loaded); the content list is not.
             act(() => {
                 useNotificationsStore.setState({
                     notifications: {
                         main: [existingNotification],
                         content: [],
                     },
+                    unreadCounts: { main: 0, content: 0 },
+                    listsLoaded: { main: true, content: false },
                 });
             });
 
@@ -714,21 +695,14 @@ describe('notificationsStore', () => {
                 hasMore: false,
             };
 
-            const mockContentResponse: GetNotificationsResponse = {
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            };
-
             const mockUnreadCounts: UnreadCountsResponse = {
                 main: 1,
-                content: 0,
+                content: 3,
             };
 
             mockApiClient.get
-                .mockResolvedValueOnce(mockMainResponse)
-                .mockResolvedValueOnce(mockContentResponse)
-                .mockResolvedValueOnce(mockUnreadCounts);
+                .mockResolvedValueOnce(mockUnreadCounts)
+                .mockResolvedValueOnce(mockMainResponse);
 
             const { result } = renderHook(() => useNotificationsStore());
 
@@ -736,8 +710,46 @@ describe('notificationsStore', () => {
                 await result.current.pollForUpdates();
             });
 
+            expect(result.current.unreadCounts).toEqual({ main: 1, content: 3 });
             expect(result.current.notifications.main).toHaveLength(2);
             expect(result.current.notifications.main[0].id).toBe('2'); // New notification prepended
+            // The counters first, then only the list that is open and changed
+            const urls = mockApiClient.get.mock.calls.map((call) => call[0]);
+            expect(urls).toHaveLength(2);
+            expect(urls[0]).toContain('/notifications/unread-counts');
+            expect(urls[1]).toContain('category=main');
+        });
+
+        it('for the badge alone asks only for the counters', async () => {
+            mockApiClient.get.mockResolvedValueOnce({ main: 2, content: 1 });
+
+            const { result } = renderHook(() => useNotificationsStore());
+
+            await act(async () => {
+                await result.current.pollForUpdates();
+            });
+
+            expect(result.current.unreadCounts).toEqual({ main: 2, content: 1 });
+            expect(mockApiClient.get).toHaveBeenCalledTimes(1);
+            expect(mockApiClient.get.mock.calls[0][0]).toContain('/notifications/unread-counts');
+        });
+
+        it('does not reload an open list when the counters did not move', async () => {
+            act(() => {
+                useNotificationsStore.setState({
+                    unreadCounts: { main: 1, content: 0 },
+                    listsLoaded: { main: true, content: true },
+                });
+            });
+            mockApiClient.get.mockResolvedValueOnce({ main: 1, content: 0 });
+
+            const { result } = renderHook(() => useNotificationsStore());
+
+            await act(async () => {
+                await result.current.pollForUpdates();
+            });
+
+            expect(mockApiClient.get).toHaveBeenCalledTimes(1);
         });
 
         it('should not set error on polling failure', async () => {
@@ -933,6 +945,19 @@ describe('Property 19: Offline Caching', () => {
         // Clear localStorage before each test
         localStorage.clear();
         jest.clearAllMocks();
+        // Queued responses a previous case did not use must not leak into this one
+        mockApiClient.get.mockReset();
+        // Each case starts from a clean store: online, nothing open or in flight
+        act(() => {
+            useNotificationsStore.getState().stopPolling();
+            useNotificationsStore.getState().reset();
+        });
+    });
+
+    afterEach(() => {
+        act(() => {
+            useNotificationsStore.getState().stopPolling();
+        });
     });
 
     it('should cache notifications in localStorage after successful fetch', async () => {
@@ -954,23 +979,14 @@ describe('Property 19: Offline Caching', () => {
             hasMore: false,
         };
 
-        const mockEmptyResponse: GetNotificationsResponse = {
-            notifications: [],
-            total: 0,
-            hasMore: false,
-        };
-
         const mockUnreadCounts: UnreadCountsResponse = {
             main: 1,
             content: 0,
         };
 
-        // pollForUpdates is called after fetchNotifications; must return same main data
         mockApiClient.get
-            .mockResolvedValueOnce(mockResponse)      // fetchNotifications
-            .mockResolvedValueOnce(mockResponse)       // pollForUpdates → main
-            .mockResolvedValueOnce(mockEmptyResponse)  // pollForUpdates → content
-            .mockResolvedValueOnce(mockUnreadCounts);  // pollForUpdates → counts
+            .mockResolvedValueOnce(mockResponse)       // fetchNotifications
+            .mockResolvedValueOnce(mockUnreadCounts);  // its counters
 
         const { result } = renderHook(() => useNotificationsStore());
 
@@ -1091,29 +1107,25 @@ describe('Property 19: Offline Caching', () => {
             hasMore: false,
         };
 
-        const mockEmptyResponse: GetNotificationsResponse = {
-            notifications: [],
-            total: 0,
-            hasMore: false,
-        };
-
         const mockUnreadCounts: UnreadCountsResponse = {
             main: 1,
             content: 0,
         };
 
         mockApiClient.get
-            .mockResolvedValueOnce(mockResponse)
-            .mockResolvedValueOnce(mockEmptyResponse)
-            .mockResolvedValueOnce(mockEmptyResponse)
-            .mockResolvedValueOnce(mockUnreadCounts);
+            .mockResolvedValueOnce(mockResponse)       // the open list, refreshed
+            .mockResolvedValueOnce(mockUnreadCounts);  // its counters
 
         const { result } = renderHook(() => useNotificationsStore());
 
-        // Start offline
+        // Start offline, with the main list open from the cache
         act(() => {
             result.current.setOfflineStatus(true);
         });
+        await act(async () => {
+            await result.current.fetchNotifications('main', 0);
+        });
+        expect(result.current.notifications.main[0].title).toBe('Old cached notification');
 
         // Come back online
         await act(async () => {
@@ -1142,10 +1154,8 @@ describe('Property 19: Offline Caching', () => {
         };
 
         mockApiClient.get
-            .mockResolvedValueOnce(mockResponse)
-            .mockResolvedValueOnce(mockResponse)
-            .mockResolvedValueOnce(mockResponse)
-            .mockResolvedValueOnce(mockUnreadCounts);
+            .mockResolvedValueOnce(mockResponse)       // the list
+            .mockResolvedValueOnce(mockUnreadCounts);  // its counters
 
         const { result } = renderHook(() => useNotificationsStore());
 
@@ -1209,6 +1219,8 @@ describe('Property 19: Offline Caching', () => {
                     main: initialNotifications,
                     content: [],
                 },
+                unreadCounts: { main: 0, content: 0 },
+                listsLoaded: { main: true, content: false },
             });
         });
 
@@ -1218,21 +1230,14 @@ describe('Property 19: Offline Caching', () => {
             hasMore: false,
         };
 
-        const mockContentResponse: GetNotificationsResponse = {
-            notifications: [],
-            total: 0,
-            hasMore: false,
-        };
-
         const mockUnreadCounts: UnreadCountsResponse = {
             main: 1,
             content: 0,
         };
 
         mockApiClient.get
-            .mockResolvedValueOnce(mockMainResponse)
-            .mockResolvedValueOnce(mockContentResponse)
-            .mockResolvedValueOnce(mockUnreadCounts);
+            .mockResolvedValueOnce(mockUnreadCounts)
+            .mockResolvedValueOnce(mockMainResponse);
 
         const { result } = renderHook(() => useNotificationsStore());
 
@@ -1245,5 +1250,66 @@ describe('Property 19: Offline Caching', () => {
         const parsedCache = JSON.parse(cachedMain!);
         expect(parsedCache).toHaveLength(2);
         expect(parsedCache[0].id).toBe('2');
+    });
+});
+
+describe('notificationsStore — no repeats', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockApiClient.get.mockReset();
+        act(() => {
+            useNotificationsStore.getState().stopPolling();
+            useNotificationsStore.getState().reset();
+        });
+    });
+
+    it('"online, as before" on page mount reloads nothing', () => {
+        act(() => useNotificationsStore.getState().setOfflineStatus(false));
+        expect(mockApiClient.get).not.toHaveBeenCalled();
+        expect(useNotificationsStore.getState().pollingIntervalId).toBeNull();
+    });
+
+    it('back online with no list open asks only for the counters', async () => {
+        mockApiClient.get.mockResolvedValue({ main: 0, content: 0 });
+        act(() => useNotificationsStore.setState({ isOffline: true }));
+        await act(async () => {
+            useNotificationsStore.getState().setOfflineStatus(false);
+            await Promise.resolve();
+        });
+        const urls = mockApiClient.get.mock.calls.map((call) => call[0]);
+        expect(urls.every((url) => url.includes('/unread-counts'))).toBe(true);
+        act(() => useNotificationsStore.getState().stopPolling());
+    });
+
+    it('a list that loads right after the counters were asked does not ask again', async () => {
+        mockApiClient.get.mockImplementation(async (url: string) =>
+            url.includes('/unread-counts') ? { main: 0, content: 0 } : { notifications: [], total: 0, hasMore: false }
+        );
+        await act(async () => {
+            await useNotificationsStore.getState().fetchUnreadCounts();
+            await useNotificationsStore.getState().fetchNotifications('main');
+            await useNotificationsStore.getState().fetchNotifications('content');
+        });
+        const counts = mockApiClient.get.mock.calls.filter((call) => call[0].includes('/unread-counts'));
+        expect(counts).toHaveLength(1);
+    });
+
+    it('both lists of the page load side by side — the second is not turned away', async () => {
+        mockApiClient.get.mockImplementation(async (url: string) =>
+            url.includes('/unread-counts')
+                ? { main: 0, content: 0 }
+                : { notifications: [{ id: url.includes('content') ? 'c' : 'm', userId: 'u', category: url.includes('content') ? 'content' : 'main', type: 'reminder', title: 't', content: 'c', createdAt: '2024-01-01T00:00:00Z' }], total: 1, hasMore: false }
+        );
+        await act(async () => {
+            await Promise.all([
+                useNotificationsStore.getState().fetchNotifications('main'),
+                useNotificationsStore.getState().fetchNotifications('content'),
+            ]);
+        });
+        const state = useNotificationsStore.getState();
+        expect(state.notifications.main).toHaveLength(1);
+        expect(state.notifications.content).toHaveLength(1);
+        expect(state.isLoading).toBe(false);
+        expect(state.listsLoaded).toEqual({ main: true, content: true });
     });
 });

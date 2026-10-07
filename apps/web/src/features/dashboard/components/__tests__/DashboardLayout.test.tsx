@@ -217,16 +217,19 @@ describe('DashboardLayout', () => {
     })
 
     describe('Notifications Integration', () => {
-        it('should fetch unread counts on mount', async () => {
+        it('leaves the first counters to polling — no separate fetch on mount', async () => {
             render(
                 <DashboardLayout userName="Test User">
                     <div>Content</div>
                 </DashboardLayout>
             )
 
+            // Polling fetches the counters at once; a separate fetch here
+            // asked for the same counters a second time on every page.
             await waitFor(() => {
-                expect(mockFetchUnreadCounts).toHaveBeenCalledTimes(1)
+                expect(mockStartPolling).toHaveBeenCalledTimes(1)
             })
+            expect(mockFetchUnreadCounts).not.toHaveBeenCalled()
         })
 
         it('should start polling on mount', async () => {

@@ -171,3 +171,9 @@ beforeEach(() => {
         })
     }
 })
+
+// Concurrent identical GETs share one request inside the api client. A request
+// a test leaves pending must not be joined by the next test.
+afterEach(() => {
+    globalThis.__forgetApiReads?.()
+})

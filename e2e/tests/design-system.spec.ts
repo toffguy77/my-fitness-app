@@ -164,13 +164,27 @@ test.describe('Загрузка страниц под входом', () => {
             page.on('response', (response) => {
                 if (response.status() === 401 && response.url().includes('/api/')) unauthorised.push(new URL(response.url()).pathname)
             })
+            // Одинаковые чтения за одну загрузку: оболочка, шапка и блоки
+            // спрашивали одно и то же сами — план недели, задачи и счётчики
+            // уходили по два–четыре раза на каждой странице.
+            let reads = new Map<string, number>()
+            page.on('request', (request) => {
+                if (request.method() !== 'GET' || !request.url().includes('/api/v1/')) return
+                const url = new URL(request.url())
+                const key = url.pathname + url.search
+                reads.set(key, (reads.get(key) ?? 0) + 1)
+            })
+            const repeated: string[] = []
             for (const path of paths) {
+                reads = new Map()
                 await page.goto(path)
                 await page.waitForLoadState('load')
                 // Гидратация завершается после загрузки скриптов; ошибка
                 // приходит асинхронно, поэтому даём ей время проявиться.
-                await page.waitForTimeout(1000)
+                await page.waitForTimeout(1500)
+                for (const [key, count] of reads) if (count > 1) repeated.push(`${path}: ${key} ×${count}`)
             }
+            expect(repeated, 'страница не спрашивает одно и то же дважды').toEqual([])
             expect(errors.filter((message) => /#418|#423|#425|[Hh]ydrat/.test(message))).toEqual([])
             expect(unauthorised, 'запросы под входом не уходят без токена').toEqual([])
         })

@@ -40,6 +40,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
         dailyData,
         isLoading,
         error,
+        isOffline,
         fetchDailyData,
         startPolling,
         stopPolling,
@@ -58,7 +59,9 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
     // Fetch data and start polling on mount
     useEffect(() => {
         handleFetchData()
-        startPolling(30000) // Poll every 30 seconds
+        // The page has just fetched the plan and the tasks; polling only keeps
+        // them fresh from here on.
+        startPolling(30000, { immediate: false })
 
         return () => {
             stopPolling()
@@ -72,8 +75,12 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
         }
     }, [date, error, clearError])
 
-    // Loading state
-    if (isLoading && !dayData) {
+    // Until the day's first answer arrives — loading or not yet asked. The
+    // blocks used to render for one frame before the fetch began, then give way
+    // to the skeleton and mount again: a flash of zeros, and every block's own
+    // request (the norm, the water) sent twice. Offline without a cached day,
+    // the blocks still render from what they have.
+    if (!dayData && !error && !isOffline) {
         return (
             <div className={cn('space-y-4', className)}>
                 {/* Loading skeleton */}

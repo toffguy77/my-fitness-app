@@ -123,6 +123,37 @@ function addRefreshSubscriber(onSuccess: (token: string) => void, onFailure: (er
     refreshSubscribers.push({ onSuccess, onFailure });
 }
 
+/** GET requests under way, by URL: concurrent identical reads share one. */
+const readsInFlight = new Map<string, { response: Promise<unknown>; readers: number; startedAt: number }>();
+
+/**
+ * How long a read stays joinable. The duplicates this removes are fired in the
+ * same moment by components mounting together; a read older than this may be
+ * hanging, and a newcomer should not inherit its fate.
+ */
+const JOIN_WINDOW_MS = 5000;
+
+/** Forgets shared reads. Tests call it between cases (jest.setup.js). */
+export function forgetReadsInFlight(): void {
+    readsInFlight.clear();
+}
+
+// jest.setup.js clears shared reads after every test through this hook, so a
+// request a test leaves hanging cannot be joined by the next test. Registered
+// rather than imported: importing the client from the setup file would load it
+// before a test's own mocks of its dependencies.
+if (process.env.NODE_ENV === 'test') {
+    (globalThis as { __forgetApiReads?: () => void }).__forgetApiReads = forgetReadsInFlight;
+}
+
+/**
+ * A private copy of a shared response. Responses are parsed JSON, so a JSON
+ * round trip copies them exactly.
+ */
+function copyOf<T>(value: T): T {
+    return value === null || typeof value !== 'object' ? value : JSON.parse(JSON.stringify(value));
+}
+
 class ApiClient {
     /**
      * The token to send, minting one first when there is evidently a session.
@@ -416,7 +447,34 @@ class ApiClient {
      * Make a GET request
      */
     async get<T>(url: string, options?: RequestOptions): Promise<T> {
-        return this.request<T>(url, { ...options, method: 'GET' });
+        // Identical reads in flight at the same moment share one request.
+        // A page assembles itself from independent components — the shell, the
+        // header, two blocks showing the same resource — and each used to ask
+        // for itself: the same weekly plan or unread counter went out two to
+        // four times on every load. Only a request with no options of its own
+        // is shared (custom headers or a signal make it someone's private
+        // request), and each caller gets its own copy, so one caller mutating
+        // the result cannot reach another.
+        if (options && Object.keys(options).length > 0) {
+            return this.request<T>(url, { ...options, method: 'GET' });
+        }
+        let shared = readsInFlight.get(url);
+        if (shared && Date.now() - shared.startedAt < JOIN_WINDOW_MS) {
+            shared.readers += 1;
+        } else {
+            const entry = {
+                response: this.request<T>(url, { method: 'GET' }).finally(() => {
+                    if (readsInFlight.get(url) === entry) readsInFlight.delete(url);
+                }) as Promise<unknown>,
+                readers: 1,
+                startedAt: Date.now(),
+            };
+            readsInFlight.set(url, entry);
+            shared = entry;
+        }
+        const entry = shared;
+        // A response nobody else is reading is handed over as is.
+        return entry.response.then((value) => (entry.readers > 1 ? copyOf(value) : value) as T);
     }
 
     /**

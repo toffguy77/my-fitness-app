@@ -103,6 +103,12 @@ the Metrika work were nearly shipped dead.
   network through jsdom's `XMLHttpRequest` and failed two food-tracker tests with a
   TLS error naming neither the request nor its caller
 - Coverage thresholds: branches 79%, functions 85%, lines 87%, statements 84%
+- `apiClient.get` shares identical reads in flight at the same moment (each
+  caller gets its own copy). Components still must not *cause* repeats:
+  report online/offline only on a change, start polling with
+  `{ immediate: false }` right after your own fetch, key effects on ids rather
+  than objects. `e2e/tests/design-system.spec.ts` fails a page that sends the
+  same GET twice in one load
 - Husky pre-commit hooks run linting and type checks
 - Commit messages follow conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
 
