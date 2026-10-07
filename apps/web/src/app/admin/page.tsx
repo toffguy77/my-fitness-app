@@ -44,16 +44,16 @@ export default function AdminDashboardPage() {
 
             {/* Stats — счётчики, а не состояния: чернилами, без оценочного цвета. */}
             <dl className="grid grid-cols-3 gap-3">
-                <div className="flex flex-col-reverse rounded-card border border-line bg-surface p-4">
-                    <dt className="text-[13px] text-fg-muted">{t('admin.dashboard.users')}</dt>
+                <div className="flex min-w-0 flex-col-reverse rounded-card border border-line bg-surface px-3 py-4">
+                    <dt className="hyphens-auto text-[13px] text-fg-muted">{t('admin.dashboard.users')}</dt>
                     <dd className="type-num-l tabular-nums text-fg">{totalUsers}</dd>
                 </div>
-                <div className="flex flex-col-reverse rounded-card border border-line bg-surface p-4">
-                    <dt className="text-[13px] text-fg-muted">{t('admin.dashboard.curators')}</dt>
+                <div className="flex min-w-0 flex-col-reverse rounded-card border border-line bg-surface px-3 py-4">
+                    <dt className="hyphens-auto text-[13px] text-fg-muted">{t('admin.dashboard.curators')}</dt>
                     <dd className="type-num-l tabular-nums text-fg">{totalCurators}</dd>
                 </div>
-                <div className="flex flex-col-reverse rounded-card border border-line bg-surface p-4">
-                    <dt className="text-[13px] text-fg-muted">{t('admin.dashboard.clients')}</dt>
+                <div className="flex min-w-0 flex-col-reverse rounded-card border border-line bg-surface px-3 py-4">
+                    <dt className="hyphens-auto text-[13px] text-fg-muted">{t('admin.dashboard.clients')}</dt>
                     <dd className="type-num-l tabular-nums text-fg">{totalClients}</dd>
                 </div>
             </dl>
@@ -64,7 +64,7 @@ export default function AdminDashboardPage() {
                 {curators.length === 0 ? (
                     <p className="text-sm text-fg-muted">{t('admin.dashboard.noCurators')}</p>
                 ) : (
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         {curators.map((curator) => (
                             <CuratorLoadCard key={curator.id} curator={curator} />
                         ))}

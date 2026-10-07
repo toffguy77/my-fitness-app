@@ -221,7 +221,7 @@ describe('SettingsPageLayout', () => {
     )
 
     // Назад — кнопка-иконка: имя у неё в aria-label, не в видимом тексте.
-    const link = screen.getByRole('link', { name: 'Профиль' })
+    const link = screen.getByRole('link', { name: 'Назад в профиль' })
     expect(link).toHaveAttribute('href', '/profile')
   })
 })

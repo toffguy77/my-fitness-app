@@ -175,7 +175,7 @@ export function LeadList() {
                                     {/* Identifies who this is about, regardless of
                                         consent — withheld consent hides the ability
                                         to write to them, not who they are. */}
-                                    <p className="truncate text-sm text-fg-muted">{lead.email}</p>
+                                    <p className="truncate text-sm text-fg-muted" data-testid="lead-email">{lead.email}</p>
                                 </div>
                                 {lead.handled_at ? (
                                     <span className="inline-flex shrink-0 items-center rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-medium text-success-fg">

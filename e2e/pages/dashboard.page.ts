@@ -27,8 +27,17 @@ export class DashboardPage {
     return this.page.getByRole('img', { name: 'Прогресс макронутриентов' })
   }
 
+  /** Быстрая запись с карточки питания: поиск, рядом фото и штрихкод. */
   get addFoodButton() {
-    return this.page.getByLabel('Добавить еду')
+    return this.page.getByRole('button', { name: 'Записать еду' })
+  }
+
+  get addFoodByPhotoButton() {
+    return this.page.getByRole('button', { name: 'Распознать еду по фото' })
+  }
+
+  get addFoodByBarcodeButton() {
+    return this.page.getByRole('button', { name: 'Сканировать штрихкод' })
   }
 
   get addStepsButton() {

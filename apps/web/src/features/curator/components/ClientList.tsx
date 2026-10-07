@@ -78,7 +78,7 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
                     <h2 className="type-overline mb-2 text-danger-fg">
                         {t('curator.list.needAttention')}
                     </h2>
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         {needsAttention.map((client) => (
                             <ClientCard key={client.id} client={client} />
                         ))}
@@ -93,7 +93,7 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
                             {t('curator.list.others')}
                         </h2>
                     )}
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         {rest.map((client) => (
                             <ClientCard key={client.id} client={client} />
                         ))}

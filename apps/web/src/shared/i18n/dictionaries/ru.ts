@@ -1927,7 +1927,7 @@ export const ru = {
         appearance: {
             title: 'Оформление',
             aria: 'Тема оформления',
-            system: 'Как в системе',
+            system: 'Авто',
             light: 'Светлая',
             dark: 'Тёмная',
             hint: 'Выбор хранится на этом устройстве.',
@@ -2086,7 +2086,7 @@ export const ru = {
             codeLabel: 'Код из письма',
             wrongCode: 'Неверный код',
         },
-        backToProfile: 'Профиль',
+        backToProfile: 'Назад в профиль',
         loadingSegment: 'Загружаем настройки...',
         notifications: {
             doNotDisturb: 'Не беспокоить',

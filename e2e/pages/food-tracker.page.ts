@@ -15,8 +15,13 @@ export class FoodTrackerPage {
     return this.page.getByLabel('Добавить стакан воды')
   }
 
-  get fabAddFood() {
-    return this.page.getByTestId('fab-add-food')
+  /** Панель быстрой записи внизу дневника: Поиск / Фото / Код. */
+  get quickAddBar() {
+    return this.page.getByRole('group', { name: 'Быстрая запись еды' })
+  }
+
+  get quickAddSearch() {
+    return this.quickAddBar.getByRole('button', { name: 'Найти продукт' })
   }
 
   mealSlot(name: string) {

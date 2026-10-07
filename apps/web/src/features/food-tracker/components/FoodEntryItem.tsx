@@ -131,11 +131,13 @@ export function FoodEntryItem({
                 </p>
                 <p className="text-[13px] text-fg-muted tabular-nums">
                     {portionDisplay}
+                    {/* Буква и число макроса не разлучаются при переносе:
+                        «У» в конце строки и «10» на следующей не читаются. */}
                     <span aria-hidden="true">
                         {' · '}
-                        {t('macros.proteinShort')} {Math.round(entry.nutrition.protein)}{' '}
-                        {t('macros.fatShort')} {Math.round(entry.nutrition.fat)}{' '}
-                        {t('macros.carbsShort')} {Math.round(entry.nutrition.carbs)}
+                        {t('macros.proteinShort')}{'\u00A0'}{Math.round(entry.nutrition.protein)}{' '}
+                        {t('macros.fatShort')}{'\u00A0'}{Math.round(entry.nutrition.fat)}{' '}
+                        {t('macros.carbsShort')}{'\u00A0'}{Math.round(entry.nutrition.carbs)}
                     </span>
                 </p>
             </div>

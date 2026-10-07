@@ -13,9 +13,9 @@ describe('SettingsAppearance', () => {
         document.documentElement.removeAttribute('data-theme')
     })
 
-    it('по умолчанию выбрано «Как в системе»', () => {
+    it('по умолчанию выбрано «Авто»', () => {
         render(<SettingsAppearance />)
-        expect(screen.getByRole('radio', { name: 'Как в системе' })).toHaveAttribute('aria-checked', 'true')
+        expect(screen.getByRole('radio', { name: 'Авто' })).toHaveAttribute('aria-checked', 'true')
         expect(document.documentElement).not.toHaveAttribute('data-theme')
     })
 
@@ -26,15 +26,15 @@ describe('SettingsAppearance', () => {
         expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
         expect(readThemePreference()).toBe('dark')
         expect(screen.getByRole('radio', { name: 'Тёмная' })).toHaveAttribute('aria-checked', 'true')
-        expect(screen.getByRole('radio', { name: 'Как в системе' })).toHaveAttribute('aria-checked', 'false')
+        expect(screen.getByRole('radio', { name: 'Авто' })).toHaveAttribute('aria-checked', 'false')
     })
 
-    it('«Как в системе» снимает явный выбор', async () => {
+    it('«Авто» снимает явный выбор', async () => {
         render(<SettingsAppearance />)
         await userEvent.click(screen.getByRole('radio', { name: 'Светлая' }))
         expect(document.documentElement).toHaveAttribute('data-theme', 'light')
 
-        await userEvent.click(screen.getByRole('radio', { name: 'Как в системе' }))
+        await userEvent.click(screen.getByRole('radio', { name: 'Авто' }))
         expect(document.documentElement).not.toHaveAttribute('data-theme')
         expect(readThemePreference()).toBe('system')
     })
