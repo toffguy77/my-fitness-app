@@ -8,6 +8,11 @@ import type { FullProfile } from '../api/settings'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { Check, ChevronDown } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
+import { Input } from '@/shared/components/ui/Input'
+import { fieldClass, fieldLabelClass } from '@/shared/components/forms/fieldStyles'
+import { cn } from '@/shared/utils/cn'
 
 const ACTIVITY_LEVELS = [
     'sedentary',
@@ -105,33 +110,30 @@ function BodyForm({
     }
 
     return (
-        <>
-            {/* Birth date */}
-            <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.birthDate')}</h3>
-                <input
-                    type="date"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-                />
-            </div>
+        <div className="flex flex-col gap-6">
+            <Input
+                id="settings-birth-date"
+                label={t('settings.body.birthDate')}
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+            />
 
-            {/* Biological sex */}
-            <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.sex')}</h3>
-                <div className="flex gap-3">
+            {/* Biological sex — два варианта, сегменты; выбранный — чернилами. */}
+            <fieldset>
+                <legend className={fieldLabelClass}>{t('settings.body.sex')}</legend>
+                <div className="grid grid-cols-2 gap-1 rounded-full border border-line bg-surface p-1">
                     {([
                         { value: 'male', label: t('settings.body.male') },
                         { value: 'female', label: t('settings.body.female') },
                     ] as const).map((option) => (
                         <label
                             key={option.value}
-                            className={`flex-1 cursor-pointer rounded-lg border px-4 py-3 text-center text-sm font-medium transition-colors ${
-                                biologicalSex === option.value
-                                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                            }`}
+                            className={cn(
+                                'flex h-11 cursor-pointer items-center justify-center rounded-full px-3 text-sm font-semibold transition-colors',
+                                'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus',
+                                biologicalSex === option.value ? 'bg-fg text-fg-inverse' : 'text-fg-muted hover:text-fg'
+                            )}
                         >
                             <input
                                 type="radio"
@@ -145,102 +147,110 @@ function BodyForm({
                         </label>
                     ))}
                 </div>
-            </div>
+            </fieldset>
 
-            {/* Height */}
-            <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.height')}</h3>
-                <input
-                    type="number"
-                    value={height}
-                    onChange={(e) => setHeight(e.target.value)}
-                    placeholder="175"
-                    min={50}
-                    max={300}
-                    step={0.1}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-                />
-            </div>
+            <Input
+                id="settings-body-height"
+                label={t('settings.body.height')}
+                type="number"
+                inputMode="decimal"
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+                placeholder="175"
+                min={50}
+                max={300}
+                step={0.1}
+            />
 
             {/* Current weight (read-only) */}
-            <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.currentWeight')}</h3>
-                <p className="text-sm text-gray-500">
+            <div>
+                <p className={fieldLabelClass}>{t('settings.body.currentWeight')}</p>
+                <p className="text-base text-fg">
                     {t('settings.body.enterWeightOn')}{' '}
-                    <Link href="/dashboard" className="text-blue-600 hover:underline">
+                    <Link href="/dashboard" className="font-semibold text-primary hover:underline">
                         {t('settings.body.dashboard')}
                     </Link>
                 </p>
             </div>
 
-            {/* Target weight */}
-            <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.targetWeight')}</h3>
-                <input
-                    type="number"
-                    value={targetWeight}
-                    onChange={(e) => setTargetWeight(e.target.value)}
-                    placeholder="70"
-                    min={20}
-                    max={500}
-                    step={0.1}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-                />
-            </div>
+            <Input
+                id="settings-body-target-weight"
+                label={t('settings.body.targetWeight')}
+                type="number"
+                inputMode="decimal"
+                value={targetWeight}
+                onChange={(e) => setTargetWeight(e.target.value)}
+                placeholder="70"
+                min={20}
+                max={500}
+                step={0.1}
+            />
 
             {/* Activity level */}
-            <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.activityLevel')}</h3>
-                <select
-                    value={activityLevel}
-                    onChange={(e) => setActivityLevel(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-                >
-                    <option value="">{t('settings.body.choose')}</option>
-                    {ACTIVITY_LEVELS.map((level) => (
-                        <option key={level} value={level}>
-                            {t(`settings.activity.${level}`)} — {t(`settings.activityHint.${level}`)}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            {/* Fitness goal */}
-            <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.body.goal')}</h3>
-                <div className="flex flex-col gap-2">
-                    {FITNESS_GOALS.map((goal) => (
-                        <label
-                            key={goal}
-                            className={`cursor-pointer rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
-                                fitnessGoal === goal
-                                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            <input
-                                type="radio"
-                                name="fitness_goal"
-                                value={goal}
-                                checked={fitnessGoal === goal}
-                                onChange={(e) => setFitnessGoal(e.target.value)}
-                                className="sr-only"
-                            />
-                            {t(`settings.goal.${goal}`)}
-                        </label>
-                    ))}
+            <div>
+                <label htmlFor="settings-body-activity" className={fieldLabelClass}>
+                    {t('settings.body.activityLevel')}
+                </label>
+                <div className="relative">
+                    <select
+                        id="settings-body-activity"
+                        value={activityLevel}
+                        onChange={(e) => setActivityLevel(e.target.value)}
+                        className={cn(fieldClass, 'appearance-none truncate pr-11')}
+                    >
+                        <option value="">{t('settings.body.choose')}</option>
+                        {ACTIVITY_LEVELS.map((level) => (
+                            <option key={level} value={level}>
+                                {t(`settings.activity.${level}`)} — {t(`settings.activityHint.${level}`)}
+                            </option>
+                        ))}
+                    </select>
+                    <ChevronDown
+                        className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle"
+                        strokeWidth={1.8}
+                        aria-hidden="true"
+                    />
                 </div>
             </div>
 
-            {/* Save button */}
-            <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-            >
+            {/* Fitness goal — список вариантов одной карточкой, выбранный отмечен галочкой. */}
+            <fieldset>
+                <legend className={fieldLabelClass}>{t('settings.body.goal')}</legend>
+                <div className="overflow-hidden rounded-card border border-line bg-surface divide-y divide-line">
+                    {FITNESS_GOALS.map((goal) => {
+                        const selected = fitnessGoal === goal
+                        return (
+                            <label
+                                key={goal}
+                                className={cn(
+                                    'flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 text-base transition-colors hover:bg-subtle/60',
+                                    'has-[:focus-visible]:bg-subtle',
+                                    selected ? 'font-semibold text-fg' : 'text-fg'
+                                )}
+                            >
+                                <input
+                                    type="radio"
+                                    name="fitness_goal"
+                                    value={goal}
+                                    checked={selected}
+                                    onChange={(e) => setFitnessGoal(e.target.value)}
+                                    className="sr-only"
+                                />
+                                {t(`settings.goal.${goal}`)}
+                                {selected && (
+                                    <Check className="h-5 w-5 shrink-0 text-fg" strokeWidth={2} aria-hidden="true" />
+                                )}
+                            </label>
+                        )
+                    })}
+                </div>
+            </fieldset>
+
+            {/* Save button — единственное главное действие экрана. */}
+            <Button type="button" size="lg" block onClick={handleSave} disabled={saving} className="mt-2">
                 {saving ? t('settings.saving') : t('settings.save')}
-            </button>
-        </>
+            </Button>
+        </div>
     )
 }
 

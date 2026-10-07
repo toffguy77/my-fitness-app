@@ -88,10 +88,10 @@ describe('OfflineIndicator', () => {
             expect(icon).toBeInTheDocument();
         });
 
-        it('should display red background when offline', () => {
+        it('marks offline with the danger role', () => {
             render(<OfflineIndicator />);
             const indicator = screen.getByRole('status').firstChild;
-            expect(indicator).toHaveClass('bg-red-500');
+            expect(indicator).toHaveClass('bg-danger');
         });
 
         it('should show pending changes count when offline', () => {
@@ -140,7 +140,7 @@ describe('OfflineIndicator', () => {
             expect(icon).toBeInTheDocument();
         });
 
-        it('should display blue background when syncing', () => {
+        it('shows syncing as a notification on the coach surface, not in brand colour', () => {
             render(<OfflineIndicator />);
 
             act(() => {
@@ -148,7 +148,8 @@ describe('OfflineIndicator', () => {
             });
 
             const indicator = screen.getByRole('status').firstChild;
-            expect(indicator).toHaveClass('bg-blue-500');
+            expect(indicator).toHaveClass('bg-coach');
+            expect(indicator).not.toHaveClass('bg-primary');
         });
 
         it('should show sync button', () => {

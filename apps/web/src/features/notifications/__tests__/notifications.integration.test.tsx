@@ -24,21 +24,16 @@ describe('Notifications Integration Tests', () => {
         // Clear localStorage
         localStorage.clear()
 
-        // Reset store completely before each test
-        useNotificationsStore.setState({
-            notifications: { main: [], content: [] },
-            unreadCounts: { main: 0, content: 0 },
-            isLoading: false,
-            error: null,
-            hasMore: { main: false, content: false },
-            pollingIntervalId: null,
-            isOffline: false,
-            isLoadingFromCache: false,
-            retryCount: 0,
-        })
+        // Reset store completely before each test — reset() also forgets list
+        // requests a previous test left pending and which lists were open
+        useNotificationsStore.getState().stopPolling()
+        useNotificationsStore.getState().reset()
+        useNotificationsStore.setState({ hasMore: { main: false, content: false } })
 
-        // Reset mocks
+        // Reset mocks — including queued responses a previous test left unused
         jest.clearAllMocks()
+        mockApiClient.get.mockReset()
+        mockApiClient.post.mockReset()
     })
 
     afterEach(() => {
@@ -71,28 +66,7 @@ describe('Notifications Integration Tests', () => {
                 hasMore: false,
             })
 
-            // Mock pollForUpdates call (happens after fetchNotifications)
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [
-                    {
-                        id: '1',
-                        userId: '1',
-                        category: 'main',
-                        type: 'trainer_feedback',
-                        title: 'New feedback from trainer',
-                        content: 'Your trainer left feedback on your progress',
-                        createdAt: new Date().toISOString(),
-                        readAt: null,
-                    },
-                ],
-                total: 1,
-                hasMore: false,
-            })
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            })
+            // Loading a list refreshes only the counters
             mockApiClient.get.mockResolvedValueOnce({ main: 1, content: 0 })
 
             mockApiClient.post.mockResolvedValueOnce({
@@ -166,28 +140,7 @@ describe('Notifications Integration Tests', () => {
                 hasMore: false,
             })
 
-            // Mock pollForUpdates after main fetch
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [
-                    {
-                        id: '1',
-                        userId: '1',
-                        category: 'main',
-                        type: 'trainer_feedback',
-                        title: 'Main notification',
-                        content: 'Content',
-                        createdAt: new Date().toISOString(),
-                        readAt: null,
-                    },
-                ],
-                total: 1,
-                hasMore: false,
-            })
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            })
+            // Loading a list refreshes only the counters
             mockApiClient.get.mockResolvedValueOnce({ main: 1, content: 0 })
 
             // Mock content notifications
@@ -208,39 +161,7 @@ describe('Notifications Integration Tests', () => {
                 hasMore: false,
             })
 
-            // Mock pollForUpdates after content fetch
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [
-                    {
-                        id: '1',
-                        userId: '1',
-                        category: 'main',
-                        type: 'trainer_feedback',
-                        title: 'Main notification',
-                        content: 'Content',
-                        createdAt: new Date().toISOString(),
-                        readAt: null,
-                    },
-                ],
-                total: 1,
-                hasMore: false,
-            })
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [
-                    {
-                        id: '2',
-                        userId: '1',
-                        category: 'content',
-                        type: 'system_update',
-                        title: 'Content notification',
-                        content: 'Content',
-                        createdAt: new Date().toISOString(),
-                        readAt: null,
-                    },
-                ],
-                total: 1,
-                hasMore: false,
-            })
+            // Loading a list refreshes only the counters
             mockApiClient.get.mockResolvedValueOnce({ main: 1, content: 1 })
 
             // Fetch main notifications
@@ -294,17 +215,7 @@ describe('Notifications Integration Tests', () => {
                 hasMore: true,
             })
 
-            // Mock pollForUpdates after first page
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: firstPageNotifications,
-                total: 100,
-                hasMore: true,
-            })
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            })
+            // Loading a list refreshes only the counters
             mockApiClient.get.mockResolvedValueOnce({ main: 50, content: 0 })
 
             // Mock second page
@@ -314,17 +225,7 @@ describe('Notifications Integration Tests', () => {
                 hasMore: false,
             })
 
-            // Mock pollForUpdates after second page
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [...firstPageNotifications, ...secondPageNotifications],
-                total: 100,
-                hasMore: false,
-            })
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            })
+            // Loading a list refreshes only the counters
             mockApiClient.get.mockResolvedValueOnce({ main: 100, content: 0 })
 
             // Fetch first page
@@ -378,31 +279,16 @@ describe('Notifications Integration Tests', () => {
                 hasMore: false,
             })
 
-            // Mock pollForUpdates after initial fetch
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [oldNotification],
-                total: 1,
-                hasMore: false,
-            })
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            })
+            // Loading a list refreshes only the counters
             mockApiClient.get.mockResolvedValueOnce({ main: 1, content: 0 })
 
-            // Mock polling fetch with new notification
+            // Polling: the counters moved, and the open main list is refreshed
+            mockApiClient.get.mockResolvedValueOnce({ main: 2, content: 0 })
             mockApiClient.get.mockResolvedValueOnce({
                 notifications: [newNotification, oldNotification],
                 total: 2,
                 hasMore: false,
             })
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            })
-            mockApiClient.get.mockResolvedValueOnce({ main: 2, content: 0 })
 
             // Initial fetch
             await act(async () => {
@@ -466,17 +352,7 @@ describe('Notifications Integration Tests', () => {
                 hasMore: false,
             })
 
-            // Mock pollForUpdates after retry
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [successNotification],
-                total: 1,
-                hasMore: false,
-            })
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            })
+            // Loading a list refreshes only the counters
             mockApiClient.get.mockResolvedValueOnce({ main: 1, content: 0 })
 
             // Manual retry succeeds
@@ -510,17 +386,7 @@ describe('Notifications Integration Tests', () => {
                 hasMore: false,
             })
 
-            // Mock pollForUpdates after initial fetch
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [testNotification],
-                total: 1,
-                hasMore: false,
-            })
-            mockApiClient.get.mockResolvedValueOnce({
-                notifications: [],
-                total: 0,
-                hasMore: false,
-            })
+            // Loading a list refreshes only the counters
             mockApiClient.get.mockResolvedValueOnce({ main: 1, content: 0 })
 
             // Mock mark as read failure

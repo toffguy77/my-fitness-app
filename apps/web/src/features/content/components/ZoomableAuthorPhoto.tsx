@@ -17,7 +17,7 @@ export function ZoomableAuthorPhoto({ src, alt }: { src: string; alt: string }) 
             onClick={() => setZoomed((z) => !z)}
             aria-pressed={zoomed}
             title={zoomed ? 'Уменьшить фото' : 'Увеличить фото'}
-            className={`shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+            className={`shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 ${
                 zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
             }`}
         >

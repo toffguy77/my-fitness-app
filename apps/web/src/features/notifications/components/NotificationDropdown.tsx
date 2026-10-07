@@ -136,10 +136,10 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     return (
         <div
             ref={dropdownRef}
-            className="fixed right-4 top-16 mt-2 w-80 bg-white rounded-2xl shadow-lg border z-50 overflow-hidden"
+            className="fixed right-4 top-16 z-50 mt-2 w-80 overflow-hidden rounded-card border border-line bg-surface shadow-overlay"
         >
             {recentNotifications.length === 0 ? (
-                <div className="p-4 text-center text-sm text-gray-500">
+                <div className="p-5 text-center text-sm text-fg-muted">
                     {t('notifications.empty')}
                 </div>
             ) : (
@@ -149,10 +149,10 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
                         <div key={group.category}>
                             <button
                                 type="button"
-                                className="w-full p-3 hover:bg-gray-50 border-b text-left"
+                                className="flex min-h-14 w-full items-center border-b border-line px-4 py-3 text-left transition-colors hover:bg-subtle/60"
                                 onClick={() => toggleGroup(group.category)}
                             >
-                                <span className="text-sm font-medium text-gray-900">
+                                <span className="text-sm font-semibold text-fg">
                                     {t('notifications.groupCount', { count: group.count, label: group.label })}
                                 </span>
                             </button>
@@ -161,13 +161,13 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
                                     <button
                                         key={notification.id}
                                         type="button"
-                                        className="w-full p-3 pl-6 hover:bg-gray-50 border-b text-left"
+                                        className="min-h-14 w-full border-b border-line py-3 pl-8 pr-4 text-left transition-colors hover:bg-subtle/60"
                                         onClick={() => handleNotificationClick(notification)}
                                     >
-                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                        <p className="text-sm font-medium text-fg truncate">
                                             {notification.title}
                                         </p>
-                                        <p className="text-xs text-gray-500 truncate">
+                                        <p className="text-xs text-fg-muted truncate">
                                             {notification.content}
                                         </p>
                                     </button>
@@ -180,13 +180,13 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
                         <button
                             key={notification.id}
                             type="button"
-                            className="w-full p-3 hover:bg-gray-50 border-b text-left"
+                            className="min-h-14 w-full border-b border-line px-4 py-3 text-left transition-colors hover:bg-subtle/60"
                             onClick={() => handleNotificationClick(notification)}
                         >
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-fg truncate">
                                 {notification.title}
                             </p>
-                            <p className="text-xs text-gray-500 truncate">
+                            <p className="text-xs text-fg-muted truncate">
                                 {notification.content}
                             </p>
                         </button>
@@ -197,7 +197,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
             {/* View all link */}
             <button
                 type="button"
-                className="w-full p-3 text-sm text-blue-600 hover:bg-gray-50 text-center"
+                className="flex min-h-12 w-full items-center justify-center px-4 text-sm font-semibold text-primary transition-colors hover:bg-subtle/60"
                 onClick={handleViewAll}
             >
                 {t('notifications.all')}

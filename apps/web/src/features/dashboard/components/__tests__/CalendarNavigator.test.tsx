@@ -15,6 +15,7 @@ jest.mock('../../store/dashboardStore');
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     ChevronLeft: () => <div data-testid="chevron-left" />,
     ChevronRight: () => <div data-testid="chevron-right" />,
 }));
@@ -139,7 +140,8 @@ describe('CalendarNavigator', () => {
 
             // Find the button for day 15 (Monday)
             const dayButton = screen.getByLabelText(/Понедельник, 15/);
-            expect(dayButton).toHaveClass('bg-blue-500', 'text-white');
+            // Выбранный день — инверсия чернилами (дизайн-система, рецепт п.4)
+            expect(dayButton).toHaveClass('bg-fg', 'text-fg-inverse');
             expect(dayButton).toHaveAttribute('aria-checked', 'true');
         });
 
@@ -397,10 +399,10 @@ describe('CalendarNavigator', () => {
             render(<CalendarNavigator />);
 
             const prevButton = screen.getByLabelText('Предыдущая неделя');
-            expect(prevButton).toHaveClass('focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500');
+            expect(prevButton).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-focus');
 
             const dayButton = screen.getByLabelText(/Понедельник, 15/);
-            expect(dayButton).toHaveClass('focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500');
+            expect(dayButton).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-focus');
         });
 
         it('sets aria-pressed on selected day', () => {
@@ -532,7 +534,7 @@ describe('CalendarNavigator', () => {
     });
 
     describe('Attention Indicators (Requirement 15.9)', () => {
-        it('shows pulsing animation on submit button on Sunday', () => {
+        it('shows enabled submit button on Sunday', () => {
             // Use fake timers to control the current date
             jest.useFakeTimers();
             const sunday = new Date('2024-01-21T12:00:00Z');
@@ -555,7 +557,7 @@ describe('CalendarNavigator', () => {
             render(<CalendarNavigator />);
 
             const submitButton = screen.getByLabelText('Отправить недельный отчет');
-            expect(submitButton).toHaveClass('animate-pulse');
+            expect(submitButton).toBeEnabled();
 
             jest.useRealTimers();
         });

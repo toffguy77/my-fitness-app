@@ -97,7 +97,7 @@ test.describe('Кураторская очередь заявок', () => {
         // только «отсутствие ошибки». На пустой очереди этот индекс был бы
         // -1 для обеих, и сравнение -1 < -1 солгало бы, что порядок верен.
         const emails = await cards.evaluateAll((nodes) =>
-            nodes.map((node) => node.querySelector('p.text-sm.text-gray-700')?.textContent ?? '')
+            nodes.map((node) => node.querySelector('[data-testid="lead-email"]')?.textContent ?? '')
         )
         const olderIndex = emails.indexOf(older.email)
         const newerIndex = emails.indexOf(newer.email)

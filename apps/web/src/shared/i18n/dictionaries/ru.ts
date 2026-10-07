@@ -80,6 +80,49 @@ export const ru = {
         fatShort: 'Ж',
         carbsShort: 'У',
     },
+    // Общие компоненты дизайн-системы (shared/components/ui).
+    ui: {
+        macroRemaining: {
+            left: 'осталось',
+            over: 'сверх нормы',
+            ofGoal: '{eaten} из {goal} г',
+            aria: '{label}: осталось {left} г, съедено {eaten} из {goal} г',
+            overAria: '{label}: сверх нормы на {over} г, съедено {eaten} из {goal} г',
+            eaten: 'съедено',
+            noGoalAria: '{label}: съедено {eaten} г, норма не задана',
+        },
+        weekDots: {
+            summary: '{inside} из {total}',
+            inNorm: 'в норме',
+            legendBand: 'норма ±{tolerance}%',
+            legendInside: 'в норме',
+            legendOutside: 'мимо нормы',
+            dayAria: '{day}: {state}',
+            stateInside: 'в пределах нормы',
+            stateAbove: 'выше нормы на {percent}%',
+            stateBelow: 'ниже нормы на {percent}%',
+            stateNoData: 'нет данных',
+            stateToday: 'сегодня, день ещё идёт',
+        },
+        quickAdd: {
+            groupAria: 'Быстрая запись еды',
+            log: 'Записать еду',
+            search: 'Поиск',
+            searchAria: 'Найти продукт',
+            barcode: 'Код',
+            barcodeAria: 'Сканировать штрихкод',
+            photo: 'Фото',
+            photoAria: 'Распознать еду по фото',
+        },
+        coach: {
+            reply: 'Ответить',
+        },
+        weekChart: {
+            title: 'Калории за неделю',
+            target: 'Цель',
+            actual: 'Факт',
+        },
+    },
     foodTracker: {
         tabs: {
             search: 'Поиск',
@@ -300,8 +343,11 @@ export const ru = {
             aria: 'Сводка КБЖУ за день',
             dailyTarget: 'Дневная норма',
             over: 'Превышение нормы',
-            progressAria: '{label} прогресс: {percentage}%',
-            valueAria: '{label}: {current} из {target}{unit}',
+            eatenLead: 'Съедено',
+            ofCalories: 'из {goal} ккал',
+            caloriesUnit: 'ккал',
+            caloriesAria: 'Калории: съедено {eaten} из {goal}',
+            overBy: 'Сверх нормы на {over} ккал',
             calculated: 'Рассчитано автоматически',
             curatorPlan: 'План куратора',
             workoutBonus: ' · +{calories} ккал за тренировку',
@@ -363,7 +409,8 @@ export const ru = {
         },
         page: {
             addFoodAria: 'Добавить еду',
-            offlineBanner: '📡 Нет подключения к интернету. Данные могут быть устаревшими.',
+            offlineBanner: 'Нет подключения к интернету. Данные могут быть устаревшими.',
+            heading: 'Питание',
             dismissError: 'Закрыть сообщение об ошибке',
             loading: 'Загружаем трекер...',
             title: 'Дневник питания | BURCEV',
@@ -446,6 +493,12 @@ export const ru = {
                 firstMeal: 'Записать первый приём пищи',
                 platePhoto: 'Сфотографировать тарелку',
                 curatorHello: 'Познакомиться с куратором',
+            },
+            hints: {
+                profile: 'Рост, вес и цель — из них считается норма',
+                firstMeal: 'Поиском, по штрихкоду или по фото',
+                platePhoto: 'Блюдо и КБЖУ распознаются по снимку',
+                curatorHello: 'Пара слов о себе и своей цели',
             },
         },
         curatorCard: {
@@ -700,6 +753,24 @@ export const ru = {
             empty: 'Не записано',
             addToDiaryAria: 'Добавить еду в дневник питания',
             add: 'Добавить',
+            diary: 'Дневник',
+            diaryAria: 'Открыть дневник питания',
+            remaining: 'ккал ещё можно',
+            overBy: 'ккал сверх нормы',
+            eatenWord: 'съедено',
+            ofGoal: 'из {goal}',
+            arcAria: 'Калории: съедено {eaten} из {goal}, осталось {left}',
+            arcOverAria: 'Калории: съедено {eaten} из {goal}, сверх нормы на {over}',
+        },
+        week: {
+            title: 'Неделя',
+        },
+        greeting: {
+            morning: 'Доброе утро',
+            day: 'Добрый день',
+            evening: 'Добрый вечер',
+            night: 'Доброй ночи',
+            withName: '{greeting}, {name}',
         },
         calendar: {
             monday: 'Понедельник',
@@ -1853,6 +1924,14 @@ export const ru = {
     },
 
     settings: {
+        appearance: {
+            title: 'Оформление',
+            aria: 'Тема оформления',
+            system: 'Авто',
+            light: 'Светлая',
+            dark: 'Тёмная',
+            hint: 'Выбор хранится на этом устройстве.',
+        },
         profileLoadFailed: 'Не удалось загрузить профиль',
         saved: 'Настройки сохранены',
         saveFailed: 'Не удалось сохранить настройки',
@@ -1872,6 +1951,7 @@ export const ru = {
             password: 'Изменить пароль',
             body: 'Тело и цели',
             providers: 'Вход через сервисы',
+            privacy: 'Данные и удаление аккаунта',
         },
         locality: {
             name: 'Имя',
@@ -2006,7 +2086,7 @@ export const ru = {
             codeLabel: 'Код из письма',
             wrongCode: 'Неверный код',
         },
-        backToProfile: 'Профиль',
+        backToProfile: 'Назад в профиль',
         loadingSegment: 'Загружаем настройки...',
         notifications: {
             doNotDisturb: 'Не беспокоить',

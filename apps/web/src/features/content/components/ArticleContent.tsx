@@ -22,6 +22,16 @@ export interface ArticleContentProps {
     children?: ReactNode
 }
 
+/**
+ * Типографика текста статьи — одна на чтение и на превью в редакторе.
+ *
+ * Текст 17/28 и строка не длиннее ~68 знаков — длинное чтение без
+ * усталости; заголовки — засечками (title-2/3), цитата — как голос, курсивом
+ * засечками. Применяется к разметке Markdown, само содержимое не трогается.
+ */
+export const ARTICLE_BODY_CLASSES =
+    'max-w-[68ch] break-words text-[17px] leading-[28px] text-fg [&_h1]:type-title-2 [&_h1]:mb-3 [&_h1]:mt-8 [&_h2]:type-title-2 [&_h2]:mb-3 [&_h2]:mt-8 [&_h3]:type-title-3 [&_h3]:mb-2 [&_h3]:mt-6 [&_h4]:type-headline [&_h4]:mb-2 [&_h4]:mt-5 [&_p]:mb-4 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-1.5 [&_li]:pl-1 [&_strong]:font-semibold [&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:my-6 [&_blockquote]:border-l-2 [&_blockquote]:border-line-strong [&_blockquote]:pl-5 [&_blockquote]:type-quote [&_blockquote]:text-fg-muted [&_hr]:my-8 [&_hr]:border-line [&_img]:my-6 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-tile [&_code]:rounded [&_code]:bg-subtle [&_code]:px-1 [&_code]:text-[15px] [&_pre]:mb-4 [&_pre]:overflow-x-auto [&_pre]:rounded-tile [&_pre]:bg-subtle [&_pre]:p-4 [&_table]:mb-4 [&_table]:w-full [&_table]:text-[15px] [&_table]:tabular-nums [&_th]:border [&_th]:border-line [&_th]:bg-subtle [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-line [&_td]:px-3 [&_td]:py-2'
+
 export function ArticleContent({ article, byline, children }: ArticleContentProps) {
     const publishedDate = article.published_at
         ? new Date(article.published_at).toLocaleDateString('ru-RU', {
@@ -31,35 +41,38 @@ export function ArticleContent({ article, byline, children }: ArticleContentProp
           })
         : null
 
+    // Экран чтения: колонка контента, заголовок засечками, текст 17/28 —
+    // длинное чтение с телефона без усталости. Категория — нейтральной
+    // меткой: она опознаёт тему, а не зовёт к действию.
     return (
-        <article className="mx-auto max-w-3xl px-4 py-6">
+        <article className="mx-auto w-full max-w-content px-screen-x py-5">
             {/* Back button + Category badge */}
-            <div className="mb-4 flex items-center gap-3">
+            <div className="mb-4 flex items-center justify-between gap-3">
                 <Link
                     href="/content"
-                    className="inline-flex items-center gap-1 text-sm text-blue-600"
+                    className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-[15px] font-semibold text-fg-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                     Назад
                 </Link>
 
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                <span className="rounded-full bg-subtle px-3 py-1 text-xs font-medium text-fg-muted">
                     {CATEGORY_LABELS[article.category] ?? article.category}
                 </span>
             </div>
 
-            <h1 className="mb-3 text-2xl font-bold text-gray-900">
+            <h1 className="mb-4 type-title-1 text-fg">
                 {article.title}
             </h1>
 
-            <div className="mb-5 space-y-2 text-sm text-gray-500">
+            <div className="mb-6 space-y-2 text-sm text-fg-muted">
                 {byline}
-                {publishedDate && <p>{publishedDate}</p>}
+                {publishedDate && <p className="tabular-nums">{publishedDate}</p>}
             </div>
 
-            <hr className="mb-6 border-gray-200" />
+            <hr className="mb-6 border-line" />
 
-            <div className="prose max-w-none text-gray-800 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_p]:mb-3 [&_p]:leading-relaxed [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_a]:text-blue-600 [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-gray-600 [&_blockquote]:mb-3 [&_img]:rounded-lg [&_img]:my-4 [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded [&_pre]:bg-gray-100 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-3 [&_table]:w-full [&_table]:mb-3 [&_th]:border [&_th]:border-gray-300 [&_th]:px-3 [&_th]:py-1 [&_th]:bg-gray-50 [&_td]:border [&_td]:border-gray-300 [&_td]:px-3 [&_td]:py-1">
+            <div className={ARTICLE_BODY_CLASSES}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {article.body ?? ''}
                 </ReactMarkdown>

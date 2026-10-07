@@ -10,6 +10,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Paperclip, ArrowUp, X } from 'lucide-react'
 import { t } from '@/shared/i18n'
+import { IconButton } from '@/shared/components/ui/Button'
 
 // ============================================================================
 // Types
@@ -124,36 +125,36 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
     const canSend = selectedFile !== null || text.trim().length > 0
 
     return (
-        <div className="border-t border-gray-200 bg-white px-4 py-3">
+        <div className="border-t border-line bg-surface px-4 py-3">
             {/* Selected file preview */}
             {selectedFile && (
-                <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-gray-50 rounded-lg">
-                    <Paperclip className="w-4 h-4 text-gray-400 shrink-0" />
-                    <span className="text-sm text-gray-700 truncate flex-1">
+                <div className="mb-2 flex items-center gap-2 rounded-tile border border-line bg-canvas py-1 pl-3 pr-1">
+                    <Paperclip className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="flex-1 truncate text-sm text-fg">
                         {selectedFile.name}
                     </span>
-                    <button
-                        type="button"
+                    <IconButton
+                        variant="ghost"
                         onClick={handleCancelFile}
-                        className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
                         aria-label={t('chat.cancelFile')}
                     >
-                        <X className="w-4 h-4" />
-                    </button>
+                        <X className="h-4 w-4" strokeWidth={1.8} />
+                    </IconButton>
                 </div>
             )}
 
             {/* Input row */}
             <div className="flex items-center gap-2">
                 {/* Attach button */}
-                <button
-                    type="button"
+                <IconButton
+                    variant="ghost"
+                    size="lg"
                     onClick={handleAttachClick}
-                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+                    className="text-fg-muted"
                     aria-label={t('chat.attachFile')}
                 >
-                    <Paperclip className="w-5 h-5" />
-                </button>
+                    <Paperclip className="h-5 w-5" strokeWidth={1.8} />
+                </IconButton>
 
                 {/* Hidden file input */}
                 <input
@@ -164,7 +165,7 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
                     aria-hidden="true"
                 />
 
-                {/* Text input */}
+                {/* Text input — 48 px и 16 px текста: iOS не увеличивает страницу при фокусе */}
                 <input
                     type="text"
                     value={text}
@@ -172,19 +173,19 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
                     onKeyDown={handleKeyDown}
                     placeholder={t('chat.messagePlaceholder')}
                     disabled={isSending}
-                    className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
+                    className="h-12 min-w-0 flex-1 rounded-full border border-line bg-surface px-4 text-base text-fg placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30 disabled:opacity-50"
                 />
 
-                {/* Send button */}
-                <button
-                    type="button"
+                {/* Send button — единственное главное действие экрана */}
+                <IconButton
+                    variant="primary"
+                    size="lg"
                     onClick={handleSend}
                     disabled={!canSend || isSending}
-                    className="p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                     aria-label={t('chat.send')}
                 >
-                    <ArrowUp className="w-5 h-5" />
-                </button>
+                    <ArrowUp className="h-5 w-5" strokeWidth={2} />
+                </IconButton>
             </div>
         </div>
     )

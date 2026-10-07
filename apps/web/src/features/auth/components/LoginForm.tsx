@@ -51,7 +51,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label htmlFor="email" className="block text-sm font-medium">
+                <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-fg-muted">
                     Email
                 </label>
                 <Input
@@ -65,12 +65,12 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
                     aria-invalid={!!errors.email}
                 />
                 {errors.email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                    <p className="mt-1 text-sm text-danger-fg">{errors.email}</p>
                 )}
             </div>
 
             <div>
-                <label htmlFor="password" className="block text-sm font-medium">
+                <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-fg-muted">
                     Password
                 </label>
                 <Input
@@ -84,11 +84,11 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
                     aria-invalid={!!errors.password}
                 />
                 {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                    <p className="mt-1 text-sm text-danger-fg">{errors.password}</p>
                 )}
             </div>
 
-            <Button type="submit" disabled={isLoading} className="w-full">
+            <Button type="submit" disabled={isLoading} size="lg" block>
                 {isLoading ? t('auth.loading') : t('auth.signIn')}
             </Button>
         </form>

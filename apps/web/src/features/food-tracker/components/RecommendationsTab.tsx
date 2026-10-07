@@ -20,6 +20,7 @@ import type {
     CustomRecommendation,
 } from '../types';
 import { t } from '@/shared/i18n';
+import { Button } from '@/shared/components/ui/Button';
 
 import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
@@ -194,39 +195,40 @@ export function RecommendationsTab({
 
     return (
         <div
-            className={`space-y-3 pb-20 sm:space-y-4 sm:pb-24 ${className}`}
+            className={`space-y-4 pb-20 sm:pb-24 ${className}`}
             aria-label={t('foodTracker.recommendations.aria')}
         >
             {/* Header with action buttons - responsive */}
             <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-gray-900 sm:text-lg">
+                <h2 className="type-title-2 text-fg">
                     {t('foodTracker.recommendations.title')}
                 </h2>
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
                         onClick={onConfigureClick}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm touch-manipulation"
+                        className="min-w-11 px-3 touch-manipulation"
                         aria-label={t('foodTracker.recommendations.configureAria')}
                     >
-                        <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
+                        <Settings className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                         <span className="hidden sm:inline">{t('foodTracker.recommendations.configure')}</span>
-                    </button>
+                    </Button>
                 </div>
             </div>
 
             {/* Загрузка не удалась: показанное ниже — не измерение. */}
             {error && (
                 <div
-                    className="rounded-lg border border-red-200 bg-red-50 p-2.5 sm:p-3"
+                    className="rounded-tile bg-danger-soft px-4 py-3"
                     role="alert"
                 >
-                    <p className="text-xs text-red-800 sm:text-sm">{error}</p>
+                    <p className="text-sm text-danger-fg">{error}</p>
                     {onRetry && (
                         <button
                             type="button"
                             onClick={onRetry}
-                            className="mt-1.5 text-xs text-red-700 underline hover:text-red-900 sm:text-sm touch-manipulation"
+                            className="-mb-2 inline-flex min-h-11 items-center text-sm font-semibold text-danger-fg underline touch-manipulation"
                         >
                             {t('foodTracker.recommendations.retry')}
                         </button>
@@ -236,7 +238,7 @@ export function RecommendationsTab({
 
             {/* Потребление сервер считает за сегодня, а не за выбранный день. */}
             {!isLoading && !error && showsOtherDay && (
-                <p className="text-xs text-gray-500 sm:text-sm">
+                <p className="text-sm text-fg-muted">
                     {t('foodTracker.recommendations.todayOnly')}
                 </p>
             )}
@@ -245,13 +247,13 @@ export function RecommendationsTab({
                 их нельзя: либо продукт не считает этот нутриент, либо считать
                 нечего — за день нет записей. */}
             {!isLoading && !error && !catalogueEmpty && !anyIntakeKnown && recommendations.length > 0 && (
-                <p className="text-xs text-gray-500 sm:text-sm">
+                <p className="text-sm text-fg-muted">
                     {t('foodTracker.recommendations.intakeNotCounted')}
                 </p>
             )}
 
             {!isLoading && !error && !catalogueEmpty && anyIntakeKnown && hasEntriesToday === false && (
-                <p className="text-xs text-gray-500 sm:text-sm">
+                <p className="text-sm text-fg-muted">
                     {t('foodTracker.recommendations.noEntriesToday')}
                 </p>
             )}
@@ -260,13 +262,13 @@ export function RecommendationsTab({
                 просьба заполнить профиль, и это единственное место в продукте, где
                 заполнение сразу что-то даёт. */}
             {!isLoading && !error && anyNormNeedsProfile && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5 sm:p-3">
-                    <p className="text-xs text-blue-900 sm:text-sm">
+                <div className="rounded-tile bg-info-soft px-4 py-3">
+                    <p className="text-sm text-info-fg">
                         {t('foodTracker.recommendations.profileNeeded')}
                     </p>
                     <a
                         href="/settings/body"
-                        className="mt-1.5 inline-block text-xs font-medium text-blue-700 underline sm:text-sm"
+                        className="-mb-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary"
                     >
                         {t('foodTracker.recommendations.profileLink')}
                     </a>
@@ -277,8 +279,8 @@ export function RecommendationsTab({
             {isLoading && (
                 <div className="flex items-center justify-center py-6 sm:py-8" aria-live="polite" aria-busy="true">
                     <div className="flex flex-col items-center gap-2">
-                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin sm:w-6 sm:h-6" />
-                        <span className="text-xs text-gray-500 sm:text-sm">{t('common.loading')}</span>
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" />
+                        <span className="text-sm text-fg-muted">{t('common.loading')}</span>
                     </div>
                 </div>
             )}
@@ -287,11 +289,11 @@ export function RecommendationsTab({
             {!isLoading && (
                 <>
                     <section aria-label={t('foodTracker.recommendations.dailyAria')}>
-                        <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 sm:text-sm sm:mb-3">
+                        <h3 className="type-overline mb-2 text-fg-subtle">
                             {t('foodTracker.recommendations.daily')}
                         </h3>
 
-                        <div className="space-y-1.5 sm:space-y-2">
+                        <div className="space-y-2">
                             {CATEGORY_ORDER.map((category) => {
                                 const categoryRecs = recommendationsByCategory[category];
                                 if (categoryRecs.length === 0) return null;
@@ -318,21 +320,22 @@ export function RecommendationsTab({
                             справочник норм не заполнен — настройки не помогут;
                             нутриенты выключены — помогут именно они. */}
                         {recommendations.filter((r) => !r.isWeekly).length === 0 && (
-                            <div className="text-center py-6 text-gray-500 sm:py-8">
+                            <div className="py-8 text-center text-fg-muted">
                                 {catalogueEmpty ? (
-                                    <p className="text-xs sm:text-sm">
+                                    <p className="text-sm">
                                         {t('foodTracker.recommendations.catalogueEmpty')}
                                     </p>
                                 ) : (
                                     <>
-                                        <p className="text-xs sm:text-sm">{t('foodTracker.recommendations.noDaily')}</p>
-                                        <button
+                                        <p className="text-sm">{t('foodTracker.recommendations.noDaily')}</p>
+                                        <Button
                                             type="button"
+                                            variant="secondary"
+                                            className="mt-3 touch-manipulation"
                                             onClick={onConfigureClick}
-                                            className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 sm:mt-2 sm:text-sm touch-manipulation"
                                         >
                                             {t('foodTracker.recommendations.configure')}
-                                        </button>
+                                        </Button>
                                     </>
                                 )}
                             </div>
@@ -345,21 +348,21 @@ export function RecommendationsTab({
                             <button
                                 type="button"
                                 onClick={() => setIsWeeklyExpanded(!isWeeklyExpanded)}
-                                className="flex items-center justify-between w-full py-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded sm:py-2 touch-manipulation"
+                                className="flex min-h-11 w-full items-center justify-between rounded-tile text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                                 aria-expanded={isWeeklyExpanded}
                             >
-                                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide sm:text-sm">
+                                <h3 className="type-overline text-fg-subtle">
                                     {t('foodTracker.recommendations.weekly')}
                                 </h3>
                                 {isWeeklyExpanded ? (
-                                    <ChevronDown className="w-3.5 h-3.5 text-gray-400 sm:w-4 sm:h-4" aria-hidden="true" />
+                                    <ChevronDown className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                                 ) : (
-                                    <ChevronRight className="w-3.5 h-3.5 text-gray-400 sm:w-4 sm:h-4" aria-hidden="true" />
+                                    <ChevronRight className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                                 )}
                             </button>
 
                             {isWeeklyExpanded && (
-                                <div className="mt-1.5 space-y-1 bg-white rounded-xl shadow-sm border border-gray-200 p-2 sm:mt-2 sm:p-3">
+                                <div className="mt-2 divide-y divide-line rounded-card border border-line bg-surface px-2">
                                     {weeklyRecommendations.map((rec) => (
                                         <NutrientRecommendationItem
                                             key={rec.id}
@@ -379,36 +382,36 @@ export function RecommendationsTab({
                         <button
                             type="button"
                             onClick={() => setIsCustomExpanded(!isCustomExpanded)}
-                            className="flex items-center justify-between w-full py-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded sm:py-2 touch-manipulation"
+                            className="flex min-h-11 w-full items-center justify-between rounded-tile text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                             aria-expanded={isCustomExpanded}
                         >
-                            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide sm:text-sm">
+                            <h3 className="type-overline text-fg-subtle">
                                 {t('foodTracker.recommendations.custom')}
                             </h3>
                             {isCustomExpanded ? (
-                                <ChevronDown className="w-3.5 h-3.5 text-gray-400 sm:w-4 sm:h-4" aria-hidden="true" />
+                                <ChevronDown className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                             ) : (
-                                <ChevronRight className="w-3.5 h-3.5 text-gray-400 sm:w-4 sm:h-4" aria-hidden="true" />
+                                <ChevronRight className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                             )}
                         </button>
 
                         {isCustomExpanded && (
-                            <div className="mt-1.5 space-y-1 bg-white rounded-xl shadow-sm border border-gray-200 p-2 sm:mt-2 sm:p-3">
+                            <div className="mt-2 divide-y divide-line rounded-card border border-line bg-surface px-2">
                                 {customRecommendations.length > 0 ? (
                                     customRecommendations.map((rec) => (
                                         <button
                                             key={rec.id}
                                             type="button"
                                             onClick={() => handleCustomRecommendationClick(rec)}
-                                            className="flex items-center justify-between w-full p-1.5 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 touch-manipulation"
+                                            className="flex min-h-14 w-full items-center justify-between gap-3 rounded-tile px-2 text-left transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                                         >
-                                            <span className="text-xs font-medium text-gray-900 sm:text-sm">
+                                            <span className="truncate text-sm font-medium text-fg">
                                                 {rec.name}
                                             </span>
                                             {/* Потребление по своей рекомендации сервер не
                                                 считает. Ноль нарисовал бы «0 из 500 мг» и
                                                 выглядел бы как измерение. */}
-                                            <span className="text-xs text-gray-500 sm:text-sm">
+                                            <span className="whitespace-nowrap text-[13px] text-fg-muted tabular-nums">
                                                 {rec.currentIntake === undefined
                                                     ? t('foodTracker.recommendations.targetOnly', {
                                                         target: String(rec.dailyTarget),
@@ -419,21 +422,25 @@ export function RecommendationsTab({
                                         </button>
                                     ))
                                 ) : (
-                                    <p className="text-xs text-gray-500 text-center py-1.5 sm:text-sm sm:py-2">
+                                    <p className="py-4 text-center text-sm text-fg-muted">
                                         {t('foodTracker.recommendations.noCustom')}
                                     </p>
                                 )}
 
                                 {/* Add custom recommendation button */}
-                                <button
-                                    type="button"
-                                    onClick={onAddRecommendationClick}
-                                    className="flex items-center justify-center gap-1 w-full p-1.5 mt-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-1.5 sm:p-2 sm:mt-2 sm:text-sm touch-manipulation"
-                                    aria-label={t('foodTracker.recommendations.add')}
-                                >
-                                    <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
-                                    <span>{t('foodTracker.recommendations.add')}</span>
-                                </button>
+                                <div className="py-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        block
+                                        onClick={onAddRecommendationClick}
+                                        className="touch-manipulation"
+                                        aria-label={t('foodTracker.recommendations.add')}
+                                    >
+                                        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                                        <span>{t('foodTracker.recommendations.add')}</span>
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </section>

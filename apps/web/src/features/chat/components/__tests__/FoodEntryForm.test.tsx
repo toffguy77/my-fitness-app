@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { FoodEntryForm } from '../FoodEntryForm'
 
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     X: (props: Record<string, unknown>) => <svg data-testid="x-icon" {...props} />,
 }))
 

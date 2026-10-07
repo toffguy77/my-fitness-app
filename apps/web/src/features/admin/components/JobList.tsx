@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { adminApi, type Job } from '../api/adminApi'
 import { isApiError, messageFor } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
 
 /**
  * Periodic jobs: what exists, when it last ran, and how it went.
@@ -54,31 +55,33 @@ export function JobList() {
     }
 
     if (loading) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('admin.jobs.loading')}</p>
+        return <p className="py-8 text-center text-sm text-fg-muted" role="status">{t('admin.jobs.loading')}</p>
     }
 
     return (
-        <ul className="space-y-2">
+        <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
             {jobs.map((job) => (
-                <li key={job.name} className="rounded-lg border border-gray-200 bg-white p-4">
-                    <div className="flex items-start justify-between gap-3">
+                <li key={job.name} className="px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                            <p className="truncate font-mono text-sm text-gray-900">{job.name}</p>
-                            <p className="mt-0.5 text-xs text-gray-500">{job.schedule}</p>
+                            <p className="truncate font-mono text-sm font-medium text-fg">{job.name}</p>
+                            <p className="mt-0.5 font-mono text-[13px] text-fg-muted">{job.schedule}</p>
                         </div>
-                        <button
+                        <Button
                             type="button"
+                            variant="secondary"
+                            size="sm"
                             onClick={() => handleRun(job.name)}
                             disabled={running === job.name}
-                            className="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            className="shrink-0"
                         >
                             {t('admin.jobs.run')}
-                        </button>
+                        </Button>
                     </div>
 
-                    <p className="mt-3 text-sm">
+                    <p className="mt-2 text-sm tabular-nums">
                         {job.last_run ? <LastRun run={job.last_run} /> : (
-                            <span className="text-gray-400">{t('admin.jobs.neverRan')}</span>
+                            <span className="text-fg-subtle">{t('admin.jobs.neverRan')}</span>
                         )}
                     </p>
                 </li>
@@ -96,19 +99,19 @@ function LastRun({ run }: { run: NonNullable<Job['last_run']> }) {
     if (run.status === 'failed') {
         return (
             <>
-                <span className="font-medium text-red-600">{t('admin.jobs.failed')}</span>
-                <span className="text-gray-500">{' — '}{when}</span>
-                {run.error && <span className="mt-1 block text-xs text-red-600">{run.error}</span>}
+                <span className="font-medium text-danger-fg">{t('admin.jobs.failed')}</span>
+                <span className="text-fg-muted">{' — '}{when}</span>
+                {run.error && <span className="mt-1 block text-xs text-danger-fg">{run.error}</span>}
             </>
         )
     }
 
     if (run.status === 'running') {
-        return <span className="text-blue-600">{t('admin.jobs.inProgress', { when })}</span>
+        return <span className="text-info-fg">{t('admin.jobs.inProgress', { when })}</span>
     }
 
     return (
-        <span className="text-gray-600">
+        <span className="text-fg-muted">
             {t('admin.jobs.succeeded', { when, items: String(run.items_processed) })}
         </span>
     )

@@ -84,6 +84,17 @@ jobs:
       - name: Check translations
         run: node scripts/check-i18n.mjs
 
+      # Дизайн-токены: собранные CSS, тема Tailwind и JS обязаны совпадать с
+      # источником в packages/design-tokens/tokens. Та же сборка проверяет
+      # ссылки, одинаковый набор ролей в светлой и тёмной теме и контраст WCAG.
+      - name: Check design tokens
+        run: npm run check --workspace=packages/design-tokens
+
+      # Сама сборка токенов — тоже сторож: проверка контраста или паритета тем,
+      # которая перестала срабатывать, пропускает ровно то, ради чего написана.
+      - name: Test the design token build
+        run: npm run test --workspace=packages/design-tokens
+
       # The guards above are code, and their own tests were written and then
       # never run by anything: only scripts/__tests__/dev-proxy.test.mjs was
       # wired in (in e2e.yml, where the proxy it tests is about to start).

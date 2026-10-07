@@ -80,8 +80,8 @@ test.describe('Curator Chat Detail', () => {
   })
 
   test('client name is shown in header', async ({ page }) => {
-    // Header should show client name (h2)
-    const clientName = page.locator('h2')
+    // The page heading is the client's name
+    const clientName = page.getByRole('heading', { level: 1 })
     await expect(clientName).toBeVisible()
     await expect(clientName).not.toHaveText('Загрузка...')
   })

@@ -37,9 +37,9 @@ jest.mock('next/image', () => ({
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     ArrowLeft: () => <div data-testid="arrow-left">Back</div>,
     MessageCircle: () => <div>MessageCircle</div>,
-    Loader2: (props: Record<string, unknown>) => <div data-testid="loader" className={String(props.className ?? '')}>Loading</div>,
     Check: () => <div>Check</div>,
     X: () => <div>X</div>,
     ChevronDown: () => <div>ChevronDown</div>,
@@ -285,9 +285,9 @@ describe('Curator Pages', () => {
     })
 
     describe('ClientDetailPage', () => {
-        it('renders without crashing and shows loader initially', () => {
+        it('renders without crashing and shows the spinner initially', () => {
             render(<ClientDetailPage />)
-            expect(screen.getByTestId('loader')).toBeInTheDocument()
+            expect(screen.getByRole('status', { name: 'Загрузка...' })).toBeInTheDocument()
         })
 
         // Три отказа на этой странице раньше ловились пустым catch с

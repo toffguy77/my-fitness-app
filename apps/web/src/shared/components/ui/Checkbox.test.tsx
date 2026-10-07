@@ -67,26 +67,26 @@ describe('Checkbox', () => {
             render(<Checkbox label="Test" error />);
             const checkbox = screen.getByRole('checkbox');
             expect(checkbox).toHaveAttribute('aria-invalid', 'true');
-            expect(checkbox).toHaveClass('border-red-500');
+            expect(checkbox).toHaveClass('border-danger');
         });
 
         it('applies error styles to label', () => {
             render(<Checkbox label="Test" error />);
             const label = screen.getByText('Test');
-            expect(label).toHaveClass('text-red-600');
+            expect(label).toHaveClass('text-danger-fg');
         });
 
         it('applies error styles to helper text', () => {
             render(<Checkbox label="Test" helperText="Helper" error />);
             const helper = screen.getByText('Helper');
-            expect(helper).toHaveClass('text-red-600');
+            expect(helper).toHaveClass('text-danger-fg');
         });
 
         it('does not have error styles when error is false', () => {
             render(<Checkbox label="Test" error={false} />);
             const checkbox = screen.getByRole('checkbox');
             expect(checkbox).not.toHaveAttribute('aria-invalid', 'true');
-            expect(checkbox).not.toHaveClass('border-red-500');
+            expect(checkbox).not.toHaveClass('border-danger');
         });
     });
 
@@ -204,7 +204,7 @@ describe('Checkbox', () => {
             render(<Checkbox className="custom-class" />);
             const checkbox = screen.getByRole('checkbox');
             expect(checkbox).toHaveClass('custom-class');
-            expect(checkbox).toHaveClass('h-4', 'w-4', 'rounded');
+            expect(checkbox).toHaveClass('h-5', 'w-5', 'rounded-xs');
         });
     });
 

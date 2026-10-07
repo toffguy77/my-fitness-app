@@ -9,10 +9,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
 import { providersApi } from '@/features/auth/api/providers'
 import { storeSession, destinationFor } from '@/features/auth/utils/session'
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
+import { AuthShell } from './AuthShell'
 
 export function OAuthCompleteScreen() {
     const router = useRouter()
@@ -36,24 +37,21 @@ export function OAuthCompleteScreen() {
 
     if (failed) {
         return (
-            <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-                <p className="text-sm text-gray-900">{t('auth.oauth.completeFailedTitle')}</p>
-                <p className="text-sm text-gray-600">
+            <AuthShell centered className="text-center">
+                <p className="type-title-2 text-fg">{t('auth.oauth.completeFailedTitle')}</p>
+                <p className="mt-3 type-body text-fg-muted">
                     {t('auth.oauth.completeFailedHint')}
                 </p>
-                <button
-                    onClick={() => router.replace('/auth')}
-                    className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                >
+                <Button onClick={() => router.replace('/auth')} size="lg" block className="mt-8">
                     {t('auth.oauth.backToSignIn')}
-                </button>
-            </main>
+                </Button>
+            </AuthShell>
         )
     }
 
     return (
-        <main className="flex min-h-screen items-center justify-center" aria-busy="true">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <main className="flex min-h-screen items-center justify-center bg-canvas" aria-busy="true">
+            <span className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
             <span className="sr-only">{t('auth.oauth.completing')}</span>
         </main>
     )

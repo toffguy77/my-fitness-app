@@ -8,44 +8,44 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8">
+        <div className="min-h-screen bg-canvas px-screen-x py-10 sm:py-14">
+            <article className="mx-auto max-w-content">
+                <h1 className="mb-10 type-display text-fg">
                     Политика конфиденциальности
                 </h1>
 
-                <div className="prose prose-gray max-w-none">
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                <div className="type-body text-fg">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             1. Общие положения
                         </h2>
-                        <p className="text-gray-700 mb-4" data-testid="privacy-intro">
+                        <p className="mb-4 text-fg" data-testid="privacy-intro">
                             Настоящая Политика конфиденциальности определяет порядок обработки и защиты
                             персональных данных пользователей платформы BURCEV (далее — "Платформа"),
                             принадлежащей {SELLER.fullName} (далее — "Оператор").
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Используя Платформу, вы соглашаетесь с условиями настоящей Политики
                             конфиденциальности.
                         </p>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             2. Какие данные мы собираем
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             2.1. При регистрации на Платформе мы собираем следующие данные:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="mb-4 list-disc space-y-1.5 pl-6 text-fg marker:text-fg-subtle">
                             <li>Email адрес</li>
                             <li>Пароль (в зашифрованном виде)</li>
                             <li>Имя и фамилия (опционально)</li>
                         </ul>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             2.2. При использовании Платформы мы собираем:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="mb-4 list-disc space-y-1.5 pl-6 text-fg marker:text-fg-subtle">
                             <li>Данные о питании (калории, макронутриенты, продукты)</li>
                             <li>
                                 Данные о весе, росте, поле, возрасте, уровне активности
@@ -69,14 +69,14 @@ export default function PrivacyPage() {
 
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             3. Цели обработки данных
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Мы обрабатываем ваши персональные данные для следующих целей:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="mb-4 list-disc space-y-1.5 pl-6 text-fg marker:text-fg-subtle">
                             <li>Предоставление доступа к функционалу Платформы</li>
                             <li>Идентификация пользователя</li>
                             <li>Обеспечение взаимодействия с тренерами и нутрициологами</li>
@@ -87,28 +87,28 @@ export default function PrivacyPage() {
                         </ul>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             4. Правовые основания обработки данных
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Обработка персональных данных осуществляется на основании:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="mb-4 list-disc space-y-1.5 pl-6 text-fg marker:text-fg-subtle">
                             <li>Вашего согласия на обработку персональных данных</li>
                             <li>Договора на оказание услуг (публичной оферты)</li>
                             <li>Федерального закона № 152-ФЗ "О персональных данных"</li>
                         </ul>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             5. Как мы защищаем ваши данные
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Мы применяем следующие меры защиты персональных данных:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="mb-4 list-disc space-y-1.5 pl-6 text-fg marker:text-fg-subtle">
                             <li>Шифрование данных при передаче (HTTPS/TLS)</li>
                             <li>Хеширование паролей (bcrypt)</li>
                             <li>Ограничение доступа к данным на уровне базы данных (RLS)</li>
@@ -118,37 +118,37 @@ export default function PrivacyPage() {
                         </ul>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             6. Передача данных третьим лицам
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             6.1. Мы не передаем ваши персональные данные третьим лицам, за исключением
                             следующих случаев:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="mb-4 list-disc space-y-1.5 pl-6 text-fg marker:text-fg-subtle">
                             <li>С вашего явного согласия</li>
                             <li>Тренерам и нутрициологам (в рамках предоставления услуг)</li>
                             <li>По требованию уполномоченных государственных органов</li>
                             <li>Поставщикам технических услуг (хостинг, аналитика) с соблюдением конфиденциальности</li>
                         </ul>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             6.2. Все третьи лица обязаны соблюдать конфиденциальность ваших данных.
                         </p>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             7. Хранение данных
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             7.1. Персональные данные хранятся на серверах, расположенных на территории
                             Российской Федерации (Yandex.Cloud).
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             7.2. Срок хранения данных:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="mb-4 list-disc space-y-1.5 pl-6 text-fg marker:text-fg-subtle">
                             <li>Учетные данные — до удаления учетной записи</li>
                             <li>Данные о питании — до удаления учетной записи</li>
                             <li>Заявки с сайта и обращения в поддержку — 90 дней</li>
@@ -159,77 +159,77 @@ export default function PrivacyPage() {
                         </ul>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             7-а. Удаление учетной записи
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Удалить учетную запись можно самостоятельно в разделе «Настройки —
                             Приватность». Для подтверждения запрашивается пароль.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Удаление происходит не сразу: в течение 30 дней запрос можно отменить,
                             и все данные останутся на месте. По истечении этого срока удаление
                             выполняется автоматически и необратимо.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Что удаляется полностью: дневник питания и воды, вес и замеры тела,
                             фотографии прогресса, ваши продукты, шаблоны и избранное, настройки и
                             уведомления, обращения в поддержку, а также все связанные файлы в
                             хранилище.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Что сохраняется без связи с вами: переписка с куратором и еженедельные
                             отчеты. Это одновременно и рабочая запись куратора, поэтому текст
                             остается читаемым, но перестает быть связан с вашей учетной записью —
                             в нем не остается ни имени, ни адреса почты, ни какого-либо другого
                             идентификатора.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Сама учетная запись не исчезает строкой в базе: адрес почты, имя и
                             фотография стираются, а обезличенная запись сохраняется, чтобы ссылки
                             на нее в чужих данных остались целыми. Войти в такую учетную запись
                             невозможно.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Данные могут какое-то время оставаться в резервных копиях — они
                             хранятся 30 дней и затем перезаписываются.
                         </p>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             8. Ваши права
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             В соответствии с законодательством РФ вы имеете право:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="mb-4 list-disc space-y-1.5 pl-6 text-fg marker:text-fg-subtle">
                             <li>Получать информацию об обработке ваших персональных данных</li>
                             <li>Требовать уточнения, блокирования или удаления данных</li>
                             <li>Отозвать согласие на обработку данных</li>
                             <li>Получить копию ваших данных</li>
                             <li>Обжаловать действия Оператора в Роскомнадзоре или суде</li>
                         </ul>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Копию своих данных можно получить самостоятельно, не обращаясь к нам:
                             в разделе «Настройки — Приватность» запрашивается выгрузка, и в ответ
                             приходит архив со всеми вашими записями. Архив доступен для скачивания
                             в течение 24 часов; запросить новый можно раз в сутки.
                         </p>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Для реализации остальных прав обращайтесь по адресу: privacy@burcev.team
                         </p>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             9. Cookies и аналитика
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             9.1. Мы используем cookies для:
                         </p>
-                        <ul className="list-disc pl-6 mb-4 text-gray-700">
+                        <ul className="mb-4 list-disc space-y-1.5 pl-6 text-fg marker:text-fg-subtle">
                             <li>Аутентификации пользователей</li>
                             <li>Сохранения настроек</li>
                             <li>Анализа использования Платформы</li>
@@ -239,53 +239,53 @@ export default function PrivacyPage() {
                                 открытая страница. Хранится 30 дней, третьим лицам не передаётся
                             </li>
                         </ul>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             9.2. Вы можете отключить cookies в настройках браузера, но это может
                             ограничить функционал Платформы.
                         </p>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             10. Изменения в Политике
                         </h2>
-                        <p className="text-gray-700 mb-4">
+                        <p className="mb-4 text-fg">
                             Мы оставляем за собой право вносить изменения в настоящую Политику
                             конфиденциальности. О существенных изменениях мы уведомим вас по email
                             или через уведомления на Платформе.
                         </p>
                     </section>
 
-                    <section className="mb-8">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <section className="mb-10">
+                        <h2 className="mb-4 type-title-2 text-fg">
                             11. Контактная информация
                         </h2>
                         <div data-testid="privacy-operator">
-                            <p className="text-gray-700 mb-2">
+                            <p className="mb-2 text-fg">
                                 <strong>Оператор персональных данных:</strong> {SELLER.fullName}
                             </p>
-                            <p className="text-gray-700 mb-2">
+                            <p className="mb-2 text-fg">
                                 <strong>ИНН:</strong> {SELLER.inn}, <strong>ОГРНИП:</strong> {SELLER.ogrnip}
                             </p>
-                            <p className="text-gray-700 mb-2">
+                            <p className="mb-2 text-fg">
                                 <strong>Адрес:</strong> {SELLER.address}
                             </p>
                         </div>
-                        <p className="text-gray-700 mb-2">
+                        <p className="mb-2 text-fg">
                             <strong>Email:</strong> privacy@burcev.team
                         </p>
-                        <p className="text-gray-700 mb-2">
+                        <p className="mb-2 text-fg">
                             <strong>Поддержка:</strong> support@burcev.team
                         </p>
                     </section>
 
-                    <div className="mt-12 pt-8 border-t border-gray-200">
-                        <p className="text-sm text-gray-500">
+                    <div className="mt-12 border-t border-line pt-8">
+                        <p className="text-sm text-fg-muted">
                             Дата последнего обновления: {LEGAL_DOCUMENTS_UPDATED}
                         </p>
                     </div>
                 </div>
-            </div>
+            </article>
         </div>
     );
 }

@@ -95,8 +95,8 @@ export class CuratorChatDetailPage {
 
   async expectLoaded() {
     await expect(this.backButton).toBeVisible({ timeout: 15000 })
-    // Wait for conversation data to load (h2 changes from "Загрузка..." to client name)
-    const heading = this.page.locator('h2')
+    // Wait for conversation data to load (the page heading changes from "Загрузка..." to client name)
+    const heading = this.page.getByRole('heading', { level: 1 })
     await expect(heading).toBeVisible({ timeout: 10000 })
     await expect(heading).not.toHaveText('Загрузка...', { timeout: 10000 })
   }

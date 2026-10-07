@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
-import { cn } from '@/shared/utils/cn'
+import { ChevronRight } from 'lucide-react'
 import { adminApi } from '../api/adminApi'
 import type { AdminConversation } from '../types'
 
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { ADMIN_ROW_CLASS, AdminSpinner } from './adminUi'
 export function AdminConversationList() {
     const router = useRouter()
     const [conversations, setConversations] = useState<AdminConversation[]>([])
@@ -30,45 +30,40 @@ export function AdminConversationList() {
     }, [])
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            </div>
-        )
+        return <AdminSpinner />
     }
 
     if (error) {
-        return <p className="py-8 text-center text-sm text-red-500">{error}</p>
+        return <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
     }
 
     if (conversations.length === 0) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('admin.chats.empty')}</p>
+        return <p className="py-8 text-center text-sm text-fg-muted">{t('admin.chats.empty')}</p>
     }
 
     return (
-        <div className="space-y-2">
+        <div className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
             {conversations.map((conv) => (
                 <button
                     key={conv.id}
                     type="button"
                     onClick={() => router.push(`/admin/chats/${conv.id}`)}
-                    className={cn(
-                        'w-full rounded-xl bg-white p-4 shadow-sm border border-gray-100',
-                        'text-left transition-shadow hover:shadow-md',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2'
-                    )}
+                    className={ADMIN_ROW_CLASS}
                 >
-                    <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-semibold text-gray-900">
-                            {conv.client_name} — {conv.curator_name}
-                        </p>
-                        <span className="text-xs text-gray-400">
-                            {new Date(conv.updated_at).toLocaleDateString('ru-RU')}
+                    <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-3">
+                            <span className="type-headline truncate text-fg">
+                                {conv.client_name} — {conv.curator_name}
+                            </span>
+                            <span className="shrink-0 text-[13px] tabular-nums text-fg-subtle">
+                                {new Date(conv.updated_at).toLocaleDateString('ru-RU')}
+                            </span>
                         </span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                        {t('admin.chats.messageCount', { count: conv.message_count })}
-                    </p>
+                        <span className="block text-sm tabular-nums text-fg-muted">
+                            {t('admin.chats.messageCount', { count: conv.message_count })}
+                        </span>
+                    </span>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                 </button>
             ))}
         </div>

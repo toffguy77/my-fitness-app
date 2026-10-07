@@ -151,7 +151,7 @@ describe('Food Tracker Integration Tests', () => {
             expect(screen.getByText('Куриная грудка')).toBeInTheDocument();
 
             // Verify КБЖУ summary is displayed
-            expect(screen.getByText('Ккал')).toBeInTheDocument();
+            expect(screen.getByTestId('kbzhu-calories')).toBeInTheDocument();
             expect(screen.getByText('Белки')).toBeInTheDocument();
             expect(screen.getByText('Жиры')).toBeInTheDocument();
             expect(screen.getByText('Углеводы')).toBeInTheDocument();
@@ -330,13 +330,10 @@ describe('Food Tracker Integration Tests', () => {
         });
     });
 
-    describe('FAB Button', () => {
-        it('renders FAB button for adding food', () => {
+    describe('Quick Add Bar', () => {
+        it('renders quick add bar for adding food', () => {
             render(<DietTab {...createDietTabProps()} />);
-
-            // Should have FAB button
-            const fabButton = screen.getByTestId('fab-add-food');
-            expect(fabButton).toBeInTheDocument();
+            expect(screen.getByTestId('quick-add-bar')).toBeInTheDocument();
         });
     });
 });

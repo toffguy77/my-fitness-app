@@ -11,6 +11,8 @@ import type { Notification, NotificationCategory } from '../../types';
 // Mock the store
 jest.mock('../../store/notificationsStore');
 
+const mockFetchUnreadCounts = jest.fn();
+
 describe('useNotifications', () => {
     let mockFetchNotifications: jest.Mock;
     let mockMarkAsRead: jest.Mock;
@@ -62,7 +64,7 @@ describe('useNotifications', () => {
                 },
                 fetchNotifications: mockFetchNotifications,
                 markAsRead: mockMarkAsRead,
-                fetchUnreadCounts: jest.fn(),
+                fetchUnreadCounts: mockFetchUnreadCounts,
             };
             return selector(state);
         });
@@ -76,6 +78,8 @@ describe('useNotifications', () => {
         const { result } = renderHook(() => useNotifications('main'));
 
         expect(mockFetchNotifications).toHaveBeenCalledWith('main', 0);
+        // The counters come from the shell's polling, not from each list
+        expect(mockFetchUnreadCounts).not.toHaveBeenCalled();
         expect(result.current.notifications).toEqual(mockNotifications);
         expect(result.current.unreadCount).toBe(2);
     });

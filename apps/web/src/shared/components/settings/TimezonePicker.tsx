@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { useState, useEffect, useRef, useId } from 'react'
+import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
+import { fieldClass, fieldLabelClass } from '../forms/fieldStyles'
 
 export interface TimezoneSelectorProps {
     value: string
@@ -27,6 +28,8 @@ const timezones = [
 export function TimezoneSelector({ value, onChange, disabled }: TimezoneSelectorProps) {
     const [isOpen, setIsOpen] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
+    const labelId = useId()
+    const valueId = useId()
 
     const selectedLabel = timezones.find((tz) => tz.value === value)?.label ?? 'Выберите часовой пояс'
 
@@ -45,29 +48,30 @@ export function TimezoneSelector({ value, onChange, disabled }: TimezoneSelector
 
     return (
         <div className="w-full">
-            <h3 className="mb-3 text-sm font-bold text-gray-900">Часовой пояс</h3>
+            <p id={labelId} className={fieldLabelClass}>Часовой пояс</p>
             <div className="relative" ref={containerRef}>
                 <button
                     type="button"
                     disabled={disabled}
                     onClick={() => setIsOpen((o) => !o)}
-                    className={cn(
-                        'flex w-full items-center justify-between rounded-xl px-4 py-3 text-left font-medium transition-colors',
-                        'bg-gray-100 text-gray-700',
-                        'disabled:pointer-events-none disabled:opacity-50'
-                    )}
+                    aria-expanded={isOpen}
+                    aria-labelledby={`${labelId} ${valueId}`}
+                    className={cn(fieldClass, 'items-center justify-between gap-2 text-left')}
                 >
-                    {selectedLabel}
+                    <span id={valueId} className="truncate">{selectedLabel}</span>
                     <ChevronDown
                         className={cn(
-                            'h-4 w-4 text-gray-500 transition-transform',
+                            'h-5 w-5 shrink-0 text-fg-subtle transition-transform',
                             isOpen && 'rotate-180'
                         )}
+                        strokeWidth={1.8}
+                        aria-hidden="true"
                     />
                 </button>
 
+                {/* Меню лежит над экраном — единственное здесь, чему положена тень. */}
                 {isOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 z-50 max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-tile border border-line bg-surface py-1 shadow-overlay">
                         {timezones.map((tz) => {
                             const isActive = value === tz.value
                             return (
@@ -78,14 +82,17 @@ export function TimezoneSelector({ value, onChange, disabled }: TimezoneSelector
                                         onChange(tz.value)
                                         setIsOpen(false)
                                     }}
+                                    aria-pressed={isActive}
                                     className={cn(
-                                        'flex w-full items-center px-4 py-3 text-left text-sm font-medium transition-colors',
-                                        isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-gray-700 hover:bg-gray-100'
+                                        'flex min-h-11 w-full items-center justify-between gap-3 px-4 text-left text-base tabular-nums transition-colors',
+                                        'hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-none',
+                                        isActive ? 'font-semibold text-fg' : 'text-fg'
                                     )}
                                 >
                                     {tz.label}
+                                    {isActive && (
+                                        <Check className="h-5 w-5 shrink-0 text-fg" strokeWidth={2} aria-hidden="true" />
+                                    )}
                                 </button>
                             )
                         })}

@@ -70,8 +70,8 @@ export const createOfflineSlice: StateCreator<
         // Show toast when going offline
         if (isOffline && !wasOffline) {
             toast.error(t('common.offline'), {
+                // Эмодзи в интерфейсе — нет: значок ставит сам toast.
                 duration: 4000,
-                icon: '📡',
             });
         }
 
@@ -79,7 +79,6 @@ export const createOfflineSlice: StateCreator<
         if (!isOffline && wasOffline) {
             toast.success(t('foodTracker.entries.reconnected'), {
                 duration: 3000,
-                icon: '✅',
             });
             // Sync pending operations
             get().syncWhenOnline();

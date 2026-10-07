@@ -8,9 +8,9 @@ export interface AlertBadgeProps {
 }
 
 const levelStyles: Record<AlertBadgeProps['level'], string> = {
-    red: 'bg-red-100 text-red-800',
-    yellow: 'bg-yellow-100 text-yellow-800',
-    green: 'bg-green-100 text-green-800',
+    red: 'bg-danger-soft text-danger-fg',
+    yellow: 'bg-warning-soft text-warning-fg',
+    green: 'bg-success-soft text-success-fg',
 }
 
 export function AlertBadge({ level, message }: AlertBadgeProps) {

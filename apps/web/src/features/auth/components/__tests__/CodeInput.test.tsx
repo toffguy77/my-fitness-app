@@ -107,21 +107,23 @@ describe('CodeInput', () => {
         })
     })
 
-    it('applies error styling when error prop is true', () => {
+    it('marks every digit invalid when error prop is true', () => {
         render(<CodeInput {...defaultProps} error />)
 
         const inputs = screen.getAllByRole('textbox')
         inputs.forEach((input) => {
-            expect(input.className).toContain('border-red')
+            expect(input).toHaveAttribute('aria-invalid', 'true')
+            expect(input.className).toContain('border-danger')
         })
     })
 
-    it('applies normal styling when error prop is false', () => {
+    it('does not mark digits invalid when error prop is false', () => {
         render(<CodeInput {...defaultProps} error={false} />)
 
         const inputs = screen.getAllByRole('textbox')
         inputs.forEach((input) => {
-            expect(input.className).toContain('border-gray')
+            expect(input).not.toHaveAttribute('aria-invalid')
+            expect(input.className).not.toContain('border-danger')
         })
     })
 

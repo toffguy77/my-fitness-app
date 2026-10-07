@@ -16,7 +16,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         return (
             <div className="w-full">
                 {label && (
-                    <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-gray-700">
+                    <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium text-fg-muted">
                         {label}
                     </label>
                 )}
@@ -28,22 +28,23 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                     aria-invalid={!!error}
                     aria-describedby={error ? errorId : helperId}
                     className={cn(
-                        'flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm',
-                        'placeholder:text-gray-400',
-                        'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2',
+                        // 16 px текста — iOS не увеличивает страницу при фокусе.
+                        'flex h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums',
+                        'placeholder:text-fg-subtle',
+                        'transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30',
                         'disabled:cursor-not-allowed disabled:opacity-50',
-                        error && 'border-red-500 focus:ring-red-600',
+                        error && 'border-danger focus:ring-danger',
                         className
                     )}
                     {...props}
                 />
                 {error && (
-                    <p id={errorId} className="mt-1 text-sm text-red-600" role="alert">
+                    <p id={errorId} className="mt-1 text-sm text-danger-fg" role="alert">
                         {error}
                     </p>
                 )}
                 {helperText && !error && (
-                    <p id={helperId} className="mt-1 text-sm text-gray-500">
+                    <p id={helperId} className="mt-1 text-sm text-fg-muted">
                         {helperText}
                     </p>
                 )}

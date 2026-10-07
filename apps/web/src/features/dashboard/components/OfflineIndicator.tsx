@@ -7,6 +7,8 @@ import React from 'react';
 import { WifiOff, Wifi, RefreshCw } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { getQueueSize } from '../utils/offlineQueue';
+import { IconButton } from '@/shared/components/ui/Button';
+import { cn } from '@/shared/utils/cn';
 import { t, plural } from '@/shared/i18n'
 
 export interface OfflineIndicatorProps {
@@ -51,37 +53,39 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
         return null;
     }
 
+    // Плашка над экраном — `shadow-float`. Нет связи — состояние danger;
+    // синхронизация — уведомление, поэтому тёмная поверхность `coach`, а не
+    // терракота: бренд принадлежит главному действию экрана.
     return (
         <div
-            className={`fixed bottom-4 right-4 z-50 ${className}`}
+            className={cn('fixed bottom-4 right-4 z-50 flex flex-col items-end', className)}
             role="status"
             aria-live="polite"
             aria-atomic="true"
         >
             <div
-                className={`
-                    flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg
-                    ${isOffline
-                        ? 'bg-red-500 text-white'
-                        : 'bg-blue-500 text-white'
-                    }
-                `}
+                className={cn(
+                    'flex min-h-11 items-center gap-2 rounded-full py-1 pl-4 shadow-float',
+                    isOffline ? 'bg-danger pr-4 text-on-primary' : 'bg-coach pr-1 text-on-coach'
+                )}
             >
                 {/* Icon */}
                 {isOffline ? (
                     <WifiOff
-                        className="w-5 h-5"
+                        className="h-[18px] w-[18px]"
+                        strokeWidth={1.8}
                         aria-hidden="true"
                     />
                 ) : (
                     <Wifi
-                        className="w-5 h-5"
+                        className="h-[18px] w-[18px] text-on-coach-muted"
+                        strokeWidth={1.8}
                         aria-hidden="true"
                     />
                 )}
 
                 {/* Status text */}
-                <span className="text-sm font-medium">
+                <span className="text-sm font-semibold tabular-nums">
                     {isOffline ? (
                         t('dashboard.connection.offline')
                     ) : queueSize > 0 ? (
@@ -93,23 +97,25 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
 
                 {/* Sync button (only when online and has pending changes) */}
                 {!isOffline && queueSize > 0 && (
-                    <button
+                    <IconButton
+                        variant="on-coach"
                         onClick={handleSync}
                         disabled={isSyncing}
-                        className="ml-2 p-1 rounded hover:bg-white/20 transition-colors disabled:opacity-50"
+                        className="border-0"
                         aria-label={t('dashboard.connection.syncNow')}
                     >
                         <RefreshCw
-                            className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`}
+                            className={cn('h-4 w-4', isSyncing && 'animate-spin')}
+                            strokeWidth={2}
                             aria-hidden="true"
                         />
-                    </button>
+                    </IconButton>
                 )}
             </div>
 
             {/* Pending changes count (when offline) */}
             {isOffline && queueSize > 0 && (
-                <div className="mt-2 text-xs text-center text-gray-600 bg-white rounded px-2 py-1 shadow">
+                <div className="mt-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-fg-muted tabular-nums shadow-float">
                     {t('dashboard.connection.queued', { count: queueSize, noun: plural(queueSize, { one: t('dashboard.sync.changeOne'), few: t('dashboard.sync.changeFew'), many: t('dashboard.sync.changeMany') }) })}
                 </div>
             )}

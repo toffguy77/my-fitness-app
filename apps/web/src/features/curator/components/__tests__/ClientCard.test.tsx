@@ -69,13 +69,13 @@ describe('ClientCard', () => {
     it('shows unread count badge when unread_count > 0', () => {
         render(<ClientCard client={makeClient({ unread_count: 5 })} />)
 
-        expect(screen.getByText('5')).toBeInTheDocument()
+        expect(screen.getByTestId('client-unread-badge')).toHaveTextContent('5')
     })
 
     it('does not show unread badge when count is 0', () => {
-        const { container } = render(<ClientCard client={makeClient({ unread_count: 0 })} />)
+        render(<ClientCard client={makeClient({ unread_count: 0 })} />)
 
-        expect(container.querySelector('.bg-red-500')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('client-unread-badge')).not.toBeInTheDocument()
     })
 
     it('shows KBZHU progress bars when plan and kbzhu exist', () => {

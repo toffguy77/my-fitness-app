@@ -13,6 +13,8 @@
 
 import { useEffect, memo, useCallback } from 'react'
 import { cn } from '@/shared/utils/cn'
+import { AlertTriangle, WifiOff } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 import { useDashboardStore } from '../store/dashboardStore'
 import { formatLocalDate } from '@/shared/utils/format'
 import { NutritionBlock } from './NutritionBlock'
@@ -38,6 +40,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
         dailyData,
         isLoading,
         error,
+        isOffline,
         fetchDailyData,
         startPolling,
         stopPolling,
@@ -56,7 +59,9 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
     // Fetch data and start polling on mount
     useEffect(() => {
         handleFetchData()
-        startPolling(30000) // Poll every 30 seconds
+        // The page has just fetched the plan and the tasks; polling only keeps
+        // them fresh from here on.
+        startPolling(30000, { immediate: false })
 
         return () => {
             stopPolling()
@@ -70,8 +75,12 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
         }
     }, [date, error, clearError])
 
-    // Loading state
-    if (isLoading && !dayData) {
+    // Until the day's first answer arrives — loading or not yet asked. The
+    // blocks used to render for one frame before the fetch began, then give way
+    // to the skeleton and mount again: a flash of zeros, and every block's own
+    // request (the norm, the water) sent twice. Offline without a cached day,
+    // the blocks still render from what they have.
+    if (!dayData && !error && !isOffline) {
         return (
             <div className={cn('space-y-4', className)}>
                 {/* Loading skeleton */}
@@ -79,7 +88,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                     {Array.from({ length: 3 }).map((_, index) => (
                         <div
                             key={index}
-                            className="h-80 bg-gray-100 rounded-lg animate-pulse"
+                            className="h-80 animate-pulse rounded-card bg-subtle"
                             aria-label={t('dashboard.grid.loadingAria')}
                         />
                     ))}
@@ -92,37 +101,26 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
     if (error && !dayData) {
         return (
             <div className={cn('space-y-4', className)}>
-                <div className="text-center py-8 space-y-4">
-                    <div className="text-red-500">
-                        <svg
-                            className="h-12 w-12 mx-auto mb-3"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            aria-hidden="true"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.5}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                            />
-                        </svg>
+                <div className="space-y-4 rounded-card border border-line bg-surface px-5 py-8 text-center">
+                    <div className="flex justify-center">
+                        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-danger-soft">
+                            <AlertTriangle className="h-6 w-6 text-danger-fg" strokeWidth={1.8} aria-hidden="true" />
+                        </span>
                     </div>
-                    <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                    <div className="space-y-1">
+                        <h3 className="type-title-3 text-fg">
                             {t('dashboard.grid.loadFailed')}
                         </h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-fg-muted">
                             {error.message}
                         </p>
                     </div>
-                    <button
+                    <Button
+                        variant="secondary"
                         onClick={() => handleFetchData()}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
                         {t('dashboard.grid.retry')}
-                    </button>
+                    </Button>
                 </div>
             </div>
         )
@@ -134,8 +132,9 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
             {/* Mobile: single column, stacked blocks */}
             {/* Tablet+: three-column grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-                {/* Nutrition Block */}
-                <div className="col-span-1">
+                {/* Питание — главный блок дня: на планшете и шире во всю строку
+                    сетки из двух колонок, на десктопе — половина из четырёх. */}
+                <div className="col-span-1 sm:col-span-2">
                     <NutritionBlock
                         date={date}
                         className="h-full"
@@ -170,27 +169,11 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
             {/* Real-time update indicator */}
             {isLoading && dayData && (
                 <div className="flex items-center justify-center py-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <svg
-                            className="h-4 w-4 animate-spin"
-                            viewBox="0 0 24 24"
+                    <div className="flex items-center gap-2 text-sm text-fg-muted">
+                        <span
+                            className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-primary"
                             aria-hidden="true"
-                        >
-                            <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                                fill="none"
-                            />
-                            <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            />
-                        </svg>
+                        />
                         <span>{t('dashboard.grid.refreshing')}</span>
                     </div>
                 </div>
@@ -199,22 +182,9 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
             {/* Offline indicator */}
             {error?.code === 'NETWORK_ERROR' && (
                 <div className="flex items-center justify-center py-2">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <svg
-                            className="h-4 w-4 text-yellow-600"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            aria-hidden="true"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                            />
-                        </svg>
-                        <span className="text-sm text-yellow-800">
+                    <div className="flex items-center gap-2 rounded-tile bg-warning-soft px-3 py-2">
+                        <WifiOff className="h-4 w-4 flex-shrink-0 text-warning-fg" strokeWidth={1.8} aria-hidden="true" />
+                        <span className="text-sm text-warning-fg">
                             {t('dashboard.grid.offlineCached')}
                         </span>
                     </div>

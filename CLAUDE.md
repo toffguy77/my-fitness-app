@@ -56,6 +56,7 @@ make build-api    # Go binary → apps/api/bin/server
 - `packages/ui/` — Shared React UI components (@burcev/ui)
 - `packages/utils/` — Shared utilities (@burcev/utils)
 - `packages/config/` — Shared ESLint/TypeScript configs (@burcev/config)
+- `packages/design-tokens/` — Design tokens (@burcev/design-tokens): W3C DTCG source → CSS, Tailwind theme, JS, JSON for mobile
 
 ### Frontend (`apps/web/src/`)
 Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
@@ -64,7 +65,6 @@ Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
 - `features/` — Self-contained feature modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **notifications**, **nutrition-calc**, **onboarding**, **settings**
   - Each feature has: `api/`, `components/`, `hooks/`, `store/` (Zustand), `types/`, `index.ts`
 - `shared/` — Cross-feature reusable code: `components/ui/`, `hooks/`, `utils/`, `types/`, `constants/`
-- `styles/tokens/` — Design tokens (colors, typography, spacing)
 - `lib/` — Third-party library integrations
 
 ### Backend (`apps/api/`)
@@ -103,6 +103,12 @@ the Metrika work were nearly shipped dead.
   network through jsdom's `XMLHttpRequest` and failed two food-tracker tests with a
   TLS error naming neither the request nor its caller
 - Coverage thresholds: branches 79%, functions 85%, lines 87%, statements 84%
+- `apiClient.get` shares identical reads in flight at the same moment (each
+  caller gets its own copy). Components still must not *cause* repeats:
+  report online/offline only on a change, start polling with
+  `{ immediate: false }` right after your own fetch, key effects on ids rather
+  than objects. `e2e/tests/design-system.spec.ts` fails a page that sends the
+  same GET twice in one load
 - Husky pre-commit hooks run linting and type checks
 - Commit messages follow conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
 
@@ -119,6 +125,30 @@ the Metrika work were nearly shipped dead.
 - State backend: S3 bucket `burcev-terraform-state`
 - Manages: service accounts, S3 access keys, IAM bindings, PostgreSQL users/databases
 - Secrets (credentials, passwords) are in `.claude/CLAUDE.local.md` (local only, not in git)
+
+## Design System
+
+Правила и роли — `docs/design-system/README.md`, живой справочник —
+`/design-system`. Коротко:
+
+- **Значения — только в `packages/design-tokens/tokens/*.json`.** После правки
+  `npm run tokens:build` и коммит вместе с `dist/`; CI (`npm run tokens:check`)
+  падает, если `dist/` отстал, если у тем разный набор ролей или если пара
+  «текст на фоне» не держит контраст. Сами эти отказы проверяет
+  `npm run tokens:test`.
+- **В разметке — роли**: `bg-surface`, `text-fg-muted`, `border-line`,
+  `bg-primary`, `text-protein-fg`… Палитра Tailwind (`gray-500`, `blue-600`)
+  отключена в теме и запрещена ESLint, как и цвет литералом. В SVG и графиках —
+  `color.*` из `@burcev/design-tokens` или `@/shared/charts/chartTheme`.
+- **`dark:` для цвета не нужен** — роли переключаются темой сами.
+- **Ветка до дизайн-системы**: `node apps/web/scripts/design-system-codemod.mjs`,
+  затем `npm run lint:web`.
+- Новый повторяющийся элемент — компонент в `shared/components/ui` с тестом и
+  примером на `/design-system`.
+- **Первый клиентский рендер = серверный.** Кэш из localStorage, время и cookie
+  читаются после гидратации (`useSyncExternalStore` с серверным снимком, как в
+  `useCurrentUser`), иначе React #418 пересобирает страницу. Сторожит
+  `e2e/tests/design-system.spec.ts`.
 
 ## Lint Hygiene
 

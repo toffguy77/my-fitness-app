@@ -79,6 +79,35 @@ const eslintConfig = defineConfig([
       "react-hooks/refs": "error",
     },
   },
+  {
+    // Дизайн-система: в интерфейсе только роли (docs/design-system/README.md).
+    //
+    // До неё в 201 файле жили 3 037 классов палитры (gray-500, blue-600…) и
+    // десятки шестнадцатеричных цветов в графиках: один и тот же «серый
+    // текст» был пятью разными серыми, а тёмная тема была невозможна. Палитра
+    // Tailwind отключена в теме, так что такой класс просто не сработает —
+    // правило говорит об этом сразу и называет роль, которой его заменить.
+    // Перевод старых классов: apps/web/scripts/design-system-codemod.mjs.
+    files: ["apps/web/src/**/*.{ts,tsx}"],
+    ignores: ["**/__tests__/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/testing/**"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/(^|[\\s:'\"`])(bg|text|border|border-[trblxy]|ring|ring-offset|fill|stroke|from|via|to|divide|outline|placeholder|accent|decoration|caret|shadow)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|[1-9]00|950)\\b/]",
+          message: "Класс палитры Tailwind вместо роли дизайн-системы. Используйте роль: bg-surface, text-fg-muted, border-line, bg-primary, text-danger-fg… (docs/design-system/README.md).",
+        },
+        {
+          selector: "TemplateElement[value.raw=/(^|[\\s:])(bg|text|border|border-[trblxy]|ring|ring-offset|fill|stroke|from|via|to|divide|outline|placeholder|accent|decoration|caret|shadow)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|[1-9]00|950)\\b/]",
+          message: "Класс палитры Tailwind вместо роли дизайн-системы. Используйте роль: bg-surface, text-fg-muted, border-line, bg-primary, text-danger-fg… (docs/design-system/README.md).",
+        },
+        {
+          selector: "Literal[value=/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]",
+          message: "Цвет литералом. Возьмите роль из @burcev/design-tokens: color.* (CSS-переменная, переключается с темой) или values.light/dark там, где переменных нет.",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

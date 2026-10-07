@@ -35,7 +35,7 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                     // Desktop: comfortable padding
                     'px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6',
                     // Background color from design system
-                    'bg-gray-50',
+                    'bg-canvas',
                     className
                 )}
                 data-testid="main-content"

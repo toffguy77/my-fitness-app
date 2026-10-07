@@ -17,6 +17,7 @@ import { MessageList } from '@/features/chat/components/MessageList'
 import { ChatInput } from '@/features/chat/components/ChatInput'
 import { TypingIndicator } from '@/features/chat/components/TypingIndicator'
 import { FoodEntryForm } from '@/features/chat/components/FoodEntryForm'
+import { IconButton } from '@/shared/components/ui/Button'
 import type { Conversation, Message } from '@/features/chat/types'
 
 import { t } from '@/shared/i18n'
@@ -80,18 +81,17 @@ export default function CuratorChatPage() {
     return (
         <div className="flex flex-col h-[calc(100vh-8rem)]">
             {/* Header with back button and client name */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white">
-                <button
-                    type="button"
+            <div className="flex items-center gap-2 border-b border-line bg-surface px-3 py-2">
+                <IconButton
+                    variant="ghost"
                     onClick={() => router.push('/curator/chat')}
-                    className="p-1 text-gray-600 hover:text-gray-900 transition-colors"
                     aria-label={t('curator.navigation.backToChats')}
                 >
-                    <ArrowLeft className="w-5 h-5" />
-                </button>
-                <h2 className="text-lg font-medium text-gray-900">
+                    <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                </IconButton>
+                <h1 className="type-title-3 min-w-0 truncate text-fg">
                     {conversation?.participant.name ?? t('common.loading')}
-                </h2>
+                </h1>
             </div>
 
             {/* Message list with image action support */}

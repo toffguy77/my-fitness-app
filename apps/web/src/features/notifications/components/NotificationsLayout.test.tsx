@@ -4,7 +4,7 @@
  * Validates: Requirements 1.1, 1.4, 6.1, 6.2, 6.3
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useRouter } from 'next/navigation';
 import { NotificationsLayout } from './NotificationsLayout';
@@ -96,7 +96,7 @@ describe('NotificationsLayout', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const backButton = screen.getByRole('button', { name: /back to dashboard/i });
-            expect(backButton).toHaveClass('focus:outline-none', 'focus-visible:ring-2');
+            expect(backButton).toHaveClass('focus-visible:outline-none', 'focus-visible:ring-2');
         });
     });
 
@@ -130,46 +130,28 @@ describe('NotificationsLayout', () => {
         });
     });
 
-    describe('Responsive Design (Requirements 6.1, 6.2, 6.3)', () => {
-        it('applies fixed height matching dashboard header', () => {
+    describe('Layout (Requirements 6.1, 6.2, 6.3)', () => {
+        it('keeps header buttons at a 44 px touch target', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const header = screen.getByRole('banner');
-
-            // Check for fixed height and padding (matching dashboard)
-            expect(header).toHaveClass('h-16', 'px-4');
+            within(header).getAllByRole('button').forEach((button) => {
+                expect(button).toHaveClass('h-11', 'w-11');
+            });
         });
 
-        it('applies responsive font sizes to title', () => {
+        it('shows the screen title in serif', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
-            const title = screen.getByRole('heading', { name: /уведомления/i });
-
-            // Check for responsive font size classes
-            expect(title).toHaveClass('text-xl');     // Mobile
-            expect(title).toHaveClass('sm:text-2xl'); // Tablet
-            expect(title).toHaveClass('lg:text-3xl'); // Desktop
+            const title = screen.getByRole('heading', { level: 1, name: /уведомления/i });
+            expect(title).toHaveClass('type-title-1');
         });
 
-        it('applies responsive padding to main content area', () => {
+        it('keeps content in the content column', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const main = screen.getByRole('main');
-
-            // Check for responsive padding classes
-            expect(main).toHaveClass('px-0');      // Mobile (full width)
-            expect(main).toHaveClass('sm:px-4');   // Tablet
-            expect(main).toHaveClass('lg:px-8');   // Desktop
-            expect(main).toHaveClass('py-4');      // Mobile vertical
-            expect(main).toHaveClass('sm:py-6');   // Tablet vertical
-            expect(main).toHaveClass('lg:py-8');   // Desktop vertical
-        });
-
-        it('applies max-width constraint for optimal reading', () => {
-            render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
-
-            const main = screen.getByRole('main');
-            expect(main).toHaveClass('max-w-7xl', 'mx-auto', 'w-full');
+            expect(main).toHaveClass('max-w-content', 'mx-auto', 'w-full');
         });
     });
 
@@ -209,7 +191,7 @@ describe('NotificationsLayout', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const settingsButton = screen.getByRole('button', { name: /notification settings/i });
-            expect(settingsButton).toHaveClass('focus:outline-none', 'focus-visible:ring-2');
+            expect(settingsButton).toHaveClass('focus-visible:outline-none', 'focus-visible:ring-2');
         });
 
         it('settings icon has aria-hidden attribute', () => {
@@ -225,7 +207,7 @@ describe('NotificationsLayout', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const title = screen.getByRole('heading', { name: /уведомления/i });
-            expect(title).toHaveClass('text-gray-900'); // High contrast text
+            expect(title).toHaveClass('text-fg'); // High contrast text
         });
     });
 
@@ -234,21 +216,21 @@ describe('NotificationsLayout', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const layout = screen.getByTestId('notifications-layout');
-            expect(layout).toHaveClass('bg-gray-50');
+            expect(layout).toHaveClass('bg-canvas');
         });
 
-        it('applies white background and border to header', () => {
+        it('applies the navigation surface and border to header', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const header = screen.getByRole('banner');
-            expect(header).toHaveClass('bg-white', 'border-b', 'border-gray-200');
+            expect(header).toHaveClass('bg-nav', 'border-b', 'border-line');
         });
 
         it('applies hover styles to settings button', () => {
             render(<NotificationsLayout>{mockChildren}</NotificationsLayout>);
 
             const settingsButton = screen.getByRole('button', { name: /notification settings/i });
-            expect(settingsButton).toHaveClass('hover:text-gray-900', 'hover:bg-gray-100');
+            expect(settingsButton).toHaveClass('hover:bg-subtle');
         });
 
         it('applies transition to settings button', () => {

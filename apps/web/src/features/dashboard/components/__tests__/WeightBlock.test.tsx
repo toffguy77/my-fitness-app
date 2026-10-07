@@ -53,7 +53,7 @@ describe('WeightBlock - Core Functionality', () => {
         expect(screen.getByText('78.5')).toBeInTheDocument()
 
         // Check for green color class (weight decrease is good)
-        const greenElements = container.querySelectorAll('.text-green-600')
+        const greenElements = container.querySelectorAll('.text-success-fg')
         expect(greenElements.length).toBeGreaterThan(0)
     })
 

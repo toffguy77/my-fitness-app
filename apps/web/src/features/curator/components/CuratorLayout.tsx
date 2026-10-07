@@ -28,7 +28,7 @@ export const CuratorLayout = forwardRef<HTMLDivElement, CuratorLayoutProps>(
         children,
         userName,
         avatarUrl,
-        activeNavItem = 'hub',
+        activeNavItem,
         onNavigate,
         className
     }, ref) => {
@@ -53,7 +53,7 @@ export const CuratorLayout = forwardRef<HTMLDivElement, CuratorLayoutProps>(
                     className={cn(
                         'min-h-screen',
                         'w-full max-w-full overflow-x-hidden',
-                        'bg-gray-50',
+                        'bg-canvas',
                         'transition-all duration-300 ease-in-out',
                         className
                     )}

@@ -5,6 +5,9 @@ import { ChevronDown, ChevronUp, Send, Instagram } from 'lucide-react'
 import type { ClientDetail } from '../types'
 
 import { t } from '@/shared/i18n'
+
+/** Контакт — сведение, а не главное действие экрана: чернилами с подчёркиванием. */
+const CONTACT_LINK = 'text-fg underline decoration-line-strong underline-offset-2 hover:decoration-fg'
 interface ClientInfoPanelProps {
     detail: ClientDetail
 }
@@ -23,20 +26,21 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                aria-expanded={open}
+                className="-ml-1 flex min-h-11 items-center gap-1 px-1 text-sm text-fg-muted transition-colors hover:text-fg"
             >
-                {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {open ? <ChevronUp className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
                 {t('curator.info.more')}
             </button>
 
             {open && (
-                <div className="mt-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-600 space-y-1.5">
+                <div className="mt-1 space-y-1.5 rounded-tile bg-subtle p-4 text-sm tabular-nums text-fg-muted">
                     <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <span><span className="text-gray-400">ID:</span> {detail.id}</span>
+                        <span><span className="text-fg-subtle">ID:</span> {detail.id}</span>
                         {detail.email && (
                             <span>
-                                <span className="text-gray-400">Email:</span>{' '}
-                                <a href={`mailto:${detail.email}`} className="text-blue-600 hover:underline">
+                                <span className="text-fg-subtle">Email:</span>{' '}
+                                <a href={`mailto:${detail.email}`} className={CONTACT_LINK}>
                                     {detail.email}
                                 </a>
                             </span>
@@ -44,15 +48,15 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
                     </div>
                     <div className="flex flex-wrap gap-x-6 gap-y-1">
                         {hasHeight && (
-                            <span><span className="text-gray-400">{t('curator.info.height')}</span> {t('curator.info.heightValue', { value: detail.height ?? '' })}</span>
+                            <span><span className="text-fg-subtle">{t('curator.info.height')}</span> {t('curator.info.heightValue', { value: detail.height ?? '' })}</span>
                         )}
                         {hasWeight && (
-                            <span><span className="text-gray-400">{t('curator.info.weight')}</span> {t('curator.card.kilograms', { value: detail.last_weight ?? '' })}</span>
+                            <span><span className="text-fg-subtle">{t('curator.info.weight')}</span> {t('curator.card.kilograms', { value: detail.last_weight ?? '' })}</span>
                         )}
                     </div>
                     {hasTimezone && (
                         <div>
-                            <span className="text-gray-400">{t('curator.info.timezone')}</span> {detail.timezone}
+                            <span className="text-fg-subtle">{t('curator.info.timezone')}</span> {detail.timezone}
                         </div>
                     )}
                     {(hasTelegram || hasInstagram) && (
@@ -62,9 +66,9 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
                                     href={`https://t.me/${detail.telegram_username}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+                                    className={`inline-flex items-center gap-1 ${CONTACT_LINK}`}
                                 >
-                                    <Send className="h-3 w-3" />
+                                    <Send className="h-3.5 w-3.5" aria-hidden="true" />
                                     @{detail.telegram_username}
                                 </a>
                             )}
@@ -73,9 +77,9 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
                                     href={`https://instagram.com/${detail.instagram_username}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-pink-600 hover:underline"
+                                    className={`inline-flex items-center gap-1 ${CONTACT_LINK}`}
                                 >
-                                    <Instagram className="h-3 w-3" />
+                                    <Instagram className="h-3.5 w-3.5" aria-hidden="true" />
                                     @{detail.instagram_username}
                                 </a>
                             )}

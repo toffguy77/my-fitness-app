@@ -12,9 +12,9 @@
  */
 
 import { useState, useCallback, useMemo, memo } from 'react'
-import { Plus, Check, Dumbbell, Clock, X } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
-import { Button } from '@/shared/components/ui/Button'
+import { Plus, Pencil, Check, Dumbbell, Clock, X } from 'lucide-react'
+import { Card, CardTitle } from '@/shared/components/ui/Card'
+import { Button, IconButton } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
@@ -244,229 +244,212 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     const showAttentionIndicator = isToday && !isWorkoutCompleted
 
     return (
-        <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
-                            {t('dashboard.workout.title')}
-                        </CardTitle>
-                        {showAttentionIndicator && (
-                            <AttentionBadge
-                                urgency="normal"
-                                ariaLabel={t('dashboard.workout.noneToday')}
-                            />
-                        )}
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleQuickAdd}
-                        className="h-8 w-8 p-0"
-                        aria-label={isWorkoutCompleted ? t('dashboard.workout.change') : t('dashboard.workout.add')}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+        <Card className={cn('flex h-full flex-col gap-4', className)}>
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <CardTitle>{t('dashboard.workout.title')}</CardTitle>
+                    {showAttentionIndicator && (
+                        <AttentionBadge
+                            urgency="normal"
+                            ariaLabel={t('dashboard.workout.noneToday')}
+                        />
+                    )}
                 </div>
-            </CardHeader>
+                <IconButton
+                    variant="ghost"
+                    onClick={handleQuickAdd}
+                    aria-label={isWorkoutCompleted ? t('dashboard.workout.change') : t('dashboard.workout.add')}
+                >
+                    {isWorkoutCompleted
+                        ? <Pencil className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
+                        : <Plus className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />}
+                </IconButton>
+            </div>
 
-            <CardContent className="space-y-4">
-                {/* Workout status display */}
-                {isWorkoutCompleted ? (
-                    <div className="text-center space-y-4" role="region" aria-label={t('dashboard.workout.infoAria')}>
-                        {/* Completion indicator */}
-                        <div
-                            className="flex items-center justify-center gap-2 text-green-600"
-                            role="status"
-                            aria-label={t('dashboard.workout.doneAria')}
-                        >
-                            <Check className="h-5 w-5" aria-hidden="true" />
-                            <span className="text-lg font-semibold">{t('dashboard.workout.done')}</span>
-                        </div>
-
-                        {/* Workout details */}
-                        <div className="space-y-1">
-                            {(workout.types ?? (workout.type ? [workout.type] : [])).map(workoutType => (
-                                <div key={workoutType} className="flex items-center justify-center gap-2 text-gray-700"
-                                    aria-label={t('dashboard.workout.typeAria', { type: workoutTypeLabel(workoutType) })}>
-                                    <Dumbbell className="h-4 w-4" aria-hidden="true" />
-                                    <span className="font-medium">{workoutTypeLabel(workoutType)}</span>
-                                    {workout.typeDurations?.[workoutType] && (
-                                        <>
-                                            <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
-                                            <span className="text-sm text-gray-500">{formatDuration(workout.typeDurations[workoutType])}</span>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                            {/* Fallback: single duration for legacy records without per-type durations */}
-                            {!workout.typeDurations && workout.duration && (
-                                <div className="flex items-center justify-center gap-2 text-gray-600" aria-label={t('dashboard.workout.durationAria', { duration: formatDuration(workout.duration) })}>
-                                    <Clock className="h-4 w-4" aria-hidden="true" />
-                                    <span className="text-sm">{formatDuration(workout.duration)}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="flex gap-2 justify-center">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleQuickAdd}
-                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                                aria-label={t('dashboard.workout.change')}
-                            >
-                                {t('dashboard.workout.changeShort')}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleMarkNotCompleted}
-                                isLoading={isSaving}
-                                className="text-red-600 border-red-200 hover:bg-red-50"
-                                aria-label={t('dashboard.workout.cancelAria')}
-                            >
-                                <X className="h-4 w-4 mr-1" aria-hidden="true" />
-                                {t('dashboard.workout.cancelShort')}
-                            </Button>
-                        </div>
+            {isWorkoutCompleted ? (
+                <div className="space-y-3" role="region" aria-label={t('dashboard.workout.infoAria')}>
+                    {/* Выполнено — состояние успеха */}
+                    <div
+                        className="flex items-center gap-1.5 text-success-fg"
+                        role="status"
+                        aria-label={t('dashboard.workout.doneAria')}
+                    >
+                        <Check className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                        <span className="type-headline">{t('dashboard.workout.done')}</span>
                     </div>
-                ) : (
-                    /* Empty state */
-                    <div className="text-center py-2 space-y-2" role="status" aria-label={t('dashboard.workout.emptyAria')}>
-                        <Dumbbell className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">{t('dashboard.workout.empty')}</p>
+
+                    <ul className="divide-y divide-line">
+                        {(workout.types ?? (workout.type ? [workout.type] : [])).map(workoutType => (
+                            <li key={workoutType} className="flex items-center gap-2 py-1.5 text-fg"
+                                aria-label={t('dashboard.workout.typeAria', { type: workoutTypeLabel(workoutType) })}>
+                                <Dumbbell className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
+                                <span className="font-medium">{workoutTypeLabel(workoutType)}</span>
+                                {workout.typeDurations?.[workoutType] && (
+                                    <span className="ml-auto flex items-center gap-1 text-sm text-fg-muted tabular-nums">
+                                        <Clock className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                                        {formatDuration(workout.typeDurations[workoutType])}
+                                    </span>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                    {/* Fallback: single duration for legacy records without per-type durations */}
+                    {!workout.typeDurations && workout.duration && (
+                        <div className="flex items-center gap-1 text-sm text-fg-muted tabular-nums" aria-label={t('dashboard.workout.durationAria', { duration: formatDuration(workout.duration) })}>
+                            <Clock className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                            <span>{formatDuration(workout.duration)}</span>
+                        </div>
+                    )}
+
+                    <div className="flex gap-2">
                         <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             onClick={handleQuickAdd}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            aria-label={t('dashboard.workout.add')}
+                            aria-label={t('dashboard.workout.change')}
                         >
-                            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                            {t('common.add')}
+                            {t('dashboard.workout.changeShort')}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleMarkNotCompleted}
+                            isLoading={isSaving}
+                            className="text-danger-fg"
+                            aria-label={t('dashboard.workout.cancelAria')}
+                        >
+                            <X className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                            {t('dashboard.workout.cancelShort')}
                         </Button>
                     </div>
-                )}
+                </div>
+            ) : (
+                <div className="flex items-center justify-between gap-2" role="status" aria-label={t('dashboard.workout.emptyAria')}>
+                    <p className="text-sm text-fg-muted">{t('dashboard.workout.empty')}</p>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleQuickAdd}
+                        aria-label={t('dashboard.workout.add')}
+                    >
+                        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                        {t('common.add')}
+                    </Button>
+                </div>
+            )}
 
-                {/* Workout dialog */}
-                {isDialogOpen && (
-                    <div className="space-y-4 p-4 bg-gray-50 rounded-lg border" role="dialog" aria-labelledby="workout-dialog-title">
-                        <div id="workout-dialog-title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <Dumbbell className="h-4 w-4" aria-hidden="true" />
-                            <span>{t('dashboard.workout.add')}</span>
-                        </div>
+            {/* Ввод тренировки */}
+            {isDialogOpen && (
+                <div className="space-y-4 rounded-tile border border-line bg-canvas p-3" role="dialog" aria-labelledby="workout-dialog-title">
+                    <div id="workout-dialog-title" className="type-headline text-fg">
+                        {t('dashboard.workout.add')}
+                    </div>
 
-                        {/* Workout type selection (multi-select) */}
-                        <div className="space-y-2">
-                            <label id="workout-type-label" className="text-sm font-medium text-gray-700">
-                                {t('dashboard.workout.typeLabel')}
-                            </label>
-                            <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="workout-type-label">
-                                {WORKOUT_TYPES.map((type) => (
+                    {/* Выбор типов: выбранный чип — инверсия чернилами */}
+                    <div className="space-y-2">
+                        <label id="workout-type-label" className="text-sm font-medium text-fg-muted">
+                            {t('dashboard.workout.typeLabel')}
+                        </label>
+                        <div className="flex flex-wrap gap-2" role="group" aria-labelledby="workout-type-label">
+                            {WORKOUT_TYPES.map((type) => {
+                                const isSelected = selectedTypes.includes(type)
+                                return (
                                     <button
                                         key={type}
                                         type="button"
                                         role="checkbox"
-                                        aria-checked={selectedTypes.includes(type)}
+                                        aria-checked={isSelected}
                                         onClick={() => handleTypeSelect(type)}
                                         className={cn(
-                                            'px-3 py-2 text-sm rounded-lg border transition-colors',
-                                            selectedTypes.includes(type)
-                                                ? 'bg-blue-100 border-blue-300 text-blue-700'
-                                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                            'inline-flex h-11 items-center rounded-full border px-4 text-sm font-medium transition-colors duration-150 touch-manipulation',
+                                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
+                                            isSelected
+                                                ? 'border-fg bg-fg text-fg-inverse'
+                                                : 'border-line bg-surface text-fg hover:bg-subtle'
                                         )}
                                         aria-label={t('dashboard.workout.typeAria', { type: workoutTypeLabel(type) })}
                                     >
                                         {workoutTypeLabel(type)}
                                     </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Custom type input */}
-                        {selectedTypes.includes(OTHER_TYPE) && (
-                            <div>
-                                <label htmlFor="custom-workout-type" className="sr-only">
-                                    {t('dashboard.workout.nameType')}
-                                </label>
-                                <Input
-                                    id="custom-workout-type"
-                                    placeholder={t('dashboard.workout.customPlaceholder')}
-                                    value={customType}
-                                    onChange={(e) => handleCustomTypeChange(e.target.value)}
-                                    aria-label={t('dashboard.workout.typeField')}
-                                />
-                            </div>
-                        )}
-
-                        {/* Per-type duration inputs */}
-                        {selectedTypes.length > 0 && (
-                            <div className="space-y-2">
-                                <span className="text-sm font-medium text-gray-700">{t('dashboard.workout.durationLabel')}</span>
-                                {selectedTypes.map(type => {
-                                    const displayName = type === OTHER_TYPE ? (customType || workoutTypeLabel(OTHER_TYPE)) : workoutTypeLabel(type)
-                                    return (
-                                        <div key={type} className="flex items-center gap-2">
-                                            <span className="text-sm text-gray-600 min-w-[7rem] shrink-0">{displayName}:</span>
-                                            <Input
-                                                type="number"
-                                                min="1"
-                                                max="600"
-                                                placeholder={t('dashboard.workout.durationPlaceholder')}
-                                                value={durations[type] ?? ''}
-                                                onChange={(e) => handleDurationChange(type, e.target.value)}
-                                                aria-label={t('dashboard.workout.durationAria', { duration: displayName })}
-                                                aria-invalid={!!validationError}
-                                            />
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-
-                        {/* Error message */}
-                        {validationError && (
-                            <p id="workout-error" className="text-sm text-red-600" role="alert" aria-live="polite">
-                                {validationError}
-                            </p>
-                        )}
-
-                        {/* Action buttons */}
-                        <div className="flex gap-2">
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={handleSave}
-                                isLoading={isSaving}
-                                disabled={selectedTypes.length === 0 || (selectedTypes.includes(OTHER_TYPE) && !customType.trim())}
-                                className="flex-1"
-                                aria-label={t('dashboard.workout.saveAria')}
-                            >
-                                <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                                {t('common.save')}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancel}
-                                disabled={isSaving}
-                                aria-label={t('dashboard.workout.cancelAddAria')}
-                            >
-                                {t('common.cancel')}
-                            </Button>
+                                )
+                            })}
                         </div>
                     </div>
-                )}
 
-                {/* Helper text */}
-                {!isDialogOpen && (
-                    <div className="text-xs text-gray-400 text-center">
-                        {t('dashboard.workout.hint')}
+                    {selectedTypes.includes(OTHER_TYPE) && (
+                        <div>
+                            <label htmlFor="custom-workout-type" className="sr-only">
+                                {t('dashboard.workout.nameType')}
+                            </label>
+                            <Input
+                                id="custom-workout-type"
+                                placeholder={t('dashboard.workout.customPlaceholder')}
+                                value={customType}
+                                onChange={(e) => handleCustomTypeChange(e.target.value)}
+                                aria-label={t('dashboard.workout.typeField')}
+                            />
+                        </div>
+                    )}
+
+                    {selectedTypes.length > 0 && (
+                        <div className="space-y-2">
+                            <span className="text-sm font-medium text-fg-muted">{t('dashboard.workout.durationLabel')}</span>
+                            {selectedTypes.map(type => {
+                                const displayName = type === OTHER_TYPE ? (customType || workoutTypeLabel(OTHER_TYPE)) : workoutTypeLabel(type)
+                                return (
+                                    <div key={type} className="flex items-center gap-2">
+                                        <span className="min-w-[7rem] shrink-0 text-sm text-fg">{displayName}:</span>
+                                        <Input
+                                            type="number"
+                                            inputMode="numeric"
+                                            min="1"
+                                            max="600"
+                                            placeholder={t('dashboard.workout.durationPlaceholder')}
+                                            value={durations[type] ?? ''}
+                                            onChange={(e) => handleDurationChange(type, e.target.value)}
+                                            aria-label={t('dashboard.workout.durationAria', { duration: displayName })}
+                                            aria-invalid={!!validationError}
+                                        />
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+
+                    {validationError && (
+                        <p id="workout-error" className="text-sm text-danger-fg" role="alert" aria-live="polite">
+                            {validationError}
+                        </p>
+                    )}
+
+                    <div className="flex gap-2">
+                        <Button
+                            variant="secondary"
+                            onClick={handleCancel}
+                            disabled={isSaving}
+                            aria-label={t('dashboard.workout.cancelAddAria')}
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleSave}
+                            isLoading={isSaving}
+                            disabled={selectedTypes.length === 0 || (selectedTypes.includes(OTHER_TYPE) && !customType.trim())}
+                            className="flex-1"
+                            aria-label={t('dashboard.workout.saveAria')}
+                        >
+                            {t('common.save')}
+                        </Button>
                     </div>
-                )}
-            </CardContent>
+                </div>
+            )}
+
+            {!isDialogOpen && (
+                <p className="mt-auto type-caption text-fg-subtle">
+                    {t('dashboard.workout.hint')}
+                </p>
+            )}
         </Card>
     )
 })

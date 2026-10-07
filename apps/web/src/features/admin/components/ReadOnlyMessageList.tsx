@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Loader2 } from 'lucide-react'
-import { cn } from '@/shared/utils/cn'
 import { adminApi } from '../api/adminApi'
 import type { AdminMessage } from '../types'
 
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
+import { AdminSpinner } from './adminUi'
 export interface ReadOnlyMessageListProps {
     conversationId: string
 }
@@ -58,46 +58,43 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
     }, [conversationId, loadingMore, hasMore, messages])
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            </div>
-        )
+        return <AdminSpinner className="h-full" />
     }
 
     if (error) {
-        return <p className="py-8 text-center text-sm text-red-500">{error}</p>
+        return <p className="py-8 text-center text-sm text-danger-fg">{error}</p>
     }
 
     if (messages.length === 0) {
         return (
             <div className="flex items-center justify-center h-full">
-                <p className="text-gray-400 text-sm">{t('admin.chats.noMessages')}</p>
+                <p className="text-sm text-fg-subtle">{t('admin.chats.noMessages')}</p>
             </div>
         )
     }
 
     return (
-        <div ref={scrollRef} className="flex-1 overflow-y-auto py-4 px-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-screen-x py-4">
             {hasMore && (
-                <div className="flex justify-center mb-4">
-                    <button
+                <div className="mb-4 flex justify-center">
+                    <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={handleLoadMore}
                         disabled={loadingMore}
-                        className="text-sm text-blue-500 hover:text-blue-600 disabled:text-gray-300 transition-colors"
                     >
                         {loadingMore ? t('common.loading') : t('admin.chats.loadMore')}
-                    </button>
+                    </Button>
                 </div>
             )}
 
-            <div className="space-y-3">
+            <div className="mx-auto max-w-3xl space-y-4">
                 {messages.map((msg) => (
-                    <div key={msg.id} className="space-y-0.5">
+                    <div key={msg.id} className="space-y-1">
                         <div className="flex items-baseline gap-2">
-                            <span className="text-xs font-semibold text-gray-700">{msg.sender_name}</span>
-                            <span className="text-[10px] text-gray-400">
+                            <span className="text-[13px] font-semibold text-fg">{msg.sender_name}</span>
+                            <span className="text-[11px] tabular-nums text-fg-subtle">
                                 {new Date(msg.created_at).toLocaleString('ru-RU', {
                                     day: '2-digit',
                                     month: '2-digit',
@@ -106,14 +103,11 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
                                 })}
                             </span>
                         </div>
-                        <div className={cn(
-                            'inline-block rounded-lg px-3 py-2 text-sm max-w-[85%]',
-                            'bg-gray-100 text-gray-900'
-                        )}>
+                        <div className="inline-block max-w-[85%] rounded-tile bg-subtle px-4 py-2.5 text-[15px] leading-[22px] text-fg">
                             {msg.type === 'food_entry' ? (
-                                <span className="italic text-gray-600">{msg.content || t('admin.chats.foodEntry')}</span>
+                                <span className="italic text-fg-muted">{msg.content || t('admin.chats.foodEntry')}</span>
                             ) : (
-                                msg.content || <span className="text-gray-400">{t('admin.chats.attachment')}</span>
+                                msg.content || <span className="text-fg-subtle">{t('admin.chats.attachment')}</span>
                             )}
                         </div>
                     </div>

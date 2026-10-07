@@ -28,35 +28,35 @@ describe('KBZHUProgress', () => {
         const { container } = render(<KBZHUProgress label="Ккал" value={1900} target={2000} />)
 
         const bar = container.querySelector('[style*="width"]')
-        expect(bar?.className).toContain('bg-green-500')
+        expect(bar?.className).toContain('bg-success')
     })
 
     it('shows yellow color for 50-80% range', () => {
         const { container } = render(<KBZHUProgress label="Ккал" value={1200} target={2000} />)
 
         const bar = container.querySelector('[style*="width"]')
-        expect(bar?.className).toContain('bg-yellow-500')
+        expect(bar?.className).toContain('bg-warning')
     })
 
     it('shows yellow color for 120-150% range', () => {
         const { container } = render(<KBZHUProgress label="Ккал" value={2600} target={2000} />)
 
         const bar = container.querySelector('[style*="width"]')
-        expect(bar?.className).toContain('bg-yellow-500')
+        expect(bar?.className).toContain('bg-warning')
     })
 
     it('shows red color for below 50%', () => {
         const { container } = render(<KBZHUProgress label="Ккал" value={500} target={2000} />)
 
         const bar = container.querySelector('[style*="width"]')
-        expect(bar?.className).toContain('bg-red-500')
+        expect(bar?.className).toContain('bg-danger')
     })
 
     it('shows red color for above 150%', () => {
         const { container } = render(<KBZHUProgress label="Ккал" value={3100} target={2000} />)
 
         const bar = container.querySelector('[style*="width"]')
-        expect(bar?.className).toContain('bg-red-500')
+        expect(bar?.className).toContain('bg-danger')
     })
 
     it('handles zero target gracefully (0% width)', () => {

@@ -4,7 +4,9 @@ import { useNotificationsStore } from '@/features/notifications'
 
 // Mock Next.js router
 const mockPush = jest.fn()
+const mockPathname: string | null = null
 jest.mock('next/navigation', () => ({
+    usePathname: () => mockPathname,
     useRouter: () => ({
         push: mockPush,
         replace: jest.fn(),
@@ -81,7 +83,7 @@ describe('DashboardLayout', () => {
             expect(layout).toHaveClass('overflow-x-hidden')
 
             // Verify background color
-            expect(layout).toHaveClass('bg-gray-50')
+            expect(layout).toHaveClass('bg-canvas')
         })
 
         it('should pass user data to header component', () => {
@@ -215,16 +217,19 @@ describe('DashboardLayout', () => {
     })
 
     describe('Notifications Integration', () => {
-        it('should fetch unread counts on mount', async () => {
+        it('leaves the first counters to polling — no separate fetch on mount', async () => {
             render(
                 <DashboardLayout userName="Test User">
                     <div>Content</div>
                 </DashboardLayout>
             )
 
+            // Polling fetches the counters at once; a separate fetch here
+            // asked for the same counters a second time on every page.
             await waitFor(() => {
-                expect(mockFetchUnreadCounts).toHaveBeenCalledTimes(1)
+                expect(mockStartPolling).toHaveBeenCalledTimes(1)
             })
+            expect(mockFetchUnreadCounts).not.toHaveBeenCalled()
         })
 
         it('should start polling on mount', async () => {

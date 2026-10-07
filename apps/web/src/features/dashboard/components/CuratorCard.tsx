@@ -22,7 +22,7 @@
 
 import { memo } from 'react'
 import Link from 'next/link'
-import { MessageCircle, AlertCircle, UserX } from 'lucide-react'
+import { ArrowRight, AlertCircle, UserX } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/Card'
 import { cn } from '@/shared/utils/cn'
 import { t } from '@/shared/i18n'
@@ -69,14 +69,14 @@ const CuratorAvatar = memo(function CuratorAvatar({
             <img
                 src={avatarUrl}
                 alt={name}
-                className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
+                className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
             />
         )
     }
 
     return (
         <div
-            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-[13px] font-semibold text-on-primary"
             aria-hidden="true"
             data-testid="curator-initials"
         >
@@ -97,10 +97,10 @@ export const CuratorCard = memo(function CuratorCard({
         return (
             <Card className={cn('w-full', className)} variant="bordered">
                 <CardContent className="flex items-center gap-3 py-4" role="status">
-                    <div className="h-12 w-12 flex-shrink-0 animate-pulse rounded-full bg-gray-200" />
+                    <div className="h-12 w-12 flex-shrink-0 animate-pulse rounded-full bg-subtle" />
                     <div className="flex-1 space-y-2">
-                        <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-                        <div className="h-3 w-48 animate-pulse rounded bg-gray-100" />
+                        <div className="h-4 w-32 animate-pulse rounded bg-subtle" />
+                        <div className="h-3 w-48 animate-pulse rounded bg-subtle" />
                     </div>
                     <span className="sr-only">{t('common.loading')}</span>
                 </CardContent>
@@ -112,14 +112,14 @@ export const CuratorCard = memo(function CuratorCard({
         return (
             <Card className={cn('w-full', className)} variant="bordered" data-testid="curator-card-error">
                 <CardContent className="flex items-center justify-between gap-3 py-4" role="status">
-                    <span className="flex items-center gap-2 text-sm text-gray-700">
-                        <AlertCircle className="h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                    <span className="flex items-center gap-2 text-sm text-fg">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0 text-fg-subtle" aria-hidden="true" />
                         {t('dashboard.curatorCard.loadFailed')}
                     </span>
                     <button
                         type="button"
                         onClick={onRetry}
-                        className="text-sm font-semibold text-blue-600 underline hover:text-blue-700"
+                        className="text-sm font-semibold text-primary underline hover:text-primary"
                     >
                         {t('dashboard.curatorCard.retry')}
                     </button>
@@ -149,16 +149,16 @@ export const CuratorCard = memo(function CuratorCard({
             <Card className={cn('w-full', className)} variant="bordered" data-testid="curator-card">
                 <CardContent className="flex items-center gap-3 py-4">
                     <div
-                        className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100"
+                        className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-subtle"
                         aria-hidden="true"
                     >
-                        <UserX className="h-5 w-5 text-gray-400" />
+                        <UserX className="h-5 w-5 text-fg-subtle" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-fg">
                             {t('dashboard.curatorCard.notAssigned')}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-fg-muted">
                             {t('dashboard.curatorCard.notAssignedHint')}
                         </p>
                     </div>
@@ -169,57 +169,55 @@ export const CuratorCard = memo(function CuratorCard({
 
     const lastMessage = curator.last_message
 
+    // Голос куратора — тёмная плашка и засечки: это единственный блок экрана,
+    // где говорит человек, а не счётчик, и он обязан отличаться с первого взгляда.
     return (
-        <Card className={cn('w-full', className)} variant="bordered" data-testid="curator-card">
-            <CardContent className="p-0">
-                <Link
-                    href="/chat"
-                    aria-label={t('dashboard.curatorCard.openChat')}
-                    className="flex items-center gap-3 rounded-lg px-4 py-4 transition-colors hover:bg-gray-50"
-                >
+        <Card className={cn('w-full p-0', className)} variant="coach" data-testid="curator-card">
+            <Link
+                href="/chat"
+                aria-label={t('dashboard.curatorCard.openChat')}
+                className="flex flex-col gap-3.5 rounded-card p-[18px] transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+            >
+                <span className="flex items-center gap-3">
                     <CuratorAvatar name={curator.name} avatarUrl={curator.avatar_url} />
-
-                    <div className="min-w-0 flex-1">
-                        {/* Подпись отдельной строкой, а не рядом с именем: на
-                            узком экране она отнимала у имени половину ширины и
-                            сама переносилась на две строки. */}
-                        <p className="text-[11px] uppercase tracking-wide text-gray-400">
-                            {t('dashboard.curatorCard.title')}
-                        </p>
-                        <p className="truncate text-sm font-semibold text-gray-900">
-                            {curator.name}
-                        </p>
-
-                        {lastMessage ? (
-                            <p className="truncate text-xs text-gray-600">
-                                {/* Кто написал — обязательно: «вы» и «куратор» в
-                                    одной строке без пометки читаются наоборот. */}
-                                {!lastMessage.from_curator && (
-                                    <span className="font-medium text-gray-500">
-                                        {t('dashboard.curatorCard.youWrote')}{' '}
-                                    </span>
-                                )}
-                                {lastMessage.text}
-                            </p>
-                        ) : (
-                            <p className="truncate text-xs text-gray-500">
-                                {t('dashboard.curatorCard.noMessages')}
-                            </p>
-                        )}
-                    </div>
-
+                    <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="text-[13px] text-on-coach-muted">{t('dashboard.curatorCard.title')}</span>
+                        <span className="truncate text-[15px] font-semibold text-on-coach">{curator.name}</span>
+                    </span>
                     {curator.unread_count > 0 && (
                         <span
-                            className="flex h-6 min-w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 px-1.5 text-xs font-semibold text-white"
+                            className="flex h-6 min-w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-on-primary"
                             aria-label={t('dashboard.curatorCard.unread', { count: curator.unread_count })}
                         >
                             {curator.unread_count}
                         </span>
                     )}
+                </span>
 
-                    <MessageCircle className="h-5 w-5 flex-shrink-0 text-gray-300" aria-hidden="true" />
-                </Link>
-            </CardContent>
+                {lastMessage ? (
+                    lastMessage.from_curator ? (
+                        <span className="type-quote line-clamp-4 text-on-coach">
+                            <span aria-hidden="true">«</span>
+                            <span>{lastMessage.text}</span>
+                            <span aria-hidden="true">»</span>
+                        </span>
+                    ) : (
+                        // Кто написал — обязательно: «вы» и «куратор» в одной
+                        // строке без пометки читаются наоборот.
+                        <span className="line-clamp-2 text-[15px] leading-[22px] text-on-coach-muted">
+                            <span className="font-semibold">{t('dashboard.curatorCard.youWrote')}</span>{' '}
+                            <span>{lastMessage.text}</span>
+                        </span>
+                    )
+                ) : (
+                    <span className="text-[15px] text-on-coach-muted">{t('dashboard.curatorCard.noMessages')}</span>
+                )}
+
+                <span className="flex items-center gap-1.5 text-[15px] font-semibold text-on-coach">
+                    {t('ui.coach.reply')}
+                    <ArrowRight className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
+                </span>
+            </Link>
         </Card>
     )
 })

@@ -302,7 +302,12 @@ describe('Property 17: Plan Polling Updates', () => {
         const { result } = renderHook(() => useDashboardStore());
 
         try {
-            // Set offline
+            // The dashboard is polling
+            act(() => {
+                result.current.startPolling(30000, { immediate: false });
+            });
+
+            // Set offline: polling pauses
             act(() => {
                 result.current.setOfflineStatus(true);
             });
@@ -310,14 +315,14 @@ describe('Property 17: Plan Polling Updates', () => {
             expect(result.current.isOffline).toBe(true);
             expect(result.current.pollingIntervalId).toBeNull();
 
-            // Come back online - this should immediately set isOffline to false and start polling
+            // Come back online: polling resumes at the same interval
             act(() => {
                 result.current.setOfflineStatus(false);
             });
 
-            // setOfflineStatus(false) should immediately set isOffline to false and start polling
             expect(result.current.isOffline).toBe(false);
             expect(result.current.pollingIntervalId).not.toBeNull();
+            expect(result.current.pollingInterval).toBe(30000);
         } finally {
             // Clean up
             act(() => {
@@ -329,5 +334,41 @@ describe('Property 17: Plan Polling Updates', () => {
                 Object.defineProperty(navigator, 'onLine', originalOnLine);
             }
         }
+    });
+});
+
+describe('Dashboard polling: no repeats', () => {
+    afterEach(() => {
+        act(() => {
+            useDashboardStore.getState().stopPolling();
+            useDashboardStore.setState({ isOffline: false });
+        });
+    });
+
+    it('reporting "online, as before" starts nothing — every page of the shell does it on mount', () => {
+        act(() => useDashboardStore.setState({ isOffline: false, pollingIntervalId: null, pollingInterval: null }));
+        const poll = jest.spyOn(useDashboardStore.getState(), 'pollForUpdates');
+        const sync = jest.spyOn(useDashboardStore.getState(), 'syncWhenOnline');
+        act(() => useDashboardStore.getState().setOfflineStatus(false));
+
+        expect(useDashboardStore.getState().pollingIntervalId).toBeNull();
+        expect(poll).not.toHaveBeenCalled();
+        expect(sync).not.toHaveBeenCalled();
+    });
+
+    it('coming back online with nobody polling resyncs but starts no polling', () => {
+        act(() => useDashboardStore.setState({ isOffline: true }));
+        act(() => useDashboardStore.getState().setOfflineStatus(false));
+        expect(useDashboardStore.getState().pollingIntervalId).toBeNull();
+    });
+
+    it('startPolling with immediate: false waits for the first interval', () => {
+        const poll = jest.fn().mockResolvedValue(undefined);
+        act(() => useDashboardStore.setState({ pollForUpdates: poll }));
+        act(() => useDashboardStore.getState().startPolling(30000, { immediate: false }));
+        expect(poll).not.toHaveBeenCalled();
+        act(() => useDashboardStore.getState().stopPolling());
+        act(() => useDashboardStore.getState().startPolling(30000));
+        expect(poll).toHaveBeenCalledTimes(1);
     });
 });

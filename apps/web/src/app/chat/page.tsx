@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { MessageCircle } from 'lucide-react'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { chatApi } from '@/features/chat/api/chatApi'
 import { useChatStore } from '@/features/chat/store/chatStore'
@@ -98,7 +99,7 @@ export default function ChatPage() {
     // для чтения — написанное человеком не становится недоступным ему из-за
     // окончания оплаты.
     const content = access && !access.allowed ? (
-        <div className="flex flex-col gap-4 px-4 py-6">
+        <div className="mx-auto flex w-full max-w-content flex-col gap-4 px-screen-x py-6">
             <CuratorOffer
                 place="chat"
                 expired={access.expired}
@@ -116,14 +117,17 @@ export default function ChatPage() {
             )}
         </div>
     ) : noConversation ? (
-        <div className="flex flex-col items-center justify-center px-4 py-20">
-            <p className="text-gray-500">{t('chat.noCurator')}</p>
+        <div className="mx-auto flex w-full max-w-content flex-col items-center justify-center gap-4 px-screen-x py-20 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                <MessageCircle className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} />
+            </span>
+            <p className="type-title-3 text-fg">{t('chat.noCurator')}</p>
         </div>
     ) : (
         <div className="flex flex-col" style={{ height: 'calc(100dvh - 8rem - env(safe-area-inset-bottom, 0px))' }}>
             {conversation && (
-                <div className="px-4 py-3 border-b border-gray-200 bg-white">
-                    <h2 className="text-lg font-medium">{conversation.participant.name}</h2>
+                <div className="flex min-h-14 items-center border-b border-line bg-surface px-4 py-3">
+                    <h2 className="truncate type-title-3 text-fg">{conversation.participant.name}</h2>
                 </div>
             )}
             <MessageList

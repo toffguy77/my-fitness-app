@@ -19,6 +19,7 @@ import type { NutrientCategoryType } from '../../types';
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     X: ({ className }: { className?: string }) => (
         <svg data-testid="x-icon" className={className} />
     ),

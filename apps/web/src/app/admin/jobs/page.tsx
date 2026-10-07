@@ -5,8 +5,8 @@ import { t } from '@/shared/i18n'
 
 export default function AdminJobsPage() {
     return (
-        <div className="px-4 py-6">
-            <h1 className="mb-4 text-xl font-semibold text-gray-900">{t('admin.jobs.heading')}</h1>
+        <div className="mx-auto w-full max-w-5xl px-screen-x py-5">
+            <h1 className="type-title-1 mb-5 text-fg">{t('admin.jobs.heading')}</h1>
             <JobList />
         </div>
     )

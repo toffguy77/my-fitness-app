@@ -17,6 +17,12 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { X, Plus } from 'lucide-react';
 import type { CustomRecommendationUnit, CustomRecommendation } from '../types';
 import { t } from '@/shared/i18n';
+import { Button, IconButton } from '@/shared/components/ui/Button';
+
+/** Поле 48 px и 16 px текста — как `Input`; рамка (норма или ошибка) ставится отдельно. */
+const FIELD_CLASS =
+    'h-12 w-full rounded-field border bg-surface px-4 text-base text-fg placeholder:text-fg-subtle ' +
+    'transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30';
 
 // ============================================================================
 // Types
@@ -229,40 +235,40 @@ export function AddCustomRecommendationForm({
 
     return (
         <div
-            className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/50 ${className}`}
+            className={`fixed inset-0 z-[60] flex items-end justify-center bg-scrim sm:items-center sm:p-4 ${className}`}
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-recommendation-title"
         >
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+            <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-sheet bg-surface shadow-overlay sm:max-w-md sm:rounded-sheet">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between gap-3 px-6 pb-2 pt-6">
                     <h2
                         id="add-recommendation-title"
-                        className="text-lg font-semibold text-gray-900"
+                        className="type-title-2 text-fg"
                     >
                         {t('foodTracker.customRecommendation.title')}
                     </h2>
-                    <button
-                        type="button"
+                    <IconButton
+                        variant="ghost"
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="-mr-2"
                         aria-label={t('common.close')}
                     >
-                        <X className="w-5 h-5" />
-                    </button>
+                        <X className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                    </IconButton>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
                     {/* Name Input */}
                     <div>
                         <label
                             htmlFor="recommendation-name"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="mb-1.5 block text-sm font-medium text-fg-muted"
                         >
-                            {t('foodTracker.customRecommendation.name')} <span className="text-red-500">*</span>
+                            {t('foodTracker.customRecommendation.name')} <span className="text-danger-fg">*</span>
                         </label>
                         <input
                             type="text"
@@ -271,17 +277,14 @@ export function AddCustomRecommendationForm({
                             onChange={handleNameChange}
                             onBlur={() => handleBlur('name')}
                             placeholder={t('foodTracker.customRecommendation.namePlaceholder')}
-                            className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name && touched.name
-                                ? 'border-red-500 bg-red-50'
-                                : 'border-gray-300 hover:border-gray-400'
-                                }`}
+                            className={`${FIELD_CLASS} ${errors.name && touched.name ? 'border-danger' : 'border-line'}`}
                             aria-invalid={errors.name && touched.name ? 'true' : 'false'}
                             aria-describedby={errors.name ? 'name-error' : undefined}
                         />
                         {errors.name && touched.name && (
                             <p
                                 id="name-error"
-                                className="mt-1 text-sm text-red-600"
+                                className="mt-1 text-sm text-danger-fg"
                                 role="alert"
                             >
                                 {errors.name}
@@ -293,9 +296,9 @@ export function AddCustomRecommendationForm({
                     <div>
                         <label
                             htmlFor="recommendation-target"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="mb-1.5 block text-sm font-medium text-fg-muted"
                         >
-                            {t('foodTracker.customRecommendation.dailyTarget')} <span className="text-red-500">*</span>
+                            {t('foodTracker.customRecommendation.dailyTarget')} <span className="text-danger-fg">*</span>
                         </label>
                         <input
                             type="text"
@@ -305,17 +308,14 @@ export function AddCustomRecommendationForm({
                             onChange={handleDailyTargetChange}
                             onBlur={() => handleBlur('dailyTarget')}
                             placeholder={t('foodTracker.customRecommendation.targetPlaceholder')}
-                            className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.dailyTarget && touched.dailyTarget
-                                ? 'border-red-500 bg-red-50'
-                                : 'border-gray-300 hover:border-gray-400'
-                                }`}
+                            className={`${FIELD_CLASS} ${errors.dailyTarget && touched.dailyTarget ? 'border-danger' : 'border-line'}`}
                             aria-invalid={errors.dailyTarget && touched.dailyTarget ? 'true' : 'false'}
                             aria-describedby={errors.dailyTarget ? 'target-error' : undefined}
                         />
                         {errors.dailyTarget && touched.dailyTarget && (
                             <p
                                 id="target-error"
-                                className="mt-1 text-sm text-red-600"
+                                className="mt-1 text-sm text-danger-fg"
                                 role="alert"
                             >
                                 {errors.dailyTarget}
@@ -327,7 +327,7 @@ export function AddCustomRecommendationForm({
                     <div>
                         <label
                             htmlFor="recommendation-unit"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="mb-1.5 block text-sm font-medium text-fg-muted"
                         >
                             {t('foodTracker.customRecommendation.unit')}
                         </label>
@@ -335,7 +335,7 @@ export function AddCustomRecommendationForm({
                             id="recommendation-unit"
                             value={unit}
                             onChange={handleUnitChange}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className={`${FIELD_CLASS} border-line`}
                         >
                             {UNITS.map((u) => (
                                 <option key={u} value={u}>
@@ -346,22 +346,25 @@ export function AddCustomRecommendationForm({
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                        <button
+                    <div className="flex items-center gap-3 pt-2 sm:justify-end">
+                        <Button
                             type="button"
+                            variant="secondary"
+                            size="lg"
+                            className="flex-1 sm:flex-none"
                             onClick={onClose}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             {t('common.cancel')}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="submit"
+                            size="lg"
+                            className="flex-1 sm:flex-none"
                             disabled={!isFormValid}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                         >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
                             {t('common.add')}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>

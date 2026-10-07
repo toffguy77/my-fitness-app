@@ -1,5 +1,8 @@
 'use client'
 
+import { cn } from '@/shared/utils/cn'
+import { fieldClass, fieldLabelClass } from '../forms/fieldStyles'
+
 export interface SocialAccountsFormProps {
     telegram: string
     instagram: string
@@ -16,27 +19,32 @@ export function SocialAccountsForm({
     return (
         <div className="flex flex-col gap-6">
             {/* Telegram */}
-            <div className="flex flex-col gap-1.5">
-                <label className="font-medium text-gray-900" htmlFor="settings-telegram">
+            <div>
+                <label className={cn(fieldLabelClass, 'mb-0')} htmlFor="settings-telegram">
                     Ник в Telegram
                 </label>
-                <p className="text-sm text-gray-500">Привяжи свой @username</p>
+                <p id="settings-telegram-hint" className="mb-1.5 type-caption text-fg-subtle">
+                    Привяжи свой @username
+                </p>
                 <input
                     id="settings-telegram"
                     type="text"
                     value={telegram}
                     onChange={(e) => onTelegramChange(e.target.value)}
                     placeholder="@username"
-                    className="w-full rounded-xl bg-blue-50 px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    aria-describedby="settings-telegram-hint"
+                    className={fieldClass}
                 />
             </div>
 
             {/* Instagram */}
-            <div className="flex flex-col gap-1.5">
-                <label className="font-medium text-gray-900" htmlFor="settings-instagram">
+            <div>
+                <label className={cn(fieldLabelClass, 'mb-0')} htmlFor="settings-instagram">
                     Профиль в Instagram
                 </label>
-                <p className="text-sm text-gray-500">
+                <p id="settings-instagram-hint" className="mb-1.5 type-caption text-fg-subtle">
                     В формате @твойпрофиль, например: @zingilevskiy
                 </p>
                 <input
@@ -45,7 +53,10 @@ export function SocialAccountsForm({
                     value={instagram}
                     onChange={(e) => onInstagramChange(e.target.value)}
                     placeholder="@profile"
-                    className="w-full rounded-xl bg-blue-50 px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    aria-describedby="settings-instagram-hint"
+                    className={fieldClass}
                 />
             </div>
         </div>

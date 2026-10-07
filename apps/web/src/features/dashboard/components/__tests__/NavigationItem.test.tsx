@@ -39,7 +39,7 @@ describe('NavigationItem', () => {
                         // Property: Active items should have distinct visual styling
                         if (navData.isActive) {
                             // Active state: accent color (blue-600)
-                            expect(navItem).toHaveClass('text-blue-600')
+                            expect(navItem).toHaveClass('text-fg')
 
                             // Active state should have aria-current attribute
                             expect(navItem).toHaveAttribute('aria-current', 'page')
@@ -49,7 +49,7 @@ describe('NavigationItem', () => {
                             expect(label).toHaveClass('font-semibold')
                         } else {
                             // Inactive state: grey color
-                            expect(navItem).toHaveClass('text-gray-600')
+                            expect(navItem).toHaveClass('text-fg-subtle')
 
                             // Should not have aria-current
                             expect(navItem).not.toHaveAttribute('aria-current')
@@ -94,7 +94,7 @@ describe('NavigationItem', () => {
                             expect(navItem).toHaveClass('opacity-40')
 
                             // Disabled state: grey color
-                            expect(navItem).toHaveClass('text-gray-400')
+                            expect(navItem).toHaveClass('text-fg-subtle')
 
                             // Disabled state: cursor not-allowed
                             expect(navItem).toHaveClass('cursor-not-allowed')
@@ -149,7 +149,7 @@ describe('NavigationItem', () => {
                         expect(navItem).toHaveClass('focus-visible:outline-none')
                         expect(navItem).toHaveClass('focus-visible:ring-2')
                         expect(navItem).toHaveClass('focus-visible:ring-offset-2')
-                        expect(navItem).toHaveClass('focus-visible:ring-blue-600')
+                        expect(navItem).toHaveClass('focus-visible:ring-focus')
                     }
                 ),
                 { numRuns: 100 }
@@ -236,7 +236,7 @@ describe('NavigationItem', () => {
             )
 
             const navItem = container.querySelector('[data-testid="nav-item-dashboard"]')
-            expect(navItem).toHaveClass('text-blue-600')
+            expect(navItem).toHaveClass('text-fg')
             expect(navItem).toHaveAttribute('aria-current', 'page')
 
             const label = navItem?.querySelector(':scope > span:last-of-type')
@@ -256,7 +256,7 @@ describe('NavigationItem', () => {
 
             const navItem = container.querySelector('[data-testid="nav-item-workout"]')
             expect(navItem).toHaveClass('opacity-40')
-            expect(navItem).toHaveClass('text-gray-400')
+            expect(navItem).toHaveClass('text-fg-subtle')
             expect(navItem).toHaveClass('cursor-not-allowed')
             expect(navItem).toHaveAttribute('disabled')
             expect(navItem).toHaveAttribute('aria-disabled', 'true')

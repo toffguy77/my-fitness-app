@@ -44,7 +44,7 @@ export function CodeInput({ value, onChange, disabled, error }: CodeInputProps) 
     }
 
     return (
-        <div className="flex justify-center gap-2">
+        <div className="flex justify-center gap-1.5 sm:gap-2">
             {Array.from({ length: 6 }, (_, i) => (
                 <input
                     key={i}
@@ -58,14 +58,15 @@ export function CodeInput({ value, onChange, disabled, error }: CodeInputProps) 
                     onKeyDown={(e) => handleKeyDown(i, e)}
                     onPaste={handlePaste}
                     className={cn(
-                        'h-12 w-10 rounded-lg border text-center text-xl font-bold transition-colors',
-                        'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20',
+                        'h-14 w-10 sm:w-11 rounded-field border text-center text-2xl font-semibold tabular-nums text-fg transition-colors',
+                        'focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30',
                         'disabled:opacity-50',
                         error
-                            ? 'border-red-300 bg-red-50'
-                            : 'border-gray-300 bg-white'
+                            ? 'border-danger bg-danger-soft'
+                            : 'border-line bg-surface'
                     )}
                     aria-label={t('auth.codeDigit', { position: i + 1 })}
+                    aria-invalid={error || undefined}
                 />
             ))}
         </div>

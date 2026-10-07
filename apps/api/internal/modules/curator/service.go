@@ -1999,9 +1999,8 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 	// остаются нулями.
 	if len(clientIDs) > 0 {
 		// Требующие внимания — это те, кто попал в список внимания. Одно
-		// правило на карточку и на список под ней; считается по полному
-		// набору, до отсечения списка двадцатью строками, иначе карточка
-		// показывала бы не то, что есть, а то, что уместилось.
+		// правило и один набор на карточку и на список под ней: список
+		// больше не обрезается, и каждый посчитанный клиент на экране есть.
 		eg.Go(func() error {
 			items := s.collectAttention(egCtx, curatorID, clientIDs)
 			seen := make(map[int64]struct{}, len(items))
@@ -2060,14 +2059,15 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 	return summary, nil
 }
 
-// GetAttentionList returns a prioritized list of items requiring curator
-// attention, capped at the twenty most urgent.
+// GetAttentionList returns every item requiring curator attention, sorted by
+// priority.
 //
-// The cap is why the counting lives in collectAttention rather than here: the
-// summary card counts distinct clients over the full set. Counting the capped
-// list would put the card back in the business of reporting what fitted on the
-// screen instead of what is there — on production one curator already has
-// fifteen rows.
+// It used to stop at twenty rows. The screen groups rows by client and the
+// summary card counts distinct clients over the full set, so the cut fell in
+// the middle of the list: with fourteen inactive clients and six incomplete
+// profiles the card said sixteen and the list showed fifteen. A client is never
+// cut off any more — every one the card counts is on the screen. Rows per
+// client are few (one per reason), so the full list stays small.
 func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]AttentionItem, error) {
 	startTime := time.Now()
 
@@ -2081,11 +2081,6 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 	}
 
 	items := s.collectAttention(ctx, curatorID, clientIDs)
-
-	// Limit to 20
-	if len(items) > 20 {
-		items = items[:20]
-	}
 
 	s.log.LogDatabaseQuery("GetAttentionList", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,

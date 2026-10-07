@@ -131,48 +131,43 @@ const TaskItem = memo(function TaskItem({ task, onToggleComplete, style }: TaskI
     return (
         <div
             style={style}
-            className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${isCompleted
-                ? 'bg-green-50 border-green-200'
-                : isOverdue
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-white border-gray-200 hover:border-gray-300'
-                }`}
+            // Строка списка ≥ 56 px; состояние — знаком и словом, без заливки строки.
+            className="flex min-h-14 items-start gap-2 py-2"
             role="article"
             aria-label={t('dashboard.tasks.taskAria', { title: task.title, status: isCompleted ? t('dashboard.tasks.statusDone') : isOverdue ? t('dashboard.tasks.statusOverdue') : t('dashboard.tasks.statusActive'), deadline: dueDateFormatted })}
         >
-            {/* Completion checkbox */}
+            {/* Completion checkbox — цель нажатия 44 px */}
             <button
                 type="button"
                 onClick={() => onToggleComplete(task.id)}
                 disabled={isCompleted}
-                className="flex-shrink-0 mt-0.5 disabled:cursor-not-allowed"
+                className="-ml-2.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 aria-label={isCompleted ? t('dashboard.tasks.doneAria') : t('dashboard.tasks.markTaskDoneAria')}
                 aria-pressed={isCompleted}
             >
                 {isCompleted ? (
-                    <CheckCircle className="w-5 h-5 text-green-600" aria-hidden="true" />
+                    <CheckCircle className="h-[22px] w-[22px] text-success" strokeWidth={2} aria-hidden="true" />
                 ) : (
-                    <Circle className="w-5 h-5 text-gray-400 hover:text-gray-600" aria-hidden="true" />
+                    <Circle className="h-[22px] w-[22px] text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                 )}
             </button>
 
             {/* Task content */}
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1 pt-2.5">
                 <h4
-                    className={`text-sm font-medium ${isCompleted ? 'text-green-900 line-through' : 'text-gray-900'
-                        }`}
+                    className={`type-headline ${isCompleted ? 'text-fg-muted line-through' : 'text-fg'}`}
                 >
                     {task.title}
                 </h4>
                 {task.description && (
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                    <p className="mt-0.5 line-clamp-2 text-sm text-fg-muted">
                         {task.description}
                     </p>
                 )}
-                <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                <div className="mt-1 flex items-center gap-2 type-caption text-fg-muted tabular-nums">
                     <span>{t('dashboard.tasks.dueDate', { date: dueDateFormatted })}</span>
                     {isOverdue && (
-                        <span className="text-red-600 font-medium" role="status" aria-label={t('dashboard.tasks.overdueAria')}>
+                        <span className="rounded-full bg-danger-soft px-2 font-medium text-danger-fg" role="status" aria-label={t('dashboard.tasks.overdueAria')}>
                             {t('dashboard.tasks.overdue')}
                         </span>
                     )}
@@ -301,14 +296,14 @@ export const TasksSection = memo(function TasksSection({
 
     return (
         <section
-            className={`tasks-section bg-white rounded-lg shadow-sm p-6 ${className}`}
+            className={`tasks-section rounded-card border border-line bg-surface p-5 ${className}`}
             aria-labelledby="tasks-heading"
             aria-describedby={showAttentionIndicator ? "tasks-attention-indicator" : undefined}
         >
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
                 <h2
                     id="tasks-heading"
-                    className="text-lg font-semibold text-gray-900"
+                    className="type-title-2 text-fg"
                 >
                     {t('dashboard.tasks.title')}
                 </h2>
@@ -324,7 +319,7 @@ export const TasksSection = memo(function TasksSection({
             </div>
 
             {allTasks.length > 0 ? (
-                <div ref={containerRef} className="space-y-4" role="list" aria-label={t('dashboard.tasks.listAria')} id="tasks-list">
+                <div ref={containerRef} className="space-y-3" role="list" aria-label={t('dashboard.tasks.listAria')} id="tasks-list">
                     {useVirtualScrolling && showAll ? (
                         /* Virtual scrolling for large lists */
                         <List
@@ -333,7 +328,7 @@ export const TasksSection = memo(function TasksSection({
                             rowHeight={100}
                             rowComponent={VirtualRowComponent}
                             rowProps={rowProps}
-                            className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                            className="divide-y divide-line"
                         />
                     ) : (
                         /* Regular rendering for small lists */
@@ -341,10 +336,10 @@ export const TasksSection = memo(function TasksSection({
                             {/* Current week tasks */}
                             {currentWeekTasks.length > 0 && (
                                 <div role="group" aria-labelledby={`week-${currentWeek}-heading`}>
-                                    <h3 id={`week-${currentWeek}-heading`} className="text-sm font-medium text-gray-700 mb-2">
+                                    <h3 id={`week-${currentWeek}-heading`} className="mb-1 type-overline text-fg-subtle">
                                         {t('dashboard.tasks.week', { week: currentWeek })}
                                     </h3>
-                                    <div className="space-y-2">
+                                    <div className="divide-y divide-line">
                                         {currentWeekTasks
                                             .slice(0, showAll ? undefined : maxVisibleTasks)
                                             .map((task) => (
@@ -362,10 +357,10 @@ export const TasksSection = memo(function TasksSection({
                             {/* Previous week tasks */}
                             {previousWeekTasks.length > 0 && (
                                 <div role="group" aria-labelledby={`week-${currentWeek - 1}-heading`}>
-                                    <h3 id={`week-${currentWeek - 1}-heading`} className="text-sm font-medium text-gray-700 mb-2">
+                                    <h3 id={`week-${currentWeek - 1}-heading`} className="mb-1 type-overline text-fg-subtle">
                                         {t('dashboard.tasks.week', { week: currentWeek - 1 })}
                                     </h3>
-                                    <div className="space-y-2">
+                                    <div className="divide-y divide-line">
                                         {previousWeekTasks
                                             .slice(
                                                 0,
@@ -392,7 +387,7 @@ export const TasksSection = memo(function TasksSection({
                         <button
                             type="button"
                             onClick={() => setShowAll(true)}
-                            className="w-full flex items-center justify-center gap-2 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold text-primary transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                             aria-label={t('dashboard.tasks.showMoreAria', { count: allTasks.length - maxVisibleTasks })}
                         >
                             <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
@@ -405,7 +400,7 @@ export const TasksSection = memo(function TasksSection({
                         <button
                             type="button"
                             onClick={() => setShowAll(false)}
-                            className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-600 hover:text-gray-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded"
+                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold text-fg-muted transition-colors hover:bg-subtle hover:text-fg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                             aria-label={t('dashboard.tasks.collapseAria')}
                         >
                             <span>{t('dashboard.tasks.collapse')}</span>
@@ -415,15 +410,15 @@ export const TasksSection = memo(function TasksSection({
             ) : (
                 /* Empty state */
                 <div
-                    className="flex flex-col items-center justify-center py-8 text-center"
+                    className="flex flex-col items-center justify-center py-6 text-center"
                     role="status"
                     aria-label={t('dashboard.tasks.emptyAria')}
                 >
-                    <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                        <CheckCircle className="w-8 h-8 text-gray-400" aria-hidden="true" />
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-subtle">
+                        <CheckCircle className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                     </div>
-                    <p className="text-gray-600 text-sm">{t('dashboard.tasks.empty')}</p>
-                    <p className="text-gray-500 text-xs mt-2">
+                    <p className="text-sm text-fg">{t('dashboard.tasks.empty')}</p>
+                    <p className="mt-1 text-sm text-fg-muted">
                         {t('dashboard.tasks.emptyHint')}
                     </p>
                 </div>

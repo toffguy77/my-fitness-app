@@ -23,7 +23,9 @@ interface SkeletonProps {
 export const Skeleton = memo(function Skeleton({ className = '' }: SkeletonProps) {
     return (
         <div
-            className={`animate-pulse bg-gray-200 rounded ${className}`}
+            // Скелетон по рецепту системы: `rounded-tile bg-subtle`; круг или
+            // таблетка задаются явно через `className`.
+            className={`animate-pulse bg-subtle ${/(^|\s)rounded-/.test(className) ? '' : 'rounded-tile'} ${className}`}
             aria-hidden="true"
         />
     );
@@ -35,7 +37,7 @@ export const Skeleton = memo(function Skeleton({ className = '' }: SkeletonProps
 
 export const KBZHUSummarySkeleton = memo(function KBZHUSummarySkeleton() {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4">
+        <div className="rounded-card border border-line bg-surface p-5">
             <Skeleton className="h-5 w-32 mb-3 sm:mb-4" />
             <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
                 {[1, 2, 3, 4].map((i) => (
@@ -59,15 +61,15 @@ export const KBZHUSummarySkeleton = memo(function KBZHUSummarySkeleton() {
 
 export const MealSlotSkeleton = memo(function MealSlotSkeleton() {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-100">
+        <div className="overflow-hidden rounded-card border border-line bg-surface">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
                 <div className="flex items-center gap-2">
-                    <Skeleton className="w-5 h-5 rounded" />
+                    <Skeleton className="h-5 w-5 rounded-full" />
                     <Skeleton className="h-4 w-20" />
                 </div>
-                <Skeleton className="w-8 h-8 rounded-full" />
+                <Skeleton className="h-11 w-11 rounded-full" />
             </div>
-            <div className="p-3 sm:p-4">
+            <div className="px-4 py-3">
                 <div className="space-y-2">
                     {[1, 2].map((i) => (
                         <div key={i} className="flex items-center justify-between py-2">
@@ -90,16 +92,16 @@ export const MealSlotSkeleton = memo(function MealSlotSkeleton() {
 
 export const WaterTrackerSkeleton = memo(function WaterTrackerSkeleton() {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4">
+        <div className="rounded-card border border-line bg-surface p-5">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                    <Skeleton className="w-5 h-5 rounded" />
+                    <Skeleton className="h-5 w-5 rounded-full" />
                     <Skeleton className="h-4 w-12" />
                 </div>
                 <Skeleton className="h-5 w-24" />
             </div>
             <Skeleton className="h-3 w-full mb-3" />
-            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-11 w-full rounded-full" />
         </div>
     );
 });
@@ -149,7 +151,7 @@ export const SearchResultsSkeleton = memo(function SearchResultsSkeleton() {
 
 export const FoodTrackerPageSkeleton = memo(function FoodTrackerPageSkeleton() {
     return (
-        <div className="space-y-3 pb-20 sm:space-y-4 sm:pb-24" aria-label={t('common.loading')}>
+        <div className="space-y-4 pb-20 sm:pb-24" aria-label={t('common.loading')}>
             <KBZHUSummarySkeleton />
             <MealSlotSkeleton />
             <MealSlotSkeleton />
@@ -168,10 +170,10 @@ export const RecommendationsSkeleton = memo(function RecommendationsSkeleton() {
     return (
         <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div key={i} className="rounded-card border border-line bg-surface p-5">
                     <div className="flex items-center justify-between mb-3">
                         <Skeleton className="h-5 w-24" />
-                        <Skeleton className="w-5 h-5 rounded" />
+                        <Skeleton className="h-5 w-5 rounded-full" />
                     </div>
                     <div className="space-y-3">
                         {[1, 2, 3].map((j) => (

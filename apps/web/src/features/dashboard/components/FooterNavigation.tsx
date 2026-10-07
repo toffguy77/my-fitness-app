@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { activeNavItem } from '@/shared/utils/activeNavItem'
+import { usePathname, useRouter } from 'next/navigation'
 import { NavigationItem } from './NavigationItem'
 import { NAVIGATION_ITEMS } from '../utils/navigationConfig'
 import { useUnreadCount } from '@/features/chat/hooks/useUnreadCount'
@@ -22,11 +23,16 @@ export interface FooterNavigationProps {
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 6.3
  */
 export function FooterNavigation({
-    activeItem = 'dashboard',
+    activeItem,
     onNavigate
 }: FooterNavigationProps) {
     const router = useRouter()
-    const [currentActive, setCurrentActive] = useState<NavigationItemId>(activeItem)
+    const pathname = usePathname()
+    // A tap lights its tab at once; the address takes over as soon as it
+    // changes. A tap recorded on another address is stale and ignored.
+    const [tapped, setTapped] = useState<{ id: NavigationItemId; on: string | null } | null>(null)
+    const currentActive =
+        tapped && tapped.on === pathname ? tapped.id : (activeNavItem(pathname, NAVIGATION_ITEMS) ?? activeItem)
     const unreadCount = useUnreadCount()
 
     const handleNavigationClick = (itemId: NavigationItemId) => {
@@ -39,7 +45,7 @@ export function FooterNavigation({
         }
 
         // Update active state
-        setCurrentActive(itemId)
+        setTapped({ id: itemId, on: pathname })
 
         // Call optional callback
         if (onNavigate) {
@@ -54,7 +60,7 @@ export function FooterNavigation({
 
     return (
         <nav
-            className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-gray-200 bg-white px-2"
+            className="fixed bottom-0 left-0 right-0 z-50 grid h-auto min-h-16 grid-cols-5 items-stretch border-t border-line bg-nav px-2 pt-1.5 backdrop-blur-md"
             style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
             data-testid="footer-navigation"
             aria-label={t('dashboard.navigation.aria')}

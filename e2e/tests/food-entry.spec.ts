@@ -48,8 +48,8 @@ test.describe('Food Entry', () => {
     await expect(breakfastSlot.getByText(/[Яя]блок/).first()).toBeVisible({ timeout: 5000 })
   })
 
-  test('open food modal from FAB button', async () => {
-    await foodTracker.fabAddFood.click()
+  test('open food modal from the quick add bar', async () => {
+    await foodTracker.quickAddSearch.click()
     await expect(foodTracker.foodModal).toBeVisible({ timeout: 5000 })
     await expect(foodTracker.searchInput).toBeVisible()
   })

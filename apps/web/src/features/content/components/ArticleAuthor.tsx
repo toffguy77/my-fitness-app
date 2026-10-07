@@ -34,16 +34,16 @@ export function ArticleAuthor({
             ) : (
                 <span
                     aria-hidden="true"
-                    className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700"
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-subtle text-sm font-semibold text-fg-muted"
                 >
                     {author.initials}
                 </span>
             )}
             <div className={`text-sm ${zoomablePhoto ? 'min-w-0 flex-1 basis-48' : ''}`}>
-                <Link href={author.path} className="font-medium text-gray-900 hover:underline">
+                <Link href={author.path} className="font-semibold text-fg hover:underline">
                     {author.name}
                 </Link>
-                <p className="text-gray-500">{author.jobTitle}</p>
+                <p className="text-fg-muted">{author.jobTitle}</p>
             </div>
         </div>
     )

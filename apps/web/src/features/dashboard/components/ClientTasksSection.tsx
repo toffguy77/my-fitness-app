@@ -28,6 +28,7 @@ import { useDashboardStore } from '../store/dashboardStore'
 import { WORKOUT_TYPES } from './WorkoutBlock'
 import { workoutTypeLabel } from '../utils/workoutTypeLabel'
 import { cn } from '@/shared/utils/cn'
+import { Button, IconButton } from '@/shared/components/ui/Button'
 import { formatLocalDate } from '@/shared/utils/format'
 import type { ClientTaskView, ClientTaskType } from '../types'
 import { t } from '@/shared/i18n'
@@ -73,15 +74,15 @@ function getDeadlineColor(deadline: string): string {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
     const deadlineDate = new Date(deadline)
-    if (isNaN(deadlineDate.getTime())) return 'text-gray-500'
+    if (isNaN(deadlineDate.getTime())) return 'text-fg-muted'
     deadlineDate.setHours(0, 0, 0, 0)
 
     const diffMs = deadlineDate.getTime() - now.getTime()
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
 
-    if (diffDays < 0) return 'text-red-600'
-    if (diffDays === 0) return 'text-yellow-600'
-    return 'text-gray-500'
+    if (diffDays < 0) return 'text-danger-fg'
+    if (diffDays === 0) return 'text-warning-fg'
+    return 'text-fg-muted'
 }
 
 function formatDeadline(deadline: string): string {
@@ -145,14 +146,14 @@ function MiniCalendar({
                 const scheduled = isScheduled(day.dayOfWeek)
                 return (
                     <div key={day.date} className="flex flex-col items-center gap-0.5">
-                        <span className="text-[9px] text-gray-400">{day.label}</span>
+                        <span className="text-[10px] leading-3 text-fg-subtle">{day.label}</span>
                         <div
                             className={`h-3 w-3 rounded-full ${
                                 day.filled
-                                    ? 'bg-green-500'
+                                    ? 'bg-success'
                                     : scheduled
-                                      ? 'border-2 border-green-400 bg-transparent'
-                                      : 'bg-gray-200'
+                                      ? 'border-2 border-success bg-transparent'
+                                      : 'bg-track'
                             }`}
                         />
                     </div>
@@ -287,17 +288,17 @@ export const ClientTasksSection = memo(function ClientTasksSection({
     return (
         <section
             ref={sectionRef}
-            className={`bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
+            className={`rounded-card border border-line bg-surface p-5 ${className}`}
             aria-labelledby="client-tasks-heading"
         >
             <h2
                 id="client-tasks-heading"
-                className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4"
+                className="mb-2 type-title-2 text-fg"
             >
                 {t('dashboard.tasks.fromCurator')}
             </h2>
 
-            <div className="space-y-2 sm:space-y-3" role="list" aria-label={t('dashboard.tasks.fromCuratorAria')}>
+            <div className="divide-y divide-line" role="list" aria-label={t('dashboard.tasks.fromCuratorAria')}>
                 {tasks.map((task) => {
                     const Icon = getTaskTypeIcon(task.type)
                     const isCompleted = isCompletedToday(task)
@@ -308,17 +309,11 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                         <div
                             key={task.id}
                             role="listitem"
-                            className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-all ${
-                                flashId === task.id
-                                    ? 'ring-2 ring-blue-400 ring-offset-1'
-                                    : ''
-                            } ${
-                                isOverdue
-                                    ? 'border-l-4 border-l-red-500 border-red-200 bg-red-50'
-                                    : isCompleted
-                                      ? 'border-green-200 bg-green-50'
-                                      : 'border-gray-100 bg-white shadow-sm'
-                            }`}
+                            // Строка списка ≥ 56 px; состояние — знаком и словом.
+                            className={cn(
+                                'flex min-h-14 items-start gap-2 rounded-tile py-2 transition-shadow',
+                                flashId === task.id && 'ring-2 ring-focus ring-offset-2',
+                            )}
                             aria-label={t('dashboard.tasks.clientTaskAria', {
                                 type: TYPE_LABELS[task.type],
                                 title: task.title,
@@ -329,74 +324,64 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                       : t('dashboard.tasks.statusActive'),
                             })}
                         >
-                            {/* Completion checkbox */}
+                            {/* Completion checkbox — цель нажатия 44 px */}
                             <button
                                 type="button"
                                 onClick={() => handleComplete(task.id)}
                                 disabled={isCompleted}
-                                className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                                    isCompleted
-                                        ? 'bg-green-500 border-green-500 cursor-default'
-                                        : 'border-gray-300 hover:border-green-400 cursor-pointer'
-                                }`}
+                                className="-ml-2.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default disabled:hover:bg-transparent"
                                 aria-label={
                                     isCompleted
                                         ? t('dashboard.tasks.doneAria')
                                         : t('dashboard.tasks.markDoneAria')
                                 }
                             >
-                                {isCompleted && (
-                                    <Check
-                                        className="w-3 h-3 text-white"
-                                        aria-hidden="true"
-                                    />
-                                )}
+                                <span
+                                    className={cn(
+                                        'flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-colors',
+                                        isCompleted ? 'border-success bg-success' : 'border-line-strong',
+                                    )}
+                                    aria-hidden="true"
+                                >
+                                    {isCompleted && (
+                                        <Check className="h-3.5 w-3.5 text-on-primary" strokeWidth={3} aria-hidden="true" />
+                                    )}
+                                </span>
                             </button>
 
-                            {/* Task type icon */}
-                            <div className={`flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center ${
-                                isCompleted
-                                    ? 'bg-green-100'
-                                    : isOverdue
-                                      ? 'bg-red-100'
-                                      : 'bg-gray-100'
-                            }`}>
-                                <Icon
-                                    className={`w-4 h-4 ${
-                                        isCompleted
-                                            ? 'text-green-600'
-                                            : isOverdue
-                                              ? 'text-red-500'
-                                              : 'text-gray-600'
-                                    }`}
-                                    aria-hidden="true"
-                                />
+                            {/* Task type icon — опознаёт тип, без оценки */}
+                            <div className="mt-1.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-tile bg-subtle">
+                                <Icon className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
                             </div>
 
                             {/* Task content */}
-                            <div className="flex-1 min-w-0">
+                            <div className="min-w-0 flex-1 pt-2">
                                 <h4
-                                    className={`text-sm font-semibold ${
-                                        isCompleted
-                                            ? 'text-green-900 line-through'
-                                            : 'text-gray-900'
-                                    }`}
+                                    className={cn(
+                                        'type-headline',
+                                        isCompleted ? 'text-fg-muted line-through' : 'text-fg',
+                                    )}
                                 >
                                     {task.title}
                                 </h4>
 
                                 {/* Type label + deadline */}
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs text-gray-400">
+                                <div className="mt-0.5 flex flex-wrap items-center gap-2 type-caption tabular-nums">
+                                    <span className="text-fg-muted">
                                         {TYPE_LABELS[task.type]}
                                     </span>
-                                    <span className={`text-xs ${getDeadlineColor(task.deadline)}`}>
+                                    <span className={getDeadlineColor(task.deadline)}>
                                         {t('dashboard.tasks.deadline', { date: formatDeadline(task.deadline) })}
                                     </span>
+                                    {isOverdue && (
+                                        <span className="rounded-full bg-danger-soft px-2 font-medium text-danger-fg">
+                                            {t('dashboard.tasks.overdue')}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {task.description && (
-                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                    <p className="mt-1 line-clamp-2 text-sm text-fg-muted">
                                         {task.description}
                                     </p>
                                 )}
@@ -417,34 +402,40 @@ export const ClientTasksSection = memo(function ClientTasksSection({
 
             {/* Workout dialog for Direction 1: task completion → feature sync */}
             {workoutTaskId !== null && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={handleWorkoutCancel}>
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-scrim sm:items-center" onClick={handleWorkoutCancel}>
                     <div
-                        className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4"
+                        className="w-full space-y-4 rounded-t-sheet bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-overlay sm:max-w-md sm:rounded-sheet"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="client-task-workout-title"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 font-semibold text-gray-900">
-                                <Dumbbell className="h-5 w-5" />
+                        <div className="flex items-center justify-between gap-2">
+                            <h3 id="client-task-workout-title" className="flex items-center gap-2 type-title-2 text-fg">
+                                <Dumbbell className="h-5 w-5 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
                                 {t('dashboard.tasks.typeWorkout')}
-                            </div>
-                            <button type="button" onClick={handleWorkoutCancel} className="text-gray-400 hover:text-gray-600">
-                                <X className="h-5 w-5" />
-                            </button>
+                            </h3>
+                            <IconButton variant="ghost" onClick={handleWorkoutCancel} aria-label={t('common.close')}>
+                                <X className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                            </IconButton>
                         </div>
 
                         <div className="space-y-2">
-                            <span className="text-sm font-medium text-gray-700">{t('dashboard.tasks.workoutType')}</span>
-                            <div className="grid grid-cols-2 gap-2">
+                            <span className="text-sm font-medium text-fg-muted">{t('dashboard.tasks.workoutType')}</span>
+                            {/* Выбранный тип — инверсия чернилами */}
+                            <div className="flex flex-wrap gap-2">
                                 {WORKOUT_TYPES.map((type) => (
                                     <button
                                         key={type}
                                         type="button"
                                         onClick={() => setWorkoutType(type)}
+                                        aria-pressed={workoutType === type}
                                         className={cn(
-                                            'px-3 py-2 text-sm rounded-lg border transition-colors',
+                                            'inline-flex h-11 items-center rounded-full border px-4 text-sm font-medium transition-colors duration-150 touch-manipulation',
+                                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                                             workoutType === type
-                                                ? 'bg-blue-100 border-blue-300 text-blue-700'
-                                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                                ? 'border-fg bg-fg text-fg-inverse'
+                                                : 'border-line bg-surface text-fg hover:bg-subtle'
                                         )}
                                     >
                                         {workoutTypeLabel(type)}
@@ -453,40 +444,44 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                             </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <span className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" />
+                        <div className="space-y-1.5">
+                            <label htmlFor="client-task-workout-duration" className="flex items-center gap-1 text-sm font-medium text-fg-muted">
+                                <Clock className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
                                 {t('dashboard.tasks.durationLabel')}
-                            </span>
+                            </label>
                             <input
+                                id="client-task-workout-duration"
                                 type="number"
+                                inputMode="numeric"
                                 min="1"
                                 max="600"
                                 placeholder="45"
                                 value={workoutDuration}
                                 onChange={(e) => setWorkoutDuration(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums placeholder:text-fg-subtle focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                             />
                         </div>
 
+                        {/* Отказ первым */}
                         <div className="flex gap-2 pt-1">
-                            <button
-                                type="button"
-                                onClick={handleWorkoutComplete}
-                                disabled={!workoutType || workoutSaving}
-                                className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                <Check className="h-4 w-4" />
-                                {t('common.save')}
-                            </button>
-                            <button
-                                type="button"
+                            <Button
+                                variant="secondary"
+                                size="lg"
                                 onClick={handleWorkoutCancel}
                                 disabled={workoutSaving}
-                                className="px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
                             >
                                 {t('common.cancel')}
-                            </button>
+                            </Button>
+                            <Button
+                                variant="primary"
+                                size="lg"
+                                onClick={handleWorkoutComplete}
+                                disabled={!workoutType || workoutSaving}
+                                isLoading={workoutSaving}
+                                className="flex-1"
+                            >
+                                {t('common.save')}
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -18,6 +18,13 @@ import type { FoodItem } from '../types';
 import type { CreateUserFoodRequest, UserFood } from '../types';
 import { userFoodToFoodItem } from '../types';
 import { t } from '@/shared/i18n';
+import { Button } from '@/shared/components/ui/Button';
+import { MACRO_COLORS } from '@/shared/constants/macros';
+
+/** Поле 48 px, текст 16 px — как `Input`; рамка ставится отдельно (ошибка — `danger`). */
+const FIELD_CLASS =
+    'h-12 w-full rounded-field border bg-surface px-4 text-base text-fg tabular-nums placeholder:text-fg-subtle ' +
+    'transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30';
 
 // ============================================================================
 // Types
@@ -171,13 +178,13 @@ export function ManualEntryForm({
 
     return (
         <form onSubmit={handleSubmit} className={`space-y-4 ${className}`}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="type-title-3 text-fg">
                 {t('foodTracker.manualEntry.title')}
             </h3>
 
             {/* Name */}
             <div>
-                <label htmlFor="manual-name" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="manual-name" className="mb-1.5 block text-sm font-medium text-fg-muted">
                     {t('foodTracker.manualEntry.productName')}
                 </label>
                 <input
@@ -186,19 +193,18 @@ export function ManualEntryForm({
                     value={formData.name}
                     onChange={handleChange('name')}
                     placeholder={t('foodTracker.manualEntry.namePlaceholder')}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                    className={`${FIELD_CLASS} ${errors.name ? 'border-danger' : 'border-line'}`}
                     aria-invalid={!!errors.name}
                     aria-describedby={errors.name ? 'name-error' : undefined}
                 />
                 {errors.name && (
-                    <p id="name-error" className="mt-1 text-sm text-red-600">{errors.name}</p>
+                    <p id="name-error" className="mt-1 text-sm text-danger-fg">{errors.name}</p>
                 )}
             </div>
 
             {/* Brand (optional) */}
             <div>
-                <label htmlFor="manual-brand" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="manual-brand" className="mb-1.5 block text-sm font-medium text-fg-muted">
                     {t('foodTracker.manualEntry.brand')}
                 </label>
                 <input
@@ -207,20 +213,20 @@ export function ManualEntryForm({
                     value={formData.brand}
                     onChange={handleChange('brand')}
                     placeholder={t('foodTracker.manualEntry.brandPlaceholder')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`${FIELD_CLASS} border-line`}
                 />
             </div>
 
             {/* Nutrition per 100g */}
-            <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 mb-3">
+            <div className="rounded-tile border border-line p-4">
+                <p className="type-overline mb-3 text-fg-subtle">
                     {t('foodTracker.manualEntry.per100Heading')}
                 </p>
 
                 <div className="grid grid-cols-2 gap-3">
                     {/* Calories */}
                     <div>
-                        <label htmlFor="manual-calories" className="block text-xs text-gray-500 mb-1">
+                        <label htmlFor="manual-calories" className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-fg-muted">
                             {t('foodTracker.manualEntry.caloriesField')}
                         </label>
                         <input
@@ -232,18 +238,18 @@ export function ManualEntryForm({
                             value={formData.calories}
                             onChange={handleChange('calories')}
                             placeholder="0"
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.calories ? 'border-red-500' : 'border-gray-300'
-                                }`}
+                            className={`${FIELD_CLASS} ${errors.calories ? 'border-danger' : 'border-line'}`}
                             aria-invalid={!!errors.calories}
                         />
                         {errors.calories && (
-                            <p className="mt-1 text-xs text-red-600">{errors.calories}</p>
+                            <p className="mt-1 text-sm text-danger-fg">{errors.calories}</p>
                         )}
                     </div>
 
                     {/* Protein */}
                     <div>
-                        <label htmlFor="manual-protein" className="block text-xs text-gray-500 mb-1">
+                        <label htmlFor="manual-protein" className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-fg-muted">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: MACRO_COLORS.protein }} aria-hidden="true" />
                             {t('foodTracker.manualEntry.proteinField')}
                         </label>
                         <input
@@ -255,18 +261,18 @@ export function ManualEntryForm({
                             value={formData.protein}
                             onChange={handleChange('protein')}
                             placeholder="0"
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.protein ? 'border-red-500' : 'border-gray-300'
-                                }`}
+                            className={`${FIELD_CLASS} ${errors.protein ? 'border-danger' : 'border-line'}`}
                             aria-invalid={!!errors.protein}
                         />
                         {errors.protein && (
-                            <p className="mt-1 text-xs text-red-600">{errors.protein}</p>
+                            <p className="mt-1 text-sm text-danger-fg">{errors.protein}</p>
                         )}
                     </div>
 
                     {/* Fat */}
                     <div>
-                        <label htmlFor="manual-fat" className="block text-xs text-gray-500 mb-1">
+                        <label htmlFor="manual-fat" className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-fg-muted">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: MACRO_COLORS.fat }} aria-hidden="true" />
                             {t('foodTracker.manualEntry.fatField')}
                         </label>
                         <input
@@ -278,18 +284,18 @@ export function ManualEntryForm({
                             value={formData.fat}
                             onChange={handleChange('fat')}
                             placeholder="0"
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fat ? 'border-red-500' : 'border-gray-300'
-                                }`}
+                            className={`${FIELD_CLASS} ${errors.fat ? 'border-danger' : 'border-line'}`}
                             aria-invalid={!!errors.fat}
                         />
                         {errors.fat && (
-                            <p className="mt-1 text-xs text-red-600">{errors.fat}</p>
+                            <p className="mt-1 text-sm text-danger-fg">{errors.fat}</p>
                         )}
                     </div>
 
                     {/* Carbs */}
                     <div>
-                        <label htmlFor="manual-carbs" className="block text-xs text-gray-500 mb-1">
+                        <label htmlFor="manual-carbs" className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-fg-muted">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: MACRO_COLORS.carbs }} aria-hidden="true" />
                             {t('foodTracker.manualEntry.carbsField')}
                         </label>
                         <input
@@ -301,12 +307,11 @@ export function ManualEntryForm({
                             value={formData.carbs}
                             onChange={handleChange('carbs')}
                             placeholder="0"
-                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.carbs ? 'border-red-500' : 'border-gray-300'
-                                }`}
+                            className={`${FIELD_CLASS} ${errors.carbs ? 'border-danger' : 'border-line'}`}
                             aria-invalid={!!errors.carbs}
                         />
                         {errors.carbs && (
-                            <p className="mt-1 text-xs text-red-600">{errors.carbs}</p>
+                            <p className="mt-1 text-sm text-danger-fg">{errors.carbs}</p>
                         )}
                     </div>
                 </div>
@@ -314,7 +319,7 @@ export function ManualEntryForm({
 
             {/* Serving Size */}
             <div>
-                <label htmlFor="manual-serving" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="manual-serving" className="mb-1.5 block text-sm font-medium text-fg-muted">
                     {t('foodTracker.manualEntry.servingField')}
                 </label>
                 <input
@@ -326,42 +331,41 @@ export function ManualEntryForm({
                     value={formData.servingSize}
                     onChange={handleChange('servingSize')}
                     placeholder="100"
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.servingSize ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                    className={`${FIELD_CLASS} ${errors.servingSize ? 'border-danger' : 'border-line'}`}
                     aria-invalid={!!errors.servingSize}
                 />
                 {errors.servingSize && (
-                    <p className="mt-1 text-sm text-red-600">{errors.servingSize}</p>
+                    <p className="mt-1 text-sm text-danger-fg">{errors.servingSize}</p>
                 )}
             </div>
 
             {/* Buttons */}
             <div className="flex gap-3 pt-2">
-                <button
+                <Button
                     type="button"
+                    variant="secondary"
+                    size="lg"
+                    className="flex-1"
                     onClick={onCancel}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
                 >
-                    <X className="w-5 h-5" />
+                    <X className="h-5 w-5" aria-hidden="true" />
                     <span>{t('common.cancel')}</span>
-                </button>
-                <button
+                </Button>
+                <Button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    size="lg"
+                    className="flex-1"
+                    isLoading={isSubmitting}
                 >
                     {isSubmitting ? (
-                        <>
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            <span>{t('common.saving')}</span>
-                        </>
+                        <span>{t('common.saving')}</span>
                     ) : (
                         <>
-                            <Save className="w-5 h-5" />
+                            <Save className="h-5 w-5" aria-hidden="true" />
                             <span>{t('common.save')}</span>
                         </>
                     )}
-                </button>
+                </Button>
             </div>
         </form>
     );

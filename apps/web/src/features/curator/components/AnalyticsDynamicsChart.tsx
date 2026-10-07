@@ -10,9 +10,8 @@ import { cn } from '@/shared/utils/cn'
 import type { WeeklySnapshot, PlatformBenchmark } from '../types'
 
 import { t } from '@/shared/i18n'
+import { AXIS_STYLE, GRID_STROKE, TOOLTIP_CLASS, chartColor } from '@/shared/charts/chartTheme'
 const CHART_HEIGHT = 200
-const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
-const GRID_STROKE = '#f0f0f0'
 
 interface AnalyticsDynamicsChartProps {
     ownSnapshots: WeeklySnapshot[]
@@ -28,15 +27,15 @@ function DynamicsTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
-            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+        <div className={TOOLTIP_CLASS}>
+            <p className="text-xs font-medium text-fg mb-1">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
-                <p key={entry.name} className="text-xs text-gray-600">
+                <p key={entry.name} className="text-xs text-fg-muted">
                     <span
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
                     />
-                    {entry.name === 'own' ? t('curator.analytics.own') : t('curator.analytics.platform')}: <span className="font-medium">{Number(entry.value)}%</span>
+                    {entry.name === 'own' ? t('curator.analytics.own') : t('curator.analytics.platform')}: <span className="font-medium tabular-nums">{Number(entry.value)}%</span>
                 </p>
             ))}
         </div>
@@ -70,9 +69,9 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
     // has to look like one.
     if (ownSnapshots.length === 0) {
         return (
-            <div className="rounded-xl bg-white shadow-sm border border-gray-100 px-4 py-5">
-                <p className="text-sm font-semibold text-gray-900">{t('curator.analytics.dynamics')}</p>
-                <p className="mt-2 text-sm text-gray-500">
+            <div className="rounded-card border border-line bg-surface p-5">
+                <h2 className="type-title-3 text-fg">{t('curator.analytics.dynamics')}</h2>
+                <p className="mt-2 text-sm text-fg-muted">
                     {t('curator.analytics.emptyHint')}
                 </p>
             </div>
@@ -80,33 +79,37 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
     }
 
     return (
-        <div className="rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-hidden rounded-card border border-line bg-surface">
             <button
                 type="button"
                 onClick={() => setExpanded(prev => !prev)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left"
+                aria-expanded={expanded}
+                className="flex min-h-14 w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-subtle/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             >
-                <span className="text-sm font-semibold text-gray-900">{t('curator.analytics.dynamics')}</span>
+                <span className="type-title-3 text-fg">{t('curator.analytics.dynamics')}</span>
                 {expanded ? (
-                    <ChevronUp className="h-4 w-4 text-gray-400" />
+                    <ChevronUp className="h-5 w-5 text-fg-subtle" aria-hidden="true" />
                 ) : (
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                    <ChevronDown className="h-5 w-5 text-fg-subtle" aria-hidden="true" />
                 )}
             </button>
 
             {expanded && (
-                <div className="px-4 pb-4">
-                    <div className="flex gap-1 mb-3">
+                <div className="px-5 pb-5">
+                    {/* Период из трёх вариантов — сегменты; выбранный — чернилами. */}
+                    <div className="mb-3 inline-flex rounded-full border border-line p-1" role="group">
                         {([4, 8, 12] as const).map(w => (
                             <button
                                 key={w}
                                 type="button"
                                 onClick={() => setWeeks(w)}
+                                aria-pressed={weeks === w}
                                 className={cn(
-                                    'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                                    'h-9 rounded-full px-4 text-sm font-medium transition-colors',
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                                     weeks === w
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-fg text-fg-inverse'
+                                        : 'text-fg-muted hover:text-fg'
                                 )}
                             >
                                 {t('curator.analytics.weeks', { count: w })}
@@ -115,7 +118,7 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                     </div>
 
                     {benchmarks.length === 0 && (
-                        <p className="mb-3 text-xs text-gray-500">
+                        <p className="mb-3 rounded-tile bg-info-soft px-3 py-2 text-sm text-info-fg">
                             {t('curator.analytics.noBenchmarks')}
                         </p>
                     )}
@@ -126,12 +129,12 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                             <XAxis
                                 dataKey="week"
                                 tick={AXIS_STYLE}
-                                stroke="#e5e7eb"
+                                stroke={chartColor.line}
                                 tickLine={false}
                             />
                             <YAxis
                                 tick={AXIS_STYLE}
-                                stroke="#e5e7eb"
+                                stroke={chartColor.line}
                                 tickLine={false}
                                 width={40}
                                 tickFormatter={(v: number) => `${v}%`}
@@ -140,16 +143,16 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                             <Line
                                 type="monotone"
                                 dataKey="own"
-                                stroke="#3b82f6"
+                                stroke={chartColor.fg}
                                 strokeWidth={2}
-                                dot={{ r: 3 }}
+                                dot={{ r: 3, fill: chartColor.fg, strokeWidth: 0 }}
                                 activeDot={{ r: 5 }}
                                 name="own"
                             />
                             <Line
                                 type="monotone"
                                 dataKey="benchmark"
-                                stroke="#9ca3af"
+                                stroke={chartColor['fg-subtle']}
                                 strokeWidth={2}
                                 strokeDasharray="6 3"
                                 dot={{ r: 3 }}
@@ -159,13 +162,13 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                         </LineChart>
                     </ResponsiveContainer>
 
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                            <span className="inline-block w-3 h-0.5 bg-blue-500 rounded" />
+                    <div className="mt-2 flex items-center gap-4 text-[13px] text-fg-muted">
+                        <span className="flex items-center gap-1.5">
+                            <span className="inline-block w-4 border-t-2 border-fg" aria-hidden="true" />
                             {t('curator.analytics.ownMetric')}
                         </span>
-                        <span className="flex items-center gap-1">
-                            <span className="inline-block w-3 h-0.5 bg-gray-400 rounded border-dashed" />
+                        <span className="flex items-center gap-1.5">
+                            <span className="inline-block w-4 border-t-2 border-dashed border-fg-subtle" aria-hidden="true" />
                             {t('curator.analytics.platform')}
                         </span>
                     </div>

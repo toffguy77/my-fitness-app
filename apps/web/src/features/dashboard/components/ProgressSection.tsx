@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, memo, useMemo } from 'react'
-import { Award, Activity } from 'lucide-react'
+import { AlertCircle, Award, Activity } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { cn } from '@/shared/utils/cn'
 import { apiClient } from '@/shared/utils/api-client'
@@ -36,10 +36,12 @@ interface AdherenceIndicatorProps {
  * Nutrition adherence indicator
  */
 const AdherenceIndicator = memo(function AdherenceIndicator({ percentage, className }: AdherenceIndicatorProps) {
+    // Состояние — ролью: «отлично» — success, «хорошо» — info (сообщает, не
+    // оценивает), «требует внимания» — warning, единственная оценочная роль.
     const getColor = (pct: number) => {
-        if (pct >= 90) return 'text-green-600 bg-green-50 border-green-200'
-        if (pct >= 70) return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-        return 'text-orange-600 bg-orange-50 border-orange-200'
+        if (pct >= 90) return 'text-success-fg bg-success-soft'
+        if (pct >= 70) return 'text-info-fg bg-info-soft'
+        return 'text-warning-fg bg-warning-soft'
     }
 
     const getLabel = (pct: number) => {
@@ -51,23 +53,23 @@ const AdherenceIndicator = memo(function AdherenceIndicator({ percentage, classN
     return (
         <div className={cn('space-y-2', className)}>
             <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-fg">
                     {t('dashboard.progress.adherence')}
                 </span>
                 <span className={cn(
-                    'text-sm font-semibold px-2 py-1 rounded-full border',
+                    'rounded-full px-2.5 py-0.5 text-xs font-semibold',
                     getColor(percentage)
                 )}>
                     {getLabel(percentage)}
                 </span>
             </div>
-            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-1.5 overflow-hidden rounded-full bg-track">
                 <div
                     className={cn(
-                        'h-full transition-all duration-300 rounded-full',
-                        percentage >= 90 ? 'bg-green-500' :
-                            percentage >= 70 ? 'bg-yellow-500' :
-                                'bg-orange-500'
+                        'h-full rounded-full transition-[width] duration-300 ease-standard',
+                        percentage >= 90 ? 'bg-success' :
+                            percentage >= 70 ? 'bg-info' :
+                                'bg-warning'
                     )}
                     style={{ width: `${percentage}%` }}
                     role="progressbar"
@@ -77,7 +79,7 @@ const AdherenceIndicator = memo(function AdherenceIndicator({ percentage, classN
                     aria-label={t('dashboard.progress.adherenceAria', { percentage })}
                 />
             </div>
-            <div className="text-xs text-gray-500 text-right">
+            <div className="text-right type-caption text-fg-muted tabular-nums">
                 {percentage.toFixed(1)}%
             </div>
         </div>
@@ -94,18 +96,20 @@ const AchievementItem = memo(function AchievementItem({ achievement }: { achieve
     })
 
     return (
-        <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex-shrink-0 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center" aria-hidden="true">
+        <div className="flex min-h-14 items-start gap-3 py-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
                 {achievement.icon ? (
-                    <span className="text-white text-lg">{achievement.icon}</span>
+                    // Значок приходит с сервера вместе с достижением — это
+                    // содержимое, а не элемент интерфейса.
+                    <span className="text-base">{achievement.icon}</span>
                 ) : (
-                    <Award className="h-4 w-4 text-white" />
+                    <Award className="h-4 w-4 text-fg-muted" strokeWidth={1.8} />
                 )}
             </div>
-            <div className="flex-1 min-w-0">
-                <h5 className="text-sm font-semibold text-gray-900 truncate">{achievement.title}</h5>
-                <p className="text-xs text-gray-600 mt-0.5">{achievement.description}</p>
-                <p className="text-xs text-gray-500 mt-1">{achievedDate}</p>
+            <div className="min-w-0 flex-1">
+                <h5 className="truncate type-headline text-fg">{achievement.title}</h5>
+                <p className="mt-0.5 text-sm text-fg-muted">{achievement.description}</p>
+                <p className="mt-0.5 type-caption text-fg-subtle tabular-nums">{achievedDate}</p>
             </div>
         </div>
     )
@@ -116,10 +120,12 @@ const AchievementItem = memo(function AchievementItem({ achievement }: { achieve
  */
 const InsufficientDataPlaceholder = memo(function InsufficientDataPlaceholder() {
     return (
-        <div className="flex flex-col items-center justify-center py-8 text-center" role="status">
-            <Activity className="h-12 w-12 text-gray-300 mb-3" aria-hidden="true" />
-            <h4 className="text-sm font-semibold text-gray-700 mb-1">{t('dashboard.progress.notEnoughData')}</h4>
-            <p className="text-sm text-gray-500 max-w-xs">
+        <div className="flex flex-col items-center justify-center py-6 text-center" role="status">
+            <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                <Activity className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} />
+            </span>
+            <h4 className="mb-1 type-title-3 text-fg">{t('dashboard.progress.notEnoughData')}</h4>
+            <p className="text-sm text-fg-muted max-w-xs">
                 {t('dashboard.progress.notEnoughDataHint')}
             </p>
         </div>
@@ -177,9 +183,9 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
     )
 
     return (
-        <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-gray-900">
+        <Card className={cn('h-full', className)}>
+            <CardHeader>
+                <CardTitle className="type-title-2 text-fg">
                     {t('dashboard.progress.title')}
                 </CardTitle>
             </CardHeader>
@@ -187,11 +193,14 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
             <CardContent className="space-y-6">
                 {isLoading ? (
                     <div className="flex items-center justify-center py-8" role="status">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" aria-hidden="true" />
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
                         <span className="sr-only">{t('common.loading')}</span>
                     </div>
                 ) : loadError ? (
-                    <p className="py-8 text-center text-sm text-red-500" role="status">{loadError}</p>
+                    <p className="flex items-center justify-center gap-2 py-8 text-center text-sm text-danger-fg" role="status">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                        {loadError}
+                    </p>
                 ) : !hasSufficientData || !progressData ? (
                     <InsufficientDataPlaceholder />
                 ) : (
@@ -205,11 +214,11 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
 
                         {/* Recent achievements */}
                         {progressData.achievements.length > 0 && (
-                            <div className="space-y-3" role="region">
-                                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            <div role="region">
+                                <h4 className="mb-1 type-overline text-fg-subtle">
                                     {t('dashboard.progress.achievements')}
                                 </h4>
-                                <div className="space-y-2" role="list">
+                                <div className="divide-y divide-line" role="list">
                                     {progressData.achievements.slice(0, 3).map((achievement) => (
                                         <div key={achievement.id} role="listitem">
                                             <AchievementItem achievement={achievement} />

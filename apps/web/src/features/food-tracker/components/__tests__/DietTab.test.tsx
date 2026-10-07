@@ -9,7 +9,7 @@
 import React from 'react';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { DietTab } from '../DietTab';
+import { DietTab, mealForHour } from '../DietTab';
 import { useFoodTrackerStore } from '../../store/foodTrackerStore';
 import { FoodEntry, EntriesByMealType } from '../../types';
 
@@ -24,6 +24,7 @@ jest.mock('../../store/foodTrackerStore', () => ({
 
 // Mock lucide-react icons (all icons used by DietTab and its child components)
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     Plus: () => <span data-testid="plus-icon">+</span>,
     Calculator: () => <span data-testid="calculator-icon">🧮</span>,
     Sunrise: () => <span data-testid="sunrise-icon">☀</span>,
@@ -155,10 +156,12 @@ describe('DietTab', () => {
             expect(screen.getByText('Вода')).toBeInTheDocument();
         });
 
-        it('renders FAB button', () => {
+        it('renders quick add bar with three entry methods', () => {
             render(<DietTab {...createDefaultProps()} />);
-            const fabButton = screen.getByTestId('fab-add-food');
-            expect(fabButton).toBeInTheDocument();
+            expect(screen.getByTestId('quick-add-bar')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Найти продукт' })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Сканировать штрихкод' })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Распознать еду по фото' })).toBeInTheDocument();
         });
     });
 
@@ -253,24 +256,54 @@ describe('DietTab', () => {
         });
     });
 
-    describe('FAB Button', () => {
-        it('opens modal when FAB clicked', async () => {
+    describe('Quick Add Bar', () => {
+        it('opens the entry modal straight away when a method is picked', async () => {
             const user = userEvent.setup();
             render(<DietTab {...createDefaultProps()} />);
 
-            const fabButton = screen.getByTestId('fab-add-food');
-            await user.click(fabButton);
+            await user.click(screen.getByRole('button', { name: 'Найти продукт' }));
 
             await waitFor(() => {
                 expect(screen.getByRole('dialog')).toBeInTheDocument();
             });
         });
 
-        it('has accessible label in Russian', () => {
+        it.each([
+            ['Распознать еду по фото', 'tab-photo'],
+            ['Сканировать штрихкод', 'tab-barcode'],
+            ['Найти продукт', 'tab-search'],
+        ])('«%s» opens the modal on the matching tab', async (name, tabId) => {
+            const user = userEvent.setup();
             render(<DietTab {...createDefaultProps()} />);
 
-            const fabButton = screen.getByTestId('fab-add-food');
-            expect(fabButton).toHaveAttribute('aria-label', 'Добавить еду');
+            await user.click(screen.getByRole('button', { name }));
+
+            const dialog = await screen.findByRole('dialog');
+            expect(dialog.querySelector(`#${tabId}`)).toHaveAttribute('aria-selected', 'true');
+        });
+
+        it('closing the modal forgets the quick method — the next open starts on search', async () => {
+            const user = userEvent.setup();
+            render(<DietTab {...createDefaultProps()} />);
+
+            await user.click(screen.getByRole('button', { name: 'Сканировать штрихкод' }));
+            await screen.findByRole('dialog');
+            await user.click(screen.getByRole('button', { name: 'Закрыть' }));
+            await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+            const addButtons = screen.getAllByRole('button', { name: /добавить в/i });
+            await user.click(addButtons[0]);
+            const dialog = await screen.findByRole('dialog');
+            expect(dialog.querySelector('#tab-search')).toHaveAttribute('aria-selected', 'true');
+        });
+
+        it('guesses the meal from the hour', () => {
+            expect(mealForHour(8)).toBe('breakfast');
+            expect(mealForHour(13)).toBe('lunch');
+            expect(mealForHour(16)).toBe('snack');
+            expect(mealForHour(19)).toBe('dinner');
+            expect(mealForHour(23)).toBe('snack');
+            expect(mealForHour(3)).toBe('snack');
         });
     });
 
@@ -285,6 +318,36 @@ describe('DietTab', () => {
             await waitFor(() => {
                 expect(screen.getByRole('dialog')).toBeInTheDocument();
             });
+        });
+    });
+
+    describe('Existing entries', () => {
+        const entry = createMockEntry({ id: 'entry-edit', foodName: 'Овсянка', mealType: 'breakfast' });
+        const withEntry = () => createDefaultProps({
+            entries: { breakfast: [entry], lunch: [], dinner: [], snack: [] } as EntriesByMealType,
+        });
+
+        it('the edit button opens the modal on that entry', async () => {
+            const user = userEvent.setup();
+            render(<DietTab {...withEntry()} />);
+            await user.click(screen.getByRole('button', { name: 'Редактировать Овсянка' }));
+            const dialog = await screen.findByRole('dialog');
+            expect(dialog).toHaveTextContent('Редактировать');
+        });
+
+        it('tapping the entry itself opens it for editing too', async () => {
+            const user = userEvent.setup();
+            render(<DietTab {...withEntry()} />);
+            await user.click(screen.getByText('Овсянка'));
+            expect(await screen.findByRole('dialog')).toHaveTextContent('Редактировать');
+        });
+
+        it('the delete button passes the entry id and meal on', async () => {
+            const user = userEvent.setup();
+            const props = withEntry();
+            render(<DietTab {...props} />);
+            await user.click(screen.getByRole('button', { name: 'Удалить Овсянка' }));
+            await waitFor(() => expect(props.onDeleteEntry).toHaveBeenCalledWith('entry-edit', 'breakfast'));
         });
     });
 
@@ -422,8 +485,8 @@ describe('DietTab', () => {
                 />,
             );
 
-            // KBZHUSummary без нормы печатает «съедено / -» и не рисует процент.
-            expect(screen.getByText('1234 / -')).toBeInTheDocument();
+            // KBZHUSummary без нормы говорит «Съедено N ккал» и не рисует долю.
+            expect(screen.getByTestId('kbzhu-calories')).toHaveTextContent('Съедено 1234 ккал');
             expect(screen.queryByText(/^\d+%$/)).not.toBeInTheDocument();
         });
 

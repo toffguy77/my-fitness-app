@@ -15,11 +15,14 @@
 'use client';
 
 import { useRef, memo, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { Button, IconButton } from '@/shared/components/ui/Button';
+import { cn } from '@/shared/utils/cn';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useRovingTabIndex } from '../hooks/useKeyboardNavigation';
 import { formatLocalDate } from '@/shared/utils/format';
 import { t } from '@/shared/i18n'
+import { color } from '@burcev/design-tokens';
 
 /**
  * Day names in Russian (short form)
@@ -145,8 +148,8 @@ const ProgressRing = memo(function ProgressRing({
     completedCount,
     isSelected,
 }: ProgressRingProps) {
-    const filledColor = isSelected ? 'white' : '#22c55e';
-    const emptyColor = isSelected ? 'rgba(255,255,255,0.3)' : '#e5e7eb';
+    const filledColor = isSelected ? color['fg-inverse'] : color.success;
+    const emptyColor = isSelected ? 'color-mix(in srgb, var(--ds-color-fg-inverse) 30%, transparent)' : color.track;
 
     return (
         <svg
@@ -201,30 +204,32 @@ const DayButton = memo(function DayButton({
 
     return (
         <button
+            type="button"
             onClick={handleClick}
             data-navigable="true"
             role="radio"
             aria-checked={isSelected}
-            className={`
-                relative flex flex-col items-center justify-center p-2 rounded-lg
-                transition-all duration-200
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                ${isSelected
-                    ? 'bg-blue-500 text-white shadow-md'
-                    : 'bg-white hover:bg-gray-50 text-gray-700'
-                }
-                ${isToday && !isSelected ? 'ring-2 ring-blue-300' : ''}
-            `}
+            // Выбранный день — инверсия чернилами (не терракота), сегодня —
+            // тонкое кольцо бренда, как в календаре дневника.
+            className={cn(
+                'relative flex min-h-11 flex-col items-center justify-center rounded-tile py-1.5 touch-manipulation',
+                'transition-colors duration-200 ease-standard',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2',
+                isSelected
+                    ? 'bg-fg text-fg-inverse'
+                    : 'text-fg hover:bg-subtle',
+                isToday && !isSelected && 'ring-1 ring-inset ring-primary',
+            )}
             aria-label={`${DAY_NAMES_FULL[dayOfWeek]}, ${formatDayNumber(date)}, ${completionSummary}`}
             aria-current={isToday ? 'date' : undefined}
         >
-            <span className="text-xs font-medium mb-1">
+            <span className={cn('mb-1 type-micro', isSelected ? 'text-fg-inverse' : 'text-fg-subtle')}>
                 {DAY_NAMES[dayOfWeek]}
             </span>
 
             <div className="relative flex items-center justify-center">
                 <ProgressRing completedCount={completedCount} isSelected={isSelected} />
-                <span className="absolute text-sm font-semibold">
+                <span className="absolute text-sm font-semibold tabular-nums">
                     {formatDayNumber(date)}
                 </span>
             </div>
@@ -318,32 +323,32 @@ export const CalendarNavigator = memo(function CalendarNavigator({
     return (
         <div className={`calendar-navigator ${className}`}>
             {/* Week Navigation Header */}
-            <div className="flex items-center justify-between mb-4">
-                <button
+            <div className="mb-3 flex items-center justify-between gap-2">
+                <IconButton
+                    variant="ghost"
                     onClick={handlePrevWeek}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                     aria-label={t('dashboard.calendar.previousWeek')}
                 >
-                    <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
+                    <ChevronLeft className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                </IconButton>
 
-                <div className="text-sm font-medium text-gray-700">
+                <div className="text-base font-semibold text-fg tabular-nums">
                     {weekRangeDisplay}
                 </div>
 
-                <button
+                <IconButton
+                    variant="ghost"
                     onClick={handleNextWeek}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                     aria-label={t('dashboard.calendar.nextWeek')}
                 >
-                    <ChevronRight className="w-5 h-5 text-gray-600" />
-                </button>
+                    <ChevronRight className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                </IconButton>
             </div>
 
             {/* Days Grid */}
             <div
                 ref={daysContainerRef}
-                className="grid grid-cols-7 gap-2"
+                className="grid grid-cols-7 gap-1 sm:gap-2"
                 role="radiogroup"
                 aria-label={t('dashboard.calendar.pickDayAria')}
             >
@@ -370,13 +375,17 @@ export const CalendarNavigator = memo(function CalendarNavigator({
             {/* Submit Weekly Report Button */}
             {showSubmitButton && (
                 <div className="mt-4">
-                    <button
+                    {/* Терракота на дашборде одна — у записи еды; отчёт — контуром */}
+                    <Button
+                        variant="secondary"
+                        size="lg"
+                        block
                         onClick={handleSubmitReport}
-                        className="w-full py-3 px-4 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 animate-pulse"
                         aria-label={t('dashboard.calendar.sendReportAria')}
                     >
+                        <Send className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                         {t('dashboard.calendar.sendReport')}
-                    </button>
+                    </Button>
                 </div>
             )}
         </div>

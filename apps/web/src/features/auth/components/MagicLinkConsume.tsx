@@ -28,6 +28,7 @@ import { isNetworkError, messageFor } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
 import { EVENTS, track } from '@/shared/analytics'
 import { MagicLinkFailure } from './MagicLinkFailure'
+import { AuthShell } from './AuthShell'
 
 export function MagicLinkConsume({ token }: { token: string }) {
     const router = useRouter()
@@ -112,11 +113,15 @@ export function MagicLinkConsume({ token }: { token: string }) {
     }
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center gap-2" aria-busy="true">
-            <h1 className="text-lg font-semibold text-gray-900">{t('auth.magicLink.consume.title')}</h1>
-            <p role="status" className="text-sm text-gray-600">
+        <AuthShell centered aria-busy className="text-center">
+            <div
+                className="mx-auto mb-6 h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primary"
+                aria-hidden="true"
+            />
+            <h1 className="type-title-1 text-fg">{t('auth.magicLink.consume.title')}</h1>
+            <p role="status" className="mt-3 type-body text-fg-muted">
                 {t('auth.magicLink.consume.loading')}
             </p>
-        </main>
+        </AuthShell>
     )
 }

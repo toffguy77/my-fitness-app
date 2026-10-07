@@ -21,6 +21,7 @@
 'use client'
 
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
+import { SegmentLoading } from '@/shared/components/SegmentLoading'
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
@@ -40,12 +41,13 @@ import { ClientTasksSection } from '@/features/dashboard/components/ClientTasksS
 import { CuratorFeedbackSection } from '@/features/dashboard/components/CuratorFeedbackSection'
 import { CuratorCard } from '@/features/dashboard/components/CuratorCard'
 import { FirstWeekChecklist } from '@/features/dashboard/components/FirstWeekChecklist'
+import { DashboardGreeting } from '@/features/dashboard/components/DashboardGreeting'
 import { useOnboardingState } from '@/features/dashboard/hooks/useOnboardingState'
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import { dashboardApi } from '@/features/dashboard/api/dashboardApi'
 import { messageForOr } from '@/shared/errors/apiErrors'
 import toast from 'react-hot-toast'
-import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
+import { WeekCaloriesCard } from '@/features/nutrition-calc/components/WeekCaloriesCard'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { TargetVsActual } from '@/features/nutrition-calc/types'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
@@ -88,7 +90,6 @@ export default function DashboardPage() {
         fetchTasks,
         startPolling,
         stopPolling,
-        setOfflineStatus,
         loadFromCache,
         targetsVersion,
     } = useDashboardStore()
@@ -120,9 +121,11 @@ export default function DashboardPage() {
             .catch(() => {})
     }, [userId, targetsVersion])
 
-    // Fetch dashboard data on mount
+    // Fetch dashboard data on mount — keyed on the id, like the effects above:
+    // the cache paints the user and the server settles it with an equal object,
+    // which used to fetch the week, the plan and the tasks a second time.
     useEffect(() => {
-        if (!userData) return
+        if (!userId) return
 
         const fetchData = async () => {
             try {
@@ -136,8 +139,8 @@ export default function DashboardPage() {
                     fetchTasks(),
                 ])
 
-                // Start polling for real-time updates
-                startPolling(30000) // Poll every 30 seconds
+                // Keep them fresh from here on; the first fetch is above.
+                startPolling(30000, { immediate: false })
             } catch (error) {
                 console.error('Failed to fetch dashboard data:', error)
             }
@@ -150,7 +153,7 @@ export default function DashboardPage() {
             stopPolling()
         }
     }, [
-        userData,
+        userId,
         selectedWeek,
         fetchWeekData,
         fetchWeeklyPlan,
@@ -160,19 +163,8 @@ export default function DashboardPage() {
         loadFromCache,
     ])
 
-    // Handle online/offline status
-    useEffect(() => {
-        const handleOnline = () => setOfflineStatus(false)
-        const handleOffline = () => setOfflineStatus(true)
-
-        window.addEventListener('online', handleOnline)
-        window.addEventListener('offline', handleOffline)
-
-        return () => {
-            window.removeEventListener('online', handleOnline)
-            window.removeEventListener('offline', handleOffline)
-        }
-    }, [setOfflineStatus])
+    // Online/offline is watched by the shell (DashboardLayout → useOnlineStatus):
+    // a second pair of listeners here reported every change twice.
 
     const [submittingReport, setSubmittingReport] = useState(false)
 
@@ -206,14 +198,7 @@ export default function DashboardPage() {
 
     // Show loading state while checking authentication
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                    <p className="text-gray-600">{t('common.loading')}</p>
-                </div>
-            </div>
-        )
+        return <SegmentLoading label={t('common.loading')} />
     }
 
     // Don't render if no user data (will redirect)
@@ -227,7 +212,9 @@ export default function DashboardPage() {
             avatarUrl={avatarUrl}
             activeNavItem="dashboard"
         >
-            <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 md:space-y-6 p-3 sm:p-4 md:p-6">
+            <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 md:space-y-6 px-screen-x py-5 sm:p-6">
+                <DashboardGreeting name={profileName || userData.name} />
+
                 {/* Куратор — первым блоком.
                     Это главное отличие продукта от бесплатного счётчика калорий,
                     и до сих пор он лежал в самом низу страницы, свёрнутый, а у
@@ -288,10 +275,10 @@ export default function DashboardPage() {
                     className="w-full"
                 />
 
-                {/* KBJU Weekly Chart — по той же причине не новичку */}
+                {/* Неделя точками — по той же причине не новичку */}
                 {!onboarding.isLoading && !showsFirstWeek && (
                     <ErrorBoundary variant="inline" label="dashboard-kbju-chart">
-                        <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
+                        <WeekCaloriesCard data={kbjuHistory} className="w-full" />
                     </ErrorBoundary>
                 )}
 

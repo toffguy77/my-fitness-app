@@ -9,6 +9,8 @@ import type { Payload } from 'recharts/types/component/DefaultTooltipContent'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { cn } from '@/shared/utils/cn'
 import type { TargetVsActual } from '../types'
+import { t } from '@/shared/i18n'
+import { AXIS_STYLE, GRID_STROKE, chartColor } from '@/shared/charts/chartTheme'
 
 interface KBJUWeeklyChartProps {
     data: TargetVsActual[]
@@ -16,26 +18,34 @@ interface KBJUWeeklyChartProps {
 }
 
 const CHART_HEIGHT = 160
-const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
-const GRID_STROKE = '#f0f0f0'
 
-function ChartTooltip({ active, payload, label }: {
+/**
+ * Цвет точки дня. «Мимо нормы» — единственная оценочная роль: и 10–20 %, и
+ * больше отмечаются `warning`, без тревожного красного; неизвестный статус —
+ * как «в норме».
+ */
+export function statusDotColor(status: string): string {
+    return status === 'yellow' || status === 'red' ? chartColor.warning : chartColor.primary
+}
+
+export function ChartTooltip({ active, payload, label }: {
     active?: boolean
     payload?: Payload<number, string>[]
     label?: string
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
-            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+        <div className="rounded-tile border border-line bg-surface px-3 py-2 shadow-overlay">
+            <p className="mb-1 text-xs font-medium text-fg tabular-nums">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
-                <p key={entry.name} className="text-xs text-gray-600">
+                <p key={entry.name} className="text-xs text-fg-muted tabular-nums">
                     <span
-                        className="inline-block w-2 h-2 rounded-full mr-1.5"
+                        className="mr-1.5 inline-block h-2 w-2 rounded-full"
                         style={{ backgroundColor: entry.color }}
+                        aria-hidden="true"
                     />
-                    {entry.name === 'target' ? 'Цель' : 'Факт'}:{' '}
-                    <span className="font-medium">{Math.round(entry.value ?? 0)} ккал</span>
+                    {entry.name === 'target' ? t('ui.weekChart.target') : t('ui.weekChart.actual')}:{' '}
+                    <span className="font-medium">{Math.round(entry.value ?? 0)} {t('units.kcal')}</span>
                 </p>
             ))}
         </div>
@@ -77,8 +87,8 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
     return (
         <Card className={cn('', className)} variant="bordered">
             <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-gray-900">
-                    Калории за неделю
+                <CardTitle className="type-title-2 text-fg">
+                    {t('ui.weekChart.title')}
                 </CardTitle>
             </CardHeader>
             <CardContent>
@@ -88,12 +98,12 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
                         <XAxis
                             dataKey="label"
                             tick={AXIS_STYLE}
-                            stroke="#e5e7eb"
+                            stroke={chartColor.line}
                             tickLine={false}
                         />
                         <YAxis
                             tick={AXIS_STYLE}
-                            stroke="#e5e7eb"
+                            stroke={chartColor.line}
                             tickLine={false}
                             width={50}
                         />
@@ -101,37 +111,37 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
                         <Line
                             type="monotone"
                             dataKey="target"
-                            stroke="#6366f1"
+                            stroke={chartColor['fg-subtle']}
                             strokeDasharray="6 3"
                             strokeWidth={2}
-                            dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }}
+                            dot={{ r: 3, fill: chartColor['fg-subtle'], strokeWidth: 0 }}
                             connectNulls
                             name="target"
                         />
                         <Line
                             type="monotone"
                             dataKey="actual"
-                            stroke="#10b981"
+                            stroke={chartColor.primary}
                             strokeWidth={2}
                             dot={(props: Record<string, unknown>) => {
                                 const { cx, cy, payload } = props as { cx: number; cy: number; payload: { status: string } }
-                                const colors: Record<string, string> = { green: '#10b981', yellow: '#f59e0b', red: '#ef4444' }
-                                const color = colors[payload.status] ?? colors.green
-                                return <Dot cx={cx} cy={cy} r={3} fill={color} stroke="white" strokeWidth={1.5} />
+                                return <Dot cx={cx} cy={cy} r={3} fill={statusDotColor(payload.status)} stroke={chartColor.surface} strokeWidth={1.5} />
                             }}
                             connectNulls
                             name="actual"
                         />
                     </LineChart>
                 </ResponsiveContainer>
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                {/* Легенда повторяет линии графика: цель — пунктиром третичным,
+                    факт — сплошной терракотой. */}
+                <div className="mt-2 flex items-center gap-4 text-xs text-fg-muted">
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 border-t-2 border-dashed border-indigo-500" />
-                        Цель
+                        <span className="inline-block w-4 border-t-2 border-dashed border-fg-subtle" aria-hidden="true" />
+                        {t('ui.weekChart.target')}
                     </span>
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 border-t-2 border-emerald-500" />
-                        Факт
+                        <span className="inline-block w-4 border-t-2 border-primary" aria-hidden="true" />
+                        {t('ui.weekChart.actual')}
                     </span>
                 </div>
             </CardContent>

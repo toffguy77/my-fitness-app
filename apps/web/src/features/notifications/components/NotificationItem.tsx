@@ -58,6 +58,11 @@ export function NotificationItem({
         }
     };
 
+    // Строка списка: ≥ 56 px, без подложки. Непрочитанное отличает маленькая
+    // терракотовая точка и полужирный заголовок, а не заливка всей строки:
+    // терракота — только у главного действия и активного, а прочитанное не
+    // бледнеет прозрачностью (она роняла контраст ниже 4.5:1), а переходит
+    // во вторичный цвет текста.
     return (
         <div
             role="button"
@@ -66,27 +71,11 @@ export function NotificationItem({
             onKeyDown={handleKeyDown}
             aria-label={`${notification.title}. ${isUnread ? 'Unread notification' : 'Read notification'}. ${formatRelativeTime(notification.createdAt)}`}
             aria-describedby={`notification-content-${notification.id}`}
+            data-unread={isUnread || undefined}
             className={cn(
-                'group flex gap-3 rounded-lg transition-colors',
-                // Responsive padding and spacing (Requirement 6.1, 6.2, 6.3)
-                'p-3',              // Mobile: compact padding
-                'sm:p-4',           // Tablet: more padding
-                'md:p-5',           // Desktop: optimal padding
-                // Touch-friendly on mobile (Requirement 6.1, 6.4)
-                'min-h-[80px]',     // Mobile: minimum touch target
-                'sm:min-h-[90px]',  // Tablet: larger touch target
-                // Cursor and interaction states
-                'cursor-pointer',
-                // Desktop hover states (Requirement 6.3)
-                'hover:bg-gray-50 md:hover:bg-gray-100',
-                // Enhanced focus-visible styles (Requirement 6.4, 6.7)
-                'focus:outline-none',
-                'focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
-                'focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_white,0_0_0_4px_#3b82f6]',
-                'focus-visible:z-10',
-                // Read/unread styling with high contrast (Requirement 6.6)
-                isUnread && 'bg-blue-50 hover:bg-blue-100 md:hover:bg-blue-200',
-                !isUnread && 'opacity-70'
+                'group flex min-h-14 cursor-pointer gap-3 px-4 py-3.5 transition-colors',
+                'hover:bg-subtle/60',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus',
             )}
         >
             {/* Icon */}
@@ -98,18 +87,12 @@ export function NotificationItem({
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
                 {/* Title */}
                 <h3
                     className={cn(
-                        'mb-1',
-                        // Responsive font sizing (Requirement 6.1, 6.2, 6.3)
-                        'text-sm',          // Mobile
-                        'sm:text-base',     // Tablet
-                        'md:text-base',     // Desktop
-                        // High contrast text (Requirement 6.6)
-                        isUnread ? 'font-semibold text-gray-900' : 'font-normal text-gray-700',
-                        notification.actionUrl && 'group-hover:text-blue-600'
+                        'text-[15px] leading-[22px] text-fg',
+                        isUnread ? 'font-semibold' : 'font-normal',
                     )}
                 >
                     {notification.title}
@@ -119,13 +102,8 @@ export function NotificationItem({
                 <p
                     id={`notification-content-${notification.id}`}
                     className={cn(
-                        'line-clamp-2',
-                        // Responsive font sizing (Requirement 6.1, 6.2, 6.3)
-                        'text-xs',          // Mobile: smaller for space
-                        'sm:text-sm',       // Tablet: standard
-                        'md:text-sm',       // Desktop: standard
-                        // High contrast text (Requirement 6.6)
-                        isUnread ? 'text-gray-700' : 'text-gray-500'
+                        'mt-0.5 line-clamp-2 text-sm',
+                        isUnread ? 'text-fg' : 'text-fg-muted',
                     )}
                 >
                     {notification.content}
@@ -134,13 +112,7 @@ export function NotificationItem({
                 {/* Timestamp */}
                 <time
                     dateTime={notification.createdAt}
-                    className={cn(
-                        'text-gray-500 mt-1 block',
-                        // Responsive font sizing (Requirement 6.1, 6.2, 6.3)
-                        'text-xs',          // Mobile
-                        'sm:text-xs',       // Tablet
-                        'md:text-sm'        // Desktop: slightly larger
-                    )}
+                    className="mt-1 block text-xs text-fg-subtle tabular-nums"
                     aria-label={`Notification time: ${formatRelativeTime(notification.createdAt)}`}
                 >
                     {formatRelativeTime(notification.createdAt)}
@@ -150,17 +122,11 @@ export function NotificationItem({
             {/* Unread indicator dot */}
             {isUnread && (
                 <div
-                    className="flex-shrink-0 mt-1"
+                    className="flex-shrink-0 pt-2"
                     aria-hidden="true"
                     role="presentation"
                 >
-                    <div className={cn(
-                        'rounded-full bg-blue-600',
-                        // Responsive dot sizing (Requirement 6.1, 6.2, 6.3)
-                        'h-2 w-2',          // Mobile
-                        'sm:h-2.5 sm:w-2.5', // Tablet
-                        'md:h-3 md:w-3'     // Desktop
-                    )} />
+                    <div className="h-2 w-2 rounded-full bg-primary" />
                 </div>
             )}
         </div>

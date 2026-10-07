@@ -22,9 +22,10 @@ export const DashboardHeader = forwardRef<HTMLElement, DashboardHeaderProps>(
                 className={cn(
                     'fixed top-0 left-0 right-0 z-50',
                     'flex items-center justify-between',
-                    'h-16 px-4',
-                    'bg-white border-b border-gray-200',
-                    'shadow-sm',
+                    'h-16 px-screen-x',
+                    // Полупрозрачный фон экрана с размытием — как системные
+                    // панели iOS: прокрученное содержимое угадывается под ней.
+                    'bg-nav backdrop-blur-md border-b border-line',
                     className
                 )}
                 data-testid="dashboard-header"

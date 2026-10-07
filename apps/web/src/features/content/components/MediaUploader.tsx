@@ -1,6 +1,8 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { Check, ImagePlus } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 import { getToken } from '@/shared/utils/token-storage'
 
 // ============================================================================
@@ -71,30 +73,32 @@ export function MediaUploader({ articleId, onUpload }: MediaUploaderProps) {
 
     return (
         <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-fg-muted">
                 Загрузить изображение
-            </label>
-            <div className="flex items-center gap-2">
-                <button
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+                <Button
                     type="button"
+                    variant="secondary"
                     onClick={() => inputRef.current?.click()}
-                    className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
                 >
+                    <ImagePlus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                     Выбрать файл
-                </button>
+                </Button>
                 {filename && (
-                    <span className="truncate text-xs text-gray-500">
+                    <span className="min-w-0 max-w-[12rem] truncate text-sm text-fg-muted">
                         {filename}
                     </span>
                 )}
-                <button
+                <Button
                     type="button"
+                    variant="ghost"
                     onClick={handleUpload}
                     disabled={!filename || uploading}
-                    className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                    aria-busy={uploading}
                 >
                     {uploading ? 'Загрузка...' : 'Загрузить'}
-                </button>
+                </Button>
             </div>
             <input
                 ref={inputRef}
@@ -104,11 +108,14 @@ export function MediaUploader({ articleId, onUpload }: MediaUploaderProps) {
                 className="hidden"
             />
             {error && (
-                <p className="text-xs text-red-600">{error}</p>
+                <p className="text-sm text-danger-fg" role="alert">{error}</p>
             )}
             {uploadedUrl && (
-                <div className="rounded-md bg-green-50 px-3 py-2 text-xs text-green-700">
-                    URL: <code className="select-all break-all">{uploadedUrl}</code>
+                <div className="flex items-start gap-2 rounded-tile bg-success-soft px-3 py-2 text-sm text-success-fg">
+                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden="true" />
+                    <span className="min-w-0">
+                        URL: <code className="select-all break-all">{uploadedUrl}</code>
+                    </span>
                 </div>
             )}
         </div>

@@ -1,6 +1,8 @@
 'use client'
 
 import { useRef } from 'react'
+import { FileUp } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 import { parseArticleMarkdown, type ParsedArticle } from '@/features/content/utils/parseFrontmatter'
 
 // ============================================================================
@@ -41,13 +43,14 @@ export function FileUploader({ onFileLoaded }: FileUploaderProps) {
 
     return (
         <div className="flex items-center gap-2">
-            <button
+            <Button
                 type="button"
+                variant="secondary"
                 onClick={() => inputRef.current?.click()}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
             >
+                <FileUp className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                 Импорт .md файла
-            </button>
+            </Button>
             <input
                 ref={inputRef}
                 type="file"

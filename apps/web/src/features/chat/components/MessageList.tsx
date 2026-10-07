@@ -12,6 +12,8 @@ import type { Message } from '../types'
 import { MessageBubble } from './MessageBubble'
 import { DateSeparator } from './DateSeparator'
 import { t } from '@/shared/i18n'
+import { MessageCircle } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 
 // ============================================================================
 // Types
@@ -105,28 +107,34 @@ export function MessageList({ messages, isLoading, hasMore, onLoadMore, onImageA
             {/* Load more button */}
             {hasMore && (
                 <div className="flex justify-center mb-4">
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
+                        size="md"
                         onClick={handleLoadMore}
                         disabled={isLoading}
-                        className="text-sm text-blue-500 hover:text-blue-600 disabled:text-gray-300 transition-colors"
+                        className="text-fg-muted"
                     >
                         {isLoading ? t('common.loading') : t('chat.loadMore')}
-                    </button>
+                    </Button>
                 </div>
             )}
 
             {/* Loading state */}
             {isLoading && messages.length === 0 && (
-                <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-400 text-sm">{t('chat.loadingMessages')}</p>
+                <div className="flex h-full flex-col items-center justify-center gap-3" role="status">
+                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" aria-hidden="true" />
+                    <p className="text-sm text-fg-muted">{t('chat.loadingMessages')}</p>
                 </div>
             )}
 
             {/* Empty state */}
             {!isLoading && messages.length === 0 && (
-                <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-400 text-sm">{t('chat.noMessages')}</p>
+                <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                        <MessageCircle className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} />
+                    </span>
+                    <p className="type-title-3 text-fg">{t('chat.noMessages')}</p>
                 </div>
             )}
 
