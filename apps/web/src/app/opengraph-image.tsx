@@ -4,7 +4,6 @@ import { values } from '@burcev/design-tokens'
 // Картинка рисуется вне страницы, CSS-переменных здесь нет — значения светлой темы.
 const ui = values.light
 
-export const runtime = 'edge'
 export const alt = 'BURCEV — Фитнес и питание'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'

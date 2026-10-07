@@ -66,7 +66,11 @@ export const providersApi = {
 
     /** Turns the callback's HttpOnly refresh cookie into a session. */
     complete(): Promise<AuthResponse> {
-        return apiClient.post<AuthResponse>('/api/v1/auth/refresh', {})
+        return apiClient.post<AuthResponse | undefined>('/api/v1/auth/refresh', {}).then((response) => {
+            // 204: the callback's cookie never arrived, so there is no session.
+            if (!response) throw new Error('No session to complete')
+            return response
+        })
     },
 
     /** Proves the matching account is the caller's, then links the provider. */

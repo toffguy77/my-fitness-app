@@ -61,7 +61,7 @@ export default async function AuthorPage() {
             <JsonLd data={profileJsonLd} />
 
             <h1 className="mb-6 type-display text-fg">{EXPERT_AUTHOR.name}</h1>
-            <ArticleAuthor author={EXPERT_AUTHOR} />
+            <ArticleAuthor author={EXPERT_AUTHOR} zoomablePhoto />
 
             {articles.length > 0 && (
                 <section className="mt-12">

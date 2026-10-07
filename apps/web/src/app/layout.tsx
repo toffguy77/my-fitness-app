@@ -78,7 +78,7 @@ export default async function RootLayout({
 }: {
     children: React.ReactNode
 }) {
-    // Set by middleware.ts for this response. The content policy names this
+    // Set by proxy.ts for this response. The content policy names this
     // one nonce instead of allowing every inline script on the page.
     const nonce = (await headers()).get('x-nonce') ?? undefined
     // Выбранная на этом устройстве тема приходит в разметке сразу: страница

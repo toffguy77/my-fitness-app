@@ -9,7 +9,7 @@
  * The check here reads a cookie called `session_present`, which the API sets
  * beside the refresh token. It carries no credential and grants nothing: the
  * refresh token itself is scoped to `/api/v1/auth` so it does not travel with
- * every request, and that scoping is precisely why the edge cannot see it.
+ * every request, and that scoping is precisely why this check cannot see it.
  * Every endpoint still demands a real token — this only decides whether to
  * render a page or send somebody to sign in.
  */
@@ -89,7 +89,7 @@ function contentSecurityPolicy(nonce: string): string {
 /**
  * Заголовки безопасности, одинаковые для любого ответа.
  *
- * Вынесены из middleware отдельной функцией, потому что NextRequest в
+ * Вынесены из proxy отдельной функцией, потому что NextRequest в
  * тестовом окружении не построить: у него url только на чтение. Проверять
  * заголовки через живой запрос не вышло бы, а непроверенными они уже один
  * раз оказались — nginx должен был их слать и не слал.
@@ -154,7 +154,7 @@ export async function legacyArticleRedirect(
     }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const nonce = makeNonce()
     const policy = contentSecurityPolicy(nonce)
 

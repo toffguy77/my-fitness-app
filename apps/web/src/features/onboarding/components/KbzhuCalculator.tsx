@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { guestApi } from '../api/guest'
-import type { ActivityLevel, FitnessGoal, GuestResult, Sex } from '../api/guest'
+import type { ActivityLevel, FitnessGoal, Sex } from '../api/guest'
 import { useGuestOnboardingStore, GUEST_STEPS, parametersOf } from '../store/guestOnboardingStore'
 import { EVENTS, track } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
@@ -21,42 +21,40 @@ const fieldClass =
     'h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums ' +
     'placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30'
 
+const noSubscription = () => () => {}
+
 /**
  * The calculator on the open page: every question on one screen, the answer
  * right under it.
  *
- * The same server formula as the wizard, and the wizard's own store: "save the
- * result" opens the wizard on its result screen with everything already filled
- * in, where the contact is left. The answers live in local state until then —
- * the store is persisted in the browser, and reading it during the first
- * render would differ from what the server rendered.
+ * The same server formula as the wizard, and the wizard's own store, written
+ * on every keystroke: the calculator and the wizard are two views of one set
+ * of answers. The answers used to sit in local state and reach the store only
+ * when a calculation succeeded, so the wizard showed whatever an earlier
+ * visit had left there — or the numbers from before the last edit.
+ *
+ * The store is persisted in the browser, and the server rendered the form
+ * empty: until the first render on the client is over, the form stays empty
+ * too, or the two renders would differ.
  */
 export function KbzhuCalculator() {
     const router = useRouter()
-    const loadIntoWizard = useGuestOnboardingStore((s) => s.load)
-    const setWizardStep = useGuestOnboardingStore((s) => s.setStep)
+    const onClient = useSyncExternalStore(noSubscription, () => true, () => false)
+    const stored = useGuestOnboardingStore()
 
-    const [sex, setSex] = useState<Sex | ''>('')
-    const [birthDate, setBirthDate] = useState('')
-    const [heightCm, setHeightCm] = useState('')
-    const [weightKg, setWeightKg] = useState('')
-    const [activityLevel, setActivityLevel] = useState<ActivityLevel | ''>('')
-    const [goal, setGoal] = useState<FitnessGoal | ''>('')
+    const sex = onClient ? stored.sex : ''
+    const birthDate = onClient ? stored.birthDate : ''
+    const heightCm = onClient ? stored.heightCm : ''
+    const weightKg = onClient ? stored.weightKg : ''
+    const activityLevel = onClient ? stored.activityLevel : ''
+    const goal = onClient ? stored.goal : ''
+    const result = onClient ? stored.result : null
 
-    const [result, setResult] = useState<GuestResult | null>(null)
     const [problem, setProblem] = useState<string | null>(null)
     const [calculating, setCalculating] = useState(false)
 
     const handleCalculate = async () => {
-        const parameters = parametersOf({
-            ...useGuestOnboardingStore.getState(),
-            sex,
-            birthDate,
-            heightCm,
-            weightKg,
-            activityLevel,
-            goal,
-        })
+        const parameters = parametersOf(useGuestOnboardingStore.getState())
         if (!parameters) {
             setProblem(t('onboarding.guest.fillAll'))
             return
@@ -66,14 +64,17 @@ export function KbzhuCalculator() {
         setCalculating(true)
         try {
             const calculated = await guestApi.calculate(parameters)
-            setResult(calculated)
-            loadIntoWizard(parameters, calculated)
+            // An answer changed while the request was out: these numbers are
+            // for parameters nobody is looking at any more.
+            const current = parametersOf(useGuestOnboardingStore.getState())
+            if (JSON.stringify(current) !== JSON.stringify(parameters)) return
+            stored.setResult(calculated)
+            stored.setStep(GUEST_STEPS.result)
             track(EVENTS.calculatorResult, {
                 goal: parameters.goal,
                 activity_level: parameters.activity_level,
             })
         } catch (err) {
-            setResult(null)
             setProblem(messageForOr(err, t('onboarding.guest.calcFailed')))
         } finally {
             setCalculating(false)
@@ -81,7 +82,7 @@ export function KbzhuCalculator() {
     }
 
     const handleSave = () => {
-        setWizardStep(GUEST_STEPS.result)
+        stored.setStep(GUEST_STEPS.result)
         router.push('/onboarding')
     }
 
@@ -122,7 +123,7 @@ export function KbzhuCalculator() {
                                     name="sex"
                                     value={value}
                                     checked={sex === value}
-                                    onChange={() => setSex(value)}
+                                    onChange={() => stored.setSex(value)}
                                     className="sr-only"
                                 />
                                 {value === 'female' ? t('onboarding.female') : t('onboarding.male')}
@@ -139,7 +140,7 @@ export function KbzhuCalculator() {
                         id="calc-birth"
                         type="date"
                         value={birthDate}
-                        onChange={(e) => setBirthDate(e.target.value)}
+                        onChange={(e) => stored.setBirthDate(e.target.value)}
                         className={fieldClass}
                     />
                 </div>
@@ -152,7 +153,7 @@ export function KbzhuCalculator() {
                         type="number"
                         inputMode="decimal"
                         value={heightCm}
-                        onChange={(e) => setHeightCm(e.target.value)}
+                        onChange={(e) => stored.setHeightCm(e.target.value)}
                         placeholder="170"
                         className={fieldClass}
                     />
@@ -166,7 +167,7 @@ export function KbzhuCalculator() {
                         type="number"
                         inputMode="decimal"
                         value={weightKg}
-                        onChange={(e) => setWeightKg(e.target.value)}
+                        onChange={(e) => stored.setWeightKg(e.target.value)}
                         placeholder="65"
                         className={fieldClass}
                     />
@@ -178,7 +179,7 @@ export function KbzhuCalculator() {
                     <select
                         id="calc-activity"
                         value={activityLevel}
-                        onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)}
+                        onChange={(e) => stored.setActivityLevel(e.target.value as ActivityLevel | '')}
                         className={fieldClass}
                     >
                         <option value="">{t('onboarding.calculator.choose')}</option>
@@ -196,7 +197,7 @@ export function KbzhuCalculator() {
                     <select
                         id="calc-goal"
                         value={goal}
-                        onChange={(e) => setGoal(e.target.value as FitnessGoal)}
+                        onChange={(e) => stored.setGoal(e.target.value as FitnessGoal | '')}
                         className={fieldClass}
                     >
                         <option value="">{t('onboarding.calculator.choose')}</option>

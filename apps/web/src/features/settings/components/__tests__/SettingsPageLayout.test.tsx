@@ -130,7 +130,7 @@ describe('SettingsPageLayout', () => {
     expect(screen.getByText('My Title')).toBeInTheDocument()
   })
 
-  // The guard lives in middleware.ts now, before the page renders.
+  // The guard lives in proxy.ts now, before the page renders.
   it('does not send anybody to sign in on its own', () => {
     mockUseSettings.mockReturnValue({
       profile: null,

@@ -12,32 +12,6 @@ security:
         access_level: repository
         rotation_required: false
 
-      - name: NEXT_PUBLIC_SUPABASE_URL
-        type: environment
-        description: "Supabase project URL (public)"
-        access_level: public
-        rotation_required: false
-
-      - name: NEXT_PUBLIC_SUPABASE_ANON_KEY
-        type: environment
-        description: "Supabase anonymous key (public)"
-        access_level: public
-        rotation_required: true
-        rotation_frequency: quarterly
-
-      - name: STAGING_SUPABASE_URL
-        type: environment
-        description: "Staging Supabase project URL"
-        access_level: staging
-        rotation_required: false
-
-      - name: STAGING_SUPABASE_ANON_KEY
-        type: environment
-        description: "Staging Supabase anonymous key"
-        access_level: staging
-        rotation_required: true
-        rotation_frequency: quarterly
-
       - name: TELEGRAM_BOT_TOKEN
         type: notification
         description: "Telegram bot token for CI/CD notifications"
@@ -85,8 +59,6 @@ security:
           actions: read
         secrets_access:
           - GITHUB_TOKEN
-          - NEXT_PUBLIC_SUPABASE_URL
-          - NEXT_PUBLIC_SUPABASE_ANON_KEY
           - CODECOV_TOKEN
           - SONAR_TOKEN
           - SNYK_TOKEN
@@ -98,10 +70,6 @@ security:
           deployments: write
         secrets_access:
           - GITHUB_TOKEN
-          - NEXT_PUBLIC_SUPABASE_URL
-          - NEXT_PUBLIC_SUPABASE_ANON_KEY
-          - STAGING_SUPABASE_URL
-          - STAGING_SUPABASE_ANON_KEY
           - TELEGRAM_BOT_TOKEN
           - TELEGRAM_CHAT_ID
 
@@ -120,16 +88,12 @@ security:
       staging:
         required_reviewers: 0
         secrets:
-          - STAGING_SUPABASE_URL
-          - STAGING_SUPABASE_ANON_KEY
           - TELEGRAM_BOT_TOKEN
           - TELEGRAM_CHAT_ID
 
       production:
         required_reviewers: 1
         secrets:
-          - NEXT_PUBLIC_SUPABASE_URL
-          - NEXT_PUBLIC_SUPABASE_ANON_KEY
           - TELEGRAM_BOT_TOKEN
           - TELEGRAM_CHAT_ID
 

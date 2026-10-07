@@ -58,3 +58,61 @@ describe('A 401 from a credential-checking endpoint', () => {
         expect(attempted.some((url) => url.includes('/auth/refresh'))).toBe(true)
     })
 })
+
+/**
+ * 204 from the refresh endpoint: the browser held nothing to exchange.
+ *
+ * The server answers it instead of 400 because every anonymous page load asks,
+ * and a 400 put an error in every visitor's console. To the client it means
+ * exactly what the 400 did — no session — and has to be read as that, not as
+ * a success with an empty body.
+ */
+describe('A refresh answered with 204', () => {
+    const originalFetch = global.fetch
+
+    afterEach(() => {
+        global.fetch = originalFetch
+        apiClient.clearToken()
+        localStorage.clear()
+    })
+
+    function noContent() {
+        return {
+            ok: true,
+            status: 204,
+            headers: new Headers(),
+            json: async () => {
+                throw new SyntaxError('Unexpected end of JSON input')
+            },
+        }
+    }
+
+    it('means no session when restoring one on page load', async () => {
+        global.fetch = jest.fn().mockResolvedValue(noContent()) as unknown as typeof fetch
+
+        await expect(apiClient.refreshSession()).rejects.toThrow('No session (204)')
+        expect(getToken()).toBeNull()
+    })
+
+    it('ends the session after a 401 at once, without retrying', async () => {
+        apiClient.setToken('expired-access-token')
+        const fetchMock = jest.fn().mockImplementation(async (url: string) =>
+            String(url).includes('/auth/refresh')
+                ? noContent()
+                : { ok: false, status: 401, headers: new Headers(), json: async () => ({}) }
+        )
+        global.fetch = fetchMock as unknown as typeof fetch
+
+        await expect(apiClient.get('/api/v1/dashboard/tasks')).rejects.toThrow('Refresh rejected')
+
+        const refreshes = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/auth/refresh'))
+        expect(refreshes).toHaveLength(1)
+        expect(getToken()).toBeNull()
+    })
+
+    it('gives the caller nothing rather than a parse error', async () => {
+        global.fetch = jest.fn().mockResolvedValue(noContent()) as unknown as typeof fetch
+
+        await expect(apiClient.post('/api/v1/auth/refresh', {})).resolves.toBeUndefined()
+    })
+})

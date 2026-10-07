@@ -4,7 +4,7 @@ import { FoodTrackerPage } from '@/features/food-tracker/components/FoodTrackerP
 import { useSession } from '@/shared/hooks/useSession';
 
 export function FoodTrackerPageClient() {
-    // A signed-out visitor is redirected by middleware.ts before this renders.
+    // A signed-out visitor is redirected by proxy.ts before this renders.
     // What is left is the wait while the session is minted from the cookie —
     // a real state, and rendering it as "signed out" would flash the sign-in
     // screen at somebody who is signed in.

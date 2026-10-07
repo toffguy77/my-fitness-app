@@ -15,7 +15,7 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
     const settingsHook = useSettings()
     const { profile, isLoading } = settingsHook
 
-    // The guard lives in middleware.ts now, before the page renders.
+    // The guard lives in proxy.ts now, before the page renders.
 
     // Имя берётся из профиля, когда он приехал, иначе его подставит RoleShell
     // из сессии. Локальный слепок здесь больше не читается: в браузере с

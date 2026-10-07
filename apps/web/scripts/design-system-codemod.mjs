@@ -13,7 +13,8 @@
  * механическому переводу не поддаётся. Таблица — docs/design-system/README.md.
  */
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
-import { join, extname } from 'node:path'
+import { join, extname, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const NEUTRAL = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 const BRAND = ['blue', 'indigo', 'sky']
@@ -97,7 +98,10 @@ function* walk(p) {
 const dry = process.argv.includes('--dry')
 const targets = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 let files = 0, total = 0
-for (const t of targets.length ? targets : ['src']) {
+// По умолчанию — apps/web/src, откуда бы скрипт ни запустили: в документации
+// он вызывается из корня репозитория.
+const defaultTarget = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
+for (const t of targets.length ? targets : [defaultTarget]) {
     for (const f of walk(t)) {
         const src = readFileSync(f, 'utf8')
         const { out, count } = convert(src)

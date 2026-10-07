@@ -210,6 +210,11 @@ class ApiClient {
             throw await toApiError(response);
         }
 
+        // No body to parse; the caller decides what nothing means.
+        if (response.status === 204) {
+            return undefined as T;
+        }
+
         const data = await response.json();
         // Handle both {data: ...} and direct response formats
         return data.data !== undefined ? data.data : data;
@@ -297,7 +302,9 @@ class ApiClient {
                     cache: 'no-store',
                 });
 
-                if (res.status >= 400 && res.status < 500) {
+                // 204 is the server saying there was nothing to exchange — no
+                // session, as final as a rejection, and as pointless to retry.
+                if (res.status === 204 || (res.status >= 400 && res.status < 500)) {
                     throw new Error('Refresh rejected');
                 }
 
@@ -541,7 +548,10 @@ class ApiClient {
                 cache: 'no-store',
             });
 
-            if (!res.ok) {
+            // 204: the browser holds nothing to exchange. The usual answer
+            // for a visitor, and deliberately not an error status — the
+            // server answers it so no console fills up with failed requests.
+            if (res.status === 204 || !res.ok) {
                 throw new Error(`No session (${res.status})`);
             }
 
