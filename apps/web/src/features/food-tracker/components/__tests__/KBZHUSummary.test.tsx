@@ -189,3 +189,23 @@ describe('KBZHUSummary', () => {
         });
     });
 });
+
+describe('KBZHUSummary — откуда норма', () => {
+    const current = { calories: 1200, protein: 80, fat: 40, carbs: 120 };
+    const target = { calories: 2000, protein: 140, fat: 70, carbs: 240 };
+
+    it('рассчитанная норма — так и подписана', () => {
+        render(<KBZHUSummary current={current} target={target} source="calculated" />);
+        expect(screen.getByText('Рассчитано автоматически')).toBeInTheDocument();
+    });
+
+    it('план куратора — подписан куратором и с бонусом за тренировку', () => {
+        render(<KBZHUSummary current={current} target={target} source="curator_override" workoutBonus={312.4} />);
+        expect(screen.getByText(/План куратора · \+312 ккал за тренировку/)).toBeInTheDocument();
+    });
+
+    it('без источника подписи нет', () => {
+        render(<KBZHUSummary current={current} target={target} />);
+        expect(screen.queryByText(/Рассчитано автоматически|План куратора/)).not.toBeInTheDocument();
+    });
+});

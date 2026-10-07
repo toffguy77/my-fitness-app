@@ -75,6 +75,22 @@ describe('ProgressArc', () => {
         expect(Number(fill.getAttribute('stroke-dasharray')!.split(' ')[0])).toBeCloseTo(56.09, 1)
     })
 
+    it('по умолчанию заполняется брендом, переданный цвет — своим', () => {
+        const { container, rerender } = render(<ProgressArc value={1} max={2} label="Калории" />)
+        expect(container.querySelectorAll('path')[1]).toHaveAttribute('stroke', color.primary)
+        rerender(<ProgressArc value={1} max={2} label="Калории" color={color.protein} />)
+        expect(container.querySelectorAll('path')[1]).toHaveAttribute('stroke', color.protein)
+    })
+
+    it('не выходит за 100% и не уходит в минус', () => {
+        const { container, rerender } = render(<ProgressArc value={5000} max={2000} label="Калории" />)
+        expect(container.querySelectorAll('path')[1].getAttribute('stroke-dasharray')).toMatch(/^100 /)
+        rerender(<ProgressArc value={-50} max={2000} label="Калории" />)
+        expect(container.querySelectorAll('path')).toHaveLength(1)
+        rerender(<ProgressArc value={10} max={0} label="Калории" />)
+        expect(container.querySelectorAll('path')).toHaveLength(1)
+    })
+
     it('при нуле рисует только дорожку', () => {
         const { container } = render(<ProgressArc value={0} max={2000} label="Калории" />)
         expect(container.querySelectorAll('path')).toHaveLength(1)

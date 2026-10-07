@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { activeNavItem } from '@/shared/utils/activeNavItem'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/shared/utils/cn'
 import { CURATOR_NAVIGATION_ITEMS } from '../utils/curatorNavigationConfig'
 import { useUnreadCount } from '@/features/chat/hooks/useUnreadCount'
@@ -20,15 +21,20 @@ export interface CuratorFooterNavigationProps {
  * Shows: Clients, Chats, Profile.
  */
 export function CuratorFooterNavigation({
-    activeItem = 'hub',
+    activeItem,
     onNavigate
 }: CuratorFooterNavigationProps) {
     const router = useRouter()
-    const [currentActive, setCurrentActive] = useState<CuratorNavigationItemId>(activeItem)
+    const pathname = usePathname()
+    // A tap lights its tab at once; the address takes over as soon as it
+    // changes. A tap recorded on another address is stale and ignored.
+    const [tapped, setTapped] = useState<{ id: CuratorNavigationItemId; on: string | null } | null>(null)
+    const currentActive =
+        tapped && tapped.on === pathname ? tapped.id : (activeNavItem(pathname, CURATOR_NAVIGATION_ITEMS) ?? activeItem)
     const unreadCount = useUnreadCount()
 
     const handleNavigationClick = (itemId: CuratorNavigationItemId) => {
-        setCurrentActive(itemId)
+        setTapped({ id: itemId, on: pathname })
 
         if (onNavigate) {
             onNavigate(itemId)

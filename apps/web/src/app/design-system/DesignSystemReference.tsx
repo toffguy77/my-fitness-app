@@ -113,7 +113,7 @@ export function DesignSystemReference() {
                             onClick={() => applyTheme(t)}
                             className={`h-9 rounded-full px-4 text-sm font-semibold transition-colors ${theme === t ? 'bg-fg text-fg-inverse' : 'text-fg-muted hover:text-fg'}`}
                         >
-                            {t === 'system' ? 'Система' : t === 'light' ? 'Светлая' : 'Тёмная'}
+                            {t === 'system' ? 'Авто' : t === 'light' ? 'Светлая' : 'Тёмная'}
                         </button>
                     ))}
                 </div>

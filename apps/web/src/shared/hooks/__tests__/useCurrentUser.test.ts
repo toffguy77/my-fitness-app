@@ -1,4 +1,7 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import React from 'react'
+import { renderToString } from 'react-dom/server'
+import { hydrateRoot } from 'react-dom/client'
+import { act, renderHook, waitFor } from '@testing-library/react'
 
 import { useCurrentUser, fetchCurrentUser, resetCurrentUser, readCachedUser } from '../useCurrentUser'
 import { apiClient } from '@/shared/utils/api-client'
@@ -98,5 +101,57 @@ describe('who is signed in', () => {
         localStorage.setItem('user', 'not json')
 
         expect(readCachedUser()).toBeNull()
+    })
+})
+
+describe('when the server does not answer', () => {
+    it('keeps showing a cached profile rather than blanking the screen', async () => {
+        setUser(curator)
+        get.mockRejectedValue(new Error('offline'))
+
+        const { result } = renderHook(() => useCurrentUser())
+
+        await waitFor(() => expect(get).toHaveBeenCalled())
+        await waitFor(() => expect(result.current.state).toBe('ready'))
+        expect(result.current.user).toEqual(curator)
+    })
+
+    it('with nothing cached, reports nobody', async () => {
+        get.mockRejectedValue(new Error('offline'))
+
+        const { result } = renderHook(() => useCurrentUser())
+
+        await waitFor(() => expect(result.current.state).toBe('anonymous'))
+        expect(result.current.user).toBeNull()
+    })
+})
+
+describe('hydration', () => {
+    // The server has no localStorage and renders "loading". A first client
+    // render that painted the cache differed from that HTML: React threw
+    // error #418 on every signed-in page opened after the first one.
+    function Who() {
+        const { user, state } = useCurrentUser()
+        return React.createElement('p', null, state === 'loading' ? 'loading' : user?.full_name ?? 'nobody')
+    }
+
+    it('hydrates server HTML without a mismatch, then paints the cache', async () => {
+        get.mockReturnValue(new Promise(() => {}))
+        const html = renderToString(React.createElement(Who))
+        expect(html).toContain('loading')
+
+        setUser(curator)
+        const container = document.createElement('div')
+        container.innerHTML = html
+        document.body.appendChild(container)
+        const recoverable = jest.fn()
+
+        await act(async () => {
+            hydrateRoot(container, React.createElement(Who), { onRecoverableError: recoverable })
+        })
+
+        expect(recoverable).not.toHaveBeenCalled()
+        expect(container.textContent).toBe('Curator')
+        container.remove()
     })
 })

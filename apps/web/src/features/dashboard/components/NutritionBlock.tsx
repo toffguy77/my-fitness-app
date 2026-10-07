@@ -12,6 +12,7 @@
 
 import { useState, useEffect, memo, useMemo } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { Card, CardTitle } from '@/shared/components/ui/Card'
 import { ProgressArc } from '@/shared/components/ui/ProgressArc'
 import { MacroRemaining } from '@/shared/components/ui/MacroRemaining'
@@ -67,6 +68,7 @@ const MacroAmount = memo(function MacroAmount({
 })
 
 export const NutritionBlock = memo(function NutritionBlock({ date, className }: NutritionBlockProps) {
+    const router = useRouter()
     const [isNavigating, setIsNavigating] = useState(false)
     const [calcTargets, setCalcTargets] = useState<CalculatedTargets | null>(null)
     const [missingTargetInputs, setMissingTargetInputs] = useState<MissingTargetInputs | null>(null)
@@ -116,13 +118,11 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
     // Запись сразу нужным способом: дневник открывает окно записи на вкладке
     // из ?add= (FoodTrackerPage, LINKABLE_ENTRY_TABS).
     const handleQuickAdd = (method: QuickAddMethod) => {
+        // Переход внутри приложения, без перезагрузки страницы: дневник
+        // открывается сразу, а кнопки на это время недоступны — второе
+        // нажатие не запустит второй переход.
         setIsNavigating(true)
-        try {
-            window.location.href = `/food-tracker?date=${dateStr}&add=${method}`
-        } catch (error) {
-            console.error('Navigation failed:', error)
-            setIsNavigating(false)
-        }
+        router.push(`/food-tracker?date=${dateStr}&add=${method}`)
     }
 
     const isToday = dateStr === formatLocalDate(new Date())

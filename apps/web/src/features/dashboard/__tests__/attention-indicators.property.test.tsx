@@ -18,6 +18,12 @@ import { useDashboardStore } from '../store/dashboardStore'
 import { formatLocalDate } from '@/shared/utils/format'
 import type { DailyMetrics } from '../types'
 
+const mockPush = jest.fn()
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({ push: mockPush }),
+    usePathname: () => '/dashboard',
+}))
+
 // Mock the store
 jest.mock('../store/dashboardStore')
 

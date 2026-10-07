@@ -17,6 +17,7 @@
   "types": "./dist/tokens.d.ts",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "node scripts/build.mjs --check"
+    "check": "node scripts/build.mjs --check",
+    "test": "node --test scripts/__tests__/*.test.mjs"
   }
 }

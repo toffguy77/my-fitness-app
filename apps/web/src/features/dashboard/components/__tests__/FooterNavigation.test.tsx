@@ -1,14 +1,51 @@
-import { render, fireEvent } from '@testing-library/react'
+import { screen, render, fireEvent } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import { FooterNavigation } from '../FooterNavigation'
 import { NAVIGATION_ITEMS } from '../../utils/navigationConfig'
 
 // Mock Next.js router
+let mockPathname: string | null = null
 jest.mock('next/navigation', () => ({
+    usePathname: () => mockPathname,
     useRouter: jest.fn(),
 }))
 
 describe('FooterNavigation', () => {
+    afterEach(() => {
+        mockPathname = null
+    })
+
+    describe('active tab follows the address', () => {
+        it.each([
+            ['/dashboard', 'dashboard'],
+            ['/food-tracker', 'food-tracker'],
+            ['/chat', 'chat'],
+            ['/content/some-article', 'content'],
+        ])('%s → %s', (path, id) => {
+            mockPathname = path
+            render(<FooterNavigation activeItem="dashboard" />)
+            expect(screen.getByTestId(`nav-item-${id}`)).toHaveAttribute('aria-current', 'page')
+            expect(screen.getAllByRole('button').filter((b) => b.getAttribute('aria-current') === 'page')).toHaveLength(1)
+        })
+
+        it('profile and settings belong to no tab — none is lit', () => {
+            mockPathname = '/settings/profile'
+            render(<FooterNavigation />)
+            expect(screen.getAllByRole('button').some((b) => b.hasAttribute('aria-current'))).toBe(false)
+        })
+
+        it('a tap recorded on another address does not outlive the navigation', () => {
+            mockPathname = '/dashboard'
+            const { rerender } = render(<FooterNavigation />)
+            fireEvent.click(screen.getByTestId('nav-item-chat'))
+            expect(screen.getByTestId('nav-item-chat')).toHaveAttribute('aria-current', 'page')
+            mockPathname = '/food-tracker'
+            rerender(<FooterNavigation />)
+            expect(screen.getByTestId('nav-item-food-tracker')).toHaveAttribute('aria-current', 'page')
+            expect(screen.getByTestId('nav-item-chat')).not.toHaveAttribute('aria-current')
+        })
+    })
+
     let mockPush: jest.Mock
 
     beforeEach(() => {
@@ -40,7 +77,8 @@ describe('FooterNavigation', () => {
             expect(getByText('Контент')).toBeInTheDocument()
         })
 
-        it('should mark Dashboard as active by default', () => {
+        it('lights the tab that owns the current address', () => {
+            mockPathname = '/dashboard'
             const { container } = render(<FooterNavigation />)
 
             const dashboardItem = container.querySelector('[data-testid="nav-item-dashboard"]')
@@ -77,6 +115,7 @@ describe('FooterNavigation', () => {
         })
 
         it('should update active state when navigation item is clicked', () => {
+            mockPathname = '/dashboard'
             const { container } = render(<FooterNavigation />)
 
             // Initially Dashboard is active

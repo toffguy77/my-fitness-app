@@ -15,7 +15,9 @@ import { DashboardLayout } from '../DashboardLayout'
 
 // Mock Next.js router
 const mockPush = jest.fn()
+const mockPathname: string | null = null
 jest.mock('next/navigation', () => ({
+    usePathname: () => mockPathname,
     useRouter: () => ({
         push: mockPush,
         replace: jest.fn(),

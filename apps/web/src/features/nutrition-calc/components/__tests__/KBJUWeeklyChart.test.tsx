@@ -143,3 +143,38 @@ describe('KBJUWeeklyChart', () => {
         expect(chartData[0].status).toBe('green') // default when no comparison possible
     })
 })
+
+describe('KBJUWeeklyChart — подсказка и точки', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- нужны настоящие экспорты, а не mock recharts
+    const { ChartTooltip, statusDotColor } = require('../KBJUWeeklyChart') as typeof import('../KBJUWeeklyChart')
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- те же роли, что у графика
+    const { chartColor } = require('@/shared/charts/chartTheme') as typeof import('@/shared/charts/chartTheme')
+
+    it('мимо нормы — роль warning, без тревожного красного', () => {
+        expect(statusDotColor('yellow')).toBe(chartColor.warning)
+        expect(statusDotColor('red')).toBe(chartColor.warning)
+        expect(statusDotColor('green')).toBe(chartColor.primary)
+        expect(statusDotColor('unknown')).toBe(chartColor.primary)
+    })
+
+    it('подсказка неактивна — ничего не рисует', () => {
+        const { container } = render(<ChartTooltip active={false} payload={[]} label="1 окт." />)
+        expect(container).toBeEmptyDOMElement()
+    })
+
+    it('подсказка называет цель и факт в ккал, округляя', () => {
+        render(
+            <ChartTooltip
+                active
+                label="3 окт."
+                payload={[
+                    { name: 'target', value: 2150.4, color: chartColor['fg-subtle'] },
+                    { name: 'actual', value: 1873.6, color: chartColor.primary },
+                ] as never}
+            />,
+        )
+        expect(screen.getByText('3 окт.')).toBeInTheDocument()
+        expect(screen.getByText(/Цель:/)).toHaveTextContent('Цель: 2150 ккал')
+        expect(screen.getByText(/Факт:/)).toHaveTextContent('Факт: 1874 ккал')
+    })
+})

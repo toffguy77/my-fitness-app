@@ -6,6 +6,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NutritionBlock } from '../NutritionBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import type { DailyMetrics, NutritionData, WeeklyPlan } from '../../types'
@@ -13,6 +14,12 @@ import { dashboardStoreValue } from '../../testing/storeValue'
 import { getTargets } from '@/features/nutrition-calc/api/nutritionCalc'
 import { MACRO_COLORS } from '@/shared/constants/macros'
 import { hexToRgb } from '@/shared/testing/cssColor'
+
+const mockPush = jest.fn()
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({ push: mockPush }),
+    usePathname: () => '/dashboard',
+}))
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore')
@@ -23,8 +30,6 @@ jest.mock('@/features/nutrition-calc/api/nutritionCalc', () => ({
 }))
 const mockGetTargets = getTargets as jest.MockedFunction<typeof getTargets>
 
-// jest-environment-jsdom 30 uses http://localhost/ as the default URL, so
-// window.location.href works without a custom override.
 
 describe('NutritionBlock', () => {
     beforeEach(() => {
@@ -121,6 +126,29 @@ describe('NutritionBlock', () => {
         }))
         return render(<NutritionBlock date={mockDate} />)
     }
+
+    describe('Быстрая запись с дашборда', () => {
+        it.each([
+            ['Записать еду', 'search'],
+            ['Распознать еду по фото', 'photo'],
+            ['Сканировать штрихкод', 'barcode'],
+        ])('«%s» открывает дневник сразу на способе %s', async (name, method) => {
+            mockPush.mockClear()
+            renderWith({})
+            await userEvent.click(screen.getByRole('button', { name }))
+            expect(mockPush).toHaveBeenCalledWith(`/food-tracker?date=${mockDateStr}&add=${method}`)
+        })
+
+        it('после нажатия кнопки недоступны — второй переход не запустится', async () => {
+            mockPush.mockClear()
+            renderWith({})
+            await userEvent.click(screen.getByRole('button', { name: 'Записать еду' }))
+            for (const name of ['Записать еду', 'Распознать еду по фото', 'Сканировать штрихкод']) {
+                expect(screen.getByRole('button', { name })).toBeDisabled()
+            }
+            expect(mockPush).toHaveBeenCalledTimes(1)
+        })
+    })
 
     describe('Basic Rendering', () => {
         it('показывает заголовок, ссылку на дневник и быструю запись тремя способами', () => {

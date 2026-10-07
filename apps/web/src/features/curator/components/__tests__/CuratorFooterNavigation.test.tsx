@@ -2,7 +2,9 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { CuratorFooterNavigation } from '../CuratorFooterNavigation'
 
 const mockPush = jest.fn()
+let mockPathname: string | null = null
 jest.mock('next/navigation', () => ({
+    usePathname: () => mockPathname,
     useRouter: () => ({ push: mockPush }),
 }))
 
@@ -47,8 +49,24 @@ describe('CuratorFooterNavigation', () => {
         expect(screen.getByLabelText('Навигация куратора')).toBeInTheDocument()
     })
 
-    it('defaults to hub as active item', () => {
+    it.each([
+        ['/curator', 'hub'],
+        ['/curator/clients/17', 'hub'],
+        ['/curator/chat/17', 'chats'],
+        ['/curator/content/new', 'content'],
+        ['/curator/leads', 'leads'],
+        ['/curator/support', 'support'],
+    ])('the address decides the tab: %s → %s', (path, id) => {
+        mockPathname = path
+        render(<CuratorFooterNavigation activeItem="hub" />)
+        expect(screen.getByTestId(`nav-item-${id}`)).toHaveAttribute('aria-current', 'page')
+        mockPathname = null
+    })
+
+    it('lights the clients hub on /curator', () => {
+        mockPathname = '/curator'
         render(<CuratorFooterNavigation />)
+        mockPathname = null
 
         const clientsBtn = screen.getByTestId('nav-item-hub')
         expect(clientsBtn).toHaveAttribute('aria-current', 'page')

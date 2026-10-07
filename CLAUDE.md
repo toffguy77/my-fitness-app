@@ -128,7 +128,8 @@ the Metrika work were nearly shipped dead.
 - **Значения — только в `packages/design-tokens/tokens/*.json`.** После правки
   `npm run tokens:build` и коммит вместе с `dist/`; CI (`npm run tokens:check`)
   падает, если `dist/` отстал, если у тем разный набор ролей или если пара
-  «текст на фоне» не держит контраст.
+  «текст на фоне» не держит контраст. Сами эти отказы проверяет
+  `npm run tokens:test`.
 - **В разметке — роли**: `bg-surface`, `text-fg-muted`, `border-line`,
   `bg-primary`, `text-protein-fg`… Палитра Tailwind (`gray-500`, `blue-600`)
   отключена в теме и запрещена ESLint, как и цвет литералом. В SVG и графиках —
@@ -138,6 +139,10 @@ the Metrika work were nearly shipped dead.
   затем `npm run lint:web`.
 - Новый повторяющийся элемент — компонент в `shared/components/ui` с тестом и
   примером на `/design-system`.
+- **Первый клиентский рендер = серверный.** Кэш из localStorage, время и cookie
+  читаются после гидратации (`useSyncExternalStore` с серверным снимком, как в
+  `useCurrentUser`), иначе React #418 пересобирает страницу. Сторожит
+  `e2e/tests/design-system.spec.ts`.
 
 ## Lint Hygiene
 

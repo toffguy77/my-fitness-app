@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { activeNavItem } from '@/shared/utils/activeNavItem'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/shared/utils/cn'
 import { ADMIN_NAVIGATION_ITEMS } from '../utils/adminNavigationConfig'
 import type { AdminNavigationItemId } from '../types'
@@ -13,14 +14,19 @@ export interface AdminFooterNavigationProps {
 }
 
 export function AdminFooterNavigation({
-    activeItem = 'dashboard',
+    activeItem,
     onNavigate
 }: AdminFooterNavigationProps) {
     const router = useRouter()
-    const [currentActive, setCurrentActive] = useState<AdminNavigationItemId>(activeItem)
+    const pathname = usePathname()
+    // A tap lights its tab at once; the address takes over as soon as it
+    // changes. A tap recorded on another address is stale and ignored.
+    const [tapped, setTapped] = useState<{ id: AdminNavigationItemId; on: string | null } | null>(null)
+    const currentActive =
+        tapped && tapped.on === pathname ? tapped.id : (activeNavItem(pathname, ADMIN_NAVIGATION_ITEMS) ?? activeItem)
 
     const handleNavigationClick = (itemId: AdminNavigationItemId) => {
-        setCurrentActive(itemId)
+        setTapped({ id: itemId, on: pathname })
 
         if (onNavigate) {
             onNavigate(itemId)

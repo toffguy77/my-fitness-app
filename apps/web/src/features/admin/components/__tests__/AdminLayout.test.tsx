@@ -2,7 +2,9 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { AdminLayout } from '../AdminLayout'
 
 const mockPush = jest.fn()
+const mockPathname: string | null = null
 jest.mock('next/navigation', () => ({
+    usePathname: () => mockPathname,
     useRouter: () => ({ push: mockPush }),
 }))
 
@@ -64,14 +66,14 @@ describe('AdminLayout', () => {
         expect(screen.getByTestId('user-name')).toHaveTextContent('John Doe')
     })
 
-    it('renders footer navigation with default active item', () => {
+    it('leaves the active tab to the address when the page names none', () => {
         render(
             <AdminLayout userName="Admin">
                 <div>Content</div>
             </AdminLayout>
         )
 
-        expect(screen.getByTestId('admin-footer-nav')).toHaveAttribute('data-active', 'dashboard')
+        expect(screen.getByTestId('admin-footer-nav')).not.toHaveAttribute('data-active')
     })
 
     it('renders footer navigation with custom active item', () => {

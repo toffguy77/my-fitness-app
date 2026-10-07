@@ -9,6 +9,7 @@ import {
     setToken,
     clearToken,
     clearAuth,
+    getUser as cachedUser,
     legacyStorage,
 } from './token-storage';
 import { ApiError, NetworkError } from '../errors/apiErrors';
@@ -124,10 +125,33 @@ function addRefreshSubscriber(onSuccess: (token: string) => void, onFailure: (er
 
 class ApiClient {
     /**
+     * The token to send, minting one first when there is evidently a session.
+     *
+     * The access token lives in memory, so every page load starts without one.
+     * Requests fired before the silent refresh finished went out bare, came
+     * back 401 and refreshed a second time: a 401 in the console on every page
+     * and two refreshes racing over one rotating cookie. Now a request waits
+     * for a refresh already under way, and starts one itself when this tab has
+     * a signed-in profile cached. A guest has neither, and pays nothing.
+     * A failed refresh is not an answer here — the request goes out as it
+     * would have, and the ordinary 401 path decides.
+     */
+    private async tokenForRequest(url: string): Promise<string | null> {
+        const token = this.getToken();
+        if (token || this.isAuthEndpoint(url)) return token;
+        if (!refreshInFlight && !cachedUser()) return null;
+        try {
+            return await this.refreshSession();
+        } catch {
+            return null;
+        }
+    }
+
+    /**
      * Make an HTTP request with automatic token injection and error handling
      */
     private async request<T>(url: string, options: RequestOptions = {}): Promise<T> {
-        const token = this.getToken();
+        const token = await this.tokenForRequest(url);
         const requestId = crypto.randomUUID();
 
         const headers: Record<string, string> = {
@@ -296,7 +320,7 @@ class ApiClient {
      * Uses the same 401 → token refresh → retry logic as request().
      */
     async postFormData<T>(url: string, body: FormData): Promise<T> {
-        const token = this.getToken();
+        const token = await this.tokenForRequest(url);
         const requestId = crypto.randomUUID();
 
         const headers: Record<string, string> = {

@@ -39,3 +39,23 @@ describe('DashboardGreeting', () => {
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/^Добрый вечер$/)
     })
 })
+
+describe('DashboardGreeting на сервере', () => {
+    it('не знает часового пояса человека — отдаёт пустые строки той же высоты', () => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- серверный рендер нужен только здесь
+        const { renderToString } = require('react-dom/server') as typeof import('react-dom/server')
+        const html = renderToString(<DashboardGreeting name="Дмитрий" />)
+        expect(html).toContain('data-testid="dashboard-greeting"')
+        expect(html).not.toMatch(/Доброе|Добрый|Доброй/)
+        expect(html).toContain('min-h-9')
+    })
+
+    it.each([
+        [7, 'Доброе утро'], [14, 'Добрый день'], [20, 'Добрый вечер'], [2, 'Доброй ночи'],
+    ])('в %i ч — «%s»', (hour, greeting) => {
+        jest.useFakeTimers().setSystemTime(new Date(2026, 8, 28, hour, 0))
+        render(<DashboardGreeting />)
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(greeting)
+        jest.useRealTimers()
+    })
+})

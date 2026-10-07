@@ -4,6 +4,7 @@ package curator_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -258,4 +259,54 @@ func TestUnreadSurvivesHavingNoActiveClients(t *testing.T) {
 	// Остальное считать не по кому.
 	assert.Equal(t, 0, analytics.AttentionClients)
 	assert.Equal(t, 0, analytics.ActiveTasks)
+}
+
+// Список внимания раньше обрывался на двадцатой строке, а карточка считала
+// клиентов по полному набору. На стенде это выглядело так: четырнадцать
+// неактивных и шесть с незаполненным профилем — двадцать строк ровно, и
+// шестнадцатый клиент в карточке был, а в списке под ней — нет.
+func TestAttentionListIsNeverCutBelowTheCard(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "curator_attention_cap")
+	ctx := context.Background()
+	service := curator.NewService(db, logger.New(), nil)
+
+	var curatorID int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password, name, role)
+		 VALUES ('cap-curator@example.test', 'x', 'Куратор', 'coordinator') RETURNING id`).Scan(&curatorID))
+
+	// Двенадцать клиентов без профиля и без питания: у каждого минимум две
+	// причины, то есть строк заведомо больше двадцати.
+	const clients = 12
+	for i := 0; i < clients; i++ {
+		var id int64
+		email := fmt.Sprintf("cap-%02d@example.test", i)
+		require.NoError(t, db.QueryRowContext(ctx,
+			`INSERT INTO users (email, password, name, role) VALUES ($1, 'x', $1, 'client') RETURNING id`,
+			email).Scan(&id))
+		_, err := db.ExecContext(ctx,
+			`INSERT INTO curator_client_relationships (curator_id, client_id, status) VALUES ($1, $2, 'active')`,
+			curatorID, id)
+		require.NoError(t, err)
+	}
+
+	items, err := service.GetAttentionList(ctx, curatorID)
+	require.NoError(t, err)
+	require.Greater(t, len(items), 20, "строк должно быть больше прежнего потолка — иначе проверять нечего")
+
+	distinct := map[int64]struct{}{}
+	for _, item := range items {
+		distinct[item.ClientID] = struct{}{}
+	}
+
+	analytics, err := service.GetAnalytics(ctx, curatorID)
+	require.NoError(t, err)
+
+	assert.Equal(t, clients, analytics.AttentionClients)
+	assert.Equal(t, analytics.AttentionClients, len(distinct),
+		"каждый клиент, посчитанный карточкой, есть в списке под ней")
+
+	for i := 1; i < len(items); i++ {
+		assert.LessOrEqual(t, items[i-1].Priority, items[i].Priority, "порядок по срочности сохраняется")
+	}
 }

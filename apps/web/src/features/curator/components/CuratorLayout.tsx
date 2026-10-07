@@ -28,7 +28,7 @@ export const CuratorLayout = forwardRef<HTMLDivElement, CuratorLayoutProps>(
         children,
         userName,
         avatarUrl,
-        activeNavItem = 'hub',
+        activeNavItem,
         onNavigate,
         className
     }, ref) => {

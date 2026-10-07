@@ -36,7 +36,7 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
         children,
         userName,
         avatarUrl,
-        activeNavItem = 'dashboard',
+        activeNavItem,
         onNavigate,
         className
     }, ref) => {

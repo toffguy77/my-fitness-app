@@ -21,7 +21,7 @@ export const AdminLayout = forwardRef<HTMLDivElement, AdminLayoutProps>(
         children,
         userName,
         avatarUrl,
-        activeNavItem = 'dashboard',
+        activeNavItem,
         onNavigate,
         className
     }, ref) => {

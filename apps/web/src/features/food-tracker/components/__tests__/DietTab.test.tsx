@@ -268,6 +268,35 @@ describe('DietTab', () => {
             });
         });
 
+        it.each([
+            ['Распознать еду по фото', 'tab-photo'],
+            ['Сканировать штрихкод', 'tab-barcode'],
+            ['Найти продукт', 'tab-search'],
+        ])('«%s» opens the modal on the matching tab', async (name, tabId) => {
+            const user = userEvent.setup();
+            render(<DietTab {...createDefaultProps()} />);
+
+            await user.click(screen.getByRole('button', { name }));
+
+            const dialog = await screen.findByRole('dialog');
+            expect(dialog.querySelector(`#${tabId}`)).toHaveAttribute('aria-selected', 'true');
+        });
+
+        it('closing the modal forgets the quick method — the next open starts on search', async () => {
+            const user = userEvent.setup();
+            render(<DietTab {...createDefaultProps()} />);
+
+            await user.click(screen.getByRole('button', { name: 'Сканировать штрихкод' }));
+            await screen.findByRole('dialog');
+            await user.click(screen.getByRole('button', { name: 'Закрыть' }));
+            await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+            const addButtons = screen.getAllByRole('button', { name: /добавить в/i });
+            await user.click(addButtons[0]);
+            const dialog = await screen.findByRole('dialog');
+            expect(dialog.querySelector('#tab-search')).toHaveAttribute('aria-selected', 'true');
+        });
+
         it('guesses the meal from the hour', () => {
             expect(mealForHour(8)).toBe('breakfast');
             expect(mealForHour(13)).toBe('lunch');
@@ -289,6 +318,36 @@ describe('DietTab', () => {
             await waitFor(() => {
                 expect(screen.getByRole('dialog')).toBeInTheDocument();
             });
+        });
+    });
+
+    describe('Existing entries', () => {
+        const entry = createMockEntry({ id: 'entry-edit', foodName: 'Овсянка', mealType: 'breakfast' });
+        const withEntry = () => createDefaultProps({
+            entries: { breakfast: [entry], lunch: [], dinner: [], snack: [] } as EntriesByMealType,
+        });
+
+        it('the edit button opens the modal on that entry', async () => {
+            const user = userEvent.setup();
+            render(<DietTab {...withEntry()} />);
+            await user.click(screen.getByRole('button', { name: 'Редактировать Овсянка' }));
+            const dialog = await screen.findByRole('dialog');
+            expect(dialog).toHaveTextContent('Редактировать');
+        });
+
+        it('tapping the entry itself opens it for editing too', async () => {
+            const user = userEvent.setup();
+            render(<DietTab {...withEntry()} />);
+            await user.click(screen.getByText('Овсянка'));
+            expect(await screen.findByRole('dialog')).toHaveTextContent('Редактировать');
+        });
+
+        it('the delete button passes the entry id and meal on', async () => {
+            const user = userEvent.setup();
+            const props = withEntry();
+            render(<DietTab {...props} />);
+            await user.click(screen.getByRole('button', { name: 'Удалить Овсянка' }));
+            await waitFor(() => expect(props.onDeleteEntry).toHaveBeenCalledWith('entry-edit', 'breakfast'));
         });
     });
 

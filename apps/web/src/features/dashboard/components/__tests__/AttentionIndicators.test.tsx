@@ -12,6 +12,12 @@ import { WorkoutBlock } from '../WorkoutBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { formatLocalDate } from '@/shared/utils/format'
 
+const mockPush = jest.fn()
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({ push: mockPush }),
+    usePathname: () => '/dashboard',
+}))
+
 // Mock the store
 jest.mock('../../store/dashboardStore')
 

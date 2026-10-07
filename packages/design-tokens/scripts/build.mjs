@@ -24,7 +24,9 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+// Корень пакета. Переопределяется только тестами сборки: они собирают копию
+// токенов во временной папке, чтобы проверить отказы, не трогая настоящий dist/.
+const root = process.env.DESIGN_TOKENS_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), '..')
 const read = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'))
 
 const sources = {

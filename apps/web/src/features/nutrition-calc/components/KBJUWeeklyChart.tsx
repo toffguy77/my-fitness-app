@@ -19,7 +19,16 @@ interface KBJUWeeklyChartProps {
 
 const CHART_HEIGHT = 160
 
-function ChartTooltip({ active, payload, label }: {
+/**
+ * Цвет точки дня. «Мимо нормы» — единственная оценочная роль: и 10–20 %, и
+ * больше отмечаются `warning`, без тревожного красного; неизвестный статус —
+ * как «в норме».
+ */
+export function statusDotColor(status: string): string {
+    return status === 'yellow' || status === 'red' ? chartColor.warning : chartColor.primary
+}
+
+export function ChartTooltip({ active, payload, label }: {
     active?: boolean
     payload?: Payload<number, string>[]
     label?: string
@@ -116,11 +125,7 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
                             strokeWidth={2}
                             dot={(props: Record<string, unknown>) => {
                                 const { cx, cy, payload } = props as { cx: number; cy: number; payload: { status: string } }
-                                // «Мимо нормы» — единственная оценочная роль: и 10–20 %, и больше
-                                // отмечаются `warning`, без тревожного красного.
-                                const colors: Record<string, string> = { green: chartColor.primary, yellow: chartColor.warning, red: chartColor.warning }
-                                const color = colors[payload.status] ?? colors.green
-                                return <Dot cx={cx} cy={cy} r={3} fill={color} stroke={chartColor.surface} strokeWidth={1.5} />
+                                return <Dot cx={cx} cy={cy} r={3} fill={statusDotColor(payload.status)} stroke={chartColor.surface} strokeWidth={1.5} />
                             }}
                             connectNulls
                             name="actual"

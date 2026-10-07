@@ -353,3 +353,21 @@ describe('MealSlot', () => {
         });
     });
 });
+
+describe('MealSlot — значок приёма пищи', () => {
+    it.each(['breakfast', 'lunch', 'dinner', 'snack'] as MealType[])('%s рисует свой значок и прячет его от диктора', (mealType) => {
+        const { container } = render(<MealSlot mealType={mealType} entries={[]} onAddEntry={jest.fn()} />);
+        const icon = container.querySelector('svg[aria-hidden="true"]');
+        expect(icon).not.toBeNull();
+    });
+
+    it('у разных приёмов разные значки', () => {
+        const markup = (['breakfast', 'lunch', 'dinner', 'snack'] as MealType[]).map((mealType) => {
+            const { container, unmount } = render(<MealSlot mealType={mealType} entries={[]} onAddEntry={jest.fn()} />);
+            const html = container.querySelector('svg')?.outerHTML ?? '';
+            unmount();
+            return html;
+        });
+        expect(new Set(markup).size).toBe(4);
+    });
+});
