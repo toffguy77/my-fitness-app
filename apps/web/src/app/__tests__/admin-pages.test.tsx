@@ -19,7 +19,6 @@ jest.mock('next/navigation', () => ({
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
     ...jest.requireActual('lucide-react'),
-    Loader2: () => <div data-testid="loader">Loading</div>,
     ArrowLeft: () => <div data-testid="arrow-left">Back</div>,
 }))
 
@@ -79,8 +78,8 @@ describe('Admin Pages', () => {
     describe('AdminDashboardPage', () => {
         it('renders without crashing', async () => {
             render(<AdminDashboardPage />)
-            // Initially shows loader while fetching
-            expect(screen.getByTestId('loader')).toBeInTheDocument()
+            // Пока данные грузятся — общий спиннер с подписью для диктора
+            expect(screen.getByRole('status', { name: 'Загрузка...' })).toBeInTheDocument()
         })
     })
 

@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useState, useRef, useMemo } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, MessageCircle, Loader2, Check, X, ChevronDown, Droplets } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Check, X, ChevronDown, Droplets } from 'lucide-react'
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine,
@@ -36,6 +36,7 @@ import { Button, IconButton } from '@/shared/components/ui/Button'
 import { Card, CardTitle } from '@/shared/components/ui/Card'
 import { MACRO_TEXT_COLORS } from '@/shared/constants/macros'
 import { cn } from '@/shared/utils/cn'
+import { Spinner } from '@/shared/components/ui/Spinner'
 
 /** Поле правки числа прямо в карточке: 44 px, текст 16 px. */
 const INLINE_FIELD =
@@ -520,10 +521,7 @@ export default function ClientDetailPage() {
             <ClientDetailTabs activeTab={activeTab} />
 
             {loading && (
-                <div className="flex items-center justify-center py-12" role="status">
-                    <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" aria-hidden="true" />
-                    <span className="sr-only">{t('common.loading')}</span>
-                </div>
+                <Spinner label={t('common.loading')} />
             )}
 
             {error && (

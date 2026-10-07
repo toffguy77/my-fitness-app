@@ -21,6 +21,7 @@
 'use client'
 
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
+import { SegmentLoading } from '@/shared/components/SegmentLoading'
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
@@ -207,14 +208,7 @@ export default function DashboardPage() {
 
     // Show loading state while checking authentication
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-line-strong mx-auto mb-4"></div>
-                    <p className="text-fg-muted">{t('common.loading')}</p>
-                </div>
-            </div>
-        )
+        return <SegmentLoading label={t('common.loading')} />
     }
 
     // Don't render if no user data (will redirect)

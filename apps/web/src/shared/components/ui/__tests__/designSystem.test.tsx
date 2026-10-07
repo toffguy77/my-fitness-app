@@ -12,6 +12,7 @@ import { ProgressArc } from '../ProgressArc'
 import { MacroRemaining } from '../MacroRemaining'
 import { WeekDots, weekSummary, isInside, type WeekDotsDay } from '../WeekDots'
 import { QuickAddActions, QuickAddBar } from '../QuickAdd'
+import { Spinner } from '../Spinner'
 
 describe('Button', () => {
     it('по умолчанию — главное действие брендом', () => {
@@ -181,5 +182,19 @@ describe('QuickAdd', () => {
     it('во время перехода не нажимается второй раз', () => {
         render(<QuickAddActions onSelect={jest.fn()} pending />)
         screen.getAllByRole('button').forEach((b) => expect(b).toBeDisabled())
+    })
+})
+
+describe('Spinner', () => {
+    it('сообщает диктору, что идёт загрузка, а само кольцо скрыто', () => {
+        render(<Spinner label="Загрузка..." />)
+        expect(screen.getByRole('status', { name: 'Загрузка...' })).toBeInTheDocument()
+        expect(screen.getByTestId('spinner')).toHaveAttribute('aria-hidden', 'true')
+        expect(screen.getByTestId('spinner')).toHaveClass('animate-spin', 'border-t-primary', 'h-6')
+    })
+
+    it('крупный — для ожидания на всю страницу', () => {
+        render(<Spinner label="Загрузка..." size="lg" />)
+        expect(screen.getByTestId('spinner')).toHaveClass('h-8', 'w-8')
     })
 })

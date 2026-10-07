@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { curatorApi } from '@/features/curator/api/curatorApi'
 import { AnalyticsSummaryCards } from '@/features/curator/components/AnalyticsSummaryCards'
 import { AttentionList } from '@/features/curator/components/AttentionList'
@@ -15,6 +14,7 @@ import type {
 } from '@/features/curator/types'
 
 import { t } from '@/shared/i18n'
+import { Spinner } from '@/shared/components/ui/Spinner'
 export default function CuratorHubPage() {
     const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null)
     const [attentionItems, setAttentionItems] = useState<AttentionItem[]>([])
@@ -43,10 +43,7 @@ export default function CuratorHubPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12" role="status">
-                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" aria-hidden="true" />
-                <span className="sr-only">{t('common.loading')}</span>
-            </div>
+            <Spinner label={t('common.loading')} />
         )
     }
 

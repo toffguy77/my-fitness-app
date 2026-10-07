@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { adminApi, CuratorLoadCard } from '@/features/admin'
 import type { CuratorLoad, AdminUser } from '@/features/admin'
 
 import { t } from '@/shared/i18n'
+import { Spinner } from '@/shared/components/ui/Spinner'
 export default function AdminDashboardPage() {
     const [curators, setCurators] = useState<CuratorLoad[]>([])
     const [users, setUsers] = useState<AdminUser[]>([])
@@ -29,10 +30,7 @@ export default function AdminDashboardPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12" role="status">
-                <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" aria-hidden="true" />
-                <span className="sr-only">{t('common.loading')}</span>
-            </div>
+            <Spinner label={t('common.loading')} />
         )
     }
 
