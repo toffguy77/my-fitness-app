@@ -99,14 +99,6 @@ build_with_tags() {
     build_args+=(--build-arg "BUILD_DATE=${BUILD_DATE}")
     build_args+=(--build-arg "VERSION=${VERSION}")
 
-    # Add environment-specific build args
-    if [ -n "${NEXT_PUBLIC_SUPABASE_URL}" ]; then
-        build_args+=(--build-arg "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}")
-    fi
-    if [ -n "${NEXT_PUBLIC_SUPABASE_ANON_KEY}" ]; then
-        build_args+=(--build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}")
-    fi
-
     # Generate tags
     local tags
     mapfile -t tags < <(generate_tags)
@@ -209,8 +201,6 @@ ${YELLOW}Commands:${NC}
 
 ${YELLOW}Environment Variables:${NC}
   ENVIRONMENT                 - Target environment (staging, production)
-  NEXT_PUBLIC_SUPABASE_URL   - Supabase URL for build
-  NEXT_PUBLIC_SUPABASE_ANON_KEY - Supabase key for build
 
 ${YELLOW}Examples:${NC}
   $0 generate-tags

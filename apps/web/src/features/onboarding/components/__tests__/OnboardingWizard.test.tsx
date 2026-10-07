@@ -63,7 +63,7 @@ describe('OnboardingWizard', () => {
         expect(screen.queryByTestId('photo-uploader')).not.toBeInTheDocument()
     })
 
-    // The guard moved to middleware.ts, which runs before this renders.
+    // The guard moved to proxy.ts, which runs before this renders.
     it('does not send anybody to sign in on its own', () => {
         render(<OnboardingWizard />)
         expect(mockPush).not.toHaveBeenCalledWith('/auth')

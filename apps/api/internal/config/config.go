@@ -115,10 +115,6 @@ type Config struct {
 	MaxOpenConns     int
 	MaxIdleConns     int
 
-	// Supabase (optional, for migration compatibility)
-	SupabaseURL        string
-	SupabaseServiceKey string
-
 	// JWT
 	JWTSecret string
 
@@ -304,10 +300,6 @@ func Load() (*Config, error) {
 		// открыл дашборд, который дёргает около десятка запросов сразу.
 		MaxOpenConns: getEnvAsInt("DB_MAX_OPEN_CONNS", 30),
 		MaxIdleConns: getEnvAsInt("DB_MAX_IDLE_CONNS", 10),
-
-		// Supabase (optional)
-		SupabaseURL:        getEnv("SUPABASE_URL", ""),
-		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 
 		JWTSecret: getEnv("JWT_SECRET", "dev-secret-key"),
 

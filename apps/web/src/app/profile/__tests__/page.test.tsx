@@ -79,7 +79,7 @@ describe('ProfilePage', () => {
         localStorage.clear()
     })
 
-    // The redirect for a signed-out visitor moved to middleware.ts, which
+    // The redirect for a signed-out visitor moved to proxy.ts, which
     // runs before this page renders. A guard re-added here would send away
     // somebody whose session is still being minted from the cookie.
     it('does not send anybody to sign in on its own', () => {

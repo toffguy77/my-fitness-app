@@ -6,12 +6,10 @@ services:
       dockerfile: apps/web/Dockerfile
       target: runner
       args:
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        - NEXT_PUBLIC_YANDEX_METRIKA_ID=${NEXT_PUBLIC_YANDEX_METRIKA_ID}
+        - NEXT_PUBLIC_YANDEX_METRIKA_ID=${NEXT_PUBLIC_YANDEX_METRIKA_ID:-}
         # Inlined at build time: empty means the "ask in Telegram" link is not
         # shown at all, which is better than a link to a bot nobody runs.
-        - NEXT_PUBLIC_TELEGRAM_BOT=${NEXT_PUBLIC_TELEGRAM_BOT}
+        - NEXT_PUBLIC_TELEGRAM_BOT=${NEXT_PUBLIC_TELEGRAM_BOT:-}
         - NEXT_PUBLIC_APP_VERSION=${APP_VERSION:-dev}
         - CACHE_BUST=${CACHE_BUST:-1}
     expose:
@@ -100,118 +98,123 @@ services:
       # service read it as the name of the environment it was running in. The
       # name comes from APP_ENV below, which the deployment has always set
       # correctly.
+      #
+      # `${X:-}` — необязательная переменная: пустое значение и так означает
+      # «взять дефолт» или «выключить способность», а без явной пустой
+      # подстановки compose на каждой сборке печатал два десятка предупреждений,
+      # среди которых терялось бы настоящее. Обязательные (DB_PASSWORD,
+      # JWT_SECRET, SMTP_*) записаны без неё нарочно: их отсутствие должно быть
+      # видно в журнале сборки.
       - PORT=4000
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
+      - DB_HOST=${DB_HOST:-}
+      - DB_PORT=${DB_PORT:-}
+      - DB_USER=${DB_USER:-}
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_SSL_MODE=${DB_SSL_MODE}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - DB_NAME=${DB_NAME:-}
+      - DB_SSL_MODE=${DB_SSL_MODE:-}
       - JWT_SECRET=${JWT_SECRET}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-}
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_FROM_ADDRESS=${SMTP_FROM_ADDRESS}
-      - SMTP_FROM_NAME=${SMTP_FROM_NAME}
-      - SMTP_REPLY_TO=${SMTP_REPLY_TO}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-}
+      - SMTP_REPLY_TO=${SMTP_REPLY_TO:-}
       - APP_DOMAIN=${APP_DOMAIN:-new.burcev.team}
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
-      - S3_BUCKET=${S3_BUCKET}
-      - S3_REGION=${S3_REGION}
-      - S3_ENDPOINT=${S3_ENDPOINT}
-      - WEEKLY_PHOTOS_S3_ACCESS_KEY_ID=${WEEKLY_PHOTOS_S3_ACCESS_KEY_ID}
-      - WEEKLY_PHOTOS_S3_SECRET_ACCESS_KEY=${WEEKLY_PHOTOS_S3_SECRET_ACCESS_KEY}
-      - WEEKLY_PHOTOS_S3_BUCKET=${WEEKLY_PHOTOS_S3_BUCKET}
-      - WEEKLY_PHOTOS_S3_REGION=${WEEKLY_PHOTOS_S3_REGION}
-      - WEEKLY_PHOTOS_S3_ENDPOINT=${WEEKLY_PHOTOS_S3_ENDPOINT}
-      - PROFILE_PHOTOS_S3_ACCESS_KEY_ID=${PROFILE_PHOTOS_S3_ACCESS_KEY_ID}
-      - PROFILE_PHOTOS_S3_SECRET_ACCESS_KEY=${PROFILE_PHOTOS_S3_SECRET_ACCESS_KEY}
-      - PROFILE_PHOTOS_S3_BUCKET=${PROFILE_PHOTOS_S3_BUCKET}
-      - PROFILE_PHOTOS_S3_REGION=${PROFILE_PHOTOS_S3_REGION}
-      - PROFILE_PHOTOS_S3_ENDPOINT=${PROFILE_PHOTOS_S3_ENDPOINT}
-      - CHAT_S3_ACCESS_KEY_ID=${CHAT_S3_ACCESS_KEY_ID}
-      - CHAT_S3_SECRET_ACCESS_KEY=${CHAT_S3_SECRET_ACCESS_KEY}
-      - CHAT_S3_BUCKET=${CHAT_S3_BUCKET}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-}
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - WEEKLY_PHOTOS_S3_ACCESS_KEY_ID=${WEEKLY_PHOTOS_S3_ACCESS_KEY_ID:-}
+      - WEEKLY_PHOTOS_S3_SECRET_ACCESS_KEY=${WEEKLY_PHOTOS_S3_SECRET_ACCESS_KEY:-}
+      - WEEKLY_PHOTOS_S3_BUCKET=${WEEKLY_PHOTOS_S3_BUCKET:-}
+      - WEEKLY_PHOTOS_S3_REGION=${WEEKLY_PHOTOS_S3_REGION:-}
+      - WEEKLY_PHOTOS_S3_ENDPOINT=${WEEKLY_PHOTOS_S3_ENDPOINT:-}
+      - PROFILE_PHOTOS_S3_ACCESS_KEY_ID=${PROFILE_PHOTOS_S3_ACCESS_KEY_ID:-}
+      - PROFILE_PHOTOS_S3_SECRET_ACCESS_KEY=${PROFILE_PHOTOS_S3_SECRET_ACCESS_KEY:-}
+      - PROFILE_PHOTOS_S3_BUCKET=${PROFILE_PHOTOS_S3_BUCKET:-}
+      - PROFILE_PHOTOS_S3_REGION=${PROFILE_PHOTOS_S3_REGION:-}
+      - PROFILE_PHOTOS_S3_ENDPOINT=${PROFILE_PHOTOS_S3_ENDPOINT:-}
+      - CHAT_S3_ACCESS_KEY_ID=${CHAT_S3_ACCESS_KEY_ID:-}
+      - CHAT_S3_SECRET_ACCESS_KEY=${CHAT_S3_SECRET_ACCESS_KEY:-}
+      - CHAT_S3_BUCKET=${CHAT_S3_BUCKET:-}
       # Выделенный бакет выгрузок. Не пробрасывались: сервер их читал, панель
       # показывала заданными, а служба молча работала на запасном общем ключе.
-      - DATA_EXPORTS_S3_ACCESS_KEY_ID=${DATA_EXPORTS_S3_ACCESS_KEY_ID}
-      - DATA_EXPORTS_S3_SECRET_ACCESS_KEY=${DATA_EXPORTS_S3_SECRET_ACCESS_KEY}
-      - DATA_EXPORTS_S3_BUCKET=${DATA_EXPORTS_S3_BUCKET}
-      - DATA_EXPORTS_S3_REGION=${DATA_EXPORTS_S3_REGION}
-      - DATA_EXPORTS_S3_ENDPOINT=${DATA_EXPORTS_S3_ENDPOINT}
-      - CHAT_S3_REGION=${CHAT_S3_REGION}
-      - CHAT_S3_ENDPOINT=${CHAT_S3_ENDPOINT}
-      - CONTENT_S3_ACCESS_KEY_ID=${CONTENT_S3_ACCESS_KEY_ID}
-      - CONTENT_S3_SECRET_ACCESS_KEY=${CONTENT_S3_SECRET_ACCESS_KEY}
-      - CONTENT_S3_BUCKET=${CONTENT_S3_BUCKET}
-      - CONTENT_S3_REGION=${CONTENT_S3_REGION}
-      - CONTENT_S3_ENDPOINT=${CONTENT_S3_ENDPOINT}
-      - FOOD_PHOTOS_S3_ACCESS_KEY_ID=${FOOD_PHOTOS_S3_ACCESS_KEY_ID}
-      - FOOD_PHOTOS_S3_SECRET_ACCESS_KEY=${FOOD_PHOTOS_S3_SECRET_ACCESS_KEY}
-      - FOOD_PHOTOS_S3_BUCKET=${FOOD_PHOTOS_S3_BUCKET}
-      - FOOD_PHOTOS_S3_REGION=${FOOD_PHOTOS_S3_REGION}
-      - FOOD_PHOTOS_S3_ENDPOINT=${FOOD_PHOTOS_S3_ENDPOINT}
-      - S3_PATH_PREFIX=${S3_PATH_PREFIX}
-      - CONTENT_S3_PATH_PREFIX=${CONTENT_S3_PATH_PREFIX}
+      - DATA_EXPORTS_S3_ACCESS_KEY_ID=${DATA_EXPORTS_S3_ACCESS_KEY_ID:-}
+      - DATA_EXPORTS_S3_SECRET_ACCESS_KEY=${DATA_EXPORTS_S3_SECRET_ACCESS_KEY:-}
+      - DATA_EXPORTS_S3_BUCKET=${DATA_EXPORTS_S3_BUCKET:-}
+      - DATA_EXPORTS_S3_REGION=${DATA_EXPORTS_S3_REGION:-}
+      - DATA_EXPORTS_S3_ENDPOINT=${DATA_EXPORTS_S3_ENDPOINT:-}
+      - CHAT_S3_REGION=${CHAT_S3_REGION:-}
+      - CHAT_S3_ENDPOINT=${CHAT_S3_ENDPOINT:-}
+      - CONTENT_S3_ACCESS_KEY_ID=${CONTENT_S3_ACCESS_KEY_ID:-}
+      - CONTENT_S3_SECRET_ACCESS_KEY=${CONTENT_S3_SECRET_ACCESS_KEY:-}
+      - CONTENT_S3_BUCKET=${CONTENT_S3_BUCKET:-}
+      - CONTENT_S3_REGION=${CONTENT_S3_REGION:-}
+      - CONTENT_S3_ENDPOINT=${CONTENT_S3_ENDPOINT:-}
+      - FOOD_PHOTOS_S3_ACCESS_KEY_ID=${FOOD_PHOTOS_S3_ACCESS_KEY_ID:-}
+      - FOOD_PHOTOS_S3_SECRET_ACCESS_KEY=${FOOD_PHOTOS_S3_SECRET_ACCESS_KEY:-}
+      - FOOD_PHOTOS_S3_BUCKET=${FOOD_PHOTOS_S3_BUCKET:-}
+      - FOOD_PHOTOS_S3_REGION=${FOOD_PHOTOS_S3_REGION:-}
+      - FOOD_PHOTOS_S3_ENDPOINT=${FOOD_PHOTOS_S3_ENDPOINT:-}
+      - S3_PATH_PREFIX=${S3_PATH_PREFIX:-}
+      - CONTENT_S3_PATH_PREFIX=${CONTENT_S3_PATH_PREFIX:-}
       # Pool and migration knobs. They have working defaults; being able to
       # change them without a code change is the point — the connection limit
       # is what a slow night looks like from the outside.
       - DB_MAX_OPEN_CONNS=${DB_MAX_OPEN_CONNS:-30}
       - DB_MAX_IDLE_CONNS=${DB_MAX_IDLE_CONNS:-10}
       - DB_MIGRATION_BASELINE=${DB_MIGRATION_BASELINE:-0}
-      - APP_ENV=${APP_ENV}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - APP_ENV=${APP_ENV:-}
+      - LOG_LEVEL=${LOG_LEVEL:-}
       # Поставщик модели. Имена без его названия: он уже сменился один раз, и
       # переменная, названная по поставщику, соврала бы при следующей смене.
-      - LLM_API_KEY=${LLM_API_KEY}
-      - LLM_BASE_URL=${LLM_BASE_URL}
-      - LLM_AUTH_SCHEME=${LLM_AUTH_SCHEME}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_AUTH_SCHEME=${LLM_AUTH_SCHEME:-}
       # Зрение — отдельный поставщик: модель для текста принимает картинку и
       # молча её игнорирует, то есть общая настройка дала бы выдуманный состав
       # блюда вместо отказа.
-      - VISION_API_KEY=${VISION_API_KEY}
-      - VISION_MODEL=${VISION_MODEL}
-      - VISION_BASE_URL=${VISION_BASE_URL}
-      - VISION_AUTH_SCHEME=${VISION_AUTH_SCHEME}
+      - VISION_API_KEY=${VISION_API_KEY:-}
+      - VISION_MODEL=${VISION_MODEL:-}
+      - VISION_BASE_URL=${VISION_BASE_URL:-}
+      - VISION_AUTH_SCHEME=${VISION_AUTH_SCHEME:-}
       # Прежние имена приняты как запасные, чтобы окружение можно было
       # перевести не в один миг.
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL}   # запасное имя для VISION_MODEL
-      - FOOD_RECOGNITION_DAILY_LIMIT=${FOOD_RECOGNITION_DAILY_LIMIT}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}   # запасное имя для VISION_MODEL
+      - FOOD_RECOGNITION_DAILY_LIMIT=${FOOD_RECOGNITION_DAILY_LIMIT:-}
       # Optional capabilities: absent values switch the feature off and are
       # reported at startup and in /health, rather than failing the boot.
-      - YANDEX_OAUTH_CLIENT_ID=${YANDEX_OAUTH_CLIENT_ID}
-      - YANDEX_OAUTH_CLIENT_SECRET=${YANDEX_OAUTH_CLIENT_SECRET}
-      - VK_OAUTH_CLIENT_ID=${VK_OAUTH_CLIENT_ID}
-      - VK_OAUTH_CLIENT_SECRET=${VK_OAUTH_CLIENT_SECRET}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET}
-      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
-      - TELEGRAM_SUPPORT_GROUP_ID=${TELEGRAM_SUPPORT_GROUP_ID}
-      - TELEGRAM_ALERTS_THREAD_ID=${TELEGRAM_ALERTS_THREAD_ID}
-      - SUPPORT_MODEL=${SUPPORT_MODEL}
-      - SUPPORT_DAILY_LIMIT=${SUPPORT_DAILY_LIMIT}
-      - NOTIFICATION_EMAIL_DELAY=${NOTIFICATION_EMAIL_DELAY}
-      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
-      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
-      - VAPID_SUBJECT=${VAPID_SUBJECT}
+      - YANDEX_OAUTH_CLIENT_ID=${YANDEX_OAUTH_CLIENT_ID:-}
+      - YANDEX_OAUTH_CLIENT_SECRET=${YANDEX_OAUTH_CLIENT_SECRET:-}
+      - VK_OAUTH_CLIENT_ID=${VK_OAUTH_CLIENT_ID:-}
+      - VK_OAUTH_CLIENT_SECRET=${VK_OAUTH_CLIENT_SECRET:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET:-}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
+      - TELEGRAM_SUPPORT_GROUP_ID=${TELEGRAM_SUPPORT_GROUP_ID:-}
+      - TELEGRAM_ALERTS_THREAD_ID=${TELEGRAM_ALERTS_THREAD_ID:-}
+      - SUPPORT_MODEL=${SUPPORT_MODEL:-}
+      - SUPPORT_DAILY_LIMIT=${SUPPORT_DAILY_LIMIT:-}
+      - NOTIFICATION_EMAIL_DELAY=${NOTIFICATION_EMAIL_DELAY:-}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-}
       - APP_VERSION=${APP_VERSION:-dev}
       # Наблюдаемость. Обе выключаются отсутствием значения — см. .env.example.
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       # Заголовки для приёмника трассировки: почти любой требует авторизации,
       # и передаётся она именно так. Без этой строки переменную можно было
       # задать где угодно — до контейнера она не доходила, экспортёр уходил
       # без ключа и получал отказ. Трассировка при этом числилась включённой.
-      - OTEL_EXPORTER_OTLP_HEADERS=${OTEL_EXPORTER_OTLP_HEADERS}
+      - OTEL_EXPORTER_OTLP_HEADERS=${OTEL_EXPORTER_OTLP_HEADERS:-}
       - OTEL_TRACES_SAMPLE_RATIO=${OTEL_TRACES_SAMPLE_RATIO:-0.1}
-      - SENTRY_DSN=${SENTRY_DSN}
+      - SENTRY_DSN=${SENTRY_DSN:-}
       # Обратная связь рекламному кабинету: без любой из двух выключена.
-      - YANDEX_METRIKA_OAUTH_TOKEN=${YANDEX_METRIKA_OAUTH_TOKEN}
-      - YANDEX_METRIKA_COUNTER_ID=${YANDEX_METRIKA_COUNTER_ID}
+      - YANDEX_METRIKA_OAUTH_TOKEN=${YANDEX_METRIKA_OAUTH_TOKEN:-}
+      - YANDEX_METRIKA_COUNTER_ID=${YANDEX_METRIKA_COUNTER_ID:-}
     networks:
       dokploy-network:
         # A name Prometheus can rely on. Container names here are generated by
