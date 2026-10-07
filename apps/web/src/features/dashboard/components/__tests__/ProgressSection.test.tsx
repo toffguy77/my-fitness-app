@@ -12,6 +12,9 @@ const mockApiGet = jest.fn()
 jest.mock('@/shared/utils/api-client', () => ({
     apiClient: {
         get: (...args: unknown[]) => mockApiGet(...args),
+        // A kept answer is just a read here: each test sets its own response.
+        getRecent: (url: string) => mockApiGet(url),
+        forgetRecent: jest.fn(),
     },
 }))
 
@@ -115,7 +118,7 @@ describe('ProgressSection', () => {
 
             await waitFor(() => {
                 expect(screen.getByText('Отлично')).toBeInTheDocument()
-                expect(screen.getByText('95.0%')).toBeInTheDocument()
+                expect(screen.getByText('95%')).toBeInTheDocument()
             })
         })
 
@@ -130,7 +133,7 @@ describe('ProgressSection', () => {
 
             await waitFor(() => {
                 expect(screen.getByText('Хорошо')).toBeInTheDocument()
-                expect(screen.getByText('75.0%')).toBeInTheDocument()
+                expect(screen.getByText('75%')).toBeInTheDocument()
             })
         })
 
@@ -145,7 +148,7 @@ describe('ProgressSection', () => {
 
             await waitFor(() => {
                 expect(screen.getByText('Требует внимания')).toBeInTheDocument()
-                expect(screen.getByText('50.0%')).toBeInTheDocument()
+                expect(screen.getByText('50%')).toBeInTheDocument()
             })
         })
 
@@ -228,7 +231,7 @@ describe('ProgressSection', () => {
             render(<ProgressSection />)
 
             await waitFor(() => {
-                expect(screen.getByText('80.0%')).toBeInTheDocument()
+                expect(screen.getByText('80%')).toBeInTheDocument()
             })
         })
 

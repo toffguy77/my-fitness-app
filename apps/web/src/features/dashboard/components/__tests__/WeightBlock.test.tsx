@@ -50,7 +50,7 @@ describe('WeightBlock - Core Functionality', () => {
         const { container } = render(<WeightBlock date={mockDate} />)
 
         // Check that weight is displayed
-        expect(screen.getByText('78.5')).toBeInTheDocument()
+        expect(screen.getByText('78,5')).toBeInTheDocument()
 
         // Check for green color class (weight decrease is good)
         const greenElements = container.querySelectorAll('.text-success-fg')

@@ -192,7 +192,7 @@ describe('Property 8: Weight Input Validation', () => {
                         const hasValidationError =
                             screen.queryByText(/Неверное значение/) ||
                             screen.queryByText(/должен быть/) ||
-                            screen.queryByText(/от 0.1 до 500/)
+                            screen.queryByText(/от 0,1 до 500/)
 
                         expect(hasValidationError).toBeInTheDocument()
 
@@ -255,24 +255,18 @@ describe('Property 8: Weight Input Validation', () => {
                         const { unmount } = render(<WeightBlock date={date} />, { container })
 
                         // Should show current weight
-                        const currentWeightStr = currentWeight % 1 === 0 ?
-                            currentWeight.toString() :
-                            currentWeight.toFixed(1)
+                        const currentWeightStr = currentWeight.toLocaleString('ru-RU', { maximumFractionDigits: 1 })
                         expect(screen.getByText(currentWeightStr)).toBeInTheDocument()
 
                         // Should show previous weight reference
-                        const previousWeightStr = previousWeight % 1 === 0 ?
-                            previousWeight.toString() :
-                            previousWeight.toFixed(1)
+                        const previousWeightStr = previousWeight.toLocaleString('ru-RU', { maximumFractionDigits: 1 })
                         expect(screen.getByText(`Вчера: ${previousWeightStr} кг`)).toBeInTheDocument()
 
                         // Should show weight change indicator
                         const weightChange = currentWeight - previousWeight
                         if (Math.abs(weightChange) > 0.05) { // Avoid floating point precision issues
                             const changeStr = weightChange > 0 ? '+' : ''
-                            const changeValue = Math.abs(weightChange) % 1 === 0 ?
-                                Math.abs(weightChange).toString() :
-                                Math.abs(weightChange).toFixed(1)
+                            const changeValue = Math.abs(weightChange).toLocaleString('ru-RU', { maximumFractionDigits: 1 })
                             expect(screen.getByText(`${changeStr}${changeValue} кг`)).toBeInTheDocument()
                         }
 

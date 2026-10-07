@@ -219,7 +219,7 @@ describe('Dashboard Validation Utilities', () => {
             it('rejects calories exceeding maximum', () => {
                 const result = validateCalories(10001)
                 expect(result.isValid).toBe(false)
-                expect(result.error).toBe('Калории должны быть не более 10,000')
+                expect(result.error).toBe('Калории должны быть не более 10 000')
             })
 
             it('rejects null', () => {

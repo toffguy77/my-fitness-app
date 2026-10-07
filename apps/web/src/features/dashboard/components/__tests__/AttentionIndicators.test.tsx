@@ -341,7 +341,7 @@ describe('Attention Indicators', () => {
 
             render(<WeightBlock date={today} />)
 
-            expect(screen.getByText('75.5')).toBeInTheDocument()
+            expect(screen.getByText('75,5')).toBeInTheDocument()
             expect(screen.queryByRole('status', { name: /вес не записан сегодня/i })).not.toBeInTheDocument()
         })
     })

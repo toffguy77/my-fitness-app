@@ -175,6 +175,7 @@ test.describe('Загрузка страниц под входом', () => {
                 reads.set(key, (reads.get(key) ?? 0) + 1)
             })
             const repeated: string[] = []
+            const badNumbers: string[] = []
             for (const path of paths) {
                 reads = new Map()
                 await page.goto(path)
@@ -183,8 +184,15 @@ test.describe('Загрузка страниц под входом', () => {
                 // приходит асинхронно, поэтому даём ей время проявиться.
                 await page.waitForTimeout(1500)
                 for (const [key, count] of reads) if (count > 1) repeated.push(`${path}: ${key} ×${count}`)
+                // Числа — как их пишут люди: без хвостов плавающей точки
+                // («1923.3000000000002») и без английского «10.0k».
+                const text = await page.locator('body').innerText()
+                // Даты «07.10.2026» — не числа: часть после точки окружена точками.
+                const bad = text.match(/(?<![\d.])\d+[.,]\d{3,}(?![\d.])|\d+\.\dk\b/g)
+                if (bad) badNumbers.push(`${path}: ${[...new Set(bad)].join(', ')}`)
             }
             expect(repeated, 'страница не спрашивает одно и то же дважды').toEqual([])
+            expect(badNumbers, 'числа без хвостов плавающей точки').toEqual([])
             expect(errors.filter((message) => /#418|#423|#425|[Hh]ydrat/.test(message))).toEqual([])
             expect(unauthorised, 'запросы под входом не уходят без токена').toEqual([])
         })

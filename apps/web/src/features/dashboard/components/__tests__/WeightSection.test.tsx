@@ -25,6 +25,7 @@ jest.mock('../../store/dashboardStore', () => ({
 }))
 
 jest.mock('@/shared/utils/format', () => ({
+    ...jest.requireActual('@/shared/utils/format'),
     formatLocalDate: (d: Date) => d.toISOString().slice(0, 10),
 }))
 
@@ -57,6 +58,9 @@ const mockApiGet = jest.fn().mockResolvedValue({ weight_trend: [], target_weight
 jest.mock('@/shared/utils/api-client', () => ({
     apiClient: {
         get: (...args: unknown[]) => mockApiGet(...args),
+        // A kept answer is just a read here: each test sets its own response.
+        getRecent: (url: string) => mockApiGet(url),
+        forgetRecent: jest.fn(),
     },
 }))
 
@@ -119,7 +123,7 @@ describe('WeightSection', () => {
         mockDailyData[dateStr] = { weight: 80.5 }
 
         render(<WeightSection date={createDate(dateStr)} />)
-        expect(screen.getByText('80.5')).toBeInTheDocument()
+        expect(screen.getByText('80,5')).toBeInTheDocument()
     })
 
     it('shows "Добавить вес" button when no weight is logged', () => {
@@ -355,7 +359,7 @@ describe('WeightSection', () => {
         render(<WeightSection date={createDate('2026-03-07')} />)
 
         await waitFor(() => {
-            expect(screen.getByText('-2.0 кг за 4 недели')).toBeInTheDocument()
+            expect(screen.getByText('-2 кг за 4 недели')).toBeInTheDocument()
         })
     })
 

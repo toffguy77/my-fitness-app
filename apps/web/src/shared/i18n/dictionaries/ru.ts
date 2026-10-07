@@ -598,7 +598,7 @@ export const ru = {
             empty: 'Не записано',
             remainingAria: 'Осталось {steps} шагов до цели',
             remaining: 'Осталось {steps} шагов до цели',
-            hint: 'Рекомендуется делать минимум 10,000 шагов в день',
+            hint: 'Рекомендуется делать минимум 10\u00A0000 шагов в день',
         },
         weightSection: {
             targetLabel: 'Цель',
@@ -694,7 +694,7 @@ export const ru = {
             caloriesNotANumber: 'Калории должны быть числом',
             caloriesNotValid: 'Калории должны быть корректным числом',
             caloriesNegative: 'Калории не могут быть отрицательными',
-            caloriesTooLarge: 'Калории должны быть не более 10,000',
+            caloriesTooLarge: 'Калории должны быть не более 10\u00A0000',
             photoFormat: 'Фото должно быть в формате JPEG, PNG или WebP',
             photoTooLarge: 'Фото должно быть не более 10 МБ',
             photoEmpty: 'Файл фото пустой',

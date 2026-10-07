@@ -64,12 +64,9 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
     }), [currentSteps, stepsGoal])
 
     // Format steps display
-    const formatSteps = (steps: number) => {
-        if (steps >= 1000) {
-            return `${(steps / 1000).toFixed(1)}k`
-        }
-        return steps.toString()
-    }
+    // Шаги — целым числом с разрядами по-русски («10 000»), а не «10.0k»:
+    // английское сокращение с десятичной точкой читалось как десять шагов.
+    const formatSteps = (steps: number) => Math.round(steps).toLocaleString('ru-RU')
 
     // Debounced validation function (300ms delay)
     const debouncedValidate = useDebouncedCallback((value: string) => {
@@ -185,13 +182,13 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                 <div className="flex items-baseline gap-2">
                     <span
                         className="type-num-l text-fg"
-                        aria-label={t('dashboard.steps.currentAria', { steps: currentSteps.toLocaleString() })}
+                        aria-label={t('dashboard.steps.currentAria', { steps: currentSteps.toLocaleString('ru-RU') })}
                     >
                         {formatSteps(currentSteps)}
                     </span>
                     <span
                         className="text-sm text-fg-muted tabular-nums"
-                        aria-label={t('dashboard.steps.goalAria', { steps: stepsGoal.toLocaleString() })}
+                        aria-label={t('dashboard.steps.goalAria', { steps: stepsGoal.toLocaleString('ru-RU') })}
                     >
                         {t('dashboard.steps.ofGoal', { steps: formatSteps(stepsGoal) })}
                     </span>
@@ -200,7 +197,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                     value={Math.min(currentSteps, stepsGoal)}
                     max={stepsGoal}
                     color={color.fg}
-                    label={t('dashboard.steps.progressAria', { percentage: percentage.toFixed(1) })}
+                    label={t('dashboard.steps.progressAria', { percentage: Math.round(percentage) })}
                 />
 
                 {/* Цель достигнута — состояние успеха словом и знаком */}
@@ -218,9 +215,9 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                 {currentSteps > 0 && !isGoalReached && (
                     <p
                         className="text-sm text-fg-muted tabular-nums"
-                        aria-label={t('dashboard.steps.remainingAria', { steps: (stepsGoal - currentSteps).toLocaleString() })}
+                        aria-label={t('dashboard.steps.remainingAria', { steps: (stepsGoal - currentSteps).toLocaleString('ru-RU') })}
                     >
-                        {t('dashboard.steps.remaining', { steps: (stepsGoal - currentSteps).toLocaleString() })}
+                        {t('dashboard.steps.remaining', { steps: (stepsGoal - currentSteps).toLocaleString('ru-RU') })}
                     </p>
                 )}
             </div>
