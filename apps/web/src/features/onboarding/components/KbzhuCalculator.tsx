@@ -231,7 +231,7 @@ export function KbzhuCalculator() {
                     <h2 className="type-title-2 text-fg">{t('onboarding.guest.resultTitle')}</h2>
                     <div className="mt-4 rounded-tile bg-canvas p-5 text-center">
                         <p className="type-overline text-fg-subtle">{t('onboarding.guest.calories')}</p>
-                        <p className="mt-1 type-num-xl text-fg">{Math.round(result.calories)}</p>
+                        <p className="mt-1 type-num-xl text-fg" data-testid="calculator-calories">{Math.round(result.calories)}</p>
                         <p className="text-sm text-fg-muted">{t('onboarding.guest.kcalPerDay')}</p>
                     </div>
                     <div className="mt-2 grid grid-cols-3 gap-2">
