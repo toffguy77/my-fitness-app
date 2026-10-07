@@ -127,6 +127,25 @@ describe('NutritionBlock', () => {
         return render(<NutritionBlock date={mockDate} />)
     }
 
+    describe('Числа целыми', () => {
+        // На стенде: норма 2472.3 по формуле и 549 ккал из записей давали
+        // «1923.3000000000002 ккал ещё можно».
+        it('калории — целые, остаток считается от того, что видно', () => {
+            renderWith({ calories: 548.7000000000001, protein: 38.4, fat: 34.6, carbs: 20.2 }, { ...mockWeeklyPlan, caloriesGoal: 2472.3 })
+
+            expect(screen.getByTestId('calorie-remaining')).toHaveTextContent(/^1923$/)
+            expect(screen.getByTestId('calorie-value')).toHaveTextContent(/^549$/)
+            expect(screen.getByText(/из 2472/)).not.toHaveTextContent('.')
+            expect(document.body.textContent).not.toMatch(/\d\.\d{3,}/)
+        })
+
+        it('без нормы съеденное тоже целым', () => {
+            renderWith({ calories: 812.49, protein: 41.6, fat: 20.3, carbs: 99.5 }, null)
+            expect(screen.getByTestId('calorie-value')).toHaveTextContent(/^812$/)
+            expect(document.body.textContent).not.toMatch(/\d\.\d/)
+        })
+    })
+
     describe('Быстрая запись с дашборда', () => {
         it.each([
             ['Записать еду', 'search'],

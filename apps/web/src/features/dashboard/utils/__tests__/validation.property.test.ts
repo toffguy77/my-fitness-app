@@ -313,7 +313,7 @@ describe('Dashboard Validation - Property-Based Tests', () => {
                         const result = validateCalories(calories)
                         expect(result.isValid).toBe(false)
                         expect(result.error).toBeDefined()
-                        expect(result.error).toContain('10,000')
+                        expect(result.error).toContain('10 000')
                         return result.isValid === false
                     }
                 ),

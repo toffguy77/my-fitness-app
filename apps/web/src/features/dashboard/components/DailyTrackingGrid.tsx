@@ -132,9 +132,12 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
             {/* Mobile: single column, stacked blocks */}
             {/* Tablet+: three-column grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-                {/* Питание — главный блок дня: на планшете и шире во всю строку
-                    сетки из двух колонок, на десктопе — половина из четырёх. */}
-                <div className="col-span-1 sm:col-span-2">
+                {/* Питание — главный блок дня: на планшете во всю строку, на
+                    десктопе — половина ширины на две строки. Справа от него
+                    шаги и тренировка сверху, вода снизу на всю их ширину:
+                    вода больше не остаётся одна в третьей строке рядом с
+                    пустотой. */}
+                <div className="col-span-1 sm:col-span-2 lg:row-span-2">
                     <NutritionBlock
                         date={date}
                         className="h-full"
@@ -158,7 +161,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                 </div>
 
                 {/* Water Block */}
-                <div className="col-span-1">
+                <div className="col-span-1 sm:col-span-2">
                     <WaterBlock
                         date={date}
                         className="h-full"

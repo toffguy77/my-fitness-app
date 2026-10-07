@@ -13,6 +13,7 @@ import { AlertCircle, Award, Activity } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { cn } from '@/shared/utils/cn'
 import { apiClient } from '@/shared/utils/api-client'
+import { DASHBOARD_PROGRESS_URL, PROGRESS_REUSE_MS } from '../api/dashboardApi'
 import type { ProgressData } from '../types'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
@@ -73,14 +74,14 @@ const AdherenceIndicator = memo(function AdherenceIndicator({ percentage, classN
                     )}
                     style={{ width: `${percentage}%` }}
                     role="progressbar"
-                    aria-valuenow={percentage}
+                    aria-valuenow={Math.round(percentage)}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-label={t('dashboard.progress.adherenceAria', { percentage })}
+                    aria-label={t('dashboard.progress.adherenceAria', { percentage: Math.round(percentage) })}
                 />
             </div>
             <div className="text-right type-caption text-fg-muted tabular-nums">
-                {percentage.toFixed(1)}%
+                {Math.round(percentage)}%
             </div>
         </div>
     )
@@ -147,11 +148,11 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
         const fetchProgressData = async () => {
             setIsLoading(true)
             try {
-                const raw = await apiClient.get<{
+                const raw = await apiClient.getRecent<{
                     weight_trend: Array<{ date: string; weight: number }>
                     nutrition_adherence: number
                     target_weight: number | null
-                }>('/api/v1/dashboard/progress?weeks=4')
+                }>(DASHBOARD_PROGRESS_URL, PROGRESS_REUSE_MS)
 
                 setLoadError(null)
                 setProgressData({

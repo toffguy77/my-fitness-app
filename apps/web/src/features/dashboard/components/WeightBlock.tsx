@@ -22,7 +22,7 @@ import { Button, IconButton } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
-import { formatLocalDate } from '@/shared/utils/format'
+import { formatLocalDate, formatDecimal } from '@/shared/utils/format'
 import { validateWeight } from '../utils/validation'
 import { useDebouncedCallback } from '@/shared/hooks/useDebounce'
 import { AttentionBadge } from './AttentionBadge'
@@ -88,8 +88,10 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
         : null
 
     // Format weight display
+    // Показ — по-русски («67,4»), поле ввода — числом с точкой, как его разбирают.
+    const formatWeightInput = (weight: number) => (weight % 1 === 0 ? weight.toString() : weight.toFixed(1))
     const formatWeight = (weight: number) => {
-        return weight % 1 === 0 ? weight.toString() : weight.toFixed(1)
+        return formatDecimal(weight)
     }
 
     // Debounced validation function (300ms delay)
@@ -158,7 +160,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
     const handleQuickAdd = useCallback(() => {
         if (isWeightLogged) {
             // If weight is already logged, allow editing
-            setInputValue(formatWeight(currentWeight))
+            setInputValue(formatWeightInput(currentWeight))
             setIsEditing(true)
         } else {
             // If no weight logged, start editing
@@ -287,7 +289,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                         <div
                             className="flex items-center gap-1 text-sm text-fg tabular-nums"
                             role="status"
-                            aria-label={t('dashboard.weight.changeAria', { direction: weightChange > 0 ? t('dashboard.weight.increase') : weightChange < 0 ? t('dashboard.weight.decrease') : t('dashboard.weight.unchanged'), amount: Math.abs(weightChange).toFixed(1) })}
+                            aria-label={t('dashboard.weight.changeAria', { direction: weightChange > 0 ? t('dashboard.weight.increase') : weightChange < 0 ? t('dashboard.weight.decrease') : t('dashboard.weight.unchanged'), amount: formatDecimal(Math.abs(weightChange)) })}
                         >
                             {weightChange > 0 ? (
                                 <TrendingUp className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />

@@ -56,6 +56,9 @@ const mockApiPost = jest.fn()
 jest.mock('@/shared/utils/api-client', () => ({
     apiClient: {
         get: (...args: unknown[]) => mockApiGet(...args),
+        // A kept answer is just a read here: each test sets its own response.
+        getRecent: (url: string) => mockApiGet(url),
+        forgetRecent: jest.fn(),
         post: (...args: unknown[]) => mockApiPost(...args),
     },
 }))

@@ -136,7 +136,11 @@ const JOIN_WINDOW_MS = 5000;
 /** Forgets shared reads. Tests call it between cases (jest.setup.js). */
 export function forgetReadsInFlight(): void {
     readsInFlight.clear();
+    recentReads.clear();
 }
+
+/** Answers kept a little longer for `getRecent`, by URL. */
+const recentReads = new Map<string, { response: Promise<unknown>; at: number }>();
 
 // jest.setup.js clears shared reads after every test through this hook, so a
 // request a test leaves hanging cannot be joined by the next test. Registered
@@ -453,6 +457,34 @@ class ApiClient {
     /**
      * Make a GET request
      */
+    /**
+     * A read that may reuse an answer up to `maxAgeMs` old.
+     *
+     * For data two parts of one screen show independently and that does not
+     * change under the person's hands — the dashboard's progress (weight
+     * trend, adherence) is read by the weight section and, a moment later
+     * once its lazy chunk arrives, by the progress section. Concurrency alone
+     * does not catch that pair. A failed answer is not kept. Call
+     * `forgetRecent(url)` after a write that changes it.
+     */
+    async getRecent<T>(url: string, maxAgeMs: number): Promise<T> {
+        const kept = recentReads.get(url);
+        if (kept && Date.now() - kept.at < maxAgeMs) {
+            return kept.response.then((value) => copyOf(value) as T);
+        }
+        const response = this.get<T>(url);
+        recentReads.set(url, { response, at: Date.now() });
+        response.catch(() => {
+            if (recentReads.get(url)?.response === response) recentReads.delete(url);
+        });
+        return response.then((value) => copyOf(value));
+    }
+
+    /** Drops a kept answer, so the next `getRecent` asks again. */
+    forgetRecent(url: string): void {
+        recentReads.delete(url);
+    }
+
     async get<T>(url: string, options?: RequestOptions): Promise<T> {
         // Identical reads in flight at the same moment share one request.
         // A page assembles itself from independent components — the shell, the

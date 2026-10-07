@@ -110,4 +110,45 @@ describe('Shared reads', () => {
         expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected'])
         expect(global.fetch).toHaveBeenCalledTimes(1)
     })
+
+    describe('getRecent', () => {
+        it('a second part of the screen a moment later reuses the answer', async () => {
+            const first = apiClient.getRecent<{ n: number }>('/api/v1/dashboard/progress?weeks=4', 15000)
+            await flush()
+            resolvers[0]({ n: 1 })
+            await expect(first).resolves.toEqual({ n: 1 })
+
+            const second = apiClient.getRecent<{ n: number }>('/api/v1/dashboard/progress?weeks=4', 15000)
+            await expect(second).resolves.toEqual({ n: 1 })
+            expect(global.fetch).toHaveBeenCalledTimes(1)
+        })
+
+        it('an older answer, or one forgotten after a write, is asked for again', async () => {
+            jest.useFakeTimers({ now: new Date('2026-10-07T10:00:00Z'), doNotFake: ['queueMicrotask', 'nextTick', 'setImmediate'] })
+            const url = '/api/v1/dashboard/progress?weeks=4'
+            const first = apiClient.getRecent(url, 15000)
+            await flush()
+            resolvers[0]({ n: 1 })
+            await first
+
+            jest.setSystemTime(new Date('2026-10-07T10:00:16Z'))
+            void apiClient.getRecent(url, 15000)
+            await flush()
+            expect(global.fetch).toHaveBeenCalledTimes(2)
+            resolvers[1]({ n: 2 })
+            await flush()
+
+            apiClient.forgetRecent(url)
+            void apiClient.getRecent(url, 15000)
+            await flush()
+            expect(global.fetch).toHaveBeenCalledTimes(3)
+        })
+
+        it('a failed answer is not kept', async () => {
+            global.fetch = jest.fn(async () => ({ ok: false, status: 502, headers: new Headers(), json: async () => ({}) })) as unknown as typeof fetch
+            await expect(apiClient.getRecent('/api/v1/dashboard/progress?weeks=4', 15000)).rejects.toBeDefined()
+            await expect(apiClient.getRecent('/api/v1/dashboard/progress?weeks=4', 15000)).rejects.toBeDefined()
+            expect(global.fetch).toHaveBeenCalledTimes(2)
+        })
+    })
 })

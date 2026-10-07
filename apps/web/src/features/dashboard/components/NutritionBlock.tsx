@@ -61,7 +61,7 @@ const MacroAmount = memo(function MacroAmount({
             />
             <span className="text-fg-muted">{label}</span>
             <span className="font-semibold text-fg">
-                {value}{t('units.gram')}
+                {Math.round(value)}{t('units.gram')}
             </span>
         </div>
     )
@@ -111,8 +111,14 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
         return { caloriesGoal, proteinGoal, fatGoal, carbsGoal }
     }, [weeklyPlan?.caloriesGoal, weeklyPlan?.proteinGoal, weeklyPlan?.fatGoal, weeklyPlan?.carbsGoal, calcTargets])
 
-    const isOverCalorieGoal = goals ? nutrition.calories > goals.caloriesGoal : false
-    const caloriesLeft = goals ? goals.caloriesGoal - nutrition.calories : 0
+    // Калории показываются целыми: норма считается по формуле, записи —
+    // по граммам, и без округления на экран выходило «1923.3000000000002».
+    // Остаток считается от уже округлённых чисел, чтобы «осталось» и
+    // «съедено N из M» складывались на глаз.
+    const eatenKcal = Math.round(nutrition.calories)
+    const goalKcal = goals ? Math.round(goals.caloriesGoal) : 0
+    const isOverCalorieGoal = goals ? eatenKcal > goalKcal : false
+    const caloriesLeft = goals ? goalKcal - eatenKcal : 0
     const hasMacroGoals = !!(goals?.proteinGoal && goals.fatGoal && goals.carbsGoal)
 
     // Запись сразу нужным способом: дневник открывает окно записи на вкладке
@@ -148,11 +154,11 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
 
             {goals ? (
                 <ProgressArc
-                    value={nutrition.calories}
-                    max={goals.caloriesGoal}
+                    value={eatenKcal}
+                    max={goalKcal}
                     label={isOverCalorieGoal
-                        ? t('dashboard.nutrition.arcOverAria', { eaten: nutrition.calories, goal: goals.caloriesGoal, over: -caloriesLeft })
-                        : t('dashboard.nutrition.arcAria', { eaten: nutrition.calories, goal: goals.caloriesGoal, left: caloriesLeft })}
+                        ? t('dashboard.nutrition.arcOverAria', { eaten: eatenKcal, goal: goalKcal, over: -caloriesLeft })
+                        : t('dashboard.nutrition.arcAria', { eaten: eatenKcal, goal: goalKcal, left: caloriesLeft })}
                 >
                     <span className="type-num-xl text-fg" data-testid="calorie-remaining">
                         {isOverCalorieGoal ? `+${-caloriesLeft}` : caloriesLeft}
@@ -161,8 +167,8 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                         {isOverCalorieGoal ? t('dashboard.nutrition.overBy') : t('dashboard.nutrition.remaining')}
                         {' · '}
                         {t('dashboard.nutrition.eatenWord')}{' '}
-                        <span data-testid="calorie-value" className="tabular-nums">{nutrition.calories}</span>{' '}
-                        {t('dashboard.nutrition.ofGoal', { goal: goals.caloriesGoal })}
+                        <span data-testid="calorie-value" className="tabular-nums">{eatenKcal}</span>{' '}
+                        {t('dashboard.nutrition.ofGoal', { goal: goalKcal })}
                     </span>
                 </ProgressArc>
             ) : (
@@ -171,9 +177,9 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                         <div
                             className="type-num-xl text-fg"
                             data-testid="calorie-value"
-                            aria-label={t('foodTracker.noTarget.eatenAria', { calories: nutrition.calories })}
+                            aria-label={t('foodTracker.noTarget.eatenAria', { calories: eatenKcal })}
                         >
-                            {nutrition.calories}
+                            {eatenKcal}
                         </div>
                         <div className="text-sm text-fg-muted">{t('macros.calories')}</div>
                     </div>

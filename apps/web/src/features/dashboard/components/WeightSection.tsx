@@ -12,12 +12,13 @@ import { Button, IconButton } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
-import { formatLocalDate } from '@/shared/utils/format'
+import { formatLocalDate, formatDecimal } from '@/shared/utils/format'
 import { validateWeight } from '../utils/validation'
 import { useDebouncedCallback } from '@/shared/hooks/useDebounce'
 import { AttentionBadge } from './AttentionBadge'
 import { getProfile } from '@/features/settings/api/settings'
 import { apiClient } from '@/shared/utils/api-client'
+import { DASHBOARD_PROGRESS_URL, PROGRESS_REUSE_MS } from '../api/dashboardApi'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
@@ -51,7 +52,7 @@ function WeightTooltip({ active, payload, label }: {
                         style={{ backgroundColor: entry.color }}
                     />
                     {entry.name === 'target' ? t('dashboard.weightSection.targetLabel') : t('dashboard.weightSection.weightLabel')}:{' '}
-                    <span className="font-medium">{t('dashboard.weightSection.valueKg', { value: Number(entry.value).toFixed(1) })}</span>
+                    <span className="font-medium">{t('dashboard.weightSection.valueKg', { value: formatDecimal(Number(entry.value)) })}</span>
                 </p>
             ))}
         </div>
@@ -115,7 +116,7 @@ const WeightTrendChart = memo(function WeightTrendChart({
                             strokeDasharray="6 3"
                             strokeWidth={1}
                             label={{
-                                value: t('dashboard.weightSection.targetWithValue', { weight: targetWeight }),
+                                value: t('dashboard.weightSection.targetWithValue', { weight: formatDecimal(targetWeight) }),
                                 position: 'right',
                                 fill: chartColor['fg-muted'],
                                 fontSize: 11,
@@ -175,8 +176,9 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
             })
 
         apiClient
-            .get<{ weight_trend: Array<{ date: string; weight: number }>; target_weight: number | null }>(
-                '/api/v1/dashboard/progress?weeks=4',
+            .getRecent<{ weight_trend: Array<{ date: string; weight: number }>; target_weight: number | null }>(
+                DASHBOARD_PROGRESS_URL,
+                PROGRESS_REUSE_MS,
             )
             .then((raw) => {
                 setWeightTrend(
@@ -211,7 +213,9 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
     const distanceToTarget =
         currentWeight != null && targetWeight != null ? currentWeight - targetWeight : null
 
-    const formatWeight = (w: number) => (w % 1 === 0 ? w.toString() : w.toFixed(1))
+    // Показ — по-русски («67,4»), поле ввода — числом с точкой, как его разбирают.
+    const formatWeight = (w: number) => formatDecimal(w)
+    const formatWeightInput = (w: number) => (w % 1 === 0 ? w.toString() : w.toFixed(1))
 
     const debouncedValidate = useDebouncedCallback((value: string) => {
         if (value.trim() === '') { setValidationError(null); return }
@@ -237,6 +241,8 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
         setValidationError(null)
         try {
             await updateMetric(dateStr, { type: 'weight', data: { weight: num } })
+            // Новый вес меняет тренд — следующий показ прогресса спросит заново
+            apiClient.forgetRecent(DASHBOARD_PROGRESS_URL)
             setInputValue('')
             setIsEditing(false)
             toast.success(t('dashboard.weight.saved'))
@@ -248,7 +254,7 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
     }, [inputValue, dateStr, updateMetric])
 
     const handleQuickAdd = useCallback(() => {
-        if (isWeightLogged) setInputValue(formatWeight(currentWeight))
+        if (isWeightLogged) setInputValue(formatWeightInput(currentWeight))
         setIsEditing(true)
     }, [isWeightLogged, currentWeight])
 
@@ -383,7 +389,7 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                             <WeightTrendChart data={weightTrend} targetWeight={targetWeight} />
                             {trendChange !== null && (
                                 <p className="mt-1 text-sm text-fg-muted tabular-nums">
-                                    {t('dashboard.weightSection.trend', { sign: trendChange < 0 ? '' : '+', amount: trendChange.toFixed(1) })}
+                                    {t('dashboard.weightSection.trend', { sign: trendChange < 0 ? '' : '+', amount: formatDecimal(trendChange) })}
                                 </p>
                             )}
                         </div>

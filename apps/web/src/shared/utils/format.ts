@@ -36,3 +36,12 @@ export const formatCurrency = (amount: number): string => {
         currency: 'RUB',
     }).format(amount)
 }
+
+/**
+ * Дробное число для показа — по-русски: запятая и не больше `maxDigits` знаков
+ * после неё, целое — без «,0» («67,4», «68»). Для полей ввода не годится:
+ * их значение разбирается как число с точкой.
+ */
+export function formatDecimal(value: number, maxDigits = 1): string {
+    return value.toLocaleString('ru-RU', { maximumFractionDigits: maxDigits })
+}
