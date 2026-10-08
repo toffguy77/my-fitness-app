@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -31,6 +31,26 @@ export interface ArticleContentProps {
  */
 export const ARTICLE_BODY_CLASSES =
     'max-w-[68ch] break-words text-[17px] leading-[28px] text-fg [&_h1]:type-title-2 [&_h1]:mb-3 [&_h1]:mt-8 [&_h2]:type-title-2 [&_h2]:mb-3 [&_h2]:mt-8 [&_h3]:type-title-3 [&_h3]:mb-2 [&_h3]:mt-6 [&_h4]:type-headline [&_h4]:mb-2 [&_h4]:mt-5 [&_p]:mb-4 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-1.5 [&_li]:pl-1 [&_strong]:font-semibold [&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:my-6 [&_blockquote]:border-l-2 [&_blockquote]:border-line-strong [&_blockquote]:pl-5 [&_blockquote]:type-quote [&_blockquote]:text-fg-muted [&_hr]:my-8 [&_hr]:border-line [&_img]:my-6 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-tile [&_code]:rounded [&_code]:bg-subtle [&_code]:px-1 [&_code]:text-[15px] [&_pre]:mb-4 [&_pre]:overflow-x-auto [&_pre]:rounded-tile [&_pre]:bg-subtle [&_pre]:p-4 [&_table]:mb-4 [&_table]:w-full [&_table]:text-[15px] [&_table]:tabular-nums [&_th]:border [&_th]:border-line [&_th]:bg-subtle [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-line [&_td]:px-3 [&_td]:py-2'
+
+/**
+ * The body without a first line that only repeats the title.
+ *
+ * Articles are written with `# Title` on top, and the page already prints the
+ * title as its heading: the reader saw it twice and a crawler found two h1.
+ */
+export function withoutRepeatedTitle(body: string, title: string): string {
+    const match = /^\s*#[ \t]+(.+?)[ \t#]*(?:\r?\n|$)/.exec(body)
+    if (!match || match[1].trim() !== title.trim()) return body
+    return body.slice(match[0].length)
+}
+
+/**
+ * Any other `#` heading in the body, one level down: the page has one h1, the
+ * article's title.
+ */
+function BodyHeading({ children }: ComponentProps<'h1'>) {
+    return <h2>{children}</h2>
+}
 
 export function ArticleContent({ article, byline, children }: ArticleContentProps) {
     const publishedDate = article.published_at
@@ -73,8 +93,8 @@ export function ArticleContent({ article, byline, children }: ArticleContentProp
             <hr className="mb-6 border-line" />
 
             <div className={ARTICLE_BODY_CLASSES}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {article.body ?? ''}
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ h1: BodyHeading }}>
+                    {withoutRepeatedTitle(article.body ?? '', article.title)}
                 </ReactMarkdown>
             </div>
 

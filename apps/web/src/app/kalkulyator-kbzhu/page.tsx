@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { JsonLd } from '@/shared/components/JsonLd'
+import { SHARE_IMAGE } from '@/shared/constants/seo'
 import { KbzhuCalculator } from '@/features/onboarding/components/KbzhuCalculator'
 
 const PAGE_URL = 'https://burcev.team/kalkulyator-kbzhu'
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
         title: 'Калькулятор КБЖУ онлайн | BURCEV',
         description: 'Норма калорий, белков, жиров и углеводов под вашу цель — за минуту и без регистрации.',
         url: PAGE_URL,
+        images: [SHARE_IMAGE],
     },
 }
 

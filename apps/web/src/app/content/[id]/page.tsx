@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { JsonLd } from '@/shared/components/JsonLd'
 import { EXPERT_AUTHOR } from '@/shared/constants/author'
+import { SHARE_IMAGE } from '@/shared/constants/seo'
 import { ArticleView } from '@/features/content/components/ArticleView'
 import { ArticleContent } from '@/features/content/components/ArticleContent'
 import { ArticleAuthor } from '@/features/content/components/ArticleAuthor'
@@ -58,9 +59,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             publishedTime: article.published_at,
             modifiedTime: article.updated_at,
             authors: [`${SITE_URL}${EXPERT_AUTHOR.path}`],
-            ...(article.cover_image_url && {
-                images: [{ url: article.cover_image_url }],
-            }),
+            images: [article.cover_image_url ? { url: article.cover_image_url } : SHARE_IMAGE],
         },
         alternates: {
             canonical: url,

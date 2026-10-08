@@ -12,6 +12,7 @@ import { SupportWidget } from '@/features/support/components/SupportWidget'
 import { enabledFeatures } from '@/shared/api/features'
 import { TrackView, TrackScrollDepth, EVENTS } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
+import { organizationJsonLd } from './organizationJsonLd'
 
 export const metadata: Metadata = {
     title: t('landing.meta.title'),
@@ -24,15 +25,6 @@ export const metadata: Metadata = {
     alternates: {
         canonical: 'https://burcev.team',
     },
-}
-
-const organizationJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'BURCEV',
-    url: 'https://burcev.team',
-    logo: 'https://burcev.team/logo.svg',
-    description: t('landing.meta.organizationDescription'),
 }
 
 const webAppJsonLd = {
@@ -67,7 +59,7 @@ export default async function Home({
 
     return (
         <>
-            <JsonLd data={organizationJsonLd} />
+            <JsonLd data={organizationJsonLd()} />
             <JsonLd data={webAppJsonLd} />
             <AuthRedirect />
             <TrackView event={EVENTS.landingViewed} />

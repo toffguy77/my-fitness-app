@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import { LEGAL_DOCUMENTS_UPDATED, SELLER } from '@/shared/constants/legal';
 
 export const metadata: Metadata = {
-    title: 'Договор публичной оферты | BURCEV',
+    title: 'Договор публичной оферты',
     description: 'Договор публичной оферты на оказание услуг платформы BURCEV',
+    alternates: { canonical: 'https://burcev.team/legal/terms' },
 };
 
 export default function TermsPage() {

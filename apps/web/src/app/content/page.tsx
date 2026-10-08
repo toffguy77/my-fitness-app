@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { FeedList } from '@/features/content/components/FeedList'
 import type { FeedResponse } from '@/features/content/types'
+import { SHARE_IMAGE } from '@/shared/constants/seo'
 
 export const metadata: Metadata = {
     title: 'Статьи о фитнесе и питании',
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
         title: 'Статьи о фитнесе и питании | BURCEV',
         description: 'Полезные статьи о правильном питании, тренировках и здоровом образе жизни.',
         url: 'https://burcev.team/content',
+        images: [SHARE_IMAGE],
     },
     alternates: {
         canonical: 'https://burcev.team/content',
