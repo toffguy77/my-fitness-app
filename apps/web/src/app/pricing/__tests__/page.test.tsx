@@ -9,7 +9,8 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import PricingPage, { metadata } from '../page'
-import robots from '../../robots'
+import { curatorOfferJsonLd } from '../curatorOffer'
+import { DISALLOW, robotsTxt } from '../../robots.txt/robotsTxt'
 import sitemap from '../../sitemap'
 
 jest.mock('next/link', () => ({
@@ -92,26 +93,44 @@ describe('PricingPage', () => {
     it('объявляет себя канонической по своему адресу', () => {
         expect(metadata.alternates?.canonical).toBe('https://burcev.team/pricing')
     })
+
+    // Шаблон корневого layout дописывает «| BURCEV» сам: бренд в заголовке
+    // страницы давал «Тарифы — BURCEV | BURCEV».
+    it('не повторяет бренд в заголовке', () => {
+        expect(String(metadata.title)).not.toContain('BURCEV')
+    })
+
+    // Свой блок openGraph заменяет родительский целиком: без картинки здесь
+    // ссылка на тарифы уходила в мессенджеры без превью.
+    it('отдаёт картинку для превью ссылки', () => {
+        const images = metadata.openGraph?.images
+        expect(Array.isArray(images) ? images : [images]).toEqual([
+            expect.objectContaining({ url: '/opengraph-image' }),
+        ])
+    })
+
+    it('размечает цену той же суммой, что видна на странице', async () => {
+        const { container } = render(await PricingPage({ features: allOn }))
+        const script = container.querySelector('script[type="application/ld+json"]')
+        const data = JSON.parse(script?.textContent ?? '{}')
+
+        expect(data).toEqual(curatorOfferJsonLd('https://burcev.team/pricing'))
+        expect(data['@type']).toBe('Product')
+        expect(data.offers.price).toBe(5000)
+        expect(data.offers.priceCurrency).toBe('RUB')
+        expect(data.offers.priceSpecification.unitCode).toBe('MON')
+        expect(screen.getByText(`${data.offers.price} ₽`)).toBeInTheDocument()
+    })
 })
 
 describe('страница тарифов открыта поиску', () => {
     // Обязательство, доступное только своим, необязательством не становится, но
     // проверить его снаружи невозможно.
     it('не входит в число закрытых от индексации', () => {
-        const rules = robots().rules
-        const list = Array.isArray(rules) ? rules : [rules]
-
         // Прочитано так, как читает робот: по префиксу. Перечислять /pricing в
         // Allow не нужно — Allow: / его покрывает.
-        for (const rule of list) {
-            const disallow = rule?.disallow
-            const closed = Array.isArray(disallow) ? disallow : disallow ? [disallow] : []
-            expect(closed.some((prefix) => '/pricing'.startsWith(prefix))).toBe(false)
-
-            const allow = rule?.allow
-            const open = Array.isArray(allow) ? allow : allow ? [allow] : []
-            expect(open.some((prefix) => '/pricing'.startsWith(prefix))).toBe(true)
-        }
+        expect(DISALLOW.some((prefix) => '/pricing'.startsWith(prefix))).toBe(false)
+        expect(robotsTxt()).toMatch(/^Allow: \/$/m)
     })
 
     // Эквайринг проверяет, что продавец назван на странице, где продаётся.

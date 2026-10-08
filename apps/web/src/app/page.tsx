@@ -31,8 +31,16 @@ const organizationJsonLd = {
     '@type': 'Organization',
     name: 'BURCEV',
     url: 'https://burcev.team',
-    logo: 'https://burcev.team/logo.svg',
+    // Растровый знак, а не logo.svg: SVG как логотип организации ни Яндекс,
+    // ни Google не обещают разобрать.
+    logo: 'https://burcev.team/icon-512.png',
     description: t('landing.meta.organizationDescription'),
+    contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'support@burcev.team',
+        availableLanguage: 'ru',
+    },
 }
 
 const webAppJsonLd = {

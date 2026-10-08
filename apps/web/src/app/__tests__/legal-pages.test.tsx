@@ -6,10 +6,27 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 
-import PrivacyPage from '../legal/privacy/page'
-import TermsPage from '../legal/terms/page'
+import PrivacyPage, { metadata as privacyMetadata } from '../legal/privacy/page'
+import TermsPage, { metadata as termsMetadata } from '../legal/terms/page'
 
 describe('Legal Pages', () => {
+    // Без своего canonical страницы наследовали адрес главной из layout и
+    // объявляли себя её копиями.
+    it.each([
+        ['terms', termsMetadata, 'https://burcev.team/legal/terms'],
+        ['privacy', privacyMetadata, 'https://burcev.team/legal/privacy'],
+    ])('%s names its own address as canonical', (_name, metadata, url) => {
+        expect(metadata.alternates?.canonical).toBe(url)
+    })
+
+    // Шаблон «%s | BURCEV» дописывает бренд сам.
+    it.each([
+        ['terms', termsMetadata],
+        ['privacy', privacyMetadata],
+    ])('%s does not repeat the brand in its title', (_name, metadata) => {
+        expect(String(metadata.title)).not.toContain('BURCEV')
+    })
+
     describe('PrivacyPage', () => {
         it('renders the privacy policy heading', () => {
             render(<PrivacyPage />)

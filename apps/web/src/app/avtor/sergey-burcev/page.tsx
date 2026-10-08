@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { JsonLd } from '@/shared/components/JsonLd'
 import { EXPERT_AUTHOR } from '@/shared/constants/author'
+import { SHARE_IMAGE } from '@/shared/constants/seo'
 import { ArticleAuthor } from '@/features/content/components/ArticleAuthor'
 import { articlePath, SITE_URL } from '@/features/content/utils/articlePath'
 import type { ArticleCard } from '@/features/content/types'
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
         title: `${EXPERT_AUTHOR.name} — автор статей BURCEV`,
         url: PAGE_URL,
         type: 'profile',
+        images: [SHARE_IMAGE],
     },
 }
 

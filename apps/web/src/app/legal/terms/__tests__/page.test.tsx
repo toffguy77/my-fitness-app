@@ -122,7 +122,8 @@ describe('TermsPage', () => {
     });
 
     it('has correct metadata', () => {
-        expect(metadata.title).toBe('Договор публичной оферты | BURCEV');
+        // «| BURCEV» дописывает шаблон корневого layout.
+        expect(metadata.title).toBe('Договор публичной оферты');
         expect(metadata.description).toBe('Договор публичной оферты на оказание услуг платформы BURCEV');
     });
 

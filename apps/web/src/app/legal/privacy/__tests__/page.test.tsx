@@ -84,7 +84,8 @@ describe('PrivacyPage', () => {
     });
 
     it('has correct metadata', () => {
-        expect(metadata.title).toBe('Политика конфиденциальности | BURCEV');
+        // «| BURCEV» дописывает шаблон корневого layout.
+        expect(metadata.title).toBe('Политика конфиденциальности');
         expect(metadata.description).toBe('Политика конфиденциальности и обработки персональных данных платформы BURCEV');
     });
 

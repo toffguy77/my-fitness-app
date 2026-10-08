@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import { LEGAL_DOCUMENTS_UPDATED, SELLER } from '@/shared/constants/legal';
 
 export const metadata: Metadata = {
-    title: 'Политика конфиденциальности | BURCEV',
+    title: 'Политика конфиденциальности',
     description: 'Политика конфиденциальности и обработки персональных данных платформы BURCEV',
+    alternates: { canonical: 'https://burcev.team/legal/privacy' },
 };
 
 export default function PrivacyPage() {

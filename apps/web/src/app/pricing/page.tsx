@@ -5,6 +5,9 @@ import { enabledFeatures } from '@/shared/api/features'
 import { PricingRequestForm } from '@/features/onboarding/components/PricingRequestForm'
 import { t } from '@/shared/i18n'
 import { SellerLine } from '@/shared/components/SellerLine'
+import { JsonLd } from '@/shared/components/JsonLd'
+import { SHARE_IMAGE } from '@/shared/constants/seo'
+import { curatorOfferJsonLd } from './curatorOffer'
 
 /**
  * Страница тарифов — та, на которую ссылается публичная оферта.
@@ -23,16 +26,20 @@ import { SellerLine } from '@/shared/components/SellerLine'
  * данных, — обещание отказа 503.
  */
 
+const PAGE_URL = 'https://burcev.team/pricing'
+
 export const metadata: Metadata = {
     title: t('pricing.meta.title'),
     description: t('pricing.meta.description'),
     openGraph: {
-        title: t('pricing.meta.title'),
+        // Шаблон «%s | BURCEV» на og:title не распространяется.
+        title: `${t('pricing.meta.title')} | BURCEV`,
         description: t('pricing.meta.description'),
-        url: 'https://burcev.team/pricing',
+        url: PAGE_URL,
+        images: [SHARE_IMAGE],
     },
     alternates: {
-        canonical: 'https://burcev.team/pricing',
+        canonical: PAGE_URL,
     },
 }
 
@@ -62,6 +69,7 @@ export default async function PricingPage({
 
     return (
         <main className="min-h-screen bg-canvas">
+            <JsonLd data={curatorOfferJsonLd(PAGE_URL)} />
             <div className="mx-auto max-w-4xl space-y-6 px-screen-x py-12 sm:py-16">
                 <header className="space-y-3">
                     <h1 className="type-display text-fg">{t('pricing.title')}</h1>
