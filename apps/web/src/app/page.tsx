@@ -12,6 +12,7 @@ import { SupportWidget } from '@/features/support/components/SupportWidget'
 import { enabledFeatures } from '@/shared/api/features'
 import { TrackView, TrackScrollDepth, EVENTS } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
+import { organizationJsonLd } from './organizationJsonLd'
 
 export const metadata: Metadata = {
     title: t('landing.meta.title'),
@@ -23,23 +24,6 @@ export const metadata: Metadata = {
     },
     alternates: {
         canonical: 'https://burcev.team',
-    },
-}
-
-const organizationJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'BURCEV',
-    url: 'https://burcev.team',
-    // Растровый знак, а не logo.svg: SVG как логотип организации ни Яндекс,
-    // ни Google не обещают разобрать.
-    logo: 'https://burcev.team/icon-512.png',
-    description: t('landing.meta.organizationDescription'),
-    contactPoint: {
-        '@type': 'ContactPoint',
-        contactType: 'customer support',
-        email: 'support@burcev.team',
-        availableLanguage: 'ru',
     },
 }
 
@@ -75,7 +59,7 @@ export default async function Home({
 
     return (
         <>
-            <JsonLd data={organizationJsonLd} />
+            <JsonLd data={organizationJsonLd()} />
             <JsonLd data={webAppJsonLd} />
             <AuthRedirect />
             <TrackView event={EVENTS.landingViewed} />
