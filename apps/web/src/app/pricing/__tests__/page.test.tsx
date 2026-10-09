@@ -118,7 +118,10 @@ describe('PricingPage', () => {
         expect(data['@type']).toBe('Product')
         expect(data.offers.price).toBe(5000)
         expect(data.offers.priceCurrency).toBe('RUB')
-        expect(data.offers.priceSpecification.unitCode).toBe('MON')
+        // unitCode контекст schema.org считает ссылкой: «MON» валидатор
+        // Яндекса читал как https://burcev.team/MON.
+        expect(data.offers.priceSpecification).not.toHaveProperty('unitCode')
+        expect(data.offers.priceSpecification.unitText).toBe('месяц')
         expect(screen.getByText(`${data.offers.price} ₽`)).toBeInTheDocument()
     })
 })

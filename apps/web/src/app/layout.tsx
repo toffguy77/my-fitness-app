@@ -8,7 +8,7 @@ import { CookieConsent } from '@/shared/components/CookieConsent'
 import { ServiceWorkerCleanup } from '@/shared/components/ServiceWorkerCleanup'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { GlobalErrorHandlers } from '@/shared/components/GlobalErrorHandlers'
-import { SHARE_IMAGE } from '@/shared/constants/seo'
+import { openGraph } from '@/shared/constants/seo'
 // Шрифты дизайн-системы — свои копии, без запроса к Google Fonts: кириллица,
 // курсив Literata для голоса куратора, и ни одного стороннего хоста в CSP.
 import '@fontsource-variable/golos-text'
@@ -64,15 +64,11 @@ export const metadata: Metadata = {
     // No `robots` either: index, follow is what a crawler assumes anyway, and
     // inherited it sat beside the noindex Next puts on the 404 page — two
     // contradicting tags on one page.
-    openGraph: {
-        type: 'website',
-        locale: 'ru_RU',
-        siteName: 'BURCEV',
+    openGraph: openGraph({
         title: 'BURCEV — Фитнес и питание',
         description:
             'Персональный трекер питания, тренировок и прогресса',
-        images: [SHARE_IMAGE],
-    },
+    }),
 }
 
 export default async function RootLayout({

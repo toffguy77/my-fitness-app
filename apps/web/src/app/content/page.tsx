@@ -1,18 +1,17 @@
 import type { Metadata } from 'next'
 import { FeedList } from '@/features/content/components/FeedList'
 import type { FeedResponse } from '@/features/content/types'
-import { SHARE_IMAGE } from '@/shared/constants/seo'
+import { openGraph } from '@/shared/constants/seo'
 
 export const metadata: Metadata = {
     title: 'Статьи о фитнесе и питании',
     description:
         'Полезные статьи о правильном питании, тренировках, рецептах и здоровом образе жизни от экспертов BURCEV.',
-    openGraph: {
+    openGraph: openGraph({
         title: 'Статьи о фитнесе и питании | BURCEV',
         description: 'Полезные статьи о правильном питании, тренировках и здоровом образе жизни.',
         url: 'https://burcev.team/content',
-        images: [SHARE_IMAGE],
-    },
+    }),
     alternates: {
         canonical: 'https://burcev.team/content',
     },

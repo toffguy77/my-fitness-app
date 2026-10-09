@@ -6,7 +6,7 @@ import { PricingRequestForm } from '@/features/onboarding/components/PricingRequ
 import { t } from '@/shared/i18n'
 import { SellerLine } from '@/shared/components/SellerLine'
 import { JsonLd } from '@/shared/components/JsonLd'
-import { SHARE_IMAGE } from '@/shared/constants/seo'
+import { openGraph } from '@/shared/constants/seo'
 import { curatorOfferJsonLd } from './curatorOffer'
 
 /**
@@ -31,13 +31,12 @@ const PAGE_URL = 'https://burcev.team/pricing'
 export const metadata: Metadata = {
     title: t('pricing.meta.title'),
     description: t('pricing.meta.description'),
-    openGraph: {
+    openGraph: openGraph({
         // Шаблон «%s | BURCEV» на og:title не распространяется.
         title: `${t('pricing.meta.title')} | BURCEV`,
         description: t('pricing.meta.description'),
         url: PAGE_URL,
-        images: [SHARE_IMAGE],
-    },
+    }),
     alternates: {
         canonical: PAGE_URL,
     },
