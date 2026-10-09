@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { BookOpen } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 import { contentApi, publicContentApi } from '@/features/content/api/contentApi'
 import { useSession } from '@/shared/hooks/useSession'
 import { CategoryFilter } from './CategoryFilter'
@@ -107,22 +109,25 @@ export function FeedList({ initialArticles, initialTotal }: FeedListProps = {}) 
             <CategoryFilter selected={category} onSelect={handleCategoryChange} />
 
             {error && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div className="rounded-tile bg-danger-soft px-4 py-3 text-sm text-danger-fg" role="alert">
                     {error}
                 </div>
             )}
 
             {loading ? (
                 <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" />
                 </div>
             ) : articles.length === 0 ? (
-                <div className="text-center py-12">
-                    <p className="text-sm text-gray-500">Пока нет контента</p>
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                        <BookOpen className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} />
+                    </span>
+                    <p className="type-title-3 text-fg">Пока нет контента</p>
                 </div>
             ) : (
                 <>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-2">
                         {articles.map((article) => (
                             <FeedCard key={article.id} article={article} />
                         ))}
@@ -130,14 +135,14 @@ export function FeedList({ initialArticles, initialTotal }: FeedListProps = {}) 
 
                     {total > articles.length && (
                         <div className="flex justify-center pt-2">
-                            <button
+                            <Button
                                 type="button"
+                                variant="secondary"
                                 onClick={handleLoadMore}
                                 disabled={loadingMore}
-                                className="rounded-lg bg-gray-100 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
                             >
                                 {loadingMore ? 'Загрузка...' : 'Загрузить ещё'}
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </>

@@ -194,15 +194,17 @@ describe('NotificationsPage', () => {
             const contentTab = screen.getByText('Контент').closest('button');
 
             // Main tab should be active initially
-            expect(mainTab).toHaveClass('text-blue-600');
-            expect(contentTab).toHaveClass('text-gray-600');
+            expect(mainTab).toHaveAttribute('aria-selected', 'true');
+            expect(mainTab).toHaveClass('border-line-strong');
+            expect(contentTab).toHaveAttribute('aria-selected', 'false');
 
             // Click content tab
             fireEvent.click(contentTab!);
 
             // Content tab should now be active
-            expect(contentTab).toHaveClass('text-blue-600');
-            expect(mainTab).toHaveClass('text-gray-600');
+            expect(contentTab).toHaveAttribute('aria-selected', 'true');
+            expect(contentTab).toHaveClass('border-line-strong');
+            expect(mainTab).toHaveAttribute('aria-selected', 'false');
         });
 
         it('should maintain separate state for each category', () => {

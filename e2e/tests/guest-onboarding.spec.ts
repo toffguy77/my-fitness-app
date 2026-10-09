@@ -199,7 +199,7 @@ test.describe('Calculator to wizard', () => {
     await expect(page.getByRole('button', { name: 'Сохранить результат и получить план' })).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Рассчитать' }).click()
-    const calories = page.locator('[aria-live=polite] p.text-4xl')
+    const calories = page.getByTestId('calculator-calories')
     await expect(calories).not.toBeEmpty({ timeout: 15000 })
     const shown = await calories.textContent()
 

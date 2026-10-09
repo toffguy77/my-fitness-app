@@ -77,8 +77,8 @@ jest.mock('@/features/dashboard/components/WeightSection', () => ({
     WeightSection: () => <div data-testid="weight-section">Weight Section</div>,
 }))
 
-jest.mock('@/features/nutrition-calc/components/KBJUWeeklyChart', () => ({
-    KBJUWeeklyChart: () => <div data-testid="kbju-weekly-chart">KBJU Weekly Chart</div>,
+jest.mock('@/features/nutrition-calc/components/WeekCaloriesCard', () => ({
+    WeekCaloriesCard: () => <div data-testid="kbju-weekly-chart">KBJU Weekly Chart</div>,
 }))
 
 
@@ -153,7 +153,7 @@ describe('DashboardPage', () => {
     })
 
     describe('Authentication Check (Requirement 1.1)', () => {
-        // The redirect for a signed-out visitor happens in middleware.ts,
+        // The redirect for a signed-out visitor happens in proxy.ts,
         // before this page renders. What is left here is not mistaking a cold
         // cache for a missing session.
         it('does not send anybody to sign in over an empty profile cache', async () => {
@@ -367,11 +367,11 @@ describe('DashboardPage', () => {
             })
         })
 
-        it('should start polling on mount', async () => {
+        it('starts polling after its own fetch, without an immediate repeat', async () => {
             render(<DashboardPage />)
 
             await waitFor(() => {
-                expect(mockStartPolling).toHaveBeenCalledWith(30000)
+                expect(mockStartPolling).toHaveBeenCalledWith(30000, { immediate: false })
             })
         })
 
@@ -400,30 +400,20 @@ describe('DashboardPage', () => {
             localStorage.setItem('user', JSON.stringify(userData))
         })
 
-        it('should handle online event', async () => {
+        // The shell (DashboardLayout → useOnlineStatus) watches the connection.
+        // The page used to add a second pair of listeners and report every
+        // change twice.
+        it('leaves online/offline to the shell', async () => {
             render(<DashboardPage />)
 
             await waitFor(() => {
                 expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument()
             })
 
-            // Trigger online event
             window.dispatchEvent(new Event('online'))
-
-            expect(mockSetOfflineStatus).toHaveBeenCalledWith(false)
-        })
-
-        it('should handle offline event', async () => {
-            render(<DashboardPage />)
-
-            await waitFor(() => {
-                expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument()
-            })
-
-            // Trigger offline event
             window.dispatchEvent(new Event('offline'))
 
-            expect(mockSetOfflineStatus).toHaveBeenCalledWith(true)
+            expect(mockSetOfflineStatus).not.toHaveBeenCalled()
         })
     })
 })

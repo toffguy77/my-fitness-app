@@ -24,7 +24,7 @@ export function TypingIndicator({ isTyping }: TypingIndicatorProps) {
     if (!isTyping) return null
 
     return (
-        <div className="flex items-center gap-1 px-4 py-1 text-sm text-gray-400">
+        <div className="flex items-center gap-1 px-4 py-1 text-[13px] text-fg-muted">
             <span>{t('chat.typing')}</span>
             <span className="inline-flex gap-0.5">
                 <span className="animate-bounce" style={{ animationDelay: '0ms' }}>

@@ -80,7 +80,7 @@ export function ConfirmDialog({
 
     return (
         <div
-            className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 sm:items-center"
+            className="fixed inset-0 z-[70] flex items-end justify-center bg-scrim sm:items-center"
             onClick={(event) => {
                 if (event.target === event.currentTarget) cancelIfIdle()
             }}
@@ -91,12 +91,12 @@ export function ConfirmDialog({
         >
             <div
                 ref={dialogRef}
-                className="w-full rounded-t-2xl bg-white p-5 shadow-xl sm:max-w-md sm:rounded-2xl"
+                className="w-full rounded-t-sheet bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-overlay sm:max-w-md sm:rounded-sheet"
             >
-                <h2 id={titleId} className="text-lg font-semibold text-gray-900">
+                <h2 id={titleId} className="type-title-2 text-fg">
                     {title}
                 </h2>
-                <p id={descriptionId} className="mt-2 text-sm text-gray-600">
+                <p id={descriptionId} className="mt-2 type-callout text-fg-muted">
                     {description}
                 </p>
 
@@ -105,7 +105,8 @@ export function ConfirmDialog({
                 <div className="mt-6 flex gap-3">
                     <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
+                        size="lg"
                         className="flex-1"
                         onClick={onCancel}
                         disabled={isPending}
@@ -115,6 +116,7 @@ export function ConfirmDialog({
                     <Button
                         type="button"
                         variant={tone === 'danger' ? 'danger' : 'primary'}
+                        size="lg"
                         className="flex-1"
                         onClick={() => { void onConfirm() }}
                         isLoading={isPending}

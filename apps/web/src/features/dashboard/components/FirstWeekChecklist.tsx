@@ -22,7 +22,7 @@
 import { memo } from 'react'
 import Link from 'next/link'
 import { Check, ChevronRight } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
+import { Card, CardTitle } from '@/shared/components/ui/Card'
 import { cn } from '@/shared/utils/cn'
 import { t } from '@/shared/i18n'
 import type { OnboardingState, OnboardingStepKey } from '../types'
@@ -54,6 +54,14 @@ const STEP_LABEL_KEYS: Record<OnboardingStepKey, string> = {
     curator_hello: 'dashboard.firstWeek.steps.curatorHello',
 }
 
+/** Строка-подсказка под пунктом: зачем он и как его выполнить. */
+const STEP_HINT_KEYS: Record<OnboardingStepKey, string> = {
+    profile: 'dashboard.firstWeek.hints.profile',
+    first_meal: 'dashboard.firstWeek.hints.firstMeal',
+    plate_photo: 'dashboard.firstWeek.hints.platePhoto',
+    curator_hello: 'dashboard.firstWeek.hints.curatorHello',
+}
+
 export const FirstWeekChecklist = memo(function FirstWeekChecklist({
     state,
     className,
@@ -64,61 +72,67 @@ export const FirstWeekChecklist = memo(function FirstWeekChecklist({
 
     const done = state.steps.filter((step) => step.done).length
 
+    // «План на сегодня» в языке «Коуча»: заголовок засечками, пункты —
+    // строками с отметкой и строкой-подсказкой под названием, строки
+    // разделены линией. Выполненное — знаком, зачёркиванием и словом.
     return (
-        <Card className={cn('w-full', className)} variant="bordered">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-lg font-semibold text-gray-900">
+        <Card className={cn('w-full', className)}>
+            <div className="mb-1 flex items-baseline justify-between gap-3">
+                <CardTitle className="type-title-2 text-fg">
                     {t('dashboard.firstWeek.title')}
                 </CardTitle>
-                <span className="text-sm font-medium text-gray-500" data-testid="first-week-progress">
+                <span className="type-caption text-fg-muted tabular-nums" data-testid="first-week-progress">
                     {t('dashboard.firstWeek.progress', { done, total: state.steps.length })}
                 </span>
-            </CardHeader>
+            </div>
 
-            <CardContent>
-                <ul className="space-y-1">
-                    {state.steps.map((step) => (
-                        <li key={step.key}>
-                            <Link
-                                href={STEP_LINKS[step.key]}
-                                className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-gray-50"
+            <ul className="-mx-2 divide-y divide-line">
+                {state.steps.map((step) => (
+                    <li key={step.key}>
+                        <Link
+                            href={STEP_LINKS[step.key]}
+                            className="flex min-h-14 items-start gap-3 rounded-tile px-2 py-3 transition-colors hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                        >
+                            <span
+                                className={cn(
+                                    'mt-px flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                                    step.done ? 'border-success bg-success' : 'border-line-strong'
+                                )}
+                                aria-hidden="true"
                             >
-                                <span
-                                    className={cn(
-                                        'flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border',
-                                        step.done
-                                            ? 'border-green-500 bg-green-500'
-                                            : 'border-gray-300 bg-white'
-                                    )}
-                                    aria-hidden="true"
-                                >
-                                    {step.done && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-                                </span>
+                                {step.done && <Check className="h-3.5 w-3.5 text-on-primary" strokeWidth={3} />}
+                            </span>
 
+                            <span className="min-w-0 flex-1">
                                 <span
                                     className={cn(
-                                        'flex-1 text-sm',
-                                        step.done ? 'text-gray-400 line-through' : 'text-gray-900'
+                                        'block type-headline',
+                                        step.done ? 'text-fg-muted line-through' : 'text-fg'
                                     )}
                                 >
                                     {t(STEP_LABEL_KEYS[step.key])}
                                 </span>
-
-                                {/* Отметка выполнения дублируется текстом: по одному
-                                    цвету галочки состояние не прочитать тому, кто
-                                    цвета не различает. */}
-                                {step.done ? (
-                                    <span className="text-xs font-medium text-green-600">
-                                        {t('dashboard.firstWeek.done')}
+                                {!step.done && (
+                                    <span className="mt-0.5 block type-caption text-fg-muted">
+                                        {t(STEP_HINT_KEYS[step.key])}
                                     </span>
-                                ) : (
-                                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300" aria-hidden="true" />
                                 )}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-            </CardContent>
+                            </span>
+
+                            {/* Отметка выполнения дублируется текстом: по одному
+                                цвету галочки состояние не прочитать тому, кто
+                                цвета не различает. */}
+                            {step.done ? (
+                                <span className="mt-0.5 type-caption font-medium text-success-fg">
+                                    {t('dashboard.firstWeek.done')}
+                                </span>
+                            ) : (
+                                <ChevronRight className="mt-0.5 h-5 w-5 flex-shrink-0 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
+                            )}
+                        </Link>
+                    </li>
+                ))}
+            </ul>
         </Card>
     )
 })

@@ -12,6 +12,7 @@ import { X } from 'lucide-react'
 import { chatApi } from '../api/chatApi'
 import type { Message, CreateFoodEntryRequest } from '../types'
 import { t } from '@/shared/i18n'
+import { Button, IconButton } from '@/shared/components/ui/Button'
 import { messageForOr } from '@/shared/errors/apiErrors'
 
 // ============================================================================
@@ -121,32 +122,31 @@ export function FoodEntryForm({
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-scrim sm:items-center"
             onClick={handleBackdropClick}
         >
-            <div className="w-full max-w-lg bg-white rounded-t-2xl shadow-xl animate-in slide-in-from-bottom duration-200">
+            <div className="w-full max-w-lg rounded-t-sheet bg-surface pb-[env(safe-area-inset-bottom)] shadow-overlay animate-in slide-in-from-bottom duration-200 sm:rounded-sheet">
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                    <h3 className="text-base font-semibold text-gray-900">
+                <div className="flex items-center justify-between gap-3 py-3 pl-6 pr-3">
+                    <h3 className="type-title-2 text-fg">
                         {t('chat.addMacros')}
                     </h3>
-                    <button
-                        type="button"
+                    <IconButton
+                        variant="ghost"
                         onClick={onClose}
-                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
                         aria-label={t('common.close')}
                     >
-                        <X className="w-5 h-5" />
-                    </button>
+                        <X className="h-5 w-5" strokeWidth={1.8} />
+                    </IconButton>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
+                <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-6 pt-2">
                     {/* Food name */}
                     <div>
                         <label
                             htmlFor="food-name"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="mb-1.5 block text-sm font-medium text-fg-muted"
                         >
                             {t('chat.dishName')}
                         </label>
@@ -157,7 +157,7 @@ export function FoodEntryForm({
                             onChange={(e) => setFoodName(e.target.value)}
                             placeholder={t('chat.dishPlaceholder')}
                             required
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                            className="h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                         />
                     </div>
 
@@ -165,7 +165,7 @@ export function FoodEntryForm({
                     <div>
                         <label
                             htmlFor="meal-type"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="mb-1.5 block text-sm font-medium text-fg-muted"
                         >
                             {t('chat.meal')}
                         </label>
@@ -175,7 +175,7 @@ export function FoodEntryForm({
                             onChange={(e) =>
                                 setMealType(e.target.value as MealType)
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 bg-white"
+                            className="h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                         >
                             {MEAL_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
@@ -189,7 +189,7 @@ export function FoodEntryForm({
                     <div>
                         <label
                             htmlFor="weight"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="mb-1.5 block text-sm font-medium text-fg-muted"
                         >
                             {t('chat.weightField')}
                         </label>
@@ -200,7 +200,7 @@ export function FoodEntryForm({
                             value={weight}
                             onChange={(e) => setWeight(e.target.value)}
                             placeholder="0"
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                            className="h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                         />
                     </div>
 
@@ -209,7 +209,7 @@ export function FoodEntryForm({
                         <div>
                             <label
                                 htmlFor="calories"
-                                className="block text-xs font-medium text-gray-700 mb-1"
+                                className="mb-1.5 block truncate text-[13px] font-medium text-fg-muted"
                             >
                                 {t('chat.caloriesField')}
                             </label>
@@ -220,13 +220,13 @@ export function FoodEntryForm({
                                 value={calories}
                                 onChange={(e) => setCalories(e.target.value)}
                                 placeholder="0"
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                                className="h-12 w-full rounded-field border border-line bg-surface px-3 text-base text-fg tabular-nums placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                             />
                         </div>
                         <div>
                             <label
                                 htmlFor="protein"
-                                className="block text-xs font-medium text-gray-700 mb-1"
+                                className="mb-1.5 block truncate text-[13px] font-medium text-fg-muted"
                             >
                                 {t('chat.proteinField')}
                             </label>
@@ -238,13 +238,13 @@ export function FoodEntryForm({
                                 value={protein}
                                 onChange={(e) => setProtein(e.target.value)}
                                 placeholder="0"
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                                className="h-12 w-full rounded-field border border-line bg-surface px-3 text-base text-fg tabular-nums placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                             />
                         </div>
                         <div>
                             <label
                                 htmlFor="fat"
-                                className="block text-xs font-medium text-gray-700 mb-1"
+                                className="mb-1.5 block truncate text-[13px] font-medium text-fg-muted"
                             >
                                 {t('chat.fatField')}
                             </label>
@@ -256,13 +256,13 @@ export function FoodEntryForm({
                                 value={fat}
                                 onChange={(e) => setFat(e.target.value)}
                                 placeholder="0"
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                                className="h-12 w-full rounded-field border border-line bg-surface px-3 text-base text-fg tabular-nums placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                             />
                         </div>
                         <div>
                             <label
                                 htmlFor="carbs"
-                                className="block text-xs font-medium text-gray-700 mb-1"
+                                className="mb-1.5 block truncate text-[13px] font-medium text-fg-muted"
                             >
                                 {t('chat.carbsField')}
                             </label>
@@ -274,24 +274,26 @@ export function FoodEntryForm({
                                 value={carbs}
                                 onChange={(e) => setCarbs(e.target.value)}
                                 placeholder="0"
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                                className="h-12 w-full rounded-field border border-line bg-surface px-3 text-base text-fg tabular-nums placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                             />
                         </div>
                     </div>
 
                     {/* Error message */}
                     {error && (
-                        <p className="text-sm text-red-500">{error}</p>
+                        <p className="text-sm text-danger-fg" role="alert">{error}</p>
                     )}
 
                     {/* Submit button */}
-                    <button
+                    <Button
                         type="submit"
+                        variant="primary"
+                        size="lg"
+                        block
                         disabled={isSubmitting || !foodName.trim()}
-                        className="w-full rounded-lg bg-emerald-500 text-white py-2.5 text-sm font-medium hover:bg-emerald-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                     >
                         {isSubmitting ? t('common.saving') : t('chat.addMacros')}
-                    </button>
+                    </Button>
                 </form>
             </div>
         </div>

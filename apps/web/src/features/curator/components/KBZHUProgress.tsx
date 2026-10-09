@@ -9,10 +9,16 @@ export interface KBZHUProgressProps {
     compact?: boolean
 }
 
+/**
+ * Полоса выполнения нормы для рабочего экрана куратора. В отличие от экранов
+ * клиента, здесь цвет оценивает: куратору нужно с одного взгляда отличить день
+ * в коридоре нормы (`success`) от дня мимо неё (`warning`) и от провала
+ * (`danger`).
+ */
 function getProgressColor(percentage: number): string {
-    if (percentage >= 80 && percentage <= 120) return 'bg-green-500'
-    if ((percentage >= 50 && percentage < 80) || (percentage > 120 && percentage <= 150)) return 'bg-yellow-500'
-    return 'bg-red-500'
+    if (percentage >= 80 && percentage <= 120) return 'bg-success'
+    if ((percentage >= 50 && percentage < 80) || (percentage > 120 && percentage <= 150)) return 'bg-warning'
+    return 'bg-danger'
 }
 
 export function KBZHUProgress({ label, value, target, compact = false }: KBZHUProgressProps) {
@@ -26,18 +32,18 @@ export function KBZHUProgress({ label, value, target, compact = false }: KBZHUPr
                 'flex items-center justify-between',
                 compact ? 'text-xs' : 'text-sm'
             )}>
-                <span className="text-gray-600">{label}</span>
-                <span className="text-gray-900 font-medium">
+                <span className="text-fg-muted">{label}</span>
+                <span className="font-medium tabular-nums text-fg">
                     {Math.round(value)} / {Math.round(target)}{' '}
-                    <span className="text-gray-400">({percentage}%)</span>
+                    <span className="text-fg-subtle">({percentage}%)</span>
                 </span>
             </div>
             <div className={cn(
-                'w-full rounded-full bg-gray-200',
+                'w-full overflow-hidden rounded-full bg-track',
                 compact ? 'h-1.5' : 'h-2'
             )}>
                 <div
-                    className={cn('h-full rounded-full transition-all', colorClass)}
+                    className={cn('h-full rounded-full transition-[width] duration-300 ease-standard', colorClass)}
                     style={{ width: `${clampedWidth}%` }}
                 />
             </div>

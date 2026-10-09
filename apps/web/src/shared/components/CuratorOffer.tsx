@@ -26,6 +26,7 @@ import { track } from '@/shared/analytics'
 import { EVENTS } from '@/shared/analytics/events'
 import { t } from '@/shared/i18n'
 import { cn } from '@/shared/utils/cn'
+import { Button } from '@/shared/components/ui/Button'
 
 /** Где показано предложение. Значение уходит и в событие, и в заявку. */
 export type CuratorOfferPlace = 'chat' | 'dashboard'
@@ -88,67 +89,72 @@ export function CuratorOffer({
         ? t('dashboard.curatorOffer.actionRenew')
         : t('dashboard.curatorOffer.action')
 
+    // Предложение куратора — его голос, а не рекламный баннер: тёмная
+    // поверхность `coach` и заголовок засечками, как у карточки куратора на
+    // дашборде. Заявка — единственное главное действие блока.
     return (
         <section
             className={cn(
-                'rounded-xl border border-gray-100 bg-white shadow-sm',
-                compact ? 'p-4' : 'p-6',
+                'rounded-card bg-coach text-on-coach',
+                compact ? 'p-[18px]' : 'p-5',
                 className
             )}
             data-testid="curator-offer"
             aria-label={title}
         >
-            <h2 className={cn('font-semibold text-gray-900', compact ? 'text-sm' : 'text-lg')}>
+            <h2 className={cn('text-on-coach', compact ? 'type-title-3' : 'type-title-2')}>
                 {title}
             </h2>
-            <p className={cn('mt-1 text-gray-600', compact ? 'text-xs' : 'text-sm')}>{lead}</p>
+            <p className={cn('mt-1.5 text-on-coach-muted', compact ? 'text-sm' : 'text-[15px] leading-[22px]')}>{lead}</p>
 
             {expired && expiresAt && (
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1.5 type-caption tabular-nums text-on-coach-muted">
                     {t('dashboard.curatorOffer.expiredOn', { date: expiresAt })}
                 </p>
             )}
 
             {!compact && (
                 <>
-                    <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                        <li className="flex items-center gap-2">
-                            <MessageCircle className="h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                    <ul className="mt-4 space-y-2.5 text-[15px] text-on-coach">
+                        <li className="flex items-center gap-2.5">
+                            <MessageCircle className="h-[18px] w-[18px] flex-shrink-0 text-on-coach-muted" strokeWidth={1.8} aria-hidden="true" />
                             {t('dashboard.curatorOffer.benefitChat')}
                         </li>
-                        <li className="flex items-center gap-2">
-                            <ClipboardList className="h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                        <li className="flex items-center gap-2.5">
+                            <ClipboardList className="h-[18px] w-[18px] flex-shrink-0 text-on-coach-muted" strokeWidth={1.8} aria-hidden="true" />
                             {t('dashboard.curatorOffer.benefitPlan')}
                         </li>
-                        <li className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
+                        <li className="flex items-center gap-2.5">
+                            <FileText className="h-[18px] w-[18px] flex-shrink-0 text-on-coach-muted" strokeWidth={1.8} aria-hidden="true" />
                             {t('dashboard.curatorOffer.benefitReview')}
                         </li>
                     </ul>
-                    <p className="mt-3 text-xs text-gray-500">
+                    <p className="mt-3 type-caption text-on-coach-muted">
                         {t('dashboard.curatorOffer.freeNote')}
                     </p>
                 </>
             )}
 
-            <div className={cn('flex flex-wrap items-center gap-3', compact ? 'mt-3' : 'mt-5')}>
-                <button
+            <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2', compact ? 'mt-3' : 'mt-5')}>
+                <Button
                     type="button"
                     onClick={handleRequest}
                     disabled={sending || sent}
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    // «Заявка отправлена — мы свяжемся с вами» длиннее узкой
+                    // карточки: подпись переносится, а не выходит за край.
+                    className="h-auto min-h-11 whitespace-normal py-2.5 text-center"
                 >
                     {sent ? t('dashboard.curatorOffer.requested') : action}
-                </button>
+                </Button>
 
                 {/* Цена живёт на одной странице: повторённое число расходится, и
                     какое из двух обязательство — неизвестно. */}
                 <Link
                     href="/pricing"
-                    className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-full text-[15px] font-semibold text-on-coach hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                 >
                     {t('dashboard.curatorOffer.pricing')}
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    <ArrowRight className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
                 </Link>
             </div>
         </section>

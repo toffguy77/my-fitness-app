@@ -21,6 +21,7 @@ import type { NutrientRecommendation, CustomRecommendation } from '../../types';
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     ChevronRight: () => <span data-testid="chevron-right">›</span>,
     ChevronDown: () => <span data-testid="chevron-down">▼</span>,
     Settings: () => <span data-testid="settings-icon">⚙</span>,

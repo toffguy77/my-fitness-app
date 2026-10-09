@@ -5,6 +5,9 @@ import { enabledFeatures } from '@/shared/api/features'
 import { PricingRequestForm } from '@/features/onboarding/components/PricingRequestForm'
 import { t } from '@/shared/i18n'
 import { SellerLine } from '@/shared/components/SellerLine'
+import { JsonLd } from '@/shared/components/JsonLd'
+import { SHARE_IMAGE } from '@/shared/constants/seo'
+import { curatorOfferJsonLd } from './curatorOffer'
 
 /**
  * Страница тарифов — та, на которую ссылается публичная оферта.
@@ -23,23 +26,31 @@ import { SellerLine } from '@/shared/components/SellerLine'
  * данных, — обещание отказа 503.
  */
 
+const PAGE_URL = 'https://burcev.team/pricing'
+
 export const metadata: Metadata = {
     title: t('pricing.meta.title'),
     description: t('pricing.meta.description'),
     openGraph: {
-        title: t('pricing.meta.title'),
+        // Шаблон «%s | BURCEV» на og:title не распространяется.
+        title: `${t('pricing.meta.title')} | BURCEV`,
         description: t('pricing.meta.description'),
-        url: 'https://burcev.team/pricing',
+        url: PAGE_URL,
+        images: [SHARE_IMAGE],
     },
     alternates: {
-        canonical: 'https://burcev.team/pricing',
+        canonical: PAGE_URL,
     },
 }
 
-function Item({ children }: { children: React.ReactNode }) {
+function Item({ children, onCoach = false }: { children: React.ReactNode; onCoach?: boolean }) {
     return (
-        <li className="flex items-start gap-2 text-sm text-gray-700">
-            <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" aria-hidden="true" />
+        <li className={`flex items-start gap-2.5 type-body ${onCoach ? 'text-on-coach' : 'text-fg'}`}>
+            <Check
+                className={`mt-1 h-4 w-4 flex-shrink-0 ${onCoach ? 'text-on-coach-muted' : 'text-success-fg'}`}
+                strokeWidth={2}
+                aria-hidden="true"
+            />
             <span>{children}</span>
         </li>
     )
@@ -57,19 +68,20 @@ export default async function PricingPage({
     const weeklyPhotosEnabled = resolvedFeatures.weekly_photos === true
 
     return (
-        <div className="min-h-screen bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-4xl space-y-6">
-                <header className="space-y-2">
-                    <h1 className="text-3xl font-bold text-gray-900">{t('pricing.title')}</h1>
-                    <p className="text-gray-600">{t('pricing.lead')}</p>
+        <main className="min-h-screen bg-canvas">
+            <JsonLd data={curatorOfferJsonLd(PAGE_URL)} />
+            <div className="mx-auto max-w-4xl space-y-6 px-screen-x py-12 sm:py-16">
+                <header className="space-y-3">
+                    <h1 className="type-display text-fg">{t('pricing.title')}</h1>
+                    <p className="type-body text-fg-muted">{t('pricing.lead')}</p>
                 </header>
 
-                <div className="grid gap-6 md:grid-cols-2">
-                    <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-900">
+                <div className="grid gap-4 md:grid-cols-2">
+                    <section className="rounded-card border border-line bg-surface p-6">
+                        <h2 className="type-title-2 text-fg">
                             {t('pricing.freeTitle')}
                         </h2>
-                        <ul className="mt-4 space-y-2">
+                        <ul className="mt-5 space-y-2.5">
                             <Item>{t('pricing.freeCalc')}</Item>
                             <Item>{t('pricing.freeDiary')}</Item>
                             {foodRecognitionEnabled && <Item>{t('pricing.freePhoto')}</Item>}
@@ -79,40 +91,42 @@ export default async function PricingPage({
                         </ul>
                     </section>
 
-                    <section className="rounded-xl border-2 border-blue-100 bg-white p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-900">
+                    {/* Куратор — голос продукта: тёмная поверхность `coach`, как
+                        его карточка на дашборде. */}
+                    <section className="rounded-card bg-coach p-6 text-on-coach">
+                        <h2 className="type-title-2">
                             {t('pricing.paidTitle')}
                         </h2>
-                        <p className="mt-2">
-                            <span className="text-3xl font-bold text-gray-900">
+                        <p className="mt-3">
+                            <span className="type-num-xl">
                                 {t('pricing.paidPrice')}
                             </span>{' '}
-                            <span className="text-sm text-gray-500">{t('pricing.paidPeriod')}</span>
+                            <span className="text-sm text-on-coach-muted">{t('pricing.paidPeriod')}</span>
                         </p>
-                        <ul className="mt-4 space-y-2">
-                            <Item>{t('pricing.paidChat')}</Item>
-                            <Item>{t('pricing.paidPlan')}</Item>
-                            <Item>{t('pricing.paidReview')}</Item>
-                            {weeklyPhotosEnabled && <Item>{t('pricing.paidPhotos')}</Item>}
+                        <ul className="mt-5 space-y-2.5">
+                            <Item onCoach>{t('pricing.paidChat')}</Item>
+                            <Item onCoach>{t('pricing.paidPlan')}</Item>
+                            <Item onCoach>{t('pricing.paidReview')}</Item>
+                            {weeklyPhotosEnabled && <Item onCoach>{t('pricing.paidPhotos')}</Item>}
                         </ul>
-                        <p className="mt-4 text-xs text-gray-500">{t('pricing.refund')}</p>
+                        <p className="mt-5 type-caption text-on-coach-muted">{t('pricing.refund')}</p>
                         <Link
                             href="/legal/terms"
-                            className="mt-2 inline-block text-xs text-blue-600 underline"
+                            className="mt-1 inline-flex min-h-11 items-center type-caption font-semibold text-on-coach underline underline-offset-2"
                         >
                             {t('pricing.termsLink')}
                         </Link>
                     </section>
                 </div>
 
-                <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                <section className="rounded-card border border-line bg-surface p-6">
                     <PricingRequestForm />
                 </section>
 
-                <footer className="border-t border-gray-200 pt-6">
-                    <SellerLine className="text-xs text-gray-400" />
+                <footer className="border-t border-line pt-6">
+                    <SellerLine className="text-xs text-fg-subtle" />
                 </footer>
             </div>
-        </div>
+        </main>
     )
 }

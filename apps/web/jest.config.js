@@ -11,6 +11,7 @@ const customJestConfig = {
     workerIdleMemoryLimit: '512MB',
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
+        '^@fontsource(-variable)?/.+$': '<rootDir>/__mocks__/fontStyle.js',
     },
     testMatch: [
         '**/__tests__/**/*.[jt]s?(x)',

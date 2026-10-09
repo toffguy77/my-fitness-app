@@ -16,6 +16,7 @@ import { AddCustomRecommendationForm } from '../AddCustomRecommendationForm';
 // ============================================================================
 
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     X: ({ className }: { className?: string }) => (
         <span data-testid="x-icon" className={className}>x</span>
     ),

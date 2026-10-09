@@ -1,6 +1,9 @@
 import { ImageResponse } from 'next/og'
+import { values } from '@burcev/design-tokens'
 
-export const runtime = 'edge'
+// Картинка рисуется вне страницы, CSS-переменных здесь нет — значения светлой темы.
+const ui = values.light
+
 export const alt = 'BURCEV — Фитнес и питание'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
@@ -10,7 +13,7 @@ export default async function Image() {
         (
             <div
                 style={{
-                    background: 'linear-gradient(135deg, #eff6ff 0%, #ffffff 50%, #ecfdf5 100%)',
+                    background: ui['color.bg.canvas'],
                     width: '100%',
                     height: '100%',
                     display: 'flex',
@@ -24,7 +27,7 @@ export default async function Image() {
                     style={{
                         fontSize: 72,
                         fontWeight: 800,
-                        color: '#111827',
+                        color: ui['color.fg.default'],
                         marginBottom: 16,
                     }}
                 >
@@ -33,7 +36,7 @@ export default async function Image() {
                 <div
                     style={{
                         fontSize: 32,
-                        color: '#4b5563',
+                        color: ui['color.fg.muted'],
                         textAlign: 'center',
                         maxWidth: 800,
                     }}
@@ -43,7 +46,7 @@ export default async function Image() {
                 <div
                     style={{
                         fontSize: 20,
-                        color: '#9ca3af',
+                        color: ui['color.primary.default'],
                         marginTop: 24,
                     }}
                 >

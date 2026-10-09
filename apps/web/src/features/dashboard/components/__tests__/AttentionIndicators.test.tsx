@@ -12,6 +12,12 @@ import { WorkoutBlock } from '../WorkoutBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { formatLocalDate } from '@/shared/utils/format'
 
+const mockPush = jest.fn()
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({ push: mockPush }),
+    usePathname: () => '/dashboard',
+}))
+
 // Mock the store
 jest.mock('../../store/dashboardStore')
 
@@ -335,7 +341,7 @@ describe('Attention Indicators', () => {
 
             render(<WeightBlock date={today} />)
 
-            expect(screen.getByText('75.5')).toBeInTheDocument()
+            expect(screen.getByText('75,5')).toBeInTheDocument()
             expect(screen.queryByRole('status', { name: /вес не записан сегодня/i })).not.toBeInTheDocument()
         })
     })

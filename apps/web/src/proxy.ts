@@ -9,7 +9,7 @@
  * The check here reads a cookie called `session_present`, which the API sets
  * beside the refresh token. It carries no credential and grants nothing: the
  * refresh token itself is scoped to `/api/v1/auth` so it does not travel with
- * every request, and that scoping is precisely why the edge cannot see it.
+ * every request, and that scoping is precisely why this check cannot see it.
  * Every endpoint still demands a real token — this only decides whether to
  * render a page or send somebody to sign in.
  */
@@ -89,7 +89,7 @@ function contentSecurityPolicy(nonce: string): string {
 /**
  * Заголовки безопасности, одинаковые для любого ответа.
  *
- * Вынесены из middleware отдельной функцией, потому что NextRequest в
+ * Вынесены из proxy отдельной функцией, потому что NextRequest в
  * тестовом окружении не построить: у него url только на чтение. Проверять
  * заголовки через живой запрос не вышло бы, а непроверенными они уже один
  * раз оказались — nginx должен был их слать и не слал.
@@ -154,9 +154,36 @@ export async function legacyArticleRedirect(
     }
 }
 
-export async function middleware(request: NextRequest) {
+/**
+ * The main mirror for a `www.` address, or null when the host is already it.
+ *
+ * www.burcev.team is attached to the same service in Dokploy and answered 200
+ * with the same page. Yandex chooses the main mirror by the 301, not by
+ * canonical, so the copy stayed a candidate. Routing in Traefik is configured
+ * in Dokploy rather than in this repository; here the redirect is in the code
+ * and has a test.
+ *
+ * Always https: the www address exists only in production, and sending the
+ * crawler to http first would cost it a second hop.
+ */
+export function mainMirrorRedirect(host: string | null, pathAndQuery: string): string | null {
+    if (!host || !host.toLowerCase().startsWith('www.')) return null
+    return `https://${host.slice(4).toLowerCase()}${pathAndQuery}`
+}
+
+export async function proxy(request: NextRequest) {
     const nonce = makeNonce()
     const policy = contentSecurityPolicy(nonce)
+
+    const mirror = mainMirrorRedirect(
+        request.headers.get('host'),
+        request.nextUrl.pathname + request.nextUrl.search,
+    )
+    if (mirror) {
+        const redirect = NextResponse.redirect(mirror, 301)
+        redirect.headers.set('Content-Security-Policy', policy)
+        return redirect
+    }
 
     const movedTo = await legacyArticleRedirect(request.nextUrl.pathname)
     if (movedTo) {

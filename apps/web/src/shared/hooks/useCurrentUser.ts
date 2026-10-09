@@ -15,7 +15,7 @@
  * page load, shared by every component that asks.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 
 import { apiClient } from '@/shared/utils/api-client'
 import { setUser as cacheUser, getUser as cachedUser, onSessionChange } from '@/shared/utils/token-storage'
@@ -71,33 +71,46 @@ export function resetCurrentUser(): void {
     inFlight = null
 }
 
+/** Hydration flag: false while React hydrates server HTML, true afterwards. */
+const subscribeNothing = () => () => {}
+const afterHydration = () => true
+const duringHydration = () => false
+
+/** What the server said, once it has said it. */
+type Settled = { user: CurrentUser | null; state: Exclude<CurrentUserState, 'loading'> }
+
 export function useCurrentUser(): { user: CurrentUser | null; state: CurrentUserState } {
-    const [user, setUser] = useState<CurrentUser | null>(() => readCachedUser())
-    const [state, setState] = useState<CurrentUserState>(() =>
-        readCachedUser() ? 'ready' : 'loading'
-    )
+    // The server has no localStorage, so it renders every screen as "loading".
+    // Painting the cache in the very first client render made that render
+    // differ from the server HTML — React threw hydration error #418 on every
+    // signed-in page opened after the first one, and rebuilt the whole tree.
+    // The cache is read only once hydration is over: the same frame for a
+    // client-side navigation, one frame later for a full page load.
+    const hydrated = useSyncExternalStore(subscribeNothing, afterHydration, duringHydration)
+    const cached = useMemo(() => (hydrated ? readCachedUser() : null), [hydrated])
+    const [settled, setSettled] = useState<Settled | null>(null)
 
     useEffect(() => {
         let cancelled = false
 
         const unsubscribe = onSessionChange((authenticated) => {
-            if (!authenticated && !cancelled) {
-                setUser(null)
-                setState('anonymous')
-            }
+            if (!authenticated && !cancelled) setSettled({ user: null, state: 'anonymous' })
         })
 
         void fetchCurrentUser().then((fetched) => {
             if (cancelled) return
             if (fetched) {
-                setUser(fetched)
-                setState('ready')
+                setSettled({ user: fetched, state: 'ready' })
                 return
             }
             // No answer. If a cached profile is all we have, keep showing it
             // rather than blanking a screen over one failed request; the api
             // client signs somebody out whose session has genuinely ended.
-            setState((previous) => (readCachedUser() ? 'ready' : previous === 'loading' ? 'anonymous' : previous))
+            setSettled((previous) => {
+                if (previous) return previous
+                const fallback = readCachedUser()
+                return fallback ? { user: fallback, state: 'ready' } : { user: null, state: 'anonymous' }
+            })
         })
 
         return () => {
@@ -106,5 +119,6 @@ export function useCurrentUser(): { user: CurrentUser | null; state: CurrentUser
         }
     }, [])
 
-    return { user, state }
+    if (settled) return settled
+    return cached ? { user: cached, state: 'ready' } : { user: null, state: 'loading' }
 }

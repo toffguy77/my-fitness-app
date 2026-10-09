@@ -105,7 +105,7 @@ describe('LoadingSkeletons', () => {
             const { container } = render(<PhotoUploadSectionSkeleton />)
 
             // Check for file requirement text placeholders (h-3)
-            const requirementPlaceholders = container.querySelectorAll('.h-3')
+            const requirementPlaceholders = container.querySelectorAll('.h-3[aria-hidden="true"]')
             expect(requirementPlaceholders.length).toBe(3)
         })
     })
@@ -140,20 +140,11 @@ describe('LoadingSkeletons', () => {
             expect(activeIndicator).toBeInTheDocument()
         })
 
-        it('renders target placeholders', () => {
-            const { container } = render(<WeeklyPlanSectionSkeleton />)
+        it('renders target placeholders as list rows', () => {
+            render(<WeeklyPlanSectionSkeleton />)
 
-            // Check for target placeholders (h-12 w-full)
-            const targetPlaceholders = container.querySelectorAll('.h-12.w-full')
-            expect(targetPlaceholders.length).toBe(3)
-        })
-
-        it('renders plan dates placeholder', () => {
-            const { container } = render(<WeeklyPlanSectionSkeleton />)
-
-            // Check for dates placeholder (h-16 w-full)
-            const datesPlaceholder = container.querySelector('.h-16.w-full')
-            expect(datesPlaceholder).toBeInTheDocument()
+            // Цели плана — строками списка, как в самой секции
+            expect(screen.getByTestId('weekly-plan-skeleton-targets').children).toHaveLength(3)
         })
     })
 
@@ -179,28 +170,11 @@ describe('LoadingSkeletons', () => {
             expect(skeleton).toHaveClass('tasks-custom')
         })
 
-        it('renders three task item placeholders', () => {
-            const { container } = render(<TasksSectionSkeleton />)
+        it('renders three task row placeholders', () => {
+            render(<TasksSectionSkeleton />)
 
-            // Check for task item containers with border
-            const taskItems = container.querySelectorAll('.border.border-gray-200.rounded-lg')
-            expect(taskItems.length).toBe(3)
-        })
-
-        it('renders task checkbox placeholders', () => {
-            const { container } = render(<TasksSectionSkeleton />)
-
-            // Check for checkbox placeholders (h-5 w-5 rounded-full flex-shrink-0)
-            const checkboxPlaceholders = container.querySelectorAll('.h-5.w-5.rounded-full.flex-shrink-0')
-            expect(checkboxPlaceholders.length).toBe(3)
-        })
-
-        it('renders week indicator placeholder', () => {
-            const { container } = render(<TasksSectionSkeleton />)
-
-            // Check for week indicator (h-4 w-24 mb-3)
-            const weekIndicator = container.querySelector('.h-4.w-24.mb-3')
-            expect(weekIndicator).toBeInTheDocument()
+            // Задачи — строками списка, как в самой секции
+            expect(screen.getByTestId('tasks-skeleton-rows').children).toHaveLength(3)
         })
     })
 
@@ -297,35 +271,33 @@ describe('LoadingSkeletons', () => {
     })
 
     describe('Styling', () => {
-        it('applies base card styling to all skeletons', () => {
+        // Заглушка стоит на месте карточки и выглядит как она: поверхность с
+        // линией, без тени — тень только у того, что лежит над экраном.
+        it('uses the card surface without a shadow', () => {
             const { rerender } = render(<ProgressSectionSkeleton />)
-            let skeleton = screen.getByRole('status')
-            expect(skeleton).toHaveClass('bg-white', 'rounded-lg', 'shadow-sm')
+            const skeletons = [
+                <PhotoUploadSectionSkeleton key="p" />,
+                <WeeklyPlanSectionSkeleton key="w" />,
+                <TasksSectionSkeleton key="t" />,
+            ]
 
-            rerender(<PhotoUploadSectionSkeleton />)
-            skeleton = screen.getByRole('status')
-            expect(skeleton).toHaveClass('bg-white', 'rounded-lg', 'shadow-sm')
+            const check = () => {
+                const skeleton = screen.getByRole('status')
+                expect(skeleton).toHaveClass('bg-surface', 'border-line', 'rounded-card')
+                expect(skeleton.className).not.toMatch(/shadow-/)
+            }
 
-            rerender(<WeeklyPlanSectionSkeleton />)
-            skeleton = screen.getByRole('status')
-            expect(skeleton).toHaveClass('bg-white', 'rounded-lg', 'shadow-sm')
-
-            rerender(<TasksSectionSkeleton />)
-            skeleton = screen.getByRole('status')
-            expect(skeleton).toHaveClass('bg-white', 'rounded-lg', 'shadow-sm')
-        })
-
-        it('applies responsive padding', () => {
-            render(<ProgressSectionSkeleton />)
-
-            const skeleton = screen.getByRole('status')
-            expect(skeleton).toHaveClass('p-4', 'sm:p-5', 'md:p-6')
+            check()
+            for (const element of skeletons) {
+                rerender(element)
+                check()
+            }
         })
 
         it('skeleton elements have gray background', () => {
             const { container } = render(<ProgressSectionSkeleton />)
 
-            const skeletonElements = container.querySelectorAll('.bg-gray-200')
+            const skeletonElements = container.querySelectorAll('.bg-subtle')
             expect(skeletonElements.length).toBeGreaterThan(0)
         })
     })

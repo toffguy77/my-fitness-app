@@ -16,7 +16,9 @@ test.describe('Dashboard - Client', () => {
 
   test('daily tracking blocks are visible', async () => {
     await expect(dashboard.calorieValue).toBeVisible()
-    await expect(dashboard.addFoodButton.first()).toBeVisible()
+    await expect(dashboard.addFoodButton).toBeVisible()
+    await expect(dashboard.addFoodByPhotoButton).toBeVisible()
+    await expect(dashboard.addFoodByBarcodeButton).toBeVisible()
     await expect(dashboard.addWaterButton).toBeVisible()
   })
 

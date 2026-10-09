@@ -15,6 +15,8 @@ import toast from 'react-hot-toast'
 import { accountApi } from '@/features/settings/api/account'
 import { formatDate, t } from '@/shared/i18n'
 import { messageFor } from '@/shared/errors/apiErrors'
+import { Button } from '@/shared/components/ui/Button'
+import { AuthPanel, AuthShell } from './AuthShell'
 
 export function AccountRecoveryScreen({
     scheduledFor,
@@ -42,38 +44,36 @@ export function AccountRecoveryScreen({
     }
 
     return (
-        <main className="flex min-h-screen flex-col justify-center bg-gray-50 px-6">
-            <div
-                className="mx-auto w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
-                data-testid="account-recovery"
-            >
-                <h1 className="text-lg font-semibold text-gray-900">{t('auth.recovery.title')}</h1>
-                <p className="mt-2 text-sm text-gray-600">
+        <AuthShell centered data-testid="account-recovery">
+            <AuthPanel>
+                <h1 className="type-title-2 text-fg">{t('auth.recovery.title')}</h1>
+                <p className="mt-3 type-body text-fg-muted">
                     {t('auth.recovery.body')}{' '}
-                    <span className="font-medium text-gray-900">{formatDate(scheduledFor)}</span>.{' '}
+                    <span className="font-semibold text-fg tabular-nums">{formatDate(scheduledFor)}</span>.{' '}
                     {t('auth.recovery.reassurance')}
                 </p>
 
-                <button
-                    onClick={handleCancel}
-                    disabled={busy}
-                    className="mt-6 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-                >
-                    {busy ? t('auth.recovery.cancelling') : t('auth.recovery.cancel')}
-                </button>
+                <div className="mt-8 space-y-2">
+                    <Button onClick={handleCancel} isLoading={busy} disabled={busy} size="lg" block>
+                        {busy ? t('auth.recovery.cancelling') : t('auth.recovery.cancel')}
+                    </Button>
 
-                {/* Not a trap: somebody who meant it can carry on and let the
-                    deletion happen. */}
-                <button
-                    onClick={() => {
-                        onDismiss()
-                        router.push('/dashboard')
-                    }}
-                    className="mt-3 w-full text-sm text-gray-600 hover:text-gray-900"
-                >
-                    {t('auth.recovery.continueAnyway')}
-                </button>
-            </div>
-        </main>
+                    {/* Not a trap: somebody who meant it can carry on and let the
+                        deletion happen. */}
+                    <Button
+                        variant="ghost"
+                        size="lg"
+                        block
+                        onClick={() => {
+                            onDismiss()
+                            router.push('/dashboard')
+                        }}
+                        className="text-fg-muted"
+                    >
+                        {t('auth.recovery.continueAnyway')}
+                    </Button>
+                </div>
+            </AuthPanel>
+        </AuthShell>
     )
 }

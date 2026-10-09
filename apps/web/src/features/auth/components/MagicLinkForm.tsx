@@ -22,6 +22,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { MailCheck } from 'lucide-react';
 import { guestEmail } from '@/features/onboarding/api/guest';
 import { Button, Input } from '@/shared/components/ui';
 import { ConsentSection } from './ConsentSection';
@@ -121,8 +122,9 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
                     ref={sentMessageRef}
                     tabIndex={-1}
                     role="status"
-                    className="text-sm text-gray-700 focus:outline-none"
+                    className="flex items-start gap-3 rounded-tile bg-info-soft p-4 type-callout text-info-fg focus:outline-none"
                 >
+                    <MailCheck className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.8} aria-hidden="true" />
                     {t('auth.magicLink.sent')}
                 </p>
                 {/*
@@ -135,7 +137,7 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
                 <button
                     type="button"
                     onClick={onSwitchToPassword}
-                    className="w-full cursor-pointer text-sm font-medium text-blue-600 underline underline-offset-4 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
+                    className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full text-sm font-semibold text-primary underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                 >
                     {t('auth.magicLink.switchToPassword')}
                 </button>
@@ -148,10 +150,10 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
     const submitLabel = t(`auth.magicLink.intent.${intent}.submit`)
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-5">
             <div>
-                <h2 className="text-lg font-semibold text-gray-900">{heading}</h2>
-                <p className="mt-1 text-sm text-gray-600">{explanation}</p>
+                <h2 className="type-title-2 text-fg">{heading}</h2>
+                <p className="mt-2 type-callout text-fg-muted">{explanation}</p>
             </div>
 
             <Input
@@ -168,7 +170,7 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
             <ConsentSection consents={consents} setConsents={setConsents} />
 
             {errorMessage && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-sm text-danger-fg" role="alert">
                     {errorMessage}
                 </p>
             )}
@@ -179,7 +181,8 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
                     disabled={!canSubmit || isSubmitting}
                     isLoading={isSubmitting}
                     variant="primary"
-                    className="w-full"
+                    size="lg"
+                    block
                     aria-label={submitLabel}
                 >
                     {isSubmitting ? t('auth.magicLink.submitting') : submitLabel}
@@ -196,7 +199,7 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
                 <button
                     type="button"
                     onClick={onSwitchToPassword}
-                    className="w-full cursor-pointer text-sm font-medium text-blue-600 underline underline-offset-4 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
+                    className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-full text-sm font-semibold text-primary underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                 >
                     {t('auth.magicLink.switchToPassword')}
                 </button>

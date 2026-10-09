@@ -12,24 +12,24 @@ describe('AlertBadge', () => {
         render(<AlertBadge level="red" message="alert" />)
 
         const badge = screen.getByText('alert')
-        expect(badge.className).toContain('bg-red-100')
-        expect(badge.className).toContain('text-red-800')
+        expect(badge.className).toContain('bg-danger-soft')
+        expect(badge.className).toContain('text-danger-fg')
     })
 
     it('applies yellow styling for yellow level', () => {
         render(<AlertBadge level="yellow" message="warning" />)
 
         const badge = screen.getByText('warning')
-        expect(badge.className).toContain('bg-yellow-100')
-        expect(badge.className).toContain('text-yellow-800')
+        expect(badge.className).toContain('bg-warning-soft')
+        expect(badge.className).toContain('text-warning-fg')
     })
 
     it('applies green styling for green level', () => {
         render(<AlertBadge level="green" message="ok" />)
 
         const badge = screen.getByText('ok')
-        expect(badge.className).toContain('bg-green-100')
-        expect(badge.className).toContain('text-green-800')
+        expect(badge.className).toContain('bg-success-soft')
+        expect(badge.className).toContain('text-success-fg')
     })
 
     it('renders as a span element', () => {

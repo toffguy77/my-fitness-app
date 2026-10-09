@@ -4,7 +4,7 @@ export class SettingsProfilePage {
   constructor(public page: Page) {}
 
   get backLink() {
-    return this.page.getByText('Профиль').first()
+    return this.page.getByRole('link', { name: 'Назад в профиль' })
   }
 
   get heading() {

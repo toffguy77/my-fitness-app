@@ -231,7 +231,7 @@ describe('WorkoutBlock', () => {
             const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })
             await user.click(typeButton)
 
-            expect(typeButton).toHaveClass('bg-blue-100')
+            expect(typeButton).toHaveAttribute('aria-checked', 'true')
         })
 
         it('shows custom type input when "Другое" selected', async () => {
@@ -634,7 +634,7 @@ describe('WorkoutBlock', () => {
 
             await waitFor(() => {
                 const reopenedTypeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })
-                expect(reopenedTypeButton).not.toHaveClass('bg-blue-100')
+                expect(reopenedTypeButton).not.toHaveAttribute('aria-checked', 'true')
                 expect(screen.queryByRole('spinbutton', { name: 'Длительность: Бег' })).not.toBeInTheDocument()
             })
         })
@@ -774,7 +774,7 @@ describe('WorkoutBlock', () => {
             await user.click(editButton!)
 
             await waitFor(() => {
-                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Йога' })).toHaveClass('bg-blue-100')
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Йога' })).toHaveAttribute('aria-checked', 'true')
                 expect(screen.getByRole('spinbutton', { name: 'Длительность: Йога' })).toHaveValue(45)
             })
         })
@@ -801,7 +801,7 @@ describe('WorkoutBlock', () => {
             await user.click(headerButtons[0])
 
             await waitFor(() => {
-                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })).toHaveClass('bg-blue-100')
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })).toHaveAttribute('aria-checked', 'true')
                 expect(screen.getByRole('spinbutton', { name: 'Длительность: Бег' })).toHaveValue(30)
             })
         })

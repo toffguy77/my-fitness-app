@@ -31,4 +31,17 @@ describe('ErrorState', () => {
 
         expect(screen.queryByText('На главную')).not.toBeInTheDocument()
     })
+
+    it('offers a way home from a route-level failure', () => {
+        render(<ErrorState onRetry={jest.fn()} />)
+
+        expect(screen.getByRole('link', { name: 'На главную' })).toHaveAttribute('href', '/')
+    })
+
+    it('still offers the way home when there is nothing to retry', () => {
+        render(<ErrorState />)
+
+        expect(screen.queryByRole('button')).not.toBeInTheDocument()
+        expect(screen.getByRole('link', { name: 'На главную' })).toBeInTheDocument()
+    })
 })

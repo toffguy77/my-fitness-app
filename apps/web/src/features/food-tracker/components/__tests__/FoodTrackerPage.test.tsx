@@ -266,7 +266,7 @@ describe('FoodTrackerPage', () => {
 
             render(<FoodTrackerPage />);
 
-            const errorIcon = screen.getByText('⚠️');
+            const errorIcon = screen.getByRole('alert').querySelector('svg');
             expect(errorIcon).toHaveAttribute('aria-hidden', 'true');
         });
     });
@@ -278,8 +278,8 @@ describe('FoodTrackerPage', () => {
             // Check that the main container has responsive classes
             const container = screen.getByRole('tabpanel').parentElement;
             expect(container).toHaveClass('mx-auto');
-            expect(container).toHaveClass('px-3');
-            expect(container).toHaveClass('sm:px-4');
+            expect(container).toHaveClass('px-screen-x');
+            expect(container).toHaveClass('max-w-content');
         });
 
         it('tabpanel has transition class for smooth tab switching', () => {
@@ -325,7 +325,7 @@ describe('FoodTrackerPage', () => {
 
             const rootElement = container.firstChild;
             expect(rootElement).toHaveClass('custom-class');
-            expect(rootElement).toHaveClass('bg-gray-50');
+            expect(rootElement).toHaveClass('bg-canvas');
         });
     });
 
@@ -443,7 +443,7 @@ describe('FoodTrackerPage', () => {
             render(<FoodTrackerPage />);
 
             const errorContainer = screen.getByRole('alert');
-            expect(errorContainer).toHaveClass('shadow-lg');
+            expect(errorContainer).toHaveClass('shadow-overlay');
         });
     });
 });

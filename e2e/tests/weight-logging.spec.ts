@@ -30,6 +30,6 @@ test.describe('Weight Logging', () => {
     await expect(dashboard.weightInput).toBeHidden({ timeout: 10000 })
 
     // Weight value should now be visible
-    await expect(page.getByText('75.5')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('75,5')).toBeVisible({ timeout: 5000 })
   })
 })

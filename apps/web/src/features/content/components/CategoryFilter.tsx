@@ -13,15 +13,16 @@ const categories = Object.keys(CATEGORY_LABELS) as ContentCategory[]
 
 export function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {
     return (
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="-mx-screen-x flex gap-2 overflow-x-auto px-screen-x pb-2 scrollbar-hide sm:mx-0 sm:px-0">
             <button
                 type="button"
                 onClick={() => onSelect(null)}
+                aria-pressed={selected === null}
                 className={cn(
-                    'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                    'h-11 shrink-0 rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                     selected === null
-                        ? 'bg-gray-900 text-white'
-                        : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                        ? 'bg-fg text-fg-inverse'
+                        : 'border border-line bg-surface text-fg-muted hover:bg-subtle'
                 )}
             >
                 Все
@@ -31,11 +32,12 @@ export function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {
                     key={cat}
                     type="button"
                     onClick={() => onSelect(cat)}
+                    aria-pressed={selected === cat}
                     className={cn(
-                        'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                        'h-11 shrink-0 rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                         selected === cat
-                            ? 'bg-gray-900 text-white'
-                            : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                            ? 'bg-fg text-fg-inverse'
+                            : 'border border-line bg-surface text-fg-muted hover:bg-subtle'
                     )}
                 >
                     {CATEGORY_LABELS[cat]}

@@ -37,21 +37,24 @@ describe('AttentionBadge', () => {
             render(<AttentionBadge urgency="normal" />);
             const badge = screen.getByRole('status');
             expect(badge).toHaveAttribute('data-urgency', 'normal');
-            expect(badge.className).toContain('bg-blue-500');
+            // «Не записано сегодня» сообщает, а не зовёт к действию: роль info,
+            // терракота остаётся за главным действием экрана.
+            expect(badge.className).toContain('bg-info-soft');
+            expect(badge.className).not.toContain('bg-primary');
         });
 
         it('renders high urgency with correct styling', () => {
             render(<AttentionBadge urgency="high" />);
             const badge = screen.getByRole('status');
             expect(badge).toHaveAttribute('data-urgency', 'high');
-            expect(badge.className).toContain('bg-orange-500');
+            expect(badge.className).toContain('bg-warning-soft');
         });
 
         it('renders critical urgency with correct styling', () => {
             render(<AttentionBadge urgency="critical" />);
             const badge = screen.getByRole('status');
             expect(badge).toHaveAttribute('data-urgency', 'critical');
-            expect(badge.className).toContain('bg-red-500');
+            expect(badge.className).toContain('bg-danger-soft');
         });
     });
 
@@ -192,17 +195,17 @@ describe('AttentionIcon', () => {
             const { rerender } = render(<AttentionIcon urgency="normal" />);
             let icon = screen.getByRole('img');
             expect(icon).toHaveAttribute('data-urgency', 'normal');
-            expect(icon.getAttribute('class')).toContain('text-blue-500');
+            expect(icon.getAttribute('class')).toContain('text-info-fg');
 
             rerender(<AttentionIcon urgency="high" />);
             icon = screen.getByRole('img');
             expect(icon).toHaveAttribute('data-urgency', 'high');
-            expect(icon.getAttribute('class')).toContain('text-orange-500');
+            expect(icon.getAttribute('class')).toContain('text-warning-fg');
 
             rerender(<AttentionIcon urgency="critical" />);
             icon = screen.getByRole('img');
             expect(icon).toHaveAttribute('data-urgency', 'critical');
-            expect(icon.getAttribute('class')).toContain('text-red-500');
+            expect(icon.getAttribute('class')).toContain('text-danger-fg');
         });
     });
 

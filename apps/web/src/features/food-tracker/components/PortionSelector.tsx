@@ -13,6 +13,8 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import type { FoodItem, PortionType, KBZHU } from '../types';
 import { calculateKBZHU, validatePortionAmount } from '../utils/kbzhuCalculator';
 import { t } from '@/shared/i18n';
+import { AlertCircle } from 'lucide-react';
+import { MACRO_COLORS, type MacroKey } from '@/shared/constants/macros';
 
 // ============================================================================
 // Types
@@ -185,7 +187,8 @@ export function PortionSelector({
     return (
         <div className={`space-y-4 ${className}`}>
             {/* Portion Type Toggle */}
-            <div className="flex gap-1 p-1 bg-gray-100 rounded-lg" role="tablist" aria-label={t('foodTracker.portion.typeAria')}>
+            {/* Переключатель из трёх вариантов — сегменты, выбранный чернилами. */}
+            <div className="flex gap-1 rounded-full border border-line p-1" role="tablist" aria-label={t('foodTracker.portion.typeAria')}>
                 {(Object.keys(PORTION_TYPE_LABELS) as PortionType[]).map((type) => (
                     <button
                         key={type}
@@ -196,10 +199,11 @@ export function PortionSelector({
                         onClick={() => handlePortionTypeChange(type)}
                         disabled={disabled}
                         className={`
-                            flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors
+                            h-10 flex-1 rounded-full px-3 text-sm font-semibold transition-colors duration-150
+                            focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation
                             ${portionType === type
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                ? 'bg-fg text-fg-inverse'
+                                : 'text-fg-muted hover:bg-subtle hover:text-fg'
                             }
                             ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
                         `}
@@ -235,16 +239,16 @@ export function PortionSelector({
                             aria-invalid={!!error}
                             aria-describedby={error ? 'portion-error' : undefined}
                             className={`
-                                w-24 px-3 py-2 text-center text-lg font-medium
-                                border rounded-lg focus:outline-none focus:ring-2
+                                h-12 w-28 rounded-field border px-3 text-center text-lg font-semibold text-fg tabular-nums
+                                transition-colors focus:outline-none focus:ring-2
                                 ${error
-                                    ? 'border-red-500 focus:ring-red-500'
-                                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                                    ? 'border-danger focus:ring-danger'
+                                    : 'border-line focus:border-line-strong focus:ring-focus/30'
                                 }
-                                ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
+                                ${disabled ? 'bg-subtle cursor-not-allowed' : 'bg-surface'}
                             `}
                         />
-                        <span className="text-gray-600 font-medium">
+                        <span className="font-medium text-fg-muted">
                             {PORTION_TYPE_UNITS[portionType]}
                         </span>
                     </div>
@@ -264,12 +268,11 @@ export function PortionSelector({
                             onChange={handleSliderChange}
                             disabled={disabled}
                             className={`
-                                w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer
-                                accent-blue-600
+                                h-11 w-full cursor-pointer accent-primary
                                 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
                             `}
                         />
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <div className="flex justify-between text-xs text-fg-muted tabular-nums">
                             <span>{MIN_PORTION}</span>
                             <span>{maxValue} {PORTION_TYPE_UNITS[portionType]}</span>
                         </div>
@@ -284,10 +287,11 @@ export function PortionSelector({
                                 onClick={() => handleQuickPortionClick(quickAmount)}
                                 disabled={disabled}
                                 className={`
-                                    px-3 py-1.5 text-sm font-medium rounded-full border transition-colors
+                                    h-11 rounded-full border px-4 text-sm font-semibold tabular-nums transition-colors duration-150
+                                    focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation
                                     ${amount === quickAmount
-                                        ? 'bg-blue-100 border-blue-500 text-blue-700'
-                                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        ? 'border-fg bg-fg text-fg-inverse'
+                                        : 'border-line bg-surface text-fg hover:bg-subtle'
                                     }
                                     ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
                                 `}
@@ -303,20 +307,9 @@ export function PortionSelector({
                         <p
                             id="portion-error"
                             role="alert"
-                            className="text-sm text-red-600 flex items-center gap-1"
+                            className="text-sm text-danger-fg flex items-center gap-1"
                         >
-                            <svg
-                                className="w-4 h-4"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    fillRule="evenodd"
-                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                                    clipRule="evenodd"
-                                />
-                            </svg>
+                            <AlertCircle className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
                             {error}
                         </p>
                     )}
@@ -324,8 +317,8 @@ export function PortionSelector({
             </div>
 
             {/* КБЖУ Display */}
-            <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
+            <div className="rounded-tile bg-subtle p-4">
+                <h4 className="type-overline mb-3 text-fg-subtle">
                     {t('foodTracker.portion.nutrition')}
                 </h4>
                 <div className="grid grid-cols-4 gap-3">
@@ -333,20 +326,22 @@ export function PortionSelector({
                         label={t('macros.calories')}
                         value={calculatedNutrition.calories}
                         unit=""
-                        highlight
                     />
                     <NutrientDisplay
                         label={t('macros.protein')}
+                        macro="protein"
                         value={calculatedNutrition.protein}
                         unit={t('units.gram')}
                     />
                     <NutrientDisplay
                         label={t('macros.fat')}
+                        macro="fat"
                         value={calculatedNutrition.fat}
                         unit={t('units.gram')}
                     />
                     <NutrientDisplay
                         label={t('macros.carbs')}
+                        macro="carbs"
                         value={calculatedNutrition.carbs}
                         unit={t('units.gram')}
                     />
@@ -364,16 +359,26 @@ interface NutrientDisplayProps {
     label: string;
     value: number;
     unit: string;
-    highlight?: boolean;
+    /** Нутриент: точка его цвета опознаёт строку и ничего не оценивает. */
+    macro?: MacroKey;
 }
 
-function NutrientDisplay({ label, value, unit, highlight = false }: NutrientDisplayProps): React.ReactElement {
+function NutrientDisplay({ label, value, unit, macro }: NutrientDisplayProps): React.ReactElement {
     return (
         <div className="text-center">
-            <div className={`text-lg font-semibold ${highlight ? 'text-blue-600' : 'text-gray-900'}`}>
-                {value}{unit && <span className="text-sm font-normal text-gray-500 ml-0.5">{unit}</span>}
+            <div className="text-lg font-semibold text-fg tabular-nums">
+                {value}{unit && <span className="ml-0.5 text-sm font-normal text-fg-muted">{unit}</span>}
             </div>
-            <div className="text-xs text-gray-500">{label}</div>
+            <div className="flex items-center justify-center gap-1 text-xs text-fg-muted">
+                {macro && (
+                    <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: MACRO_COLORS[macro] }}
+                        aria-hidden="true"
+                    />
+                )}
+                {label}
+            </div>
         </div>
     );
 }

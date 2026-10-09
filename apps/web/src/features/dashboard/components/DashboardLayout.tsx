@@ -36,12 +36,12 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
         children,
         userName,
         avatarUrl,
-        activeNavItem = 'dashboard',
+        activeNavItem,
         onNavigate,
         className
     }, ref) => {
         const router = useRouter()
-        const { unreadCounts, fetchUnreadCounts, startPolling, stopPolling } = useNotificationsStore()
+        const { unreadCounts, startPolling, stopPolling } = useNotificationsStore()
 
         // Monitor online/offline status
         useOnlineStatus()
@@ -49,15 +49,15 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
         // Calculate total unread count
         const totalUnreadCount = unreadCounts.main + unreadCounts.content
 
-        // Fetch unread counts on mount and start polling
+        // Start polling the bell's counters; its first poll fetches them at once
+        // (a separate fetch here asked for the same counters a second time).
         useEffect(() => {
-            fetchUnreadCounts()
             startPolling()
 
             return () => {
                 stopPolling()
             }
-        }, [fetchUnreadCounts, startPolling, stopPolling])
+        }, [startPolling, stopPolling])
 
         // Listen for content notification WebSocket events
         useContentNotificationWS()
@@ -113,7 +113,7 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
                         // Ensure full width and prevent horizontal scrolling (Requirement 12.5)
                         'w-full max-w-full overflow-x-hidden',
                         // Background color
-                        'bg-gray-50',
+                        'bg-canvas',
                         // Smooth transitions for orientation changes (Requirement 12.6)
                         'transition-all duration-300 ease-in-out',
                         className

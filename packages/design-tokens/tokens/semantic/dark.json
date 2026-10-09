@@ -1,0 +1,69 @@
+{
+  "$description": "Семантические роли цвета — тёмная тема. Набор ключей обязан совпадать со светлой (проверяется сборкой).",
+  "color": {
+    "$type": "color",
+    "bg": {
+      "canvas": { "$value": "{palette.night.900}" },
+      "surface": { "$value": "{palette.night.800}" },
+      "subtle": { "$value": "{palette.night.750}" },
+      "nav": { "$value": "#14110DF2" },
+      "scrim": { "$value": "#000000A6" }
+    },
+    "fg": {
+      "default": { "$value": "{palette.umber.50}" },
+      "muted": { "$value": "{palette.umber.200}" },
+      "subtle": { "$value": "{palette.umber.300}" },
+      "disabled": { "$value": "{palette.night.500}" },
+      "inverse": { "$value": "{palette.night.900}" }
+    },
+    "line": {
+      "default": { "$value": "{palette.night.600}" },
+      "strong": { "$value": "{palette.umber.50}" }
+    },
+    "primary": {
+      "default": { "$value": "{palette.terracotta.300}" },
+      "hover": { "$value": "{palette.terracotta.200}" },
+      "fg": { "$value": "{palette.night.900}" },
+      "soft": { "$value": "#E58A6C24" }
+    },
+    "coach": {
+      "bg": { "$value": "{palette.night.650}" },
+      "fg": { "$value": "{palette.umber.50}" },
+      "fg-muted": { "$value": "{palette.umber.100}" }
+    },
+    "track": { "$value": "{palette.night.700}" },
+    "macro": {
+      "protein": { "$value": "{palette.blue.400}" },
+      "protein-fg": { "$value": "{palette.blue.300}" },
+      "fat": { "$value": "{palette.amber.400}" },
+      "fat-fg": { "$value": "{palette.amber.300}" },
+      "carbs": { "$value": "{palette.sage.400}" },
+      "carbs-fg": { "$value": "{palette.sage.300}" },
+      "water": { "$value": "{palette.blue.400}" }
+    },
+    "status": {
+      "success": { "$value": "{palette.sage.400}" },
+      "success-fg": { "$value": "{palette.sage.300}" },
+      "success-soft": { "$value": "#97C28226" },
+      "warning": { "$value": "{palette.rust.300}" },
+      "warning-fg": { "$value": "{palette.rust.300}" },
+      "warning-soft": { "$value": "#E89A5B26" },
+      "danger": { "$value": "{palette.red.300}" },
+      "danger-fg": { "$value": "{palette.red.300}" },
+      "danger-soft": { "$value": "#F07A6E26" },
+      "info": { "$value": "{palette.blue.400}" },
+      "info-fg": { "$value": "{palette.blue.300}" },
+      "info-soft": { "$value": "#8AA4E626" }
+    },
+    "focus": { "$value": "{palette.terracotta.300}" }
+  },
+  "shadow": {
+    "$type": "shadow",
+    "float": {
+      "$value": { "color": "#00000080", "offsetX": "0px", "offsetY": "10px", "blur": "30px", "spread": "0px" }
+    },
+    "overlay": {
+      "$value": { "color": "#00000099", "offsetX": "0px", "offsetY": "16px", "blur": "48px", "spread": "0px" }
+    }
+  }
+}

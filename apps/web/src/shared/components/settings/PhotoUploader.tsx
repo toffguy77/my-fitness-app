@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react'
 import Image from 'next/image'
-import { cn } from '@/shared/utils/cn'
+import { Camera } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 
 export interface PhotoUploaderProps {
     avatarUrl?: string
@@ -51,20 +52,20 @@ export function PhotoUploader({
     }
 
     return (
-        <div className="flex flex-col items-center gap-4">
-            {/* Avatar circle */}
-            <div className="relative h-32 w-32 overflow-hidden rounded-full">
+        <div className="flex flex-col items-center gap-3">
+            {/* Avatar circle — как в шапке профиля: инициал на бренде. */}
+            <div className="relative h-24 w-24 overflow-hidden rounded-full">
                 {avatarUrl ? (
                     <Image
                         src={avatarUrl}
                         alt={userName || 'Avatar'}
-                        width={128}
-                        height={128}
+                        width={96}
+                        height={96}
                         className="h-full w-full object-cover"
                     />
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-blue-100">
-                        <span className="text-4xl font-semibold text-blue-600">
+                    <div className="flex h-full w-full items-center justify-center bg-primary">
+                        <span className="text-3xl font-semibold text-on-primary">
                             {initial}
                         </span>
                     </div>
@@ -72,50 +73,27 @@ export function PhotoUploader({
             </div>
 
             {/* Helper text */}
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-center type-caption text-fg-muted">
                 Редактирование фото профиля
             </p>
 
-            {/* Upload button */}
-            <button
+            {/* Upload button — второстепенное действие: главное на экране одно. */}
+            <Button
                 type="button"
-                disabled={busy}
+                variant="secondary"
+                isLoading={busy}
                 onClick={() => fileInputRef.current?.click()}
-                className={cn(
-                    'mx-auto w-full max-w-xs rounded-xl bg-blue-600 px-6 py-3 text-center font-medium text-white transition-colors',
-                    'hover:bg-blue-700',
-                    'disabled:pointer-events-none disabled:opacity-50'
-                )}
+                className="w-full max-w-xs"
             >
                 {busy ? (
-                    <span className="inline-flex items-center gap-2">
-                        <svg
-                            className="h-4 w-4 animate-spin"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                        >
-                            <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                            />
-                            <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                            />
-                        </svg>
-                        Загрузка...
-                    </span>
+                    'Загрузка...'
                 ) : (
-                    'Сделать или выбрать фото'
+                    <>
+                        <Camera className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
+                        Сделать или выбрать фото
+                    </>
                 )}
-            </button>
+            </Button>
 
             {/* Hidden file input */}
             <input
@@ -129,14 +107,16 @@ export function PhotoUploader({
 
             {/* Remove link */}
             {avatarUrl && onRemove && (
-                <button
+                <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     disabled={busy}
                     onClick={handleRemove}
-                    className="text-sm text-gray-500 underline transition-colors hover:text-gray-700 disabled:pointer-events-none disabled:opacity-50"
+                    className="text-fg-muted hover:text-danger-fg"
                 >
                     Удалить фото
-                </button>
+                </Button>
             )}
         </div>
     )

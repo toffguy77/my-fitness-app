@@ -33,6 +33,7 @@ jest.mock('@/shared/hooks/useCurrentUser', () => ({
 }))
 
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
   ArrowLeft: () => <span data-testid="arrow-left" />,
 }))
 
@@ -129,7 +130,7 @@ describe('SettingsPageLayout', () => {
     expect(screen.getByText('My Title')).toBeInTheDocument()
   })
 
-  // The guard lives in middleware.ts now, before the page renders.
+  // The guard lives in proxy.ts now, before the page renders.
   it('does not send anybody to sign in on its own', () => {
     mockUseSettings.mockReturnValue({
       profile: null,
@@ -219,7 +220,8 @@ describe('SettingsPageLayout', () => {
       </SettingsPageLayout>
     )
 
-    const link = screen.getByText('Профиль')
-    expect(link.closest('a')).toHaveAttribute('href', '/profile')
+    // Назад — кнопка-иконка: имя у неё в aria-label, не в видимом тексте.
+    const link = screen.getByRole('link', { name: 'Назад в профиль' })
+    expect(link).toHaveAttribute('href', '/profile')
   })
 })

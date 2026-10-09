@@ -8,7 +8,7 @@ export default function AdminUserDetailPage() {
     const userId = Number(params.id)
 
     return (
-        <div className="px-4 py-6">
+        <div className="mx-auto w-full max-w-3xl px-screen-x py-5">
             <UserDetail userId={userId} />
         </div>
     )

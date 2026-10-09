@@ -85,8 +85,8 @@ jest.mock('@/features/dashboard/store/dashboardStore', () => ({
     }),
 }))
 
-jest.mock('@/features/nutrition-calc/components/KBJUWeeklyChart', () => ({
-    KBJUWeeklyChart: () => <div data-testid="kbju-chart">KBJUWeeklyChart</div>,
+jest.mock('@/features/nutrition-calc/components/WeekCaloriesCard', () => ({
+    WeekCaloriesCard: () => <div data-testid="kbju-chart">WeekCaloriesCard</div>,
 }))
 
 

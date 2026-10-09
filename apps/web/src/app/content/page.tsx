@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { FeedList } from '@/features/content/components/FeedList'
 import type { FeedResponse } from '@/features/content/types'
+import { SHARE_IMAGE } from '@/shared/constants/seo'
 
 export const metadata: Metadata = {
     title: 'Статьи о фитнесе и питании',
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
         title: 'Статьи о фитнесе и питании | BURCEV',
         description: 'Полезные статьи о правильном питании, тренировках и здоровом образе жизни.',
         url: 'https://burcev.team/content',
+        images: [SHARE_IMAGE],
     },
     alternates: {
         canonical: 'https://burcev.team/content',
@@ -46,8 +48,8 @@ export default async function ContentFeedPage() {
     const firstPage = await getFirstPage()
 
     return (
-        <div className="mx-auto max-w-4xl px-4 py-6 pb-20">
-            <h1 className="text-xl font-semibold text-gray-900 mb-4">Статьи</h1>
+        <div className="mx-auto w-full max-w-content px-screen-x py-5 pb-20">
+            <h1 className="mb-4 type-title-1 text-fg">Статьи</h1>
             <FeedList
                 {...(firstPage && {
                     initialArticles: firstPage.articles,

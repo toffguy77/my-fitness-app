@@ -91,3 +91,11 @@ export const dashboardApi = {
     getOnboardingState: () =>
         apiClient.get<OnboardingState>(getApiUrl('/dashboard/onboarding')),
 }
+
+/**
+ * Progress for the dashboard: weight trend, adherence, target weight. Read by
+ * the weight section and by the progress section of one screen; one answer
+ * serves both (apiClient.getRecent).
+ */
+export const DASHBOARD_PROGRESS_URL = '/api/v1/dashboard/progress?weeks=4'
+export const PROGRESS_REUSE_MS = 15_000

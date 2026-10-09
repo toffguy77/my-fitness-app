@@ -581,6 +581,8 @@ interface DashboardState {
     error: DashboardError | null;
     isOffline: boolean;
     pollingIntervalId: NodeJS.Timeout | null;
+    /** Interval to resume at when the connection comes back; null when nobody asked to poll. */
+    pollingInterval: number | null;
 
     // Version counter bumped after metric save to signal targets re-fetch
     targetsVersion: number;
@@ -606,7 +608,7 @@ interface DashboardState {
     submitWeeklyReport: (weekStart: Date, weekEnd: Date) => Promise<void>;
     uploadPhoto: (weekIdentifier: string, file: File) => Promise<void>;
     pollForUpdates: () => Promise<void>;
-    startPolling: (interval?: number) => void;
+    startPolling: (interval?: number, options?: { immediate?: boolean }) => void;
     stopPolling: () => void;
     clearError: () => void;
     reset: () => void;
@@ -632,6 +634,7 @@ const initialState = {
     error: null,
     isOffline: false,
     pollingIntervalId: null,
+    pollingInterval: null,
     prefetchedWeeks: new Set<string>(),
     targetsVersion: 0,
     tasksVersion: 0,
@@ -1519,7 +1522,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     /**
      * Start polling for updates
      */
-    startPolling: (interval = 30000) => {
+    startPolling: (interval = 30000, { immediate = true } = {}) => {
         const state = get();
 
         if (state.pollingIntervalId) {
@@ -1530,10 +1533,13 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             get().pollForUpdates();
         }, interval);
 
-        set({ pollingIntervalId });
+        set({ pollingIntervalId, pollingInterval: interval });
 
-        // Initial poll
-        get().pollForUpdates();
+        // A caller that has just fetched the same data says so: an immediate
+        // poll would ask for the weekly plan and the tasks a second time.
+        if (immediate) {
+            get().pollForUpdates();
+        }
     },
 
     /**
@@ -1544,8 +1550,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
         if (state.pollingIntervalId) {
             clearInterval(state.pollingIntervalId);
-            set({ pollingIntervalId: null });
         }
+        set({ pollingIntervalId: null, pollingInterval: null });
     },
 
     /**
@@ -1580,6 +1586,15 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     setOfflineStatus: (isOffline: boolean) => {
         const wasOffline = get().isOffline;
 
+        // Only a change of state does anything. Every page of the client shell
+        // reports the browser's status on mount — and "online, as before" used
+        // to start the dashboard's polling and a full resync on the profile,
+        // the settings and every other page that shows neither the plan nor
+        // the tasks.
+        if (isOffline === wasOffline) {
+            return;
+        }
+
         set({ isOffline });
 
         if (isOffline && !wasOffline) {
@@ -1596,11 +1611,21 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             });
         }
 
+        const { pollingIntervalId, pollingInterval } = get();
         if (isOffline) {
-            get().stopPolling();
+            // Paused, not stopped: the interval is remembered so polling
+            // resumes for whoever had asked for it.
+            if (pollingIntervalId) {
+                clearInterval(pollingIntervalId);
+                set({ pollingIntervalId: null });
+            }
         } else {
-            get().startPolling();
+            // The resync fetches the plan and the tasks itself; the resumed
+            // polling does not repeat them at once.
             get().syncWhenOnline();
+            if (pollingInterval && !pollingIntervalId) {
+                get().startPolling(pollingInterval, { immediate: false });
+            }
         }
     },
 

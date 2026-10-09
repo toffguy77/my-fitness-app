@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Keyboard } from 'lucide-react';
+import { IconButton } from '@/shared/components/ui/Button';
 import { t } from '@/shared/i18n'
 
 /**
@@ -152,81 +153,82 @@ export function KeyboardShortcutsHelp() {
 
     if (!isOpen) {
         return (
-            <button
+            <IconButton
+                variant="ghost"
+                size="lg"
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-4 right-4 p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 z-50"
+                className="fixed bottom-4 right-4 z-50 bg-fg text-fg-inverse shadow-float hover:bg-fg hover:opacity-90"
                 aria-label={t('dashboard.shortcuts.showAria')}
                 title={t('dashboard.shortcuts.showTitle')}
             >
-                <Keyboard className="h-5 w-5" />
-            </button>
+                <Keyboard className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+            </IconButton>
         );
     }
 
     const groupedShortcuts = groupShortcutsByCategory(KEYBOARD_SHORTCUTS);
 
+    // Модальное окно по рецепту системы: затемнение `bg-scrim`, шторка снизу
+    // на телефоне и окно по центру на десктопе, заголовок засечками.
     return (
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black bg-opacity-50 z-50"
+                className="fixed inset-0 z-50 bg-scrim"
                 onClick={() => setIsOpen(false)}
                 aria-hidden="true"
             />
 
             {/* Dialog */}
             <div
-                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="keyboard-shortcuts-title"
             >
-                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+                <div className="pointer-events-auto flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-sheet bg-surface text-fg shadow-overlay sm:max-w-2xl sm:rounded-sheet">
                     {/* Header */}
-                    <div className="flex items-center justify-between p-6 border-b">
-                        <div className="flex items-center gap-3">
-                            <Keyboard className="h-6 w-6 text-gray-700" />
-                            <h2
-                                id="keyboard-shortcuts-title"
-                                className="text-xl font-semibold text-gray-900"
-                            >
-                                {t('dashboard.shortcuts.title')}
-                            </h2>
-                        </div>
-                        <button
+                    <div className="flex items-center justify-between gap-3 border-b border-line py-3 pl-5 pr-3">
+                        <h2
+                            id="keyboard-shortcuts-title"
+                            className="type-title-2 text-fg"
+                        >
+                            {t('dashboard.shortcuts.title')}
+                        </h2>
+                        <IconButton
+                            variant="ghost"
                             onClick={() => setIsOpen(false)}
-                            className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             aria-label={t('common.close')}
                         >
-                            <X className="h-5 w-5 text-gray-500" />
-                        </button>
+                            <X className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                        </IconButton>
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-6">
-                        <div className="space-y-6">
+                    <div className="flex-1 overflow-y-auto px-5 py-4">
+                        <div className="space-y-5">
                             {Object.entries(groupedShortcuts).map(([category, shortcuts]) => (
                                 <div key={category}>
-                                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+                                    <h3 className="mb-1 type-overline text-fg-subtle">
                                         {category}
                                     </h3>
-                                    <div className="space-y-2">
+                                    <div className="divide-y divide-line">
                                         {shortcuts.map((shortcut, index) => (
                                             <div
                                                 key={index}
-                                                className="flex items-center justify-between py-2"
+                                                className="flex min-h-11 items-center justify-between gap-4 py-2"
                                             >
-                                                <span className="text-sm text-gray-600">
+                                                <span className="text-sm text-fg">
                                                     {shortcut.description}
                                                 </span>
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex flex-shrink-0 items-center gap-1">
                                                     {shortcut.keys.map((key, keyIndex) => (
                                                         <span key={keyIndex} className="flex items-center gap-1">
-                                                            <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-300 rounded">
+                                                            <kbd className="inline-flex h-7 min-w-7 items-center justify-center rounded-field border border-line bg-subtle px-2 font-sans text-xs font-semibold text-fg">
                                                                 {key}
                                                             </kbd>
                                                             {keyIndex < shortcut.keys.length - 1 && (
-                                                                <span className="text-gray-400">+</span>
+                                                                <span className="text-fg-subtle">+</span>
                                                             )}
                                                         </span>
                                                     ))}
@@ -240,8 +242,8 @@ export function KeyboardShortcutsHelp() {
                     </div>
 
                     {/* Footer */}
-                    <div className="p-6 border-t bg-gray-50">
-                        <p className="text-sm text-gray-600 text-center">
+                    <div className="border-t border-line px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                        <p className="text-center type-caption text-fg-muted">
                             {t('dashboard.shortcuts.pressHint', { key: '?' })}
                         </p>
                     </div>

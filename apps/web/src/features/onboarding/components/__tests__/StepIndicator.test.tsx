@@ -25,11 +25,11 @@ describe('StepIndicator', () => {
                 <StepIndicator currentStep={0} totalSteps={5} />
             )
             const dots = container.querySelectorAll('.rounded-full')
-            expect(dots[0]).toHaveClass('bg-blue-600')
-            expect(dots[1]).toHaveClass('bg-gray-300')
-            expect(dots[2]).toHaveClass('bg-gray-300')
-            expect(dots[3]).toHaveClass('bg-gray-300')
-            expect(dots[4]).toHaveClass('bg-gray-300')
+            expect(dots[0]).toHaveClass('bg-primary')
+            expect(dots[1]).toHaveClass('bg-line')
+            expect(dots[2]).toHaveClass('bg-line')
+            expect(dots[3]).toHaveClass('bg-line')
+            expect(dots[4]).toHaveClass('bg-line')
         })
 
         it('gives all connecting lines gray styling', () => {
@@ -38,7 +38,7 @@ describe('StepIndicator', () => {
             )
             const lines = container.querySelectorAll('.h-0\\.5')
             lines.forEach((line) => {
-                expect(line).toHaveClass('bg-gray-300')
+                expect(line).toHaveClass('bg-line')
             })
         })
     })
@@ -50,12 +50,12 @@ describe('StepIndicator', () => {
             )
             const dots = container.querySelectorAll('.rounded-full')
             // Steps 0, 1 are completed; step 2 is active => all blue
-            expect(dots[0]).toHaveClass('bg-blue-600')
-            expect(dots[1]).toHaveClass('bg-blue-600')
-            expect(dots[2]).toHaveClass('bg-blue-600')
+            expect(dots[0]).toHaveClass('bg-primary')
+            expect(dots[1]).toHaveClass('bg-primary')
+            expect(dots[2]).toHaveClass('bg-primary')
             // Steps 3, 4 are future => gray
-            expect(dots[3]).toHaveClass('bg-gray-300')
-            expect(dots[4]).toHaveClass('bg-gray-300')
+            expect(dots[3]).toHaveClass('bg-line')
+            expect(dots[4]).toHaveClass('bg-line')
         })
 
         it('colors connecting lines correctly', () => {
@@ -64,11 +64,11 @@ describe('StepIndicator', () => {
             )
             const lines = container.querySelectorAll('.h-0\\.5')
             // Lines 0 and 1 connect completed steps => blue
-            expect(lines[0]).toHaveClass('bg-blue-600')
-            expect(lines[1]).toHaveClass('bg-blue-600')
+            expect(lines[0]).toHaveClass('bg-primary')
+            expect(lines[1]).toHaveClass('bg-primary')
             // Lines 2 and 3 are after current step => gray
-            expect(lines[2]).toHaveClass('bg-gray-300')
-            expect(lines[3]).toHaveClass('bg-gray-300')
+            expect(lines[2]).toHaveClass('bg-line')
+            expect(lines[3]).toHaveClass('bg-line')
         })
     })
 
@@ -79,7 +79,7 @@ describe('StepIndicator', () => {
             )
             const dots = container.querySelectorAll('.rounded-full')
             dots.forEach((dot) => {
-                expect(dot).toHaveClass('bg-blue-600')
+                expect(dot).toHaveClass('bg-primary')
             })
         })
 
@@ -89,7 +89,7 @@ describe('StepIndicator', () => {
             )
             const lines = container.querySelectorAll('.h-0\\.5')
             lines.forEach((line) => {
-                expect(line).toHaveClass('bg-blue-600')
+                expect(line).toHaveClass('bg-primary')
             })
         })
     })

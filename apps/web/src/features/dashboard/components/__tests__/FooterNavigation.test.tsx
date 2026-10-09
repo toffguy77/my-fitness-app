@@ -1,14 +1,51 @@
-import { render, fireEvent } from '@testing-library/react'
+import { screen, render, fireEvent } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import { FooterNavigation } from '../FooterNavigation'
 import { NAVIGATION_ITEMS } from '../../utils/navigationConfig'
 
 // Mock Next.js router
+let mockPathname: string | null = null
 jest.mock('next/navigation', () => ({
+    usePathname: () => mockPathname,
     useRouter: jest.fn(),
 }))
 
 describe('FooterNavigation', () => {
+    afterEach(() => {
+        mockPathname = null
+    })
+
+    describe('active tab follows the address', () => {
+        it.each([
+            ['/dashboard', 'dashboard'],
+            ['/food-tracker', 'food-tracker'],
+            ['/chat', 'chat'],
+            ['/content/some-article', 'content'],
+        ])('%s → %s', (path, id) => {
+            mockPathname = path
+            render(<FooterNavigation activeItem="dashboard" />)
+            expect(screen.getByTestId(`nav-item-${id}`)).toHaveAttribute('aria-current', 'page')
+            expect(screen.getAllByRole('button').filter((b) => b.getAttribute('aria-current') === 'page')).toHaveLength(1)
+        })
+
+        it('profile and settings belong to no tab — none is lit', () => {
+            mockPathname = '/settings/profile'
+            render(<FooterNavigation />)
+            expect(screen.getAllByRole('button').some((b) => b.hasAttribute('aria-current'))).toBe(false)
+        })
+
+        it('a tap recorded on another address does not outlive the navigation', () => {
+            mockPathname = '/dashboard'
+            const { rerender } = render(<FooterNavigation />)
+            fireEvent.click(screen.getByTestId('nav-item-chat'))
+            expect(screen.getByTestId('nav-item-chat')).toHaveAttribute('aria-current', 'page')
+            mockPathname = '/food-tracker'
+            rerender(<FooterNavigation />)
+            expect(screen.getByTestId('nav-item-food-tracker')).toHaveAttribute('aria-current', 'page')
+            expect(screen.getByTestId('nav-item-chat')).not.toHaveAttribute('aria-current')
+        })
+    })
+
     let mockPush: jest.Mock
 
     beforeEach(() => {
@@ -40,12 +77,13 @@ describe('FooterNavigation', () => {
             expect(getByText('Контент')).toBeInTheDocument()
         })
 
-        it('should mark Dashboard as active by default', () => {
+        it('lights the tab that owns the current address', () => {
+            mockPathname = '/dashboard'
             const { container } = render(<FooterNavigation />)
 
             const dashboardItem = container.querySelector('[data-testid="nav-item-dashboard"]')
             expect(dashboardItem).toHaveAttribute('aria-current', 'page')
-            expect(dashboardItem).toHaveClass('text-blue-600')
+            expect(dashboardItem).toHaveClass('text-fg')
         })
 
         it('should mark Workout item as disabled', () => {
@@ -77,6 +115,7 @@ describe('FooterNavigation', () => {
         })
 
         it('should update active state when navigation item is clicked', () => {
+            mockPathname = '/dashboard'
             const { container } = render(<FooterNavigation />)
 
             // Initially Dashboard is active
@@ -90,7 +129,7 @@ describe('FooterNavigation', () => {
             // Chat should now be active
             const updatedChatItem = container.querySelector('[data-testid="nav-item-chat"]')
             expect(updatedChatItem).toHaveAttribute('aria-current', 'page')
-            expect(updatedChatItem).toHaveClass('text-blue-600')
+            expect(updatedChatItem).toHaveClass('text-fg')
         })
 
         it('should call onNavigate callback when provided', () => {
@@ -119,7 +158,7 @@ describe('FooterNavigation', () => {
 
             const chatItem = container.querySelector('[data-testid="nav-item-chat"]')
             expect(chatItem).toHaveAttribute('aria-current', 'page')
-            expect(chatItem).toHaveClass('text-blue-600')
+            expect(chatItem).toHaveClass('text-fg')
         })
 
         it('should have fixed positioning at bottom', () => {
@@ -144,14 +183,14 @@ describe('FooterNavigation', () => {
 
             const nav = container.querySelector('[data-testid="footer-navigation"]')
             expect(nav).toHaveClass('border-t')
-            expect(nav).toHaveClass('border-gray-200')
+            expect(nav).toHaveClass('border-line')
         })
 
-        it('should have white background', () => {
+        it('should have the navigation surface background', () => {
             const { container } = render(<FooterNavigation />)
 
             const nav = container.querySelector('[data-testid="footer-navigation"]')
-            expect(nav).toHaveClass('bg-white')
+            expect(nav).toHaveClass('bg-nav')
         })
 
         it('should have proper ARIA label', () => {

@@ -31,17 +31,18 @@ export const NavigationItem = forwardRef<HTMLButtonElement, NavigationItemProps>
         }
 
         // Base styles for all states
-        const baseStyles = 'flex flex-col items-center justify-center gap-1 px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 rounded-lg'
+        const baseStyles = 'flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus rounded-tile'
 
-        // Active state: accent color and bold text
+        // Активный пункт — чернилами и точкой бренда под подписью; остальные
+        // приглушены. Цветом бренда выделяется одна точка, а не вся вкладка:
+        // терракота на экране — для главного действия.
         const activeStyles = isActive
-            ? 'text-blue-600'
-            : 'text-gray-600'
+            ? 'text-fg'
+            : 'text-fg-subtle'
 
-        // Disabled state: reduced opacity and grey color
         const disabledStyles = isDisabled
-            ? 'opacity-40 text-gray-400 cursor-not-allowed'
-            : 'cursor-pointer hover:bg-gray-100'
+            ? 'opacity-40 cursor-not-allowed'
+            : 'cursor-pointer hover:text-fg'
 
         // Icon size
         const iconSize = 24
@@ -63,21 +64,21 @@ export const NavigationItem = forwardRef<HTMLButtonElement, NavigationItemProps>
                     <Icon
                         size={iconSize}
                         aria-hidden="true"
-                        className={cn(
-                            'transition-colors',
-                            isActive && 'stroke-[2.5]'
-                        )}
+                        strokeWidth={isActive ? 2 : 1.8}
+                        className="transition-colors"
                     />
                     {badge != null && badge > 0 && (
-                        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
+                        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-on-primary ring-2 ring-canvas">
                             {badge > 99 ? '99+' : badge}
                         </span>
                     )}
                 </span>
                 <span
                     className={cn(
-                        'text-xs transition-all',
-                        isActive && 'font-semibold'
+                        'relative max-w-full truncate pb-1.5 text-[11px] leading-[14px]',
+                        // Точка бренда под подписью активного пункта.
+                        'after:absolute after:bottom-0 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full',
+                        isActive ? 'font-semibold after:bg-primary' : 'font-medium after:bg-transparent'
                     )}
                 >
                     {label}

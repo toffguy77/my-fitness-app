@@ -572,7 +572,7 @@ describe('Property 35: Keyboard Navigation Support', () => {
                     const TestComponent = () => {
                         const props: Record<string, unknown> = {
                             'data-testid': testId,
-                            className: 'focus:outline-none focus:ring-2 focus:ring-blue-500',
+                            className: 'focus:outline-none focus:ring-2 focus:ring-focus',
                         };
 
                         if (elementType === 'a') {

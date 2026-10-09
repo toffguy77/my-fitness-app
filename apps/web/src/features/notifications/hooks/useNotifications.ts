@@ -36,13 +36,13 @@ export function useNotifications(category: NotificationCategory): UseNotificatio
     // Select actions from store
     const fetchNotifications = useNotificationsStore((state) => state.fetchNotifications);
     const markAsReadAction = useNotificationsStore((state) => state.markAsRead);
-    const fetchUnreadCounts = useNotificationsStore((state) => state.fetchUnreadCounts);
-
-    // Fetch initial data and unread counts on mount
+    // Fetch the list on mount. The counters are not asked for here: the shell
+    // polls them from the first moment, and a loaded list refreshes them when
+    // they are stale — asking again from each of the page's two lists sent the
+    // same counters out twice more.
     useEffect(() => {
         fetchNotifications(category, 0);
-        fetchUnreadCounts();
-    }, [category, fetchNotifications, fetchUnreadCounts]);
+    }, [category, fetchNotifications]);
 
     // Fetch more notifications (pagination)
     const fetchMore = useCallback(() => {

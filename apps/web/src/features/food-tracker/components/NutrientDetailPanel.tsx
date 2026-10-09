@@ -24,6 +24,7 @@ import { fetchRecommendationDetail } from '../api/recommendationsApi';
 import type { NutrientDetail } from '../types';
 import { unitLabel } from '../utils/unitLabel';
 import { t } from '@/shared/i18n';
+import { IconButton } from '@/shared/components/ui/Button';
 
 // ============================================================================
 // Types
@@ -48,10 +49,10 @@ function Section({ title, text }: { title: string; text?: string }): React.React
 
     return (
         <section className="space-y-1">
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide sm:text-sm">
+            <h4 className="type-overline text-fg-subtle">
                 {title}
             </h4>
-            <p className="text-xs text-gray-800 sm:text-sm">{text}</p>
+            <p className="type-callout text-fg">{text}</p>
         </section>
     );
 }
@@ -96,45 +97,45 @@ export function NutrientDetailPanel({
 
     return (
         <div
-            className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center ${className}`}
+            className={`fixed inset-0 z-50 flex items-end justify-center bg-scrim sm:items-center sm:p-4 ${className}`}
             role="dialog"
             aria-modal="true"
             aria-label={t('foodTracker.nutrientDetail.aria')}
         >
-            <div className="w-full max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-xl sm:max-w-lg sm:rounded-2xl">
-                <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-base font-semibold text-gray-900 sm:text-lg">
+            <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-sheet bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-overlay sm:max-w-lg sm:rounded-sheet">
+                <div className="flex items-center justify-between gap-3">
+                    <h3 className="type-title-2 text-fg">
                         {detail?.name ?? nutrientName ?? t('foodTracker.nutrientDetail.title')}
                     </h3>
-                    <button
-                        type="button"
+                    <IconButton
+                        variant="ghost"
                         onClick={onClose}
-                        className="p-1 -m-1 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                        className="-mr-2"
                         aria-label={t('common.close')}
                     >
-                        <X className="w-4 h-4" aria-hidden="true" />
-                    </button>
+                        <X className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                    </IconButton>
                 </div>
 
                 {isLoading && (
-                    <p className="py-6 text-center text-xs text-gray-500 sm:text-sm" aria-live="polite" aria-busy="true">
+                    <p className="py-6 text-center text-sm text-fg-muted" aria-live="polite" aria-busy="true">
                         {t('common.loading')}
                     </p>
                 )}
 
                 {error && (
-                    <p className="py-6 text-center text-xs text-red-700 sm:text-sm" role="alert">
+                    <p className="py-6 text-center text-sm text-danger-fg" role="alert">
                         {error}
                     </p>
                 )}
 
                 {detail && !isLoading && !error && (
-                    <div className="mt-3 space-y-3">
+                    <div className="mt-4 space-y-4">
                         {/* Три положения, как и в списке: измерено, только норма,
                             норму выбрать нельзя. Ноль не показывается ни в одном. */}
                         {detail.currentIntake !== undefined && detail.dailyTarget !== undefined ? (
                             <>
-                                <p className="text-xs text-gray-900 sm:text-sm">
+                                <p className="type-headline text-fg tabular-nums">
                                     {t('foodTracker.nutrientDetail.progress', {
                                         intake: String(detail.currentIntake),
                                         target: String(detail.dailyTarget),
@@ -145,7 +146,7 @@ export function NutrientDetailPanel({
                                     всех съеденных продуктов. Об этом говорится рядом. */}
                                 {detail.intakeCoverage &&
                                     detail.intakeCoverage.counted < detail.intakeCoverage.total && (
-                                        <p className="text-xs text-gray-500 sm:text-sm">
+                                        <p className="text-sm text-fg-muted">
                                             {t('foodTracker.nutrientDetail.coverage', {
                                                 counted: String(detail.intakeCoverage.counted),
                                                 total: String(detail.intakeCoverage.total),
@@ -155,10 +156,10 @@ export function NutrientDetailPanel({
                             </>
                         ) : detail.dailyTarget !== undefined ? (
                             <>
-                                <p className="text-xs text-gray-900 sm:text-sm">
+                                <p className="type-headline text-fg tabular-nums">
                                     {String(detail.dailyTarget)} {unit}
                                 </p>
-                                <p className="text-xs text-gray-500 sm:text-sm">
+                                <p className="text-sm text-fg-muted">
                                     {t('foodTracker.nutrientDetail.intakeNotCounted')}
                                 </p>
                             </>
@@ -167,11 +168,11 @@ export function NutrientDetailPanel({
                                 {/* Норму выбрать нельзя, но съеденное мы знаем —
                                     терять его из-за незаполненного профиля незачем. */}
                                 {detail.currentIntake !== undefined && (
-                                    <p className="text-xs text-gray-900 sm:text-sm">
+                                    <p className="type-headline text-fg tabular-nums">
                                         {String(detail.currentIntake)} {unit}
                                     </p>
                                 )}
-                                <p className="text-xs text-gray-600 sm:text-sm">
+                                <p className="text-sm text-fg-muted">
                                     {t('foodTracker.nutrientDetail.normNeedsProfile')}
                                 </p>
                             </>
@@ -179,7 +180,7 @@ export function NutrientDetailPanel({
 
                         {/* Границы нормы показываются только те, что заведены. */}
                         {detail.minRecommendation !== undefined && (
-                            <p className="text-xs text-gray-600 sm:text-sm">
+                            <p className="text-sm text-fg-muted">
                                 {t('foodTracker.nutrientDetail.min', {
                                     value: String(detail.minRecommendation),
                                     unit,
@@ -187,7 +188,7 @@ export function NutrientDetailPanel({
                             </p>
                         )}
                         {detail.optimalRecommendation !== undefined && (
-                            <p className="text-xs text-gray-600 sm:text-sm">
+                            <p className="text-sm text-fg-muted">
                                 {t('foodTracker.nutrientDetail.optimal', {
                                     value: String(detail.optimalRecommendation),
                                     unit,
@@ -211,32 +212,32 @@ export function NutrientDetailPanel({
                         {/* Откуда норма. Через год спросят не «откуда нормы», а
                             «откуда эта», и ответ должен быть на экране. */}
                         {detail.normSource && (
-                            <p className="text-[11px] text-gray-500 sm:text-xs">
+                            <p className="type-caption text-fg-subtle">
                                 {t('foodTracker.nutrientDetail.source', { source: detail.normSource })}
                                 {detail.normNote ? ` — ${detail.normNote}` : ''}
                             </p>
                         )}
 
                         <section className="space-y-1">
-                            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide sm:text-sm">
+                            <h4 className="type-overline text-fg-subtle">
                                 {t('foodTracker.nutrientDetail.sources')}
                             </h4>
                             {detail.sourcesInDiet.length > 0 ? (
-                                <ul className="space-y-1">
+                                <ul className="divide-y divide-line">
                                     {detail.sourcesInDiet.map((source) => (
                                         <li
                                             key={`${source.foodName}-${source.amount}`}
-                                            className="flex items-center justify-between text-xs text-gray-800 sm:text-sm"
+                                            className="flex min-h-11 items-center justify-between gap-3 text-sm text-fg"
                                         >
                                             <span>{source.foodName}</span>
-                                            <span className="text-gray-500">
+                                            <span className="whitespace-nowrap text-fg-muted tabular-nums">
                                                 {source.contribution} {unit}
                                             </span>
                                         </li>
                                     ))}
                                 </ul>
                             ) : (
-                                <p className="text-xs text-gray-500 sm:text-sm">
+                                <p className="text-sm text-fg-muted">
                                     {t('foodTracker.nutrientDetail.noSources')}
                                 </p>
                             )}

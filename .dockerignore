@@ -10,6 +10,11 @@ yarn-error.log*
 out
 dist
 build
+# Собранные токены дизайн-системы — не артефакт сборки, а исходник для web:
+# коммитятся вместе с tokens/*.json и нужны образу. Шаблон `dist` выше
+# касается только корня, исключение здесь — чтобы это не зависело от того,
+# как сборщик читает шаблоны.
+!packages/design-tokens/dist
 
 # Environment variables
 .env
@@ -18,6 +23,11 @@ build
 .env.test.local
 .env.production.local
 .env*.local
+# Шаблоны выше действуют только в корне контекста. apps/web/.env.local лежит
+# в git (секретов в нём нет, это настройки разработки), и без шаблонов с **/
+# он попадал в сборку прода: Next печатал «Environments: .env.local».
+**/.env
+**/.env*.local
 
 # Testing
 coverage

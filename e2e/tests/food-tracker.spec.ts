@@ -23,8 +23,10 @@ test.describe('Food Tracker - Client', () => {
     await expect(foodTracker.addWaterButton).toBeVisible()
   })
 
-  test('FAB add food button is visible', async () => {
-    await expect(foodTracker.fabAddFood).toBeVisible()
+  test('quick add bar offers search, photo and barcode', async () => {
+    await expect(foodTracker.quickAddSearch).toBeVisible()
+    await expect(foodTracker.quickAddBar.getByRole('button', { name: 'Распознать еду по фото' })).toBeVisible()
+    await expect(foodTracker.quickAddBar.getByRole('button', { name: 'Сканировать штрихкод' })).toBeVisible()
   })
 
   test('each meal slot has an add button', async () => {

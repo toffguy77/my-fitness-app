@@ -16,6 +16,7 @@ import { ManualEntryForm } from '../ManualEntryForm';
 // ============================================================================
 
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     Save: ({ className }: { className?: string }) => (
         <span data-testid="save-icon" className={className}>save</span>
     ),

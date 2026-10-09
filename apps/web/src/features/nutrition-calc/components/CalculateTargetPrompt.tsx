@@ -14,7 +14,7 @@
  */
 
 import Link from 'next/link'
-import { Calculator } from 'lucide-react'
+import { ArrowRight, Calculator } from 'lucide-react'
 
 import { t } from '@/shared/i18n'
 import type { MissingTargetInputs } from '../types'
@@ -43,22 +43,24 @@ function destination(missing: MissingTargetInputs | null): { href: string; label
 export function CalculateTargetPrompt({ missing, className = '' }: CalculateTargetPromptProps) {
     const { href, label } = destination(missing)
 
+    // Нейтральная плитка, а не терракотовая: приглашение стоит внутри карточек,
+    // у которых своё главное действие, и вторая заливка бренда спорила бы с ним.
+    // Действие — ссылкой (`text-primary font-semibold`), как велит рецепт.
     return (
-        <div
-            className={`rounded-xl border border-indigo-200 bg-indigo-50 p-3 sm:p-4 ${className}`}
-        >
+        <div className={`rounded-tile bg-subtle p-4 ${className}`}>
             <div className="flex items-start gap-3">
-                <Calculator className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" aria-hidden="true" />
+                <Calculator className="mt-0.5 h-5 w-5 shrink-0 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
                 <div className="min-w-0">
-                    <p className="text-sm font-semibold text-indigo-900">
+                    <p className="type-headline text-fg">
                         {t('foodTracker.noTarget.title')}
                     </p>
-                    <p className="mt-1 text-xs text-indigo-800 sm:text-sm">{explain(missing)}</p>
+                    <p className="mt-1 text-sm text-fg-muted">{explain(missing)}</p>
                     <Link
                         href={href}
-                        className="mt-2 inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 sm:text-sm"
+                        className="-mb-2 mt-1 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
                     >
                         {label}
+                        <ArrowRight className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
                     </Link>
                 </div>
             </div>

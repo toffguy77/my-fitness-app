@@ -131,7 +131,7 @@ describe('DailyTrackingGrid', () => {
 
             expect(mockFetchDailyData).toHaveBeenCalledWith(testDate)
             expect(mockFetchDailyData).toHaveBeenCalledTimes(1)
-            expect(mockStartPolling).toHaveBeenCalledWith(30000)
+            expect(mockStartPolling).toHaveBeenCalledWith(30000, { immediate: false })
             expect(mockStartPolling).toHaveBeenCalledTimes(1)
 
             unmount()
@@ -466,11 +466,12 @@ describe('DailyTrackingGrid', () => {
     })
 
     describe('Edge Cases', () => {
-        it('handles missing data gracefully', () => {
+        it('waits for the day\'s first answer behind the skeleton — no flash of zeros', () => {
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: { 'other-date': mockDailyMetrics }, // Data for different date
                 isLoading: false,
                 error: null,
+                isOffline: false,
                 fetchDailyData: mockFetchDailyData,
                 startPolling: mockStartPolling,
                 stopPolling: mockStopPolling,
@@ -479,7 +480,26 @@ describe('DailyTrackingGrid', () => {
 
             render(<DailyTrackingGrid date={testDate} />)
 
-            // Should render blocks even without specific date data
+            // The blocks mount once, with data: mounting them before the
+            // fetch began sent every block's own request twice
+            expect(screen.queryByTestId('nutrition-block')).not.toBeInTheDocument()
+            expect(screen.getAllByLabelText('Загрузка блока отслеживания')).toHaveLength(3)
+        })
+
+        it('offline without a cached day still renders the blocks', () => {
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                dailyData: {},
+                isLoading: false,
+                error: null,
+                isOffline: true,
+                fetchDailyData: mockFetchDailyData,
+                startPolling: mockStartPolling,
+                stopPolling: mockStopPolling,
+                clearError: mockClearError,
+            })
+
+            render(<DailyTrackingGrid date={testDate} />)
+
             expect(screen.getByTestId('nutrition-block')).toBeInTheDocument()
             expect(screen.getByTestId('water-block')).toBeInTheDocument()
             expect(screen.getByTestId('steps-block')).toBeInTheDocument()

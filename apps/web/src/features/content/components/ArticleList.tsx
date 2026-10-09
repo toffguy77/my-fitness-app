@@ -9,6 +9,8 @@ import type { Article } from '@/features/content/types'
 import { StatusBadge } from './StatusBadge'
 import { isApiError, serverMessageFrom } from '@/shared/errors/apiErrors'
 import { useConfirm } from '@/shared/components/ui'
+import { Button, buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
+import { FileText } from 'lucide-react'
 
 const STATUS_TABS = [
     { key: '', label: 'Все' },
@@ -122,23 +124,24 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
             {/* Create button */}
             <Link
                 href={`${basePath}/new`}
-                className="block w-full rounded-lg bg-gray-900 px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-gray-800"
+                className={cn(buttonBase, buttonVariants.primary, buttonSizes.lg, 'w-full')}
             >
                 Создать статью
             </Link>
 
             {/* Filter tabs */}
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+            <div className="-mx-screen-x flex gap-2 overflow-x-auto px-screen-x pb-1 scrollbar-hide">
                 {STATUS_TABS.map((tab) => (
                     <button
                         key={tab.key}
                         type="button"
                         onClick={() => setStatusFilter(tab.key)}
+                        aria-pressed={statusFilter === tab.key}
                         className={cn(
-                            'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                            'h-11 shrink-0 rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
                             statusFilter === tab.key
-                                ? 'bg-gray-900 text-white'
-                                : 'border border-gray-300 text-gray-600 hover:bg-gray-50',
+                                ? 'bg-fg text-fg-inverse'
+                                : 'border border-line bg-surface text-fg-muted hover:bg-subtle',
                         )}
                     >
                         {tab.label}
@@ -148,7 +151,7 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
 
             {/* Error banner */}
             {error && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div className="rounded-tile bg-danger-soft px-4 py-3 text-sm text-danger-fg" role="alert">
                     {error}
                 </div>
             )}
@@ -156,27 +159,30 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
             {/* Content */}
             {loading ? (
                 <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-primary" />
                 </div>
             ) : articles.length === 0 ? (
-                <div className="text-center py-12">
-                    <p className="text-sm text-gray-500">Статей пока нет</p>
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+                        <FileText className="h-6 w-6 text-fg-subtle" strokeWidth={1.8} />
+                    </span>
+                    <p className="type-title-3 text-fg">Статей пока нет</p>
                 </div>
             ) : (
                 <div className="grid gap-3">
                     {articles.map((article) => (
                         <div
                             key={article.id}
-                            className="rounded-xl border border-gray-200 bg-white p-4 space-y-2"
+                            className="space-y-2 rounded-card border border-line bg-surface p-4"
                         >
                             <div className="flex items-start justify-between gap-2">
-                                <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">
+                                <h3 className="line-clamp-2 type-title-3 text-fg">
                                     {article.title}
                                 </h3>
                                 <StatusBadge status={article.status} />
                             </div>
 
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-fg-muted">
                                 {article.author_name && (
                                     <>
                                         <span>{article.author_name}</span>
@@ -185,37 +191,39 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
                                 )}
                                 <span>{CATEGORY_LABELS[article.category]}</span>
                                 <span>&middot;</span>
-                                <span>
+                                <span className="tabular-nums">
                                     {formatDate(article.published_at ?? article.created_at)}
                                 </span>
                             </div>
 
                             {article.is_own && (
-                                <div className="flex items-center gap-2 pt-1">
+                                <div className="-mx-2 flex flex-wrap items-center gap-1 pt-1">
                                     <Link
                                         href={`${basePath}/${article.id}/edit`}
-                                        className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                                        className={cn(buttonBase, buttonVariants.ghost, buttonSizes.md, 'px-3')}
                                     >
                                         Редактировать
                                     </Link>
 
                                     {article.status === 'draft' && (
-                                        <button
+                                        <Button
                                             type="button"
+                                            variant="ghost"
                                             onClick={() => handlePublish(article.id)}
-                                            className="rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-200 transition-colors"
+                                            className="px-3"
                                         >
                                             Опубликовать
-                                        </button>
+                                        </Button>
                                     )}
 
-                                    <button
+                                    <Button
                                         type="button"
+                                        variant="ghost"
                                         onClick={() => handleDelete(article.id)}
-                                        className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
+                                        className="px-3 text-danger-fg hover:bg-danger-soft"
                                     >
                                         Удалить
-                                    </button>
+                                    </Button>
                                 </div>
                             )}
                         </div>

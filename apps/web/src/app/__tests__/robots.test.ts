@@ -1,19 +1,24 @@
-import robots from '../robots'
+import { robotsTxt } from '../robots.txt/robotsTxt'
+import { GET } from '../robots.txt/route'
 
-type Rule = { userAgent?: string | string[]; allow?: string | string[]; disallow?: string | string[]; crawlDelay?: number }
-
-function rulesOf(): Rule[] {
-    const { rules } = robots()
-    return Array.isArray(rules) ? rules : [rules]
+/** The file as lines of `Directive: value`, the way a crawler reads it. */
+function directives(): { name: string; value: string }[] {
+    return robotsTxt()
+        .split('\n')
+        .filter((line) => line.includes(':'))
+        .map((line) => {
+            const at = line.indexOf(':')
+            return { name: line.slice(0, at).trim().toLowerCase(), value: line.slice(at + 1).trim() }
+        })
 }
 
-function list(value: string | string[] | undefined): string[] {
-    return value === undefined ? [] : Array.isArray(value) ? value : [value]
+function valuesOf(name: string): string[] {
+    return directives().filter((d) => d.name === name).map((d) => d.value)
 }
 
 /** Whether any Disallow prefix covers the path — the way a crawler reads it. */
 function closed(path: string): boolean {
-    return rulesOf().some((rule) => list(rule.disallow).some((prefix) => path.startsWith(prefix)))
+    return valuesOf('disallow').some((prefix) => path.startsWith(prefix))
 }
 
 describe('robots.txt', () => {
@@ -21,27 +26,21 @@ describe('robots.txt', () => {
     // учитывал никогда. Мёртвые директивы вводят в заблуждение того, кто
     // читает файл.
     it('carries no directives search engines ignore', () => {
-        const result = robots()
-
-        expect(result.host).toBeUndefined()
-        for (const rule of rulesOf()) {
-            expect(rule.crawlDelay).toBeUndefined()
-        }
+        expect(valuesOf('host')).toEqual([])
+        expect(valuesOf('crawl-delay')).toEqual([])
     })
 
     // Робот с собственным блоком игнорирует общий: два блока — два списка
     // закрытых разделов, которые однажды разойдутся молча.
     it('has one block of rules, for every crawler', () => {
-        const rules = rulesOf()
-
-        expect(rules).toHaveLength(1)
-        expect(rules[0].userAgent).toBe('*')
+        expect(valuesOf('user-agent')).toEqual(['*'])
     })
 
     it('closes the parts of the app that need an account or a one-time link', () => {
         for (const path of [
             '/dashboard', '/food-tracker', '/notifications', '/profile', '/settings', '/chat',
-            '/curator', '/admin', '/onboarding', '/forgot-password', '/reset-password', '/api/',
+            '/curator', '/admin', '/design-system', '/onboarding', '/forgot-password',
+            '/reset-password', '/api/',
         ]) {
             expect(closed(path)).toBe(true)
         }
@@ -57,6 +56,31 @@ describe('robots.txt', () => {
     })
 
     it('names the sitemap by its absolute address', () => {
-        expect(robots().sitemap).toBe('https://burcev.team/sitemap.xml')
+        expect(valuesOf('sitemap')).toEqual(['https://burcev.team/sitemap.xml'])
+    })
+
+    // Адрес из рекламы или рассылки с метками — та же страница. Без
+    // Clean-param Яндекс обходит каждую такую копию отдельно.
+    it('tells Yandex which parameters change nothing on the page', () => {
+        const params = valuesOf('clean-param').flatMap((value) => value.split(' ')[0].split('&'))
+
+        for (const name of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'yclid']) {
+            expect(params).toContain(name)
+        }
+    })
+
+    // Строка без пути относится ко всему сайту — так и задумано; путь
+    // после пробела сузил бы её незаметно.
+    it('applies Clean-param to the whole site', () => {
+        for (const value of valuesOf('clean-param')) {
+            expect(value).not.toMatch(/\s/)
+        }
+    })
+
+    it('is served as plain text', async () => {
+        const res = GET()
+
+        expect(res.headers.get('Content-Type')).toBe('text/plain; charset=utf-8')
+        expect(await res.text()).toBe(robotsTxt())
     })
 })

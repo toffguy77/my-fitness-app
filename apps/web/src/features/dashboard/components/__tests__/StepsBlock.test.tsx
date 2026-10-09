@@ -50,7 +50,7 @@ describe('StepsBlock', () => {
             render(<StepsBlock date={testDate} />)
 
             expect(screen.getByText('Шаги')).toBeInTheDocument()
-            expect(screen.getByText('из 10.0k шагов')).toBeInTheDocument()
+            expect(screen.getByText('из 10 000 шагов')).toBeInTheDocument()
         })
 
         it('displays current steps and goal', () => {
@@ -67,9 +67,10 @@ describe('StepsBlock', () => {
 
             render(<StepsBlock date={testDate} />)
 
-            expect(screen.getByText('5.0k')).toBeInTheDocument()
-            expect(screen.getByText('из 10.0k шагов')).toBeInTheDocument()
-            expect(screen.getByText('50.0%')).toBeInTheDocument()
+            expect(screen.getByText('5 000')).toBeInTheDocument()
+            expect(screen.getByText('из 10 000 шагов')).toBeInTheDocument()
+            // Доля процентом на экран не выводится (остаток важнее доли).
+            expect(screen.queryByText('50%')).not.toBeInTheDocument()
         })
 
         it('formats steps under 1000 without k suffix', () => {
@@ -121,7 +122,7 @@ describe('StepsBlock', () => {
             render(<StepsBlock date={testDate} />)
 
             expect(screen.getByText('Цель достигнута!')).toBeInTheDocument()
-            expect(screen.getByText('150.0%')).toBeInTheDocument()
+            expect(screen.queryByText('150%')).not.toBeInTheDocument()
         })
 
         it('shows remaining steps when goal not reached', () => {
@@ -138,7 +139,7 @@ describe('StepsBlock', () => {
 
             render(<StepsBlock date={testDate} />)
 
-            expect(screen.getByText('Осталось 2,500 шагов до цели')).toBeInTheDocument()
+            expect(screen.getByText('Осталось 2 500 шагов до цели')).toBeInTheDocument()
         })
 
         it('shows empty state when no steps logged', () => {
@@ -162,7 +163,7 @@ describe('StepsBlock', () => {
         it('shows helper text', () => {
             render(<StepsBlock date={testDate} />)
 
-            expect(screen.getByText('Рекомендуется делать минимум 10,000 шагов в день')).toBeInTheDocument()
+            expect(screen.getByText('Рекомендуется делать минимум 10 000 шагов в день')).toBeInTheDocument()
         })
     })
 
@@ -181,11 +182,12 @@ describe('StepsBlock', () => {
 
             render(<StepsBlock date={testDate} />)
 
+            // Полоса считает шаги: 5000 из 10000.
             const progressBar = screen.getByRole('progressbar')
-            expect(progressBar).toHaveAttribute('aria-valuenow', '50')
+            expect(progressBar).toHaveAttribute('aria-valuenow', '5000')
             expect(progressBar).toHaveAttribute('aria-valuemin', '0')
-            expect(progressBar).toHaveAttribute('aria-valuemax', '100')
-            expect(progressBar).toHaveAttribute('aria-label', 'Прогресс шагов: 50.0%')
+            expect(progressBar).toHaveAttribute('aria-valuemax', '10000')
+            expect(progressBar).toHaveAttribute('aria-label', 'Прогресс шагов: 50%')
         })
 
         it('caps progress bar at 100% when steps exceed goal', () => {
@@ -203,7 +205,8 @@ describe('StepsBlock', () => {
             render(<StepsBlock date={testDate} />)
 
             const progressBar = screen.getByRole('progressbar')
-            expect(progressBar).toHaveAttribute('aria-valuenow', '100')
+            expect(progressBar).toHaveAttribute('aria-valuenow', '10000')
+            expect(progressBar).toHaveAttribute('aria-valuemax', '10000')
         })
     })
 

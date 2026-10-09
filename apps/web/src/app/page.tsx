@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { Logo } from '@/shared/components/ui'
+import { buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
+import { cn } from '@/shared/utils/cn'
 import { JsonLd } from '@/shared/components/JsonLd'
 import { SellerLine } from '@/shared/components/SellerLine'
 import { AuthRedirect } from './_components/AuthRedirect'
@@ -9,6 +12,7 @@ import { SupportWidget } from '@/features/support/components/SupportWidget'
 import { enabledFeatures } from '@/shared/api/features'
 import { TrackView, TrackScrollDepth, EVENTS } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
+import { organizationJsonLd } from './organizationJsonLd'
 
 export const metadata: Metadata = {
     title: t('landing.meta.title'),
@@ -21,15 +25,6 @@ export const metadata: Metadata = {
     alternates: {
         canonical: 'https://burcev.team',
     },
-}
-
-const organizationJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'BURCEV',
-    url: 'https://burcev.team',
-    logo: 'https://burcev.team/logo.svg',
-    description: t('landing.meta.organizationDescription'),
 }
 
 const webAppJsonLd = {
@@ -64,32 +59,33 @@ export default async function Home({
 
     return (
         <>
-            <JsonLd data={organizationJsonLd} />
+            <JsonLd data={organizationJsonLd()} />
             <JsonLd data={webAppJsonLd} />
             <AuthRedirect />
             <TrackView event={EVENTS.landingViewed} />
             <TrackScrollDepth />
-            <div className="min-h-screen bg-white">
+            <div className="min-h-screen bg-canvas">
                 {/* Шапка: только логотип и два действия — вход и регистрация,
                     оба без прокрутки. Герой (h1, основное действие) — уже
                     внутри <main>, не здесь: иначе обход по ориентирам минует
                     и главный заголовок, и главную кнопку. */}
-                <header className="relative bg-gradient-to-b from-blue-50 to-white">
+                <header className="relative">
                     <nav
                         aria-label={t('landing.nav.ariaLabel')}
-                        className="relative mx-auto flex max-w-5xl items-center justify-between px-6 py-8"
+                        className="relative mx-auto flex max-w-5xl items-center justify-between gap-4 px-screen-x py-6 sm:py-8"
                     >
-                        <Logo width={140} height={42} className="text-gray-900" />
-                        <div className="flex items-center gap-6">
+                        <Logo width={132} height={40} className="text-fg" />
+                        <div className="flex items-center gap-2 sm:gap-4">
                             <Link
                                 href="/auth"
-                                className="text-sm font-medium text-gray-700 hover:text-gray-900"
+                                className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-fg hover:text-fg-muted"
                             >
                                 {t('landing.nav.signIn')}
                             </Link>
+                            {/* Контуром: терракота на этом экране одна — у расчёта в герое. */}
                             <Link
                                 href="/auth?mode=register"
-                                className="inline-flex h-10 items-center justify-center rounded-lg bg-blue-600 px-5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                                className={cn(buttonBase, buttonVariants.secondary, buttonSizes.md)}
                             >
                                 {t('landing.nav.register')}
                             </Link>
@@ -99,25 +95,24 @@ export default async function Home({
 
                 <main>
                     {/* Герой: расчёт остаётся основным действием — он не требует аккаунта. */}
-                    <div className="relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-emerald-50" />
-                        <div className="relative mx-auto max-w-5xl px-6 pt-8 pb-24 text-center">
-                            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
+                    <div className="relative">
+                        <div className="relative mx-auto max-w-4xl px-screen-x pt-10 pb-20 text-center sm:pt-16 sm:pb-28">
+                            <h1 className="font-serif text-4xl font-medium leading-[1.12] tracking-tight text-fg sm:text-5xl md:text-6xl">
                                 {t('landing.hero.title')}
                             </h1>
-                            <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600 sm:text-xl">
+                            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-fg-muted sm:text-xl">
                                 {t('landing.hero.subtitle')}
                             </p>
-                            <div className="mt-10 flex flex-col items-center gap-4">
+                            <div className="mt-10 flex flex-col items-center gap-3">
                                 <Link
                                     href="/onboarding"
-                                    className="inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                                    className={cn(buttonBase, buttonVariants.primary, buttonSizes.lg, 'px-8 text-lg')}
                                 >
                                     {t('landing.hero.cta')}
                                 </Link>
                                 <Link
                                     href="/auth"
-                                    className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                                    className="inline-flex min-h-11 items-center text-sm font-medium text-fg-muted hover:text-fg"
                                 >
                                     {t('landing.hero.haveAccount')}
                                 </Link>
@@ -129,11 +124,11 @@ export default async function Home({
                         (три, когда food_recognition выключена — см. ниже).
                         photoFood рендерится только когда API подтвердил
                         способность. */}
-                    <section className="mx-auto max-w-5xl px-6 py-20">
-                        <h2 className="text-center text-3xl font-bold text-gray-900">
+                    <section className="mx-auto max-w-5xl px-screen-x py-16 sm:py-20">
+                        <h2 className="text-center font-serif text-3xl font-medium tracking-tight text-fg sm:text-4xl">
                             {t('landing.claims.heading')}
                         </h2>
-                        <div className="mt-12 grid gap-8 sm:grid-cols-2">
+                        <div className="mt-10 grid gap-4 sm:mt-12 sm:grid-cols-2">
                             <ClaimCard
                                 title={t('landing.claims.instantNorm.title')}
                                 description={t('landing.claims.instantNorm.description')}
@@ -155,27 +150,32 @@ export default async function Home({
                         </div>
                     </section>
 
-                    {/* Куратор — апселл вторым экраном, без цены и без обещания сроков. */}
-                    <section className="bg-gray-50 px-6 py-20">
-                        <div className="mx-auto max-w-3xl text-center">
-                            <h2 className="text-3xl font-bold text-gray-900">
-                                {t('landing.curator.heading')}
-                            </h2>
-                            <p className="mt-4 text-lg text-gray-600">
-                                {t('landing.curator.description')}
-                            </p>
-                            {/* Граница названа прямо, цена — нет: она живёт на
-                                одной странице, и повторённое число расходится с
-                                ней, после чего непонятно, какое обязательство. */}
-                            <p className="mt-4 text-base font-medium text-gray-900">
-                                {t('landing.curator.boundary')}
-                            </p>
-                            <Link
-                                href="/pricing"
-                                className="mt-3 inline-block text-base font-semibold text-blue-600 underline hover:text-blue-700"
-                            >
-                                {t('landing.curator.pricingLink')}
-                            </Link>
+                    {/* Куратор — апселл вторым экраном, без цены и без обещания сроков.
+                        Голос продукта — тёмная поверхность `coach` и засечки: так
+                        куратор выглядит и в приложении. */}
+                    <section className="px-screen-x py-4 sm:py-8">
+                        <div className="mx-auto max-w-5xl rounded-sheet bg-coach px-6 py-14 text-center text-on-coach sm:px-12 sm:py-20">
+                            <div className="mx-auto max-w-3xl">
+                                <h2 className="font-serif text-3xl font-medium tracking-tight sm:text-4xl">
+                                    {t('landing.curator.heading')}
+                                </h2>
+                                <p className="mt-5 text-lg leading-relaxed text-on-coach">
+                                    {t('landing.curator.description')}
+                                </p>
+                                {/* Граница названа прямо, цена — нет: она живёт на
+                                    одной странице, и повторённое число расходится с
+                                    ней, после чего непонятно, какое обязательство. */}
+                                <p className="mt-5 text-base text-on-coach-muted">
+                                    {t('landing.curator.boundary')}
+                                </p>
+                                <Link
+                                    href="/pricing"
+                                    className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-base font-semibold text-on-coach underline underline-offset-4"
+                                >
+                                    {t('landing.curator.pricingLink')}
+                                    <ArrowRight className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
+                                </Link>
+                            </div>
                         </div>
                     </section>
 
@@ -183,16 +183,16 @@ export default async function Home({
                     {socialProof.length > 0 && (
                         <section
                             data-testid="landing-social-proof"
-                            className="mx-auto max-w-5xl px-6 py-20"
+                            className="mx-auto max-w-5xl px-screen-x py-20"
                         >
-                            <div className="grid gap-8 sm:grid-cols-3">
+                            <div className="grid gap-4 sm:grid-cols-3">
                                 {socialProof.map((item) => (
                                     <blockquote
                                         key={item.id}
-                                        className="rounded-xl border border-gray-200 p-6"
+                                        className="rounded-card border border-line bg-surface p-6"
                                     >
-                                        <p className="text-gray-700">{item.quote}</p>
-                                        <footer className="mt-4 text-sm text-gray-500">
+                                        <p className="type-quote text-fg">{item.quote}</p>
+                                        <footer className="mt-4 text-sm text-fg-muted">
                                             {item.name}
                                         </footer>
                                     </blockquote>
@@ -202,24 +202,24 @@ export default async function Home({
                     )}
 
                     {/* Призыв перед подвалом: вход и регистрация рядом, без действия расчёта. */}
-                    <section className="px-6 py-20">
+                    <section className="px-screen-x py-16 sm:py-24">
                         <div
                             data-testid="landing-cta"
                             className="mx-auto max-w-2xl text-center"
                         >
-                            <h2 className="text-3xl font-bold text-gray-900">
+                            <h2 className="font-serif text-3xl font-medium tracking-tight text-fg sm:text-4xl">
                                 {t('landing.cta.heading')}
                             </h2>
-                            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                            <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
                                 <Link
                                     href="/auth"
-                                    className="inline-flex h-12 items-center justify-center rounded-lg border border-gray-300 px-8 text-lg font-medium text-gray-900 transition-colors hover:bg-gray-50"
+                                    className={cn(buttonBase, buttonVariants.secondary, buttonSizes.lg, 'px-8')}
                                 >
                                     {t('landing.cta.signIn')}
                                 </Link>
                                 <Link
                                     href="/auth?mode=register"
-                                    className="inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                                    className={cn(buttonBase, buttonVariants.primary, buttonSizes.lg, 'px-8')}
                                 >
                                     {t('landing.cta.register')}
                                 </Link>
@@ -228,32 +228,32 @@ export default async function Home({
                     </section>
                 </main>
 
-                <footer className="border-t border-gray-200 px-6 py-8">
+                <footer className="border-t border-line px-screen-x py-8">
                     <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 sm:flex-row sm:justify-between">
-                        <Logo width={120} height={36} className="text-gray-400" />
+                        <Logo width={120} height={36} className="text-fg-subtle" />
                         <nav
                             aria-label={t('landing.footer.ariaLabel')}
-                            className="flex gap-6 text-sm text-gray-500"
+                            className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-sm text-fg-muted"
                         >
-                            <SupportLink className="hover:text-gray-700" />
-                            <Link href="/kalkulyator-kbzhu" className="hover:text-gray-700">
+                            <SupportLink className="inline-flex min-h-11 items-center hover:text-fg" />
+                            <Link href="/kalkulyator-kbzhu" className="inline-flex min-h-11 items-center hover:text-fg">
                                 {t('landing.footer.calculator')}
                             </Link>
-                            <Link href="/content" className="hover:text-gray-700">
+                            <Link href="/content" className="inline-flex min-h-11 items-center hover:text-fg">
                                 {t('landing.footer.articles')}
                             </Link>
-                            <Link href="/legal/terms" className="hover:text-gray-700">
+                            <Link href="/legal/terms" className="inline-flex min-h-11 items-center hover:text-fg">
                                 {t('landing.footer.terms')}
                             </Link>
-                            <Link href="/legal/privacy" className="hover:text-gray-700">
+                            <Link href="/legal/privacy" className="inline-flex min-h-11 items-center hover:text-fg">
                                 {t('landing.footer.privacy')}
                             </Link>
                         </nav>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-fg-subtle tabular-nums">
                             {new Date().getFullYear()} BURCEV
                         </p>
                     </div>
-                    <SellerLine className="mx-auto mt-4 max-w-5xl text-center text-xs text-gray-400 sm:text-left" />
+                    <SellerLine className="mx-auto mt-4 max-w-5xl text-center text-xs text-fg-subtle sm:text-left" />
                 </footer>
             </div>
 
@@ -267,9 +267,9 @@ export default async function Home({
 
 function ClaimCard({ title, description }: { title: string; description: string }) {
     return (
-        <div className="rounded-xl border border-gray-200 p-6 transition-shadow hover:shadow-md">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            <p className="mt-2 text-gray-600">{description}</p>
+        <div className="rounded-card border border-line bg-surface p-6">
+            <h3 className="type-title-3 text-fg">{title}</h3>
+            <p className="mt-2 type-body text-fg-muted">{description}</p>
         </div>
     )
 }

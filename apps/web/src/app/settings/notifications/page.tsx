@@ -10,7 +10,7 @@ export default function SettingsNotificationsPage() {
     return (
         <SettingsPageLayout title={t('settings.titles.notifications')}>
             {() => (
-                <div className="space-y-6">
+                <div className="flex flex-col gap-8">
                     <NotificationDeliverySettings />
                     <SettingsTelegram />
                     <SettingsNotifications />

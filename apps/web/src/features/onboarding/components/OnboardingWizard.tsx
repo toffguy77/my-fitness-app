@@ -14,6 +14,7 @@ import { completeOnboarding } from '../api/onboarding'
 import { useOnboardingStore } from '../store/onboardingStore'
 import { StepIndicator } from './StepIndicator'
 import { cn } from '@/shared/utils/cn'
+import { Button } from '@/shared/components/ui/Button'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
 
@@ -24,6 +25,20 @@ import { messageForOr } from '@/shared/errors/apiErrors'
 // Read at render, not at import: a module-level constant would fix the
 // language to whatever it was when the bundle first evaluated.
 const stepTitles = () => [t('onboarding.stepSettings'), t('onboarding.stepBodyGoals')]
+
+// Поле ввода по системе: 48 px, текст 16 px — iOS не масштабирует страницу.
+const FIELD =
+    'h-12 w-full rounded-field border border-line bg-surface px-4 text-base text-fg tabular-nums ' +
+    'placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30'
+
+// Выбранный вариант — инверсия чернилами, не терракота: терракота у кнопки «Далее».
+function chip(selected: boolean) {
+    return cn(
+        'flex h-12 flex-1 cursor-pointer items-center justify-center rounded-full border px-3 text-sm font-semibold transition-colors',
+        'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus has-[:focus-visible]:ring-offset-2',
+        selected ? 'border-fg bg-fg text-fg-inverse' : 'border-line bg-surface text-fg hover:bg-subtle',
+    )
+}
 
 const activityLevels = ['sedentary', 'light', 'moderate', 'active'] as const
 
@@ -63,7 +78,7 @@ export function OnboardingWizard() {
         setAppleHealth,
     } = useOnboardingStore()
 
-    // Signed-out visitors never reach this page: middleware.ts redirects
+    // Signed-out visitors never reach this page: proxy.ts redirects
     // them before it renders.
 
     // Pre-populate store from existing profile on mount
@@ -173,17 +188,17 @@ export function OnboardingWizard() {
     const isLastStep = currentStep === totalSteps - 1
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="mx-auto max-w-md px-4 pb-8 pt-12">
+        <div className="min-h-screen bg-canvas">
+            <div className="mx-auto max-w-md px-screen-x pb-10 pt-12">
                 {/* Step indicator */}
                 <div className="mb-8">
                     <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
                 </div>
 
                 {/* Step title */}
-                <h2 className="mb-6 text-center text-xl font-bold text-gray-900">
+                <h1 className="mb-8 text-center type-title-1 text-fg">
                     {stepTitles()[currentStep]}
-                </h2>
+                </h1>
 
                 {/* Step content */}
                 <div className="mb-8">
@@ -208,7 +223,7 @@ export function OnboardingWizard() {
                         <div className="flex flex-col gap-6">
                             {/* Birth date */}
                             <div>
-                                <label htmlFor="birth-date" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <label htmlFor="birth-date" className="mb-1.5 block text-sm font-medium text-fg-muted">
                                     {t('onboarding.birthDate')}
                                 </label>
                                 <input
@@ -216,23 +231,18 @@ export function OnboardingWizard() {
                                     type="date"
                                     value={birthDate}
                                     onChange={(e) => setBirthDate(e.target.value)}
-                                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className={FIELD}
                                 />
                             </div>
 
                             {/* Sex */}
                             <fieldset>
-                                <legend className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <legend className="mb-1.5 block text-sm font-medium text-fg-muted">
                                     {t('onboarding.sex')}
                                 </legend>
-                                <div className="flex gap-3">
+                                <div className="flex gap-2">
                                     <label
-                                        className={cn(
-                                            'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-sm font-medium transition-colors',
-                                            biologicalSex === 'male'
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                                        )}
+className={chip(biologicalSex === 'male')}
                                     >
                                         <input
                                             type="radio"
@@ -245,12 +255,7 @@ export function OnboardingWizard() {
                                         {t('onboarding.male')}
                                     </label>
                                     <label
-                                        className={cn(
-                                            'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-sm font-medium transition-colors',
-                                            biologicalSex === 'female'
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                                        )}
+className={chip(biologicalSex === 'female')}
                                     >
                                         <input
                                             type="radio"
@@ -267,7 +272,7 @@ export function OnboardingWizard() {
 
                             {/* Current weight */}
                             <div>
-                                <label htmlFor="current-weight" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <label htmlFor="current-weight" className="mb-1.5 block text-sm font-medium text-fg-muted">
                                     {t('onboarding.currentWeight', {
                                         unit: units === 'metric' ? t('onboarding.unitKg') : t('onboarding.unitLbs'),
                                     })}
@@ -281,13 +286,13 @@ export function OnboardingWizard() {
                                     value={currentWeight}
                                     onChange={(e) => setCurrentWeight(e.target.value)}
                                     placeholder={units === 'metric' ? '70' : '154'}
-                                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className={FIELD}
                                 />
                             </div>
 
                             {/* Height */}
                             <div>
-                                <label htmlFor="height-input" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <label htmlFor="height-input" className="mb-1.5 block text-sm font-medium text-fg-muted">
                                     {t('onboarding.height', {
                                         unit: units === 'metric' ? t('onboarding.unitCm') : t('onboarding.unitIn'),
                                     })}
@@ -301,20 +306,20 @@ export function OnboardingWizard() {
                                     value={height}
                                     onChange={(e) => setHeight(e.target.value)}
                                     placeholder={units === 'metric' ? '175' : '69'}
-                                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className={FIELD}
                                 />
                             </div>
 
                             {/* Activity level */}
                             <div>
-                                <label htmlFor="activity-level" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <label htmlFor="activity-level" className="mb-1.5 block text-sm font-medium text-fg-muted">
                                     {t('onboarding.activityLevel')}
                                 </label>
                                 <select
                                     id="activity-level"
                                     value={activityLevel}
                                     onChange={(e) => setActivityLevel(e.target.value as typeof activityLevel)}
-                                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    className={FIELD}
                                 >
                                     {activityLevels.map((level) => (
                                         <option key={level} value={level}>
@@ -326,19 +331,14 @@ export function OnboardingWizard() {
 
                             {/* Goal */}
                             <fieldset>
-                                <legend className="mb-1.5 block text-sm font-medium text-gray-700">
+                                <legend className="mb-1.5 block text-sm font-medium text-fg-muted">
                                     {t('onboarding.goalLabel')}
                                 </legend>
-                                <div className="flex gap-3">
+                                <div className="flex gap-2">
                                     {goals.map((goal) => (
                                         <label
                                             key={goal}
-                                            className={cn(
-                                                'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium transition-colors',
-                                                fitnessGoal === goal
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                                            )}
+className={chip(fitnessGoal === goal)}
                                         >
                                             <input
                                                 type="radio"
@@ -354,7 +354,7 @@ export function OnboardingWizard() {
                                 </div>
                             </fieldset>
 
-                            <p className="text-center text-xs text-gray-400">
+                            <p className="text-center type-caption text-fg-subtle">
                                 {t('onboarding.allOptional')}
                             </p>
                         </div>
@@ -363,55 +363,31 @@ export function OnboardingWizard() {
                 </div>
 
                 {/* Bottom buttons */}
-                <div className="flex flex-col gap-3">
-                    <button
+                <div className="flex flex-col gap-2">
+                    <Button
                         type="button"
                         disabled={saving}
+                        isLoading={saving}
                         onClick={handleNext}
-                        className={cn(
-                            'w-full rounded-xl bg-blue-600 py-3 font-medium text-white transition-colors',
-                            'hover:bg-blue-700',
-                            'disabled:pointer-events-none disabled:opacity-50'
-                        )}
+                        size="lg"
+                        block
                     >
-                        {saving ? (
-                            <span className="inline-flex items-center justify-center gap-2">
-                                <svg
-                                    className="h-4 w-4 animate-spin"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden="true"
-                                >
-                                    <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                    />
-                                    <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                                    />
-                                </svg>
-                                {t('onboarding.saving')}
-                            </span>
-                        ) : (
-                            isLastStep ? t('onboarding.finish') : t('onboarding.next')
-                        )}
-                    </button>
+                        {saving
+                            ? t('onboarding.saving')
+                            : isLastStep ? t('onboarding.finish') : t('onboarding.next')}
+                    </Button>
 
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
+                        size="lg"
+                        block
                         disabled={saving}
                         onClick={handleSkip}
-                        className="py-2 text-center text-sm text-gray-500 transition-colors hover:text-gray-700 disabled:pointer-events-none disabled:opacity-50"
+                        className="font-medium text-fg-muted"
                     >
                         {t('onboarding.skip')}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

@@ -43,6 +43,14 @@ describe('The providers API', () => {
         expect(client.post).toHaveBeenCalledWith('/api/v1/auth/refresh', {})
     })
 
+    // 204: the callback's cookie never arrived. The completion screen has to
+    // land on its failure state, not store an empty session.
+    it('fails when there was no cookie to complete from', async () => {
+        ;(client.post as jest.Mock).mockResolvedValue(undefined)
+
+        await expect(providersApi.complete()).rejects.toThrow('No session to complete')
+    })
+
     it('sends the password that claims an account', async () => {
         ;(client.post as jest.Mock).mockResolvedValue({ token: 'access' })
 

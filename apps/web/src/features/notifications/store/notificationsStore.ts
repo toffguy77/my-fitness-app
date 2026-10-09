@@ -174,6 +174,8 @@ interface NotificationsState {
     isOffline: boolean;
     retryCount: number;
     isLoadingFromCache: boolean;
+    /** Lists somebody has opened: polling refreshes only these. */
+    listsLoaded: Record<NotificationCategory, boolean>;
 
     // Actions
     fetchNotifications: (category: NotificationCategory, offset?: number) => Promise<void>;
@@ -181,7 +183,7 @@ interface NotificationsState {
     markAllAsRead: (category: NotificationCategory) => Promise<void>;
     fetchUnreadCounts: () => Promise<void>;
     pollForUpdates: () => Promise<void>;
-    startPolling: (interval?: number) => void;
+    startPolling: (interval?: number, options?: { immediate?: boolean }) => void;
     stopPolling: () => void;
     clearError: () => void;
     reset: () => void;
@@ -213,7 +215,27 @@ const initialState = {
     isOffline: false,
     retryCount: 0,
     isLoadingFromCache: false,
+    listsLoaded: {
+        main: false,
+        content: false,
+    },
 };
+
+/**
+ * Pages of the lists being fetched, as `category:offset`. The two lists of the
+ * notifications page load side by side; the single `isLoading` flag used to
+ * turn the second one away, and the page waited for a poll to fill it.
+ */
+const listsInFlight = new Set<string>();
+
+/**
+ * When the counters were last asked for. A list that has just loaded asks for
+ * them only if nobody has in the last few seconds: the notifications page loads
+ * two lists while the shell's first poll is asking too, and the same counters
+ * went out three times.
+ */
+let countsRequestedAt = 0;
+const COUNTS_FRESH_MS = 5000;
 
 /**
  * Notifications store
@@ -227,17 +249,21 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     fetchNotifications: async (category: NotificationCategory, offset = 0) => {
         const state = get();
 
-        // Don't fetch if already loading or no more data
-        if (state.isLoading || (!state.hasMore[category] && offset > 0)) {
+        // Don't fetch the same page twice at once, or past the end
+        const key = `${category}:${offset}`;
+        if (listsInFlight.has(key) || (!state.hasMore[category] && offset > 0)) {
             return;
         }
 
-        // If offline, load from cache
+        // If offline, load from cache — and remember the list is open, so it
+        // is refreshed when the connection comes back
         if (state.isOffline || !isOnline()) {
             get().loadFromCache();
+            set((current) => ({ listsLoaded: { ...current.listsLoaded, [category]: true } }));
             return;
         }
 
+        listsInFlight.add(key);
         set({ isLoading: true, error: null });
 
         try {
@@ -251,6 +277,8 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                 1000
             );
 
+            // This page is in; the spinner stays only while another is loading
+            listsInFlight.delete(key);
             set((state) => {
                 const existingNotifications = offset === 0 ? [] : state.notifications[category];
                 const newNotifications = response.notifications;
@@ -276,17 +304,24 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                         ...state.hasMore,
                         [category]: response.hasMore,
                     },
-                    isLoading: false,
+                    listsLoaded: {
+                        ...state.listsLoaded,
+                        [category]: true,
+                    },
+                    isLoading: listsInFlight.size > 0,
                     retryCount: 0,
                 };
             });
 
-            // Fetch unread counts after loading notifications
-            await get().pollForUpdates();
+            // The counters, not both lists again: this list was just loaded.
+            if (Date.now() - countsRequestedAt > COUNTS_FRESH_MS) {
+                await get().fetchUnreadCounts();
+            }
         } catch (error) {
             const mappedError = mapError(error);
+            listsInFlight.delete(key);
             set({
-                isLoading: false,
+                isLoading: listsInFlight.size > 0,
                 error: mappedError,
                 isOffline: mappedError.code === 'NETWORK_ERROR',
                 retryCount: state.retryCount + 1,
@@ -296,6 +331,8 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
             if (mappedError.code === 'NETWORK_ERROR') {
                 get().loadFromCache();
             }
+        } finally {
+            listsInFlight.delete(key);
         }
     },
 
@@ -437,14 +474,13 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     fetchUnreadCounts: async () => {
         try {
             const url = getApiUrl('/notifications/unread-counts');
+            countsRequestedAt = Date.now();
             const counts = await apiClient.get<UnreadCountsResponse>(url);
+            const next = { main: counts.main, content: counts.content };
 
-            set({
-                unreadCounts: {
-                    main: counts.main,
-                    content: counts.content,
-                },
-            });
+            // Cached like the lists: offline, the badge shows the last answer
+            saveCachedUnreadCounts(next);
+            set({ unreadCounts: next });
         } catch (error) {
             // Non-critical operation, just log the error
             console.error('Failed to fetch unread counts:', error);
@@ -455,58 +491,51 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
      * Poll for new notifications and update unread counts
      */
     pollForUpdates: async () => {
+        // The shell polls on every signed-in page, for the badge on the bell.
+        // It used to download both lists — a hundred notifications every
+        // thirty seconds — to show one number. Now it asks for the counters,
+        // and refreshes a list only when the counters moved and somebody has
+        // that list open.
         try {
-            // Fetch latest notifications for both categories
-            const mainUrl = getApiUrl('/notifications?category=main&limit=50&offset=0');
-            const contentUrl = getApiUrl('/notifications?category=content&limit=50&offset=0');
-
-            const [mainResponse, contentResponse] = await Promise.all([
-                apiClient.get<GetNotificationsResponse>(mainUrl),
-                apiClient.get<GetNotificationsResponse>(contentUrl),
-            ]);
-
-            // Fetch unread counts
+            const previous = get().unreadCounts;
             const countsUrl = getApiUrl('/notifications/unread-counts');
+            countsRequestedAt = Date.now();
             const counts = await apiClient.get<UnreadCountsResponse>(countsUrl);
+            const next = { main: counts?.main || 0, content: counts?.content || 0 };
 
-            // Only update if we got valid responses
-            if (!mainResponse && !contentResponse) {
+            saveCachedUnreadCounts(next);
+            set({ unreadCounts: next });
+
+            const { listsLoaded } = get();
+            const stale = (['main', 'content'] as const).filter(
+                (category) => listsLoaded[category] && next[category] !== previous[category]
+            );
+            if (stale.length === 0) {
                 return;
             }
 
+            const responses = await Promise.all(
+                stale.map((category) =>
+                    apiClient.get<GetNotificationsResponse>(
+                        getApiUrl(`/notifications?category=${category}&limit=50&offset=0`)
+                    )
+                )
+            );
+
             set((state) => {
-                // Replace with server data (offset=0 fetch = authoritative)
-                // This ensures deleted notifications are removed
-                const dedupeAndSort = (notifications: Notification[]): Notification[] => {
+                const notifications = { ...state.notifications };
+                stale.forEach((category, index) => {
+                    const response = responses[index];
+                    if (!response?.notifications) return;
+                    // offset=0 is authoritative: deleted notifications go away.
                     const map = new Map<string, Notification>();
-                    notifications.forEach((n) => map.set(n.id, n));
-                    return Array.from(map.values()).sort(
+                    response.notifications.forEach((n) => map.set(n.id, n));
+                    notifications[category] = Array.from(map.values()).sort(
                         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                     );
-                };
-
-                const mainNotifications = mainResponse?.notifications
-                    ? dedupeAndSort(mainResponse.notifications)
-                    : state.notifications.main;
-                const contentNotifications = contentResponse?.notifications
-                    ? dedupeAndSort(contentResponse.notifications)
-                    : state.notifications.content;
-
-                // Save to cache
-                saveCachedNotifications('main', mainNotifications);
-                saveCachedNotifications('content', contentNotifications);
-                saveCachedUnreadCounts({ main: counts?.main || 0, content: counts?.content || 0 });
-
-                return {
-                    notifications: {
-                        main: mainNotifications,
-                        content: contentNotifications,
-                    },
-                    unreadCounts: {
-                        main: counts?.main || 0,
-                        content: counts?.content || 0,
-                    },
-                };
+                    saveCachedNotifications(category, notifications[category]);
+                });
+                return { notifications };
             });
         } catch (error) {
             // Silently fail polling to avoid disrupting user experience
@@ -517,7 +546,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     /**
      * Start polling for updates at specified interval
      */
-    startPolling: (interval = 30000) => {
+    startPolling: (interval = 30000, { immediate = true } = {}) => {
         const state = get();
 
         // Don't start if already polling
@@ -532,8 +561,10 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
         set({ pollingIntervalId });
 
-        // Initial poll
-        get().pollForUpdates();
+        // Initial poll — unless the caller has just fetched the same data
+        if (immediate) {
+            get().pollForUpdates();
+        }
     },
 
     /**
@@ -566,6 +597,8 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
             clearInterval(state.pollingIntervalId);
         }
 
+        listsInFlight.clear();
+        countsRequestedAt = 0;
         set(initialState);
     },
 
@@ -594,6 +627,13 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
     setOfflineStatus: (isOffline: boolean) => {
         const wasOffline = get().isOffline;
 
+        // Only a change of state does anything. The notifications page reports
+        // the browser's status on mount, and "online, as before" used to
+        // reload both lists and every counter a second time.
+        if (isOffline === wasOffline) {
+            return;
+        }
+
         set({ isOffline });
 
         // Show toast when going offline
@@ -616,9 +656,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
             // Stop polling when offline
             get().stopPolling();
         } else {
-            // Resume polling when back online
-            get().startPolling();
-            // Sync data when back online
+            // The resync refreshes the open lists and resumes polling
             get().syncWhenOnline();
         }
     },
@@ -661,14 +699,13 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
         set({ isOffline: false, error: null });
 
         try {
-            // Fetch fresh data for both categories
-            await Promise.all([
-                get().fetchNotifications('main', 0),
-                get().fetchNotifications('content', 0),
-            ]);
+            // Refresh the lists somebody has open; each brings the counters
+            const { listsLoaded } = get();
+            const open = (['main', 'content'] as const).filter((category) => listsLoaded[category]);
+            await Promise.all(open.map((category) => get().fetchNotifications(category, 0)));
 
-            // Start polling again
-            get().startPolling();
+            // Resume polling; with no list open, its first poll fetches the counters
+            get().startPolling(undefined, { immediate: open.length === 0 });
         } catch (error) {
             console.error('Sync failed:', error);
         }

@@ -8,12 +8,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Logo } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useFormValidation } from '@/features/auth/hooks/useFormValidation';
 import { AuthForm } from './AuthForm';
 import { ConsentSection } from './ConsentSection';
 import { AuthFooter } from './AuthFooter';
+import { AuthPanel, AuthShell } from './AuthShell';
 import { ProviderButtons } from './ProviderButtons';
 import { AccountRecoveryScreen } from './AccountRecoveryScreen';
 import { MagicLinkForm } from './MagicLinkForm';
@@ -43,6 +44,10 @@ export interface AuthScreenProps {
      */
     initialMode?: AuthMode;
 }
+
+/** Второстепенное действие текстом: 44 px по высоте, без подложки. */
+const TEXT_ACTION =
+    'flex min-h-11 w-full items-center justify-center rounded-full text-sm font-medium text-fg-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus';
 
 export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
     // Что открыто первым, решает режим: вход — пароль, регистрация — ссылка.
@@ -122,158 +127,155 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50">
-            {/* Header */}
-            <header className="bg-white border-b border-gray-200 py-6">
-                <div className="max-w-md mx-auto px-6 text-center">
-                    <div className="flex justify-center mb-2">
-                        <Logo width={160} height={48} className="text-gray-900" />
-                    </div>
-                    <p className="mt-2 text-sm text-gray-600">
-                        {t('auth.tagline')}
-                    </p>
+        <AuthShell>
+            <p className="-mt-4 mb-8 text-center type-title-3 text-fg-muted">
+                {t('auth.tagline')}
+            </p>
+
+            <AuthPanel>
+                {/*
+                    MagicLinkForm stays mounted even while the password
+                    form is showing — `hidden`, not a conditional
+                    unmount. It holds its own email/consents/"sent"
+                    state; unmounting it on every switch threw that
+                    away, so coming back from the password form always
+                    showed a blank form, and coming back after a
+                    successful send invited a second one.
+                */}
+                <div hidden={entryMethod !== 'link'}>
+                    <MagicLinkForm
+                        intent={mode}
+                        onSwitchToPassword={() => setEntryMethod('password')}
+                    />
                 </div>
-            </header>
+                {entryMethod === 'password' && (
+                    <>
+                        {/* Тот же заголовок, что у формы ссылки: экран называет,
+                            зачем он открыт, каким бы способом ни входили. */}
+                        <h2 className="mb-6 type-title-2 text-fg">
+                            {t(`auth.magicLink.intent.${mode}.heading`)}
+                        </h2>
 
-            {/* Main Form */}
-            <main className="flex-1 py-8">
-                <div className="max-w-md mx-auto px-6">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        {/*
-                            MagicLinkForm stays mounted even while the password
-                            form is showing — `hidden`, not a conditional
-                            unmount. It holds its own email/consents/"sent"
-                            state; unmounting it on every switch threw that
-                            away, so coming back from the password form always
-                            showed a blank form, and coming back after a
-                            successful send invited a second one.
-                        */}
-                        <div hidden={entryMethod !== 'link'}>
-                            <MagicLinkForm
-                                intent={mode}
-                                onSwitchToPassword={() => setEntryMethod('password')}
-                            />
-                        </div>
-                        {entryMethod === 'password' && (
-                            <>
-                                <AuthForm
-                                    formData={formData}
-                                    setFormData={setFormData}
-                                    errors={errors}
-                                    onEmailBlur={handleEmailBlur}
-                                    onPasswordBlur={handlePasswordBlur}
-                                    mode={mode}
-                                />
+                        <AuthForm
+                            formData={formData}
+                            setFormData={setFormData}
+                            errors={errors}
+                            onEmailBlur={handleEmailBlur}
+                            onPasswordBlur={handlePasswordBlur}
+                            mode={mode}
+                        />
 
-                                {/* Remember Me (Login only) */}
-                                {mode === 'login' && (
-                                    <div className="mt-4">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.rememberMe ?? false}
-                                                onChange={(e) =>
-                                                    setFormData({ ...formData, rememberMe: e.target.checked })
-                                                }
-                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            />
-                                            <span className="text-sm text-gray-600">
-                                                {t('auth.rememberMe')}
-                                            </span>
-                                        </label>
-                                    </div>
-                                )}
-
-                                {/* Consent Section (Registration only) */}
-                                {mode === 'register' && (
-                                    <ConsentSection
-                                        consents={consents}
-                                        setConsents={setConsents}
-                                        error={errors.consents}
+                        {/* Remember Me (Login only) */}
+                        {mode === 'login' && (
+                            <div className="mt-2">
+                                <label className="flex min-h-11 cursor-pointer items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.rememberMe ?? false}
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, rememberMe: e.target.checked })
+                                        }
+                                        className="h-5 w-5 rounded-xs border-line accent-primary focus:ring-2 focus:ring-focus focus:ring-offset-2"
                                     />
-                                )}
-
-                                {/* Action Buttons. In register mode the login button is not
-                                    rendered at all — not just demoted: a person here to make an
-                                    account must not be able to fire off a login attempt with a
-                                    password nobody has set yet, and "Зарегистрироваться" is the
-                                    button that is meant to be primary. Going back to signing in
-                                    is still one click away, via haveAccountSignIn below. */}
-                                <div className="mt-6 space-y-3">
-                                    {mode === 'login' && (
-                                        <Button
-                                            onClick={handleLogin}
-                                            disabled={!isFormValid || isLoading}
-                                            isLoading={isLoading}
-                                            variant="primary"
-                                            className="w-full"
-                                            aria-label={t('auth.signIn')}
-                                        >
-                                            {isLoading ? t('auth.signingIn') : t('auth.signIn')}
-                                        </Button>
-                                    )}
-
-                                    <Button
-                                        onClick={() => {
-                                            if (mode === 'login') {
-                                                track(EVENTS.registrationOpened, { method: 'password' });
-                                                setMode('register');
-                                            } else {
-                                                handleRegister();
-                                            }
-                                        }}
-                                        disabled={(mode === 'register' && !isRegisterValid) || isLoading}
-                                        isLoading={isLoading && mode === 'register'}
-                                        variant={mode === 'register' ? 'primary' : 'outline'}
-                                        className="w-full"
-                                        aria-label={t('auth.register')}
-                                    >
-                                        {mode === 'register'
-                                            ? isLoading
-                                                ? t('auth.registering')
-                                                : t('auth.register')
-                                            : t('auth.createAccount')}
-                                    </Button>
-
-                                    {mode === 'register' && (
-                                        <button
-                                            onClick={() => setMode('login')}
-                                            className="w-full text-sm text-gray-600 hover:text-gray-900"
-                                        >
-                                            {t('auth.haveAccountSignIn')}
-                                        </button>
-                                    )}
-
-                                    <button
-                                        onClick={() => setEntryMethod('link')}
-                                        className="w-full text-sm text-gray-600 hover:text-gray-900"
-                                    >
-                                        {t('auth.magicLink.switchToLink')}
-                                    </button>
-                                </div>
-                            </>
+                                    <span className="text-sm text-fg-muted">
+                                        {t('auth.rememberMe')}
+                                    </span>
+                                </label>
+                            </div>
                         )}
 
-                        {/*
-                            Provider sign-in is a third, independent entry
-                            method — not a sub-case of the password form, so
-                            it renders here regardless of entryMethod (and,
-                            unlike the small text links above it, stays out
-                            of both `entryMethod` branches so it is visible
-                            whichever one is on screen). ProviderButtons
-                            itself decides mode's wording ("войдите через" vs
-                            "зарегистрируйтесь через") and already sets it
-                            apart with a labelled divider and full-width
-                            bordered buttons, matching the weight of the
-                            primary actions above rather than reading as a
-                            footnote to them.
-                        */}
-                        <ProviderButtons mode={mode} />
-                    </div>
+                        {/* Consent Section (Registration only) */}
+                        {mode === 'register' && (
+                            <ConsentSection
+                                consents={consents}
+                                setConsents={setConsents}
+                                error={errors.consents}
+                            />
+                        )}
 
-                    <AuthFooter />
-                </div>
-            </main>
-        </div>
+                        {/* Action Buttons. In register mode the login button is not
+                            rendered at all — not just demoted: a person here to make an
+                            account must not be able to fire off a login attempt with a
+                            password nobody has set yet, and "Зарегистрироваться" is the
+                            button that is meant to be primary. Going back to signing in
+                            is still one click away, via haveAccountSignIn below. */}
+                        <div className="mt-6 space-y-3">
+                            {mode === 'login' && (
+                                <Button
+                                    onClick={handleLogin}
+                                    disabled={!isFormValid || isLoading}
+                                    isLoading={isLoading}
+                                    variant="primary"
+                                    size="lg"
+                                    block
+                                    aria-label={t('auth.signIn')}
+                                >
+                                    {isLoading ? t('auth.signingIn') : t('auth.signIn')}
+                                </Button>
+                            )}
+
+                            <Button
+                                onClick={() => {
+                                    if (mode === 'login') {
+                                        track(EVENTS.registrationOpened, { method: 'password' });
+                                        setMode('register');
+                                    } else {
+                                        handleRegister();
+                                    }
+                                }}
+                                disabled={(mode === 'register' && !isRegisterValid) || isLoading}
+                                isLoading={isLoading && mode === 'register'}
+                                variant={mode === 'register' ? 'primary' : 'secondary'}
+                                size="lg"
+                                block
+                                aria-label={t('auth.register')}
+                            >
+                                {mode === 'register'
+                                    ? isLoading
+                                        ? t('auth.registering')
+                                        : t('auth.register')
+                                    : t('auth.createAccount')}
+                            </Button>
+
+                            {mode === 'register' && (
+                                <button
+                                    type="button"
+                                    onClick={() => setMode('login')}
+                                    className={TEXT_ACTION}
+                                >
+                                    {t('auth.haveAccountSignIn')}
+                                </button>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={() => setEntryMethod('link')}
+                                className={TEXT_ACTION}
+                            >
+                                {t('auth.magicLink.switchToLink')}
+                            </button>
+                        </div>
+                    </>
+                )}
+
+                {/*
+                    Provider sign-in is a third, independent entry
+                    method — not a sub-case of the password form, so
+                    it renders here regardless of entryMethod (and,
+                    unlike the small text links above it, stays out
+                    of both `entryMethod` branches so it is visible
+                    whichever one is on screen). ProviderButtons
+                    itself decides mode's wording ("войдите через" vs
+                    "зарегистрируйтесь через") and already sets it
+                    apart with a labelled divider and full-width
+                    bordered buttons, matching the weight of the
+                    primary actions above rather than reading as a
+                    footnote to them.
+                */}
+                <ProviderButtons mode={mode} />
+            </AuthPanel>
+
+            <AuthFooter />
+        </AuthShell>
     );
 }

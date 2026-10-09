@@ -27,6 +27,7 @@ jest.mock('../../store/foodTrackerStore', () => ({
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
+    ...jest.requireActual('lucide-react'),
     Plus: () => <span data-testid="plus-icon">+</span>,
     Sunrise: () => <span data-testid="sunrise-icon">☀</span>,
     Sun: () => <span data-testid="sun-icon">☀</span>,

@@ -59,18 +59,14 @@ export function NotificationIcon({
         return (
             <div
                 className={cn(
-                    'relative rounded-full overflow-hidden bg-gray-100',
-                    // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
-                    'h-8 w-8',          // Mobile: compact
-                    'sm:h-10 sm:w-10',  // Tablet: standard
-                    'md:h-12 md:w-12',  // Desktop: larger
+                    'relative h-10 w-10 overflow-hidden rounded-full bg-subtle',
                     className
                 )}
             >
                 {/* Loading placeholder */}
                 {imageLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                        <div className="h-4 w-4 animate-pulse rounded-full bg-gray-300" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-subtle">
+                        <div className="h-4 w-4 animate-pulse rounded-full bg-line" />
                     </div>
                 )}
 
@@ -79,7 +75,7 @@ export function NotificationIcon({
                     src={iconUrl}
                     alt={`${type} notification icon`}
                     fill
-                    sizes="(max-width: 640px) 32px, (max-width: 1024px) 40px, 48px"
+                    sizes="40px"
                     className="object-cover"
                     loading="lazy"
                     onLoad={() => setImageLoading(false)}
@@ -93,20 +89,12 @@ export function NotificationIcon({
     }
 
     // Otherwise, render the appropriate Lucide icon based on type
-    const iconClassName = cn(
-        'text-gray-600',
-        // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
-        'h-4 w-4',          // Mobile
-        'sm:h-5 sm:w-5',    // Tablet
-        'md:h-6 md:w-6'     // Desktop
-    );
+    // Категория — нейтральной плиткой: иконка опознаёт тип уведомления и
+    // ничего не оценивает, поэтому без цвета статуса и без бренда.
+    const iconClassName = 'h-5 w-5 text-fg-muted';
 
     const containerClassName = cn(
-        'flex items-center justify-center rounded-full bg-gray-100',
-        // Responsive icon container sizing (Requirement 6.1, 6.2, 6.3)
-        'h-8 w-8',          // Mobile: compact
-        'sm:h-10 sm:w-10',  // Tablet: standard
-        'md:h-12 md:w-12',  // Desktop: larger
+        'flex h-10 w-10 items-center justify-center rounded-full bg-subtle',
         className
     );
 
@@ -114,26 +102,26 @@ export function NotificationIcon({
     const renderIcon = () => {
         switch (type) {
             case 'trainer_feedback':
-                return <MessageSquare className={iconClassName} />;
+                return <MessageSquare className={iconClassName} strokeWidth={1.8} />;
             case 'achievement':
-                return <Trophy className={iconClassName} />;
+                return <Trophy className={iconClassName} strokeWidth={1.8} />;
             case 'reminder':
-                return <Bell className={iconClassName} />;
+                return <Bell className={iconClassName} strokeWidth={1.8} />;
             case 'system_update':
-                return <Settings className={iconClassName} />;
+                return <Settings className={iconClassName} strokeWidth={1.8} />;
             case 'new_feature':
-                return <Star className={iconClassName} />;
+                return <Star className={iconClassName} strokeWidth={1.8} />;
             case 'task_assigned':
-                return <ClipboardList className={iconClassName} />;
+                return <ClipboardList className={iconClassName} strokeWidth={1.8} />;
             case 'task_overdue':
-                return <AlertTriangle className={iconClassName} />;
+                return <AlertTriangle className={iconClassName} strokeWidth={1.8} />;
             case 'plan_updated':
-                return <CalendarCheck className={iconClassName} />;
+                return <CalendarCheck className={iconClassName} strokeWidth={1.8} />;
             case 'feedback_received':
-                return <MessageCircle className={iconClassName} />;
+                return <MessageCircle className={iconClassName} strokeWidth={1.8} />;
             case 'general':
             default:
-                return <Info className={iconClassName} />;
+                return <Info className={iconClassName} strokeWidth={1.8} />;
         }
     };
 

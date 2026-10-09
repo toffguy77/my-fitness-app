@@ -10,6 +10,9 @@ import {
 import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { SettingsPageLayout } from './SettingsPageLayout'
 import { t } from '@/shared/i18n'
+import { Button, buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
+import { cn } from '@/shared/utils/cn'
+import { SettingsCard, SettingsRow, SettingsSection } from './SettingsSection'
 
 /**
  * External sign-in services attached to this account.
@@ -69,7 +72,7 @@ export function SettingsProviders() {
     }
 
     if (loading) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('settings.loading')}</p>
+        return <p className="py-8 text-center text-sm text-fg-muted">{t('settings.loading')}</p>
     }
 
     const unlinked = available.filter(
@@ -77,65 +80,68 @@ export function SettingsProviders() {
     )
 
     return (
-        <section>
-            <h2 className="text-sm font-bold text-gray-900">{t('settings.providers.heading')}</h2>
-            <p className="mt-1 text-sm text-gray-600">
-                {t('settings.providers.explanation')}
-            </p>
-
+        <SettingsSection
+            title={t('settings.providers.heading')}
+            titleId="settings-providers-heading"
+            description={t('settings.providers.explanation')}
+        >
             {linked.length === 0 && unlinked.length === 0 && (
-                <p className="mt-4 text-sm text-gray-500">
+                <p className="text-sm text-fg-muted">
                     {t('settings.providers.unavailable')}
                 </p>
             )}
 
-            <ul className="mt-4 space-y-3">
-                {linked.map((item) => (
-                    <li
-                        key={item.provider}
-                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3"
-                    >
-                        <div>
-                            <p className="text-sm font-medium text-gray-900">
-                                {providerLabel(item.provider)}
-                            </p>
-                            {item.email && <p className="text-xs text-gray-500">{item.email}</p>}
-                            {isOnlyWayIn(item.provider) && (
-                                <p className="mt-1 text-xs text-gray-500">
-                                    {t('settings.providers.onlyWayInBefore')}{' '}
-                                    <a href="/forgot-password" className="text-blue-600 hover:underline">
-                                        {t('settings.providers.setPassword')}
-                                    </a>
-                                    {t('settings.providers.onlyWayInAfter')}
-                                </p>
-                            )}
-                        </div>
-                        <button
-                            onClick={() => handleUnlink(item.provider)}
-                            disabled={busy === item.provider || isOnlyWayIn(item.provider)}
-                            className="text-sm font-medium text-red-500 transition-colors hover:text-red-600 disabled:text-gray-300"
-                        >
-                            {t('settings.providers.unlink')}
-                        </button>
-                    </li>
-                ))}
+            {(linked.length > 0 || unlinked.length > 0) && (
+                <SettingsCard>
+                    <ul className="divide-y divide-line">
+                        {linked.map((item) => (
+                            <li key={item.provider}>
+                                <SettingsRow>
+                                    <div className="min-w-0">
+                                        <p className="type-headline text-fg">
+                                            {providerLabel(item.provider)}
+                                        </p>
+                                        {item.email && <p className="truncate type-caption text-fg-muted">{item.email}</p>}
+                                        {isOnlyWayIn(item.provider) && (
+                                            <p className="mt-1 type-caption text-fg-muted">
+                                                {t('settings.providers.onlyWayInBefore')}{' '}
+                                                <a href="/forgot-password" className="font-semibold text-primary hover:underline">
+                                                    {t('settings.providers.setPassword')}
+                                                </a>
+                                                {t('settings.providers.onlyWayInAfter')}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={() => handleUnlink(item.provider)}
+                                        disabled={busy === item.provider || isOnlyWayIn(item.provider)}
+                                        className="-mr-2 text-danger-fg hover:bg-danger-soft"
+                                    >
+                                        {t('settings.providers.unlink')}
+                                    </Button>
+                                </SettingsRow>
+                            </li>
+                        ))}
 
-                {unlinked.map((provider) => (
-                    <li
-                        key={provider}
-                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3"
-                    >
-                        <p className="text-sm font-medium text-gray-900">{providerLabel(provider)}</p>
-                        <a
-                            href={providersApi.startUrl(provider)}
-                            className="text-sm font-medium text-blue-600 hover:text-blue-700"
-                        >
-                            {t('settings.providers.link')}
-                        </a>
-                    </li>
-                ))}
-            </ul>
-        </section>
+                        {unlinked.map((provider) => (
+                            <li key={provider}>
+                                <SettingsRow>
+                                    <p className="type-headline text-fg">{providerLabel(provider)}</p>
+                                    <a
+                                        href={providersApi.startUrl(provider)}
+                                        className={cn(buttonBase, buttonVariants.secondary, buttonSizes.md)}
+                                    >
+                                        {t('settings.providers.link')}
+                                    </a>
+                                </SettingsRow>
+                            </li>
+                        ))}
+                    </ul>
+                </SettingsCard>
+            )}
+        </SettingsSection>
     )
 }
 

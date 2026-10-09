@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { verifyEmail, resendVerificationCode } from '@/features/auth/api/verification'
 import { CodeInput } from './CodeInput'
+import { AuthPanel, AuthShell } from './AuthShell'
 import { t } from '@/shared/i18n'
 import { serverMessageFrom } from '@/shared/errors/apiErrors'
 
@@ -92,47 +93,41 @@ export function VerifyEmailScreen() {
     const isBlocked = attempts >= 5
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="mx-auto max-w-md px-4 pb-8 pt-24">
-                <h2 className="mb-2 text-center text-xl font-bold text-gray-900">
-                    {t('auth.verify.title')}
-                </h2>
-                <p className="mb-8 text-center text-sm text-gray-500">
-                    {t('auth.verify.sentTo', { email: userEmail })}
-                </p>
-
-                <div className="mb-6">
-                    <CodeInput
-                        value={code}
-                        onChange={setCode}
-                        disabled={isLoading || isBlocked}
-                        error={!!error}
-                    />
-                </div>
+        <AuthShell
+            title={t('auth.verify.title')}
+            description={t('auth.verify.sentTo', { email: userEmail })}
+        >
+            <AuthPanel>
+                <CodeInput
+                    value={code}
+                    onChange={setCode}
+                    disabled={isLoading || isBlocked}
+                    error={!!error}
+                />
 
                 {error && (
-                    <p className="mb-4 text-center text-sm text-red-600">{error}</p>
+                    <p className="mt-4 text-center text-sm text-danger-fg">{error}</p>
                 )}
 
                 {isBlocked && (
-                    <p className="mb-4 text-center text-sm text-gray-600">
+                    <p className="mt-4 text-center text-sm text-fg-muted">
                         {t('auth.verify.tooManyAttempts')}
                     </p>
                 )}
 
-                <div className="text-center">
+                <div className="mt-6 flex justify-center">
                     <button
                         type="button"
                         disabled={resendCooldown > 0}
                         onClick={handleResend}
-                        className="text-sm text-blue-600 transition-colors hover:text-blue-700 disabled:text-gray-400"
+                        className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-primary tabular-nums transition-colors hover:bg-subtle disabled:font-normal disabled:text-fg-subtle disabled:hover:bg-transparent"
                     >
                         {resendCooldown > 0
                             ? t('auth.verify.resendIn', { seconds: resendCooldown })
                             : t('auth.verify.resend')}
                     </button>
                 </div>
-            </div>
-        </div>
+            </AuthPanel>
+        </AuthShell>
     )
 }

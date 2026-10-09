@@ -1,0 +1,188 @@
+/* Сгенерировано packages/design-tokens/scripts/build.mjs из tokens/*.json. Не править руками. */
+/*
+ * Палитра Tailwind по умолчанию отключена (--color-*: initial): в интерфейсе
+ * нет классов gray-500 или blue-600, есть только роли. Класс вне ролей не
+ * сгенерируется, а ESLint (правило design-system/no-raw-palette) подсветит его.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-canvas: var(--ds-color-bg-canvas);
+  --color-surface: var(--ds-color-bg-surface);
+  --color-subtle: var(--ds-color-bg-subtle);
+  --color-nav: var(--ds-color-bg-nav);
+  --color-scrim: var(--ds-color-bg-scrim);
+  --color-fg: var(--ds-color-fg-default);
+  --color-fg-muted: var(--ds-color-fg-muted);
+  --color-fg-subtle: var(--ds-color-fg-subtle);
+  --color-fg-disabled: var(--ds-color-fg-disabled);
+  --color-fg-inverse: var(--ds-color-fg-inverse);
+  --color-line: var(--ds-color-line-default);
+  --color-line-strong: var(--ds-color-line-strong);
+  --color-primary: var(--ds-color-primary-default);
+  --color-primary-hover: var(--ds-color-primary-hover);
+  --color-on-primary: var(--ds-color-primary-fg);
+  --color-primary-soft: var(--ds-color-primary-soft);
+  --color-coach: var(--ds-color-coach-bg);
+  --color-on-coach: var(--ds-color-coach-fg);
+  --color-on-coach-muted: var(--ds-color-coach-fg-muted);
+  --color-track: var(--ds-color-track);
+  --color-protein: var(--ds-color-macro-protein);
+  --color-protein-fg: var(--ds-color-macro-protein-fg);
+  --color-fat: var(--ds-color-macro-fat);
+  --color-fat-fg: var(--ds-color-macro-fat-fg);
+  --color-carbs: var(--ds-color-macro-carbs);
+  --color-carbs-fg: var(--ds-color-macro-carbs-fg);
+  --color-water: var(--ds-color-macro-water);
+  --color-success: var(--ds-color-status-success);
+  --color-success-fg: var(--ds-color-status-success-fg);
+  --color-success-soft: var(--ds-color-status-success-soft);
+  --color-warning: var(--ds-color-status-warning);
+  --color-warning-fg: var(--ds-color-status-warning-fg);
+  --color-warning-soft: var(--ds-color-status-warning-soft);
+  --color-danger: var(--ds-color-status-danger);
+  --color-danger-fg: var(--ds-color-status-danger-fg);
+  --color-danger-soft: var(--ds-color-status-danger-soft);
+  --color-info: var(--ds-color-status-info);
+  --color-info-fg: var(--ds-color-status-info-fg);
+  --color-info-soft: var(--ds-color-status-info-soft);
+  --color-focus: var(--ds-color-focus);
+
+  --font-sans: var(--ds-font-family-sans);
+  --font-serif: var(--ds-font-family-serif);
+
+  --radius-xs: var(--ds-radius-xs);
+  --radius-sm: var(--ds-radius-s);
+  --radius-md: var(--ds-radius-s);
+  --radius-lg: var(--ds-radius-m);
+  --radius-xl: var(--ds-radius-l);
+  --radius-2xl: var(--ds-radius-l);
+  --radius-3xl: var(--ds-radius-xl);
+  --radius-field: var(--ds-radius-s);
+  --radius-tile: var(--ds-radius-m);
+  --radius-card: var(--ds-radius-l);
+  --radius-sheet: var(--ds-radius-xl);
+
+  --shadow-float: var(--ds-shadow-float);
+  --shadow-overlay: var(--ds-shadow-overlay);
+
+  --ease-standard: var(--ds-motion-easing-standard);
+  --ease-emphasized: var(--ds-motion-easing-emphasized);
+
+  --spacing-touch: var(--ds-size-touch);
+  --spacing-control: var(--ds-size-control);
+  --spacing-tabbar: var(--ds-size-tabbar);
+  --spacing-screen-x: var(--ds-space-screen-x);
+  --container-content: var(--ds-size-content-max);
+}
+
+@utility type-display {
+  font-family: var(--ds-type-display-family);
+  font-size: var(--ds-type-display-size);
+  line-height: var(--ds-type-display-line);
+  font-weight: var(--ds-type-display-weight);
+  letter-spacing: var(--ds-type-display-tracking);
+}
+
+@utility type-title-1 {
+  font-family: var(--ds-type-title-1-family);
+  font-size: var(--ds-type-title-1-size);
+  line-height: var(--ds-type-title-1-line);
+  font-weight: var(--ds-type-title-1-weight);
+  letter-spacing: var(--ds-type-title-1-tracking);
+}
+
+@utility type-title-2 {
+  font-family: var(--ds-type-title-2-family);
+  font-size: var(--ds-type-title-2-size);
+  line-height: var(--ds-type-title-2-line);
+  font-weight: var(--ds-type-title-2-weight);
+  letter-spacing: var(--ds-type-title-2-tracking);
+}
+
+@utility type-title-3 {
+  font-family: var(--ds-type-title-3-family);
+  font-size: var(--ds-type-title-3-size);
+  line-height: var(--ds-type-title-3-line);
+  font-weight: var(--ds-type-title-3-weight);
+  letter-spacing: var(--ds-type-title-3-tracking);
+}
+
+@utility type-quote {
+  font-family: var(--ds-type-quote-family);
+  font-size: var(--ds-type-quote-size);
+  line-height: var(--ds-type-quote-line);
+  font-weight: var(--ds-type-quote-weight);
+  letter-spacing: var(--ds-type-quote-tracking);
+  font-style: italic;
+}
+
+@utility type-num-xl {
+  font-family: var(--ds-type-num-xl-family);
+  font-size: var(--ds-type-num-xl-size);
+  line-height: var(--ds-type-num-xl-line);
+  font-weight: var(--ds-type-num-xl-weight);
+  letter-spacing: var(--ds-type-num-xl-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility type-num-l {
+  font-family: var(--ds-type-num-l-family);
+  font-size: var(--ds-type-num-l-size);
+  line-height: var(--ds-type-num-l-line);
+  font-weight: var(--ds-type-num-l-weight);
+  letter-spacing: var(--ds-type-num-l-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility type-headline {
+  font-family: var(--ds-type-headline-family);
+  font-size: var(--ds-type-headline-size);
+  line-height: var(--ds-type-headline-line);
+  font-weight: var(--ds-type-headline-weight);
+  letter-spacing: var(--ds-type-headline-tracking);
+}
+
+@utility type-body {
+  font-family: var(--ds-type-body-family);
+  font-size: var(--ds-type-body-size);
+  line-height: var(--ds-type-body-line);
+  font-weight: var(--ds-type-body-weight);
+  letter-spacing: var(--ds-type-body-tracking);
+}
+
+@utility type-callout {
+  font-family: var(--ds-type-callout-family);
+  font-size: var(--ds-type-callout-size);
+  line-height: var(--ds-type-callout-line);
+  font-weight: var(--ds-type-callout-weight);
+  letter-spacing: var(--ds-type-callout-tracking);
+}
+
+@utility type-caption {
+  font-family: var(--ds-type-caption-family);
+  font-size: var(--ds-type-caption-size);
+  line-height: var(--ds-type-caption-line);
+  font-weight: var(--ds-type-caption-weight);
+  letter-spacing: var(--ds-type-caption-tracking);
+}
+
+@utility type-overline {
+  font-family: var(--ds-type-overline-family);
+  font-size: var(--ds-type-overline-size);
+  line-height: var(--ds-type-overline-line);
+  font-weight: var(--ds-type-overline-weight);
+  letter-spacing: var(--ds-type-overline-tracking);
+  text-transform: uppercase;
+}
+
+@utility type-micro {
+  font-family: var(--ds-type-micro-family);
+  font-size: var(--ds-type-micro-size);
+  line-height: var(--ds-type-micro-line);
+  font-weight: var(--ds-type-micro-weight);
+  letter-spacing: var(--ds-type-micro-tracking);
+}

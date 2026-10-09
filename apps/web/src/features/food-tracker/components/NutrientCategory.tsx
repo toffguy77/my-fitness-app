@@ -57,7 +57,7 @@ export function NutrientCategory({
 }: NutrientCategoryProps): React.ReactElement {
     return (
         <div
-            className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${className}`}
+            className={`overflow-hidden rounded-card border border-line bg-surface ${className}`}
             role="region"
             aria-label={t('foodTracker.nutrientCategory.aria', { label })}
         >
@@ -65,22 +65,22 @@ export function NutrientCategory({
             <button
                 type="button"
                 onClick={onToggle}
-                className="flex items-center justify-between w-full px-3 py-2.5 text-left hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:px-4 sm:py-3 touch-manipulation"
+                className="flex min-h-14 w-full items-center justify-between px-4 text-left transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus touch-manipulation"
                 aria-expanded={isExpanded}
                 aria-controls={`category-${category}-content`}
             >
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                    <span className="text-sm font-medium text-gray-900 sm:text-base">
+                <div className="flex items-center gap-2">
+                    <span className="type-headline text-fg">
                         {label}
                     </span>
-                    <span className="text-xs text-gray-500 sm:text-sm">
+                    <span className="text-sm text-fg-muted tabular-nums">
                         ({recommendations.length})
                     </span>
                 </div>
                 {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-400 sm:w-5 sm:h-5" aria-hidden="true" />
+                    <ChevronDown className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                 ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-400 sm:w-5 sm:h-5" aria-hidden="true" />
+                    <ChevronRight className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                 )}
             </button>
 
@@ -88,7 +88,7 @@ export function NutrientCategory({
             {isExpanded && (
                 <div
                     id={`category-${category}-content`}
-                    className="px-3 pb-2.5 space-y-0.5 sm:px-4 sm:pb-3 sm:space-y-1"
+                    className="divide-y divide-line border-t border-line px-2"
                     role="list"
                     aria-label={t('foodTracker.nutrientCategory.listAria', { label })}
                 >

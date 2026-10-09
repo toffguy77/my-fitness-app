@@ -12,6 +12,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { t } from '@/shared/i18n';
+import { Button } from '@/shared/components/ui/Button';
 
 // ============================================================================
 // Types
@@ -246,27 +247,27 @@ export function DatePicker({
     return (
         <div className={`relative ${className}`}>
             {/* Date Display and Navigation */}
-            <div className="flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-1.5 sm:p-2">
+            <div className="flex items-center justify-between gap-2">
                 {/* Previous Day Button */}
                 <button
                     type="button"
                     onClick={goToPreviousDay}
-                    className="p-1.5 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 touch-manipulation"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-line hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                     aria-label={t('foodTracker.datePicker.previousDay')}
                 >
-                    <ChevronLeft className="w-4 h-4 text-gray-600 sm:w-5 sm:h-5" />
+                    <ChevronLeft className="h-5 w-5 text-fg" strokeWidth={1.8} aria-hidden="true" />
                 </button>
 
                 {/* Date Display */}
                 <button
                     type="button"
                     onClick={toggleCalendar}
-                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-2 sm:px-4 sm:py-2 touch-manipulation"
+                    className="flex h-11 items-center gap-2 rounded-full px-4 hover:bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                     aria-label={t('foodTracker.datePicker.openCalendar')}
                     aria-expanded={isCalendarOpen}
                 >
-                    <Calendar className="w-4 h-4 text-gray-500 sm:w-5 sm:h-5" aria-hidden="true" />
-                    <span className="text-sm font-medium text-gray-900 sm:text-base">{displayDate}</span>
+                    <Calendar className="h-5 w-5 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="text-base font-semibold text-fg first-letter:uppercase">{displayDate}</span>
                 </button>
 
                 {/* Next Day Button */}
@@ -274,30 +275,30 @@ export function DatePicker({
                     type="button"
                     onClick={goToNextDay}
                     disabled={isNextDisabled}
-                    className={`p-1.5 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 touch-manipulation ${isNextDisabled
-                        ? 'text-gray-300 cursor-not-allowed'
-                        : 'hover:bg-gray-100 text-gray-600'
+                    className={`flex h-11 w-11 items-center justify-center rounded-full border border-line transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation ${isNextDisabled
+                        ? 'text-fg-subtle opacity-40 cursor-not-allowed'
+                        : 'hover:bg-surface text-fg'
                         }`}
                     aria-label={t('foodTracker.datePicker.nextDay')}
                 >
-                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <ChevronRight className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                 </button>
             </div>
 
             {/* Calendar Dropdown */}
             {isCalendarOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3 z-50 sm:p-4">
+                <div className="absolute top-full left-0 right-0 z-50 mt-2 rounded-card border border-line bg-surface p-4 shadow-overlay">
                     {/* Calendar Header */}
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="mb-3 flex items-center justify-between">
                         <button
                             type="button"
                             onClick={() => navigateCalendarMonth('prev')}
-                            className="p-1 rounded hover:bg-gray-100 transition-colors touch-manipulation"
+                            className="-m-1 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                             aria-label={t('foodTracker.datePicker.previousMonth')}
                         >
-                            <ChevronLeft className="w-4 h-4 text-gray-600 sm:w-5 sm:h-5" />
+                            <ChevronLeft className="h-5 w-5 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
                         </button>
-                        <span className="text-xs font-medium text-gray-900 sm:text-sm">
+                        <span className="type-headline text-fg tabular-nums">
                             {RUSSIAN_MONTHS_GENITIVE[calendarMonth].charAt(0).toUpperCase() +
                                 RUSSIAN_MONTHS_GENITIVE[calendarMonth].slice(1)}{' '}
                             {calendarYear}
@@ -305,19 +306,19 @@ export function DatePicker({
                         <button
                             type="button"
                             onClick={() => navigateCalendarMonth('next')}
-                            className="p-1 rounded hover:bg-gray-100 transition-colors touch-manipulation"
+                            className="-m-1 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                             aria-label={t('foodTracker.datePicker.nextMonth')}
                         >
-                            <ChevronRight className="w-4 h-4 text-gray-600 sm:w-5 sm:h-5" />
+                            <ChevronRight className="h-5 w-5 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
                         </button>
                     </div>
 
                     {/* Day Names */}
-                    <div className="grid grid-cols-7 gap-0.5 mb-1.5 sm:gap-1 sm:mb-2">
+                    <div className="mb-1 grid grid-cols-7 gap-1">
                         {RUSSIAN_DAYS_SHORT.map((day) => (
                             <div
                                 key={day}
-                                className="text-center text-[10px] font-medium text-gray-500 py-0.5 sm:text-xs sm:py-1"
+                                className="py-1 text-center text-xs font-medium text-fg-subtle"
                             >
                                 {day}
                             </div>
@@ -325,15 +326,17 @@ export function DatePicker({
                     </div>
 
                     {/* Calendar Days */}
-                    <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+                    <div className="grid grid-cols-7 gap-1">
                         {calendarDays.map((day, index) => {
                             if (day === null) {
-                                return <div key={`empty-${index}`} className="p-1.5 sm:p-2" />;
+                                return <div key={`empty-${index}`} className="h-11" />;
                             }
 
                             const dayDate = new Date(calendarYear, calendarMonth, day);
                             const isSelected = isSameDay(dayDate, selectedDate);
                             const isTodayDate = isToday(dayDate);
+                            // Сегодня — пунктирное кольцо, как в недельных точках:
+                            // отметка места, не оценка и не бренд.
                             const isFuture = preventFutureDates && isFutureDate(dayDate);
 
                             return (
@@ -342,13 +345,13 @@ export function DatePicker({
                                     type="button"
                                     onClick={() => selectDate(day)}
                                     disabled={isFuture}
-                                    className={`p-1.5 text-xs rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 sm:text-sm touch-manipulation ${isSelected
-                                        ? 'bg-blue-500 text-white'
+                                    className={`flex h-11 w-full items-center justify-center rounded-full text-sm tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation ${isSelected
+                                        ? 'bg-fg font-semibold text-fg-inverse'
                                         : isTodayDate
-                                            ? 'bg-blue-100 text-blue-700'
+                                            ? 'border border-dashed border-line-strong font-semibold text-fg'
                                             : isFuture
-                                                ? 'text-gray-300 cursor-not-allowed'
-                                                : 'hover:bg-gray-100 text-gray-700'
+                                                ? 'text-fg-subtle cursor-not-allowed'
+                                                : 'hover:bg-subtle text-fg'
                                         }`}
                                     aria-label={`${day} ${RUSSIAN_MONTHS_GENITIVE[calendarMonth]}`}
                                     // Кнопка не поддерживает aria-selected: для выбранной
@@ -363,13 +366,15 @@ export function DatePicker({
 
                     {/* Today Button */}
                     {!isToday(selectedDate) && (
-                        <button
+                        <Button
                             type="button"
+                            variant="secondary"
+                            block
                             onClick={goToToday}
-                            className="w-full mt-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:mt-4 sm:py-2 sm:text-sm touch-manipulation"
+                            className="mt-3 touch-manipulation"
                         >
                             {t('foodTracker.datePicker.today')}
-                        </button>
+                        </Button>
                     )}
                 </div>
             )}

@@ -13,6 +13,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Search, Clock, Star, Plus, ChevronRight } from 'lucide-react';
 import type { FoodItem, MealType } from '../types';
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button';
 import { messageForOr } from '@/shared/errors/apiErrors';
 
 import { unitLabel } from '../utils/unitLabel'
@@ -219,26 +220,26 @@ export function SearchTab({
         <div className={`flex flex-col h-full ${className}`}>
             {/* Search Input */}
             <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                 <input
                     ref={inputRef}
                     type="text"
                     value={query}
                     onChange={handleInputChange}
                     placeholder={t('foodTracker.search.placeholder')}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+                    className="h-12 w-full rounded-field border border-line bg-surface pl-11 pr-11 text-base text-fg placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
                     aria-label={t('foodTracker.search.placeholder')}
                 />
                 {loading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2" aria-hidden="true">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-line border-t-primary" />
                     </div>
                 )}
             </div>
 
             {/* Отметку не удалось сохранить: прежнее состояние осталось видимым. */}
             {favoriteError && (
-                <p className="mb-2 text-sm text-red-600" role="alert">
+                <p className="mb-2 text-sm text-danger-fg" role="alert">
                     {favoriteError}
                 </p>
             )}
@@ -246,7 +247,7 @@ export function SearchTab({
             {/* Поиск не состоялся — это не то же самое, что «такого нет» */}
             {showFailure && (
                 <div className="flex-1 flex flex-col items-center justify-center py-8">
-                    <p className="text-sm text-red-500">{searchError}</p>
+                    <p className="text-sm text-danger-fg">{searchError}</p>
                 </div>
             )}
 
@@ -263,8 +264,8 @@ export function SearchTab({
                     />
                     {/* Infinite scroll sentinel */}
                     {hasMore && (
-                        <div ref={sentinelRef} className="flex justify-center py-4">
-                            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        <div ref={sentinelRef} className="flex justify-center py-4" aria-hidden="true">
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-line border-t-primary" />
                         </div>
                     )}
                 </div>
@@ -273,16 +274,12 @@ export function SearchTab({
             {/* Empty State */}
             {showEmptyState && (
                 <div className="flex-1 flex flex-col items-center justify-center py-8">
-                    <p className="text-gray-500 mb-4">{t('foodTracker.search.nothingFound')}</p>
+                    <p className="mb-4 text-fg-muted">{t('foodTracker.search.nothingFound')}</p>
                     {onManualEntry && (
-                        <button
-                            type="button"
-                            onClick={handleManualEntry}
-                            className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                        >
-                            <Plus className="w-4 h-4" />
+                        <Button type="button" variant="secondary" onClick={handleManualEntry}>
+                            <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                             <span>{t('foodTracker.entryModal.enterManually')}</span>
-                        </button>
+                        </Button>
                     )}
                 </div>
             )}
@@ -293,7 +290,7 @@ export function SearchTab({
                     {recentFoods.length > 0 && (
                         <FoodSection
                             title={t('foodTracker.search.recent')}
-                            icon={<Clock className="w-4 h-4" />}
+                            icon={<Clock className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />}
                             foods={recentFoods}
                             onSelect={handleSelectFood}
                             favoriteIds={favoriteIds}
@@ -304,7 +301,7 @@ export function SearchTab({
                     {(favoriteFoods.length > 0 || canFavorite) && (
                         <FoodSection
                             title={t('foodTracker.search.popular')}
-                            icon={<Star className="w-4 h-4" />}
+                            icon={<Star className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />}
                             foods={favoriteFoods}
                             onSelect={handleSelectFood}
                             favoriteIds={favoriteIds}
@@ -318,17 +315,17 @@ export function SearchTab({
 
             {/* Manual Entry Option (always visible at bottom) */}
             {onManualEntry && !showEmptyState && (
-                <div className="pt-4 border-t border-gray-200 mt-auto">
+                <div className="mt-auto border-t border-line pt-3">
                     <button
                         type="button"
                         onClick={handleManualEntry}
-                        className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="flex min-h-14 w-full items-center justify-between rounded-tile px-3 text-fg transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                         <div className="flex items-center gap-3">
-                            <Plus className="w-5 h-5 text-gray-400" />
+                            <Plus className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                             <span>{t('foodTracker.entryModal.enterManually')}</span>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                        <ChevronRight className="h-5 w-5 text-fg-subtle" strokeWidth={1.8} aria-hidden="true" />
                     </button>
                 </div>
             )}
@@ -357,9 +354,9 @@ interface FoodSectionProps extends FavoriteControls {
 function FoodSection({ title, icon, foods, onSelect, emptyMessage, ...favorites }: FoodSectionProps) {
     return (
         <section>
-            <div className="flex items-center gap-2 mb-2 text-gray-500">
+            <div className="mb-2 flex items-center gap-2 text-fg-subtle">
                 {icon}
-                <h3 className="text-sm font-medium">{title}</h3>
+                <h3 className="type-overline">{title}</h3>
             </div>
             <FoodList foods={foods} onSelect={onSelect} emptyMessage={emptyMessage} {...favorites} />
         </section>
@@ -374,11 +371,11 @@ interface FoodListProps extends FavoriteControls {
 
 function FoodList({ foods, onSelect, emptyMessage, ...favorites }: FoodListProps) {
     if (foods.length === 0 && emptyMessage) {
-        return <p className="text-gray-500 text-center py-4">{emptyMessage}</p>;
+        return <p className="py-4 text-center text-sm text-fg-muted">{emptyMessage}</p>;
     }
 
     return (
-        <ul className="space-y-1" role="listbox" aria-label={t('foodTracker.search.listAria')}>
+        <ul className="divide-y divide-line" role="listbox" aria-label={t('foodTracker.search.listAria')}>
             {foods.map((food) => (
                 <FoodListItem key={food.id} food={food} onSelect={onSelect} {...favorites} />
             ))}
@@ -418,18 +415,18 @@ function FoodListItem({ food, onSelect, favoriteIds, onToggleFavorite, pendingFa
             tabIndex={0}
             onClick={handleClick}
             onKeyDown={handleKeyDown}
-            className="flex items-center justify-between px-3 py-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+            className="flex min-h-14 cursor-pointer items-center justify-between rounded-tile px-3 py-2.5 transition-colors hover:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             aria-label={t('foodTracker.search.itemAria', { name: food.name, serving: servingInfo, calories: Math.round(food.nutritionPer100.calories) })}
         >
             <div className="flex-1 min-w-0">
-                <p className="text-gray-900 font-medium truncate">{food.name}</p>
-                <p className="text-sm text-gray-500">{servingInfo}</p>
+                <p className="truncate font-medium text-fg">{food.name}</p>
+                <p className="type-caption text-fg-muted tabular-nums">{servingInfo}</p>
             </div>
             <div className="ml-4 text-right">
-                <p className="text-gray-900 font-medium">
+                <p className="font-semibold text-fg tabular-nums">
                     {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                 </p>
-                <p className="text-xs text-gray-500">{t('foodTracker.search.per100')}</p>
+                <p className="type-caption text-fg-muted">{t('foodTracker.search.per100')}</p>
             </div>
 
             {/* Отметка избранного. Раньше её не было вовсе, и раздел избранного
@@ -443,7 +440,7 @@ function FoodListItem({ food, onSelect, favoriteIds, onToggleFavorite, pendingFa
                         onToggleFavorite(food.id);
                     }}
                     disabled={pendingFavoriteId === food.id}
-                    className="ml-3 p-1.5 -m-1.5 text-gray-300 hover:text-yellow-500 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded touch-manipulation"
+                    className="-mr-2 ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-subtle transition-colors hover:bg-subtle hover:text-fg disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus touch-manipulation"
                     aria-pressed={favoriteIds?.has(food.id) ?? false}
                     aria-label={
                         favoriteIds?.has(food.id)
@@ -452,7 +449,10 @@ function FoodListItem({ food, onSelect, favoriteIds, onToggleFavorite, pendingFa
                     }
                 >
                     <Star
-                        className={`w-4 h-4 ${favoriteIds?.has(food.id) ? 'fill-yellow-400 text-yellow-500' : ''}`}
+                        // Отмеченное — чернилами, как любой выбор в системе: `warning`
+                        // занят оценкой «мимо нормы» и звезде не подходит.
+                        className={`h-5 w-5 ${favoriteIds?.has(food.id) ? 'fill-current text-fg' : ''}`}
+                        strokeWidth={1.8}
                         aria-hidden="true"
                     />
                 </button>

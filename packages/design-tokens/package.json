@@ -1,0 +1,23 @@
+{
+  "name": "@burcev/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Дизайн-токены BURCEV: источник в формате W3C DTCG, сборка в CSS, Tailwind v4, TypeScript и JSON для мобильных платформ",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/tokens.d.ts",
+      "default": "./dist/tokens.js"
+    },
+    "./tokens.css": "./dist/tokens.css",
+    "./tailwind.css": "./dist/tailwind.css",
+    "./tokens.json": "./dist/tokens.json"
+  },
+  "main": "./dist/tokens.js",
+  "types": "./dist/tokens.d.ts",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check",
+    "test": "node --test scripts/__tests__/*.test.mjs"
+  }
+}

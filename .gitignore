@@ -14,6 +14,9 @@ test-results/
 # Build
 .next/
 dist/
+# Собранные токены дизайн-системы коммитятся вместе с tokens/*.json: от них
+# зависят сборка web, тесты и образ, а CI (tokens:check) сверяет их с источником.
+!packages/design-tokens/dist/
 build/
 *.tsbuildinfo
 apps/api/server

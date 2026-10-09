@@ -9,6 +9,7 @@ import {
     setToken,
     clearToken,
     clearAuth,
+    getUser as cachedUser,
     legacyStorage,
 } from './token-storage';
 import { ApiError, NetworkError } from '../errors/apiErrors';
@@ -122,12 +123,70 @@ function addRefreshSubscriber(onSuccess: (token: string) => void, onFailure: (er
     refreshSubscribers.push({ onSuccess, onFailure });
 }
 
+/** GET requests under way, by URL: concurrent identical reads share one. */
+const readsInFlight = new Map<string, { response: Promise<unknown>; readers: number; startedAt: number }>();
+
+/**
+ * How long a read stays joinable. The duplicates this removes are fired in the
+ * same moment by components mounting together; a read older than this may be
+ * hanging, and a newcomer should not inherit its fate.
+ */
+const JOIN_WINDOW_MS = 5000;
+
+/** Forgets shared reads. Tests call it between cases (jest.setup.js). */
+export function forgetReadsInFlight(): void {
+    readsInFlight.clear();
+    recentReads.clear();
+}
+
+/** Answers kept a little longer for `getRecent`, by URL. */
+const recentReads = new Map<string, { response: Promise<unknown>; at: number }>();
+
+// jest.setup.js clears shared reads after every test through this hook, so a
+// request a test leaves hanging cannot be joined by the next test. Registered
+// rather than imported: importing the client from the setup file would load it
+// before a test's own mocks of its dependencies.
+if (process.env.NODE_ENV === 'test') {
+    (globalThis as { __forgetApiReads?: () => void }).__forgetApiReads = forgetReadsInFlight;
+}
+
+/**
+ * A private copy of a shared response. Responses are parsed JSON, so a JSON
+ * round trip copies them exactly.
+ */
+function copyOf<T>(value: T): T {
+    return value === null || typeof value !== 'object' ? value : JSON.parse(JSON.stringify(value));
+}
+
 class ApiClient {
+    /**
+     * The token to send, minting one first when there is evidently a session.
+     *
+     * The access token lives in memory, so every page load starts without one.
+     * Requests fired before the silent refresh finished went out bare, came
+     * back 401 and refreshed a second time: a 401 in the console on every page
+     * and two refreshes racing over one rotating cookie. Now a request waits
+     * for a refresh already under way, and starts one itself when this tab has
+     * a signed-in profile cached. A guest has neither, and pays nothing.
+     * A failed refresh is not an answer here — the request goes out as it
+     * would have, and the ordinary 401 path decides.
+     */
+    private async tokenForRequest(url: string): Promise<string | null> {
+        const token = this.getToken();
+        if (token || this.isAuthEndpoint(url)) return token;
+        if (!refreshInFlight && !cachedUser()) return null;
+        try {
+            return await this.refreshSession();
+        } catch {
+            return null;
+        }
+    }
+
     /**
      * Make an HTTP request with automatic token injection and error handling
      */
     private async request<T>(url: string, options: RequestOptions = {}): Promise<T> {
-        const token = this.getToken();
+        const token = await this.tokenForRequest(url);
         const requestId = crypto.randomUUID();
 
         const headers: Record<string, string> = {
@@ -153,6 +212,11 @@ class ApiClient {
 
         if (!response.ok) {
             throw await toApiError(response);
+        }
+
+        // No body to parse; the caller decides what nothing means.
+        if (response.status === 204) {
+            return undefined as T;
         }
 
         const data = await response.json();
@@ -242,7 +306,9 @@ class ApiClient {
                     cache: 'no-store',
                 });
 
-                if (res.status >= 400 && res.status < 500) {
+                // 204 is the server saying there was nothing to exchange — no
+                // session, as final as a rejection, and as pointless to retry.
+                if (res.status === 204 || (res.status >= 400 && res.status < 500)) {
                     throw new Error('Refresh rejected');
                 }
 
@@ -296,7 +362,7 @@ class ApiClient {
      * Uses the same 401 → token refresh → retry logic as request().
      */
     async postFormData<T>(url: string, body: FormData): Promise<T> {
-        const token = this.getToken();
+        const token = await this.tokenForRequest(url);
         const requestId = crypto.randomUUID();
 
         const headers: Record<string, string> = {
@@ -391,8 +457,63 @@ class ApiClient {
     /**
      * Make a GET request
      */
+    /**
+     * A read that may reuse an answer up to `maxAgeMs` old.
+     *
+     * For data two parts of one screen show independently and that does not
+     * change under the person's hands — the dashboard's progress (weight
+     * trend, adherence) is read by the weight section and, a moment later
+     * once its lazy chunk arrives, by the progress section. Concurrency alone
+     * does not catch that pair. A failed answer is not kept. Call
+     * `forgetRecent(url)` after a write that changes it.
+     */
+    async getRecent<T>(url: string, maxAgeMs: number): Promise<T> {
+        const kept = recentReads.get(url);
+        if (kept && Date.now() - kept.at < maxAgeMs) {
+            return kept.response.then((value) => copyOf(value) as T);
+        }
+        const response = this.get<T>(url);
+        recentReads.set(url, { response, at: Date.now() });
+        response.catch(() => {
+            if (recentReads.get(url)?.response === response) recentReads.delete(url);
+        });
+        return response.then((value) => copyOf(value));
+    }
+
+    /** Drops a kept answer, so the next `getRecent` asks again. */
+    forgetRecent(url: string): void {
+        recentReads.delete(url);
+    }
+
     async get<T>(url: string, options?: RequestOptions): Promise<T> {
-        return this.request<T>(url, { ...options, method: 'GET' });
+        // Identical reads in flight at the same moment share one request.
+        // A page assembles itself from independent components — the shell, the
+        // header, two blocks showing the same resource — and each used to ask
+        // for itself: the same weekly plan or unread counter went out two to
+        // four times on every load. Only a request with no options of its own
+        // is shared (custom headers or a signal make it someone's private
+        // request), and each caller gets its own copy, so one caller mutating
+        // the result cannot reach another.
+        if (options && Object.keys(options).length > 0) {
+            return this.request<T>(url, { ...options, method: 'GET' });
+        }
+        let shared = readsInFlight.get(url);
+        if (shared && Date.now() - shared.startedAt < JOIN_WINDOW_MS) {
+            shared.readers += 1;
+        } else {
+            const entry = {
+                response: this.request<T>(url, { method: 'GET' }).finally(() => {
+                    if (readsInFlight.get(url) === entry) readsInFlight.delete(url);
+                }) as Promise<unknown>,
+                readers: 1,
+                startedAt: Date.now(),
+            };
+            readsInFlight.set(url, entry);
+            shared = entry;
+        }
+        const entry = shared;
+        // A response nobody else is reading is handed over as is.
+        return entry.response.then((value) => (entry.readers > 1 ? copyOf(value) : value) as T);
     }
 
     /**
@@ -459,7 +580,10 @@ class ApiClient {
                 cache: 'no-store',
             });
 
-            if (!res.ok) {
+            // 204: the browser holds nothing to exchange. The usual answer
+            // for a visitor, and deliberately not an error status — the
+            // server answers it so no console fills up with failed requests.
+            if (res.status === 204 || !res.ok) {
                 throw new Error(`No session (${res.status})`);
             }
 

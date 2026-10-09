@@ -143,7 +143,7 @@ describe('DailyTrackingGrid Property Tests', () => {
                             expect(mockFetchDailyData).toHaveBeenCalledTimes(1)
 
                             // Should start polling with 30 second interval
-                            expect(mockStartPolling).toHaveBeenCalledWith(30000)
+                            expect(mockStartPolling).toHaveBeenCalledWith(30000, { immediate: false })
                             expect(mockStartPolling).toHaveBeenCalledTimes(1)
 
                             // Clean up this iteration
@@ -174,6 +174,18 @@ describe('DailyTrackingGrid Property Tests', () => {
                         document.body.appendChild(container)
 
                         try {
+                            // The day has been answered: the blocks render
+                            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                                dailyData: { [dateStr]: { date: dateStr } },
+                                isLoading: false,
+                                error: null,
+                                isOffline: false,
+                                fetchDailyData: mockFetchDailyData,
+                                startPolling: mockStartPolling,
+                                stopPolling: mockStopPolling,
+                                clearError: mockClearError,
+                            })
                             const { unmount } = render(<DailyTrackingGrid date={date} />, { container })
 
                             // Should render all four blocks

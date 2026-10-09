@@ -110,7 +110,8 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                         const getByTextInContainer = (text: string | RegExp) => {
                             const elements = Array.from(renderContainer.querySelectorAll('*'))
                             const element = elements.find(el => {
-                                const textContent = el.textContent || ''
+                                // Разряды в числах — неразрывным пробелом; сравниваем по обычному
+                                const textContent = (el.textContent || '').replace(/[\u00a0\u202f]/g, ' ')
                                 return typeof text === 'string' ? textContent === text : text.test(textContent)
                             })
                             if (!element) {
@@ -120,25 +121,18 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                         }
 
                         // Should display current steps (formatted)
-                        const stepsDisplay = steps >= 1000 ? `${(steps / 1000).toFixed(1)}k` : steps.toString()
+                        const stepsDisplay = steps.toLocaleString('ru-RU').replace(/\s/g, ' ')
                         getByTextInContainer(stepsDisplay)
 
                         // Should display steps goal (formatted)
-                        const goalDisplay = stepsGoal >= 1000 ? `${(stepsGoal / 1000).toFixed(1)}k` : stepsGoal.toString()
+                        const goalDisplay = stepsGoal.toLocaleString('ru-RU').replace(/\s/g, ' ')
                         getByTextInContainer(`из ${goalDisplay} шагов`)
 
-                        // Should display the percentage the product computes.
-                        //
-                        // Re-deriving it here with toFixed alone was a second
-                        // implementation of the rounding, and the two disagreed
-                        // on exact halves: 49990 of 20000 steps is 249.95, which
-                        // toFixed(1) renders as 249.9 and the product's
-                        // round-then-format renders as 250.0. Both are defensible
-                        // and the display is consistent; the property worth
-                        // holding is that the screen shows what the calculation
-                        // produced.
-                        const expectedPercentage = calculatePercentage(steps, stepsGoal).toFixed(1)
-                        getByTextInContainer(`${expectedPercentage}%`)
+                        // Доля процентом на экран не выводится: остаток важнее
+                        // доли (docs/design-system, принцип 2). Процент живёт
+                        // только в подписи полосы для экранного диктора.
+                        const expectedPercentage = Math.round(calculatePercentage(steps, stepsGoal))
+                        expect(screen.getByRole('progressbar')).toHaveAttribute('aria-label', `Прогресс шагов: ${expectedPercentage}%`)
 
                         // Should show completion indicator if goal reached
                         if (steps >= stepsGoal) {
@@ -201,13 +195,10 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                         const progressBar = screen.getByRole('progressbar')
                         expect(progressBar).toBeInTheDocument()
 
-                        // Check progress bar attributes
-                        const expectedPercentage = Math.min((steps / stepsGoal) * 100, 100)
-                        // Component uses integer for whole numbers, decimal for fractional
-                        const percentageStr = String(Math.round(expectedPercentage * 10) / 10)
-                        expect(progressBar).toHaveAttribute('aria-valuenow', percentageStr)
+                        // Полоса считает шаги до нормы и не уходит за неё
+                        expect(progressBar).toHaveAttribute('aria-valuenow', String(Math.min(steps, stepsGoal)))
                         expect(progressBar).toHaveAttribute('aria-valuemin', '0')
-                        expect(progressBar).toHaveAttribute('aria-valuemax', '100')
+                        expect(progressBar).toHaveAttribute('aria-valuemax', String(stepsGoal))
 
                         // Clean up this iteration
                         unmount()
@@ -272,14 +263,15 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                         const queryByTextInContainer = (text: string | RegExp) => {
                             const elements = Array.from(renderContainer.querySelectorAll('*'))
                             return elements.find(el => {
-                                const textContent = el.textContent || ''
+                                // Разряды в числах — неразрывным пробелом; сравниваем по обычному
+                                const textContent = (el.textContent || '').replace(/[\u00a0\u202f]/g, ' ')
                                 return typeof text === 'string' ? textContent === text : text.test(textContent)
                             })
                         }
 
                         // Should show remaining steps
                         const remainingSteps = stepsGoal - actualSteps
-                        const remainingStepsText = remainingSteps.toLocaleString()
+                        const remainingStepsText = remainingSteps.toLocaleString('ru-RU').replace(/\s/g, ' ')
                         const remainingElement = queryByTextInContainer(`Осталось ${remainingStepsText} шагов до цели`)
                         if (!remainingElement) {
                             throw new Error(`Expected to find "Осталось ${remainingStepsText} шагов до цели"`)
@@ -347,7 +339,8 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                         const getByTextInContainer = (text: string | RegExp) => {
                             const elements = Array.from(renderContainer.querySelectorAll('*'))
                             const element = elements.find(el => {
-                                const textContent = el.textContent || ''
+                                // Разряды в числах — неразрывным пробелом; сравниваем по обычному
+                                const textContent = (el.textContent || '').replace(/[\u00a0\u202f]/g, ' ')
                                 return typeof text === 'string' ? textContent === text : text.test(textContent)
                             })
                             if (!element) {
@@ -361,7 +354,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                         getByTextInContainer('Добавить')
 
                         // Should show helper text
-                        getByTextInContainer('Рекомендуется делать минимум 10,000 шагов в день')
+                        getByTextInContainer('Рекомендуется делать минимум 10 000 шагов в день')
 
                         // Clean up this iteration
                         unmount()

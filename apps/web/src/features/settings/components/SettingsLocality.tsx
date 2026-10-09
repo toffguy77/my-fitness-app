@@ -6,6 +6,9 @@ import { LanguageSelector, UnitSelector, TimezoneSelector, PhotoUploader } from 
 import { SettingsPageLayout } from './SettingsPageLayout'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
+import { Button } from '@/shared/components/ui/Button'
+import { Input } from '@/shared/components/ui/Input'
+import { fieldLabelClass } from '@/shared/components/forms/fieldStyles'
 
 export function SettingsLocality() {
     return (
@@ -117,66 +120,66 @@ function ProfileSettingsForm({
 
 
     return (
-        <>
+        <div className="flex flex-col gap-8">
             {/* Avatar */}
-            <div className="mb-8">
-                <PhotoUploader
-                    avatarUrl={profile?.avatar_url || undefined}
-                    userName={profile?.name || profile?.email}
-                    onUpload={onAvatarUpload}
-                    onRemove={onAvatarDelete}
-                />
-            </div>
+            <PhotoUploader
+                avatarUrl={profile?.avatar_url || undefined}
+                userName={profile?.name || profile?.email}
+                onUpload={onAvatarUpload}
+                onRemove={onAvatarDelete}
+            />
 
-            {/* Name */}
-            <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.locality.name')}</h3>
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => handleNameChange(e.target.value)}
-                        placeholder={t('settings.locality.namePlaceholder')}
-                        className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-                    />
-                    {nameChanged && (
-                        <button
-                            onClick={handleSaveName}
-                            className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                        >
-                            {t('settings.save')}
-                        </button>
-                    )}
+            <div className="flex flex-col gap-6">
+                {/* Name. Кнопка «Сохранить» появляется у поля, когда есть что
+                    сохранять, — второстепенной: главного действия у экрана нет,
+                    остальные настройки сохраняются сразу. */}
+                <div>
+                    <label htmlFor="settings-name" className={fieldLabelClass}>
+                        {t('settings.locality.name')}
+                    </label>
+                    <div className="flex gap-2">
+                        <Input
+                            id="settings-name"
+                            type="text"
+                            autoComplete="name"
+                            value={name}
+                            onChange={(e) => handleNameChange(e.target.value)}
+                            placeholder={t('settings.locality.namePlaceholder')}
+                        />
+                        {nameChanged && (
+                            <Button type="button" variant="secondary" size="lg" onClick={handleSaveName}>
+                                {t('settings.save')}
+                            </Button>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            {/* Height */}
-            <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.locality.height')}</h3>
-                <div className="flex gap-2">
-                    <input
-                        type="number"
-                        value={height}
-                        onChange={(e) => handleHeightChange(e.target.value)}
-                        placeholder="175"
-                        min={50}
-                        max={300}
-                        step={0.1}
-                        className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-                    />
-                    {heightChanged && (
-                        <button
-                            onClick={handleSaveHeight}
-                            className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                        >
-                            {t('settings.save')}
-                        </button>
-                    )}
+                {/* Height */}
+                <div>
+                    <label htmlFor="settings-height" className={fieldLabelClass}>
+                        {t('settings.locality.height')}
+                    </label>
+                    <div className="flex gap-2">
+                        <Input
+                            id="settings-height"
+                            type="number"
+                            inputMode="decimal"
+                            value={height}
+                            onChange={(e) => handleHeightChange(e.target.value)}
+                            placeholder="175"
+                            min={50}
+                            max={300}
+                            step={0.1}
+                        />
+                        {heightChanged && (
+                            <Button type="button" variant="secondary" size="lg" onClick={handleSaveHeight}>
+                                {t('settings.save')}
+                            </Button>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            {/* Language & Units & Timezone */}
-            <div className="flex flex-col gap-8">
+                {/* Language & Units & Timezone */}
                 <LanguageSelector
                     value={(profile?.settings.language as 'ru' | 'en') || 'ru'}
                     onChange={handleLanguageChange}
@@ -193,15 +196,17 @@ function ProfileSettingsForm({
 
             {/* Data export and account deletion live on their own page: both
                 need explanation and confirmation, not a one-line dialog. */}
-            <div className="mt-12">
-                <button
-                    onClick={() => router.push('/settings/privacy')}
-                    className="w-full rounded-lg border border-red-200 py-3 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
-                >
-                    {t('settings.locality.deleteAccount')}
-                </button>
-            </div>
-        </>
+            <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                block
+                onClick={() => router.push('/settings/privacy')}
+                className="text-danger-fg hover:bg-danger-soft"
+            >
+                {t('settings.locality.deleteAccount')}
+            </Button>
+        </div>
     )
 }
 

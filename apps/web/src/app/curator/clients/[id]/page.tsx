@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useState, useRef, useMemo } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, MessageCircle, Loader2, Check, X, ChevronDown, Droplets } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Check, X, ChevronDown, Droplets } from 'lucide-react'
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine,
@@ -31,6 +31,20 @@ import type { TabId } from '@/features/curator/components/ClientDetailTabs'
 import { t } from '@/shared/i18n'
 import toast from 'react-hot-toast'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { AXIS_STYLE, GRID_STROKE, TOOLTIP_CLASS, chartColor } from '@/shared/charts/chartTheme'
+import { Button, IconButton } from '@/shared/components/ui/Button'
+import { Card, CardTitle } from '@/shared/components/ui/Card'
+import { MACRO_TEXT_COLORS } from '@/shared/constants/macros'
+import { cn } from '@/shared/utils/cn'
+import { Spinner } from '@/shared/components/ui/Spinner'
+
+/** Поле правки числа прямо в карточке: 44 px, текст 16 px. */
+const INLINE_FIELD =
+    'h-11 rounded-field border border-line bg-surface px-3 text-base tabular-nums text-fg ' +
+    'focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30'
+
+/** Ссылка-действие внутри карточки. */
+const ACTION_LINK = 'inline-flex min-h-11 items-center font-semibold text-primary hover:underline disabled:opacity-50'
 const RECENT_DAYS_COUNT = 3
 
 function calcAge(birthDate: string): number | null {
@@ -91,7 +105,7 @@ function ProfileInfoRow({ detail }: { detail: ClientDetail }) {
     if (parts.length === 0) return null
 
     return (
-        <p className="text-xs text-gray-500 mb-4 ml-12">
+        <p className="mb-4 text-sm text-fg-muted sm:ml-14">
             {parts.join(' · ')}
         </p>
     )
@@ -120,8 +134,6 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
 }
 
 const CHART_HEIGHT = 160
-const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
-const GRID_STROKE = '#f0f0f0'
 
 function CuratorWeightTooltip({ active, payload, label }: {
     active?: boolean
@@ -130,10 +142,10 @@ function CuratorWeightTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null
     return (
-        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
-            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+        <div className={TOOLTIP_CLASS}>
+            <p className="text-xs font-medium text-fg mb-1">{String(label)}</p>
             {payload.map((entry: Payload<number, string>) => (
-                <p key={entry.name} className="text-xs text-gray-600">
+                <p key={entry.name} className="text-xs tabular-nums text-fg-muted">
                     <span
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
@@ -178,12 +190,12 @@ function WeightChart({ data, targetWeight }: { data: WeightHistoryPoint[]; targe
                     <XAxis
                         dataKey="label"
                         tick={AXIS_STYLE}
-                        stroke="#e5e7eb"
+                        stroke={chartColor.line}
                         tickLine={false}
                     />
                     <YAxis
                         tick={AXIS_STYLE}
-                        stroke="#e5e7eb"
+                        stroke={chartColor.line}
                         tickLine={false}
                         width={50}
                         domain={['dataMin - 0.5', 'dataMax + 0.5']}
@@ -192,13 +204,13 @@ function WeightChart({ data, targetWeight }: { data: WeightHistoryPoint[]; targe
                     {targetWeight != null && (
                         <ReferenceLine
                             y={targetWeight}
-                            stroke="#22c55e"
+                            stroke={chartColor.success}
                             strokeDasharray="6 3"
                             strokeWidth={1}
                             label={{
                                 value: t('curator.client.targetWithValue', { weight: targetWeight }),
                                 position: 'right',
-                                fill: '#22c55e',
+                                fill: chartColor['success-fg'],
                                 fontSize: 11,
                             }}
                         />
@@ -206,22 +218,22 @@ function WeightChart({ data, targetWeight }: { data: WeightHistoryPoint[]; targe
                     <Line
                         type="monotone"
                         dataKey="weight"
-                        stroke="#3b82f6"
+                        stroke={chartColor.fg}
                         strokeWidth={2}
-                        dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }}
+                        dot={{ r: 3, fill: chartColor.fg, strokeWidth: 0 }}
                         connectNulls
                         name="weight"
                     />
                 </LineChart>
             </ResponsiveContainer>
-            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+            <div className="mt-2 flex items-center gap-4 text-[13px] text-fg-muted">
                 <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-4 border-t-2 border-blue-500" />
+                    <span className="inline-block w-4 border-t-2 border-fg" aria-hidden="true" />
                     {t('curator.client.weight')}
                 </span>
                 {targetWeight != null && (
                     <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-4 border-t-2 border-dashed border-green-500" />
+                        <span className="inline-block w-4 border-t-2 border-dashed border-success" aria-hidden="true" />
                         {t('curator.client.target')}
                     </span>
                 )}
@@ -260,11 +272,11 @@ function WeightSection({ detail, clientId }: { detail: ClientDetail; clientId: n
     }
 
     return (
-        <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-gray-900">{t('curator.client.weightDynamics')}</h2>
+        <section className="rounded-card border border-line bg-surface p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="type-title-3 text-fg">{t('curator.client.weightDynamics')}</h2>
                 {detail.last_weight != null && (
-                    <span className="text-sm font-semibold text-gray-900">{t('curator.client.kilograms', { value: detail.last_weight })}</span>
+                    <span className="type-num-l tabular-nums text-fg">{t('curator.client.kilograms', { value: detail.last_weight })}</span>
                 )}
             </div>
 
@@ -272,8 +284,8 @@ function WeightSection({ detail, clientId }: { detail: ClientDetail; clientId: n
                 <WeightChart data={detail.weight_history} targetWeight={currentTarget} />
             )}
 
-            <div className="mt-3 flex items-center gap-2 text-xs">
-                <span className="text-gray-500">{t('curator.client.targetLabel')}</span>
+            <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 text-sm">
+                <span className="text-fg-muted">{t('curator.client.targetLabel')}</span>
                 {editing ? (
                     <div className="flex items-center gap-1">
                         <input
@@ -283,21 +295,22 @@ function WeightSection({ detail, clientId }: { detail: ClientDetail; clientId: n
                             max="500"
                             value={targetInput}
                             onChange={(e) => setTargetInput(e.target.value)}
-                            className="w-20 rounded border border-gray-300 px-2 py-1 text-xs"
+                            className={cn(INLINE_FIELD, 'w-24')}
+                            inputMode="decimal"
                             autoFocus
                         />
-                        <button type="button" onClick={handleSaveTarget} disabled={saving} className="p-1 text-green-600 hover:bg-green-50 rounded">
-                            <Check className="h-3.5 w-3.5" />
-                        </button>
-                        <button type="button" onClick={() => setEditing(false)} className="p-1 text-gray-400 hover:bg-gray-50 rounded">
-                            <X className="h-3.5 w-3.5" />
-                        </button>
+                        <IconButton variant="ghost" onClick={handleSaveTarget} disabled={saving} aria-label={t('common.save')} className="text-success-fg hover:bg-success-soft">
+                            <Check className="h-5 w-5" aria-hidden="true" />
+                        </IconButton>
+                        <IconButton variant="ghost" onClick={() => setEditing(false)} aria-label={t('common.cancel')} className="text-fg-muted">
+                            <X className="h-5 w-5" aria-hidden="true" />
+                        </IconButton>
                     </div>
                 ) : (
                     <button
                         type="button"
                         onClick={() => { setTargetInput(String(currentTarget ?? '')); setEditing(true) }}
-                        className="text-blue-600 hover:underline"
+                        className={cn(ACTION_LINK, 'tabular-nums')}
                     >
                         {currentTarget != null ? t('curator.client.kilograms', { value: currentTarget }) : t('curator.client.setValue')}
                     </button>
@@ -342,13 +355,13 @@ function WaterGoalSection({ detail, clientId }: { detail: ClientDetail; clientId
     }
 
     return (
-        <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-                <Droplets className="h-4 w-4 text-blue-500" />
-                <h2 className="text-sm font-semibold text-gray-900">{t('curator.client.waterGoal')}</h2>
+        <section className="rounded-card border border-line bg-surface p-5">
+            <div className="mb-2 flex items-center gap-2">
+                <Droplets className="h-5 w-5 text-water" strokeWidth={1.8} aria-hidden="true" />
+                <h2 className="type-title-3 text-fg">{t('curator.client.waterGoal')}</h2>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-                <span className="text-gray-500">{t('curator.client.glassesPerDay')}</span>
+            <div className="flex min-h-11 flex-wrap items-center gap-2 text-sm">
+                <span className="text-fg-muted">{t('curator.client.glassesPerDay')}</span>
                 {editing ? (
                     <div className="flex items-center gap-1">
                         <input
@@ -358,22 +371,23 @@ function WaterGoalSection({ detail, clientId }: { detail: ClientDetail; clientId
                             max="30"
                             value={goalInput}
                             onChange={(e) => setGoalInput(e.target.value)}
-                            className="w-16 rounded border border-gray-300 px-2 py-1 text-xs"
+                            className={cn(INLINE_FIELD, 'w-20')}
+                            inputMode="numeric"
                             autoFocus
                         />
-                        <button type="button" onClick={handleSaveGoal} disabled={saving} className="p-1 text-green-600 hover:bg-green-50 rounded">
-                            <Check className="h-3.5 w-3.5" />
-                        </button>
-                        <button type="button" onClick={() => setEditing(false)} className="p-1 text-gray-400 hover:bg-gray-50 rounded">
-                            <X className="h-3.5 w-3.5" />
-                        </button>
+                        <IconButton variant="ghost" onClick={handleSaveGoal} disabled={saving} aria-label={t('common.save')} className="text-success-fg hover:bg-success-soft">
+                            <Check className="h-5 w-5" aria-hidden="true" />
+                        </IconButton>
+                        <IconButton variant="ghost" onClick={() => setEditing(false)} aria-label={t('common.cancel')} className="text-fg-muted">
+                            <X className="h-5 w-5" aria-hidden="true" />
+                        </IconButton>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                         <button
                             type="button"
                             onClick={() => { setGoalInput(String(currentGoal ?? '')); setEditing(true) }}
-                            className="text-blue-600 hover:underline"
+                            className={cn(ACTION_LINK, 'tabular-nums')}
                         >
                             {currentGoal != null ? t('curator.client.glassesValue', { count: currentGoal }) : t('curator.client.setValue')}
                         </button>
@@ -382,7 +396,7 @@ function WaterGoalSection({ detail, clientId }: { detail: ClientDetail; clientId
                                 type="button"
                                 onClick={handleRemoveGoal}
                                 disabled={saving}
-                                className="text-red-400 hover:text-red-600 hover:underline"
+                                className="inline-flex min-h-11 items-center font-medium text-danger-fg hover:underline disabled:opacity-50"
                             >
                                 {t('curator.client.remove')}
                             </button>
@@ -391,7 +405,7 @@ function WaterGoalSection({ detail, clientId }: { detail: ClientDetail; clientId
                 )}
             </div>
             {currentGoal == null && (
-                <p className="mt-2 text-[11px] text-gray-400">{t('curator.client.waterHidden')}</p>
+                <p className="mt-1 text-[13px] text-fg-subtle">{t('curator.client.waterHidden')}</p>
             )}
         </section>
     )
@@ -448,17 +462,17 @@ export default function ClientDetailPage() {
     const olderDays = detail?.days.slice(RECENT_DAYS_COUNT) ?? []
 
     return (
-        <div className="px-4 py-6">
+        <div className="mx-auto w-full max-w-5xl px-screen-x py-5">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-2">
-                <button
-                    type="button"
+            <div className="mb-2 flex items-center gap-3">
+                <IconButton
+                    variant="ghost"
                     onClick={() => router.push('/curator')}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
                     aria-label={t('common.back')}
+                    className="-ml-2"
                 >
-                    <ArrowLeft className="h-5 w-5 text-gray-700" />
-                </button>
+                    <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                </IconButton>
 
                 {detail && (
                     <>
@@ -472,28 +486,31 @@ export default function ClientDetailPage() {
                                 unoptimized
                             />
                         ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-subtle text-sm font-semibold text-fg-muted" aria-hidden="true">
                                 {initials}
                             </div>
                         )}
-                        <span className="flex-1 text-lg font-semibold text-gray-900 truncate">
+                        <h1 className="type-title-2 min-w-0 flex-1 truncate text-fg sm:type-title-1">
                             {detail.name}
-                        </span>
+                        </h1>
                     </>
                 )}
 
-                <button
+                {/* Переход в переписку — контуром: главное действие на
+                    вкладках плана и задач — плавающая кнопка создания. */}
+                <Button
                     type="button"
+                    variant="secondary"
                     onClick={() => router.push(`/curator/chat/${clientId}`)}
-                    className="flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                    className="ml-auto shrink-0"
                 >
-                    <MessageCircle className="h-4 w-4" />
+                    <MessageCircle className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                     {t('curator.client.write')}
-                </button>
+                </Button>
             </div>
 
             {detail && (
-                <div className="mb-4 ml-12">
+                <div className="mb-2 sm:ml-14">
                     <ClientInfoPanel detail={detail} />
                 </div>
             )}
@@ -504,28 +521,26 @@ export default function ClientDetailPage() {
             <ClientDetailTabs activeTab={activeTab} />
 
             {loading && (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                </div>
+                <Spinner label={t('common.loading')} />
             )}
 
             {error && (
-                <p className="py-8 text-center text-sm text-red-500">{error}</p>
+                <p className="py-8 text-center text-sm text-danger-fg" role="alert">{error}</p>
             )}
 
             {!loading && !error && detail && (
                 <>
                     {activeTab === 'overview' && (
-                        <div className="space-y-4 mt-4">
+                        <div className="mt-5 space-y-4">
                             {/* Mini summary */}
-                            <div className="flex items-center gap-3 text-xs">
+                            <div className="flex flex-wrap items-center gap-2 text-[13px]">
                                 {detail.streak_days != null && detail.streak_days > 0 && (
-                                    <span className="rounded-full bg-orange-100 px-2.5 py-1 font-medium text-orange-800">
+                                    <span className="rounded-full bg-success-soft px-2.5 py-1 font-medium tabular-nums text-success-fg">
                                         {t('curator.client.streak', { days: detail.streak_days })}
                                     </span>
                                 )}
                                 {detail.weight_trend && detail.weight_trend.length > 0 && (
-                                    <span className="rounded-full bg-gray-100 px-2.5 py-1 font-medium text-gray-700">
+                                    <span className="rounded-full bg-subtle px-2.5 py-1 font-medium text-fg">
                                         {t('curator.client.weightTrend', { trend: detail.weight_trend === 'down' ? t('curator.client.trendDown') : detail.weight_trend === 'up' ? t('curator.client.trendUp') : t('curator.client.trendStable') })}
                                     </span>
                                 )}
@@ -542,27 +557,27 @@ export default function ClientDetailPage() {
 
                             {/* Weekly plan summary */}
                             {detail.weekly_plan && (
-                                <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
-                                    <h2 className="text-sm font-semibold text-gray-900 mb-2">{t('curator.client.weeklyPlan')}</h2>
-                                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                                <Card>
+                                    <CardTitle className="mb-3 text-fg">{t('curator.client.weeklyPlan')}</CardTitle>
+                                    <dl className="grid grid-cols-4 gap-2 text-center">
                                         <div>
-                                            <p className="text-gray-500">{t('macros.calories')}</p>
-                                            <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.calories)}</p>
+                                            <dt className="text-xs text-fg-muted">{t('macros.calories')}</dt>
+                                            <dd className="type-num-l tabular-nums text-fg">{Math.round(detail.weekly_plan.calories)}</dd>
                                         </div>
                                         <div>
-                                            <p className="text-gray-500">{t('macros.protein')}</p>
-                                            <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.protein)}</p>
+                                            <dt className="text-xs text-fg-muted">{t('macros.protein')}</dt>
+                                            <dd className="type-num-l tabular-nums" style={{ color: MACRO_TEXT_COLORS.protein }}>{Math.round(detail.weekly_plan.protein)}</dd>
                                         </div>
                                         <div>
-                                            <p className="text-gray-500">{t('macros.fat')}</p>
-                                            <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.fat)}</p>
+                                            <dt className="text-xs text-fg-muted">{t('macros.fat')}</dt>
+                                            <dd className="type-num-l tabular-nums" style={{ color: MACRO_TEXT_COLORS.fat }}>{Math.round(detail.weekly_plan.fat)}</dd>
                                         </div>
                                         <div>
-                                            <p className="text-gray-500">{t('macros.carbs')}</p>
-                                            <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.carbs)}</p>
+                                            <dt className="text-xs text-fg-muted">{t('macros.carbs')}</dt>
+                                            <dd className="type-num-l tabular-nums" style={{ color: MACRO_TEXT_COLORS.carbs }}>{Math.round(detail.weekly_plan.carbs)}</dd>
                                         </div>
-                                    </div>
-                                </section>
+                                    </dl>
+                                </Card>
                             )}
 
                             {/* KBJU weekly chart */}
@@ -572,7 +587,7 @@ export default function ClientDetailPage() {
 
                             {/* Питание: last 3 days + "Ранее" */}
                             <div className="space-y-3">
-                                <h2 className="text-sm font-semibold text-gray-900">{t('curator.client.nutrition')}</h2>
+                                <h2 className="type-title-2 pt-2 text-fg">{t('curator.client.nutrition')}</h2>
                                 {recentDays.map((day) => (
                                     <DaySection key={day.date} day={day} />
                                 ))}
@@ -580,14 +595,15 @@ export default function ClientDetailPage() {
                                 {olderDays.length > 0 && (
                                     <>
                                         {!showOlderDays ? (
-                                            <button
+                                            <Button
                                                 type="button"
+                                                variant="secondary"
+                                                block
                                                 onClick={() => setShowOlderDays(true)}
-                                                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
                                             >
-                                                <ChevronDown className="h-3.5 w-3.5" />
+                                                <ChevronDown className="h-4 w-4" aria-hidden="true" />
                                                 {t('curator.client.earlier', { count: olderDays.length })}
-                                            </button>
+                                            </Button>
                                         ) : (
                                             olderDays.map((day) => (
                                                 <DaySection key={day.date} day={day} />
@@ -613,19 +629,19 @@ export default function ClientDetailPage() {
                     )}
 
                     {activeTab === 'plan' && (
-                        <div className="mt-4">
+                        <div className="mt-5">
                             <PlanTab clientId={clientId} />
                         </div>
                     )}
 
                     {activeTab === 'tasks' && (
-                        <div className="mt-4">
+                        <div className="mt-5">
                             <TasksTab clientId={clientId} />
                         </div>
                     )}
 
                     {activeTab === 'reports' && (
-                        <div className="mt-4">
+                        <div className="mt-5">
                             <ReportsTab clientId={clientId} />
                         </div>
                     )}

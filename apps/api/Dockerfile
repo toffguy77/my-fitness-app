@@ -10,7 +10,12 @@
 # — это `--build-arg BASE_REGISTRY=docker.io` и ничего больше.
 ARG BASE_REGISTRY=mirror.gcr.io
 
-FROM ${BASE_REGISTRY}/library/golang:1.26-alpine AS builder
+# Патч Go закреплён, а не плавает по `1.26-alpine`: стандартная библиотека
+# вкомпилирована в бинарник, и исправления net/http, crypto/tls, html/template
+# доезжают до прода только с ней. Плавающий тег отдаётся из кэша зеркала и
+# мог несколько дней указывать на 1.26.8 после выхода 1.26.9. Держать в шаге с
+# GO_VERSION в .github/workflows/ci.yml и e2e.yml.
+FROM ${BASE_REGISTRY}/library/golang:1.26.9-alpine AS builder
 
 # Install build dependencies
 # DL3018 asks for pinned apk versions. We deliberately do not pin: the base
@@ -34,16 +39,24 @@ WORKDIR /app
 
 # Copy go mod files
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
+# Build the application.
+#
+# `-a -installsuffix cgo` убраны: это приём времён, когда стандартную
+# библиотеку приходилось пересобирать без cgo. CGO_ENABLED=0 делает это сам, а
+# `-a` запрещал пользоваться кэшем компилятора. Кэш теперь живёт между
+# сборками в кэше BuildKit (не в образе), и неизменившиеся пакеты не
+# пересобираются: на сервере `go build` занимал больше семи минут.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -o server ./cmd/server
 
 # Development stage
-FROM ${BASE_REGISTRY}/library/golang:1.26-alpine AS development
+FROM ${BASE_REGISTRY}/library/golang:1.26.9-alpine AS development
 
 # DL3018 asks for pinned apk versions. We deliberately do not pin: the base
 # image tag already fixes the Alpine release, and `apk upgrade` exists to pull
@@ -69,7 +82,7 @@ WORKDIR /app
 
 # Copy go mod files
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 # Copy source code
 COPY . .

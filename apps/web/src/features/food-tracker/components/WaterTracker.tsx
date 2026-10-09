@@ -11,9 +11,10 @@
 
 import { useId, useMemo, useCallback } from 'react';
 import { Plus, Check } from 'lucide-react';
-import { cn } from '@/shared/utils/cn';
 import type { WaterLog } from '../types';
 import { t } from '@/shared/i18n';
+import { color } from '@burcev/design-tokens';
+import { Button } from '@/shared/components/ui/Button';
 
 // ============================================================================
 // Types
@@ -47,11 +48,9 @@ const DEFAULT_GLASS_SIZE = 250; // 250ml
  */
 function WaterDroplet({
     percentage,
-    isComplete,
     uniqueId,
 }: {
     percentage: number;
-    isComplete: boolean;
     uniqueId: string;
 }) {
     const fillHeight = Math.min(percentage, 100);
@@ -74,8 +73,8 @@ function WaterDroplet({
         >
             <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={isComplete ? '#4ade80' : '#60a5fa'} />
-                    <stop offset="100%" stopColor={isComplete ? '#22c55e' : '#3b82f6'} />
+                    <stop offset="0%" stopColor={color.water} />
+                    <stop offset="100%" stopColor={color.water} />
                 </linearGradient>
                 <clipPath id={clipId}>
                     <path d="M20 3 C20 3 5 20 5 32 C5 40.3 11.7 47 20 47 C28.3 47 35 40.3 35 32 C35 20 20 3 20 3Z" />
@@ -85,7 +84,7 @@ function WaterDroplet({
             <path
                 d="M20 3 C20 3 5 20 5 32 C5 40.3 11.7 47 20 47 C28.3 47 35 40.3 35 32 C35 20 20 3 20 3Z"
                 fill="none"
-                stroke={isComplete ? '#86efac' : '#bfdbfe'}
+                stroke={color.water}
                 strokeWidth="1.5"
                 className="transition-colors duration-300"
             />
@@ -157,13 +156,13 @@ export function WaterTracker({
 
     return (
         <section
-            className={`bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 ${className}`}
+            className={`rounded-card border border-line bg-surface p-5 ${className}`}
             aria-label={t('foodTracker.water.aria')}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-900">{t('foodTracker.water.title')}</h3>
-                <span className="text-[10px] text-gray-400">{glassSizeText}</span>
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+                <h3 className="type-title-3 text-fg">{t('foodTracker.water.title')}</h3>
+                <span className="type-caption text-fg-subtle tabular-nums">{glassSizeText}</span>
             </div>
 
             {/* Droplet + info layout */}
@@ -178,48 +177,44 @@ export function WaterTracker({
                 {/* Droplet indicator */}
                 <WaterDroplet
                     percentage={percentage}
-                    isComplete={isGoalReached}
                     uniqueId={uniqueId}
                 />
 
                 {/* Info + action */}
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                     {/* Water count */}
-                    <div className="flex items-center gap-1.5 mb-1.5">
+                    <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                         <span
-                            className={cn(
-                                'text-base font-bold sm:text-lg',
-                                isGoalReached ? 'text-green-600' : 'text-gray-900'
-                            )}
+                            // Число не перекрашивается при выполнении цели: об этом
+                            // говорит подпись рядом, цвет только опознаёт воду.
+                            className="type-num-l text-fg tabular-nums"
                             aria-label={t('foodTracker.water.countAria', { glasses, goal })}
                         >
                             {displayText}
                         </span>
                         {isGoalReached && (
-                            <div className="flex items-center gap-0.5 text-green-600">
-                                <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                                <span className="text-[10px] font-medium">{t('foodTracker.water.goalReached')}</span>
+                            <div className="flex items-center gap-1 text-success-fg">
+                                <Check className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                                <span className="text-[13px] font-medium">{t('foodTracker.water.goalReached')}</span>
                             </div>
                         )}
                     </div>
 
                     {/* Add button */}
-                    <button
+                    {/* Второстепенное действие экрана — контуром: терракота
+                        остаётся панели быстрого ввода еды. */}
+                    <Button
                         type="button"
+                        variant="secondary"
+                        block
                         onClick={handleAddGlass}
                         disabled={isLoading}
-                        className={cn(
-                            'w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-medium transition-all text-xs touch-manipulation',
-                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
-                            isLoading
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-[0.98]'
-                        )}
+                        className="touch-manipulation"
                         aria-label={t('foodTracker.water.addGlassAria')}
                     >
-                        <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                         <span>{t('foodTracker.water.addGlass')}</span>
-                    </button>
+                    </Button>
                 </div>
             </div>
         </section>

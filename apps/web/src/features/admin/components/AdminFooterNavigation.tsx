@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { activeNavItem } from '@/shared/utils/activeNavItem'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/shared/utils/cn'
 import { ADMIN_NAVIGATION_ITEMS } from '../utils/adminNavigationConfig'
 import type { AdminNavigationItemId } from '../types'
@@ -13,14 +14,19 @@ export interface AdminFooterNavigationProps {
 }
 
 export function AdminFooterNavigation({
-    activeItem = 'dashboard',
+    activeItem,
     onNavigate
 }: AdminFooterNavigationProps) {
     const router = useRouter()
-    const [currentActive, setCurrentActive] = useState<AdminNavigationItemId>(activeItem)
+    const pathname = usePathname()
+    // A tap lights its tab at once; the address takes over as soon as it
+    // changes. A tap recorded on another address is stale and ignored.
+    const [tapped, setTapped] = useState<{ id: AdminNavigationItemId; on: string | null } | null>(null)
+    const currentActive =
+        tapped && tapped.on === pathname ? tapped.id : (activeNavItem(pathname, ADMIN_NAVIGATION_ITEMS) ?? activeItem)
 
     const handleNavigationClick = (itemId: AdminNavigationItemId) => {
-        setCurrentActive(itemId)
+        setTapped({ id: itemId, on: pathname })
 
         if (onNavigate) {
             onNavigate(itemId)
@@ -34,7 +40,7 @@ export function AdminFooterNavigation({
 
     return (
         <nav
-            className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-gray-200 bg-white px-2"
+            className="fixed bottom-0 left-0 right-0 z-50 grid h-auto min-h-16 grid-cols-4 items-stretch border-t border-line bg-nav px-2 pt-1.5 backdrop-blur-md"
             style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
             data-testid="admin-footer-navigation"
             aria-label={t('admin.navigation.aria')}
@@ -48,10 +54,12 @@ export function AdminFooterNavigation({
                         key={item.id}
                         onClick={() => handleNavigationClick(item.id)}
                         className={cn(
-                            'flex flex-col items-center justify-center gap-1 px-3 py-2 transition-colors',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 rounded-lg',
-                            'cursor-pointer hover:bg-gray-100',
-                            isActive ? 'text-blue-600' : 'text-gray-600'
+                            'flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-tile px-1 py-1 transition-colors',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus',
+                            'cursor-pointer hover:text-fg',
+                            // Активный пункт — чернилами и точкой бренда под
+                            // подписью, как в навигации клиента.
+                            isActive ? 'text-fg' : 'text-fg-subtle'
                         )}
                         aria-label={item.label}
                         aria-current={isActive ? 'page' : undefined}
@@ -61,15 +69,14 @@ export function AdminFooterNavigation({
                         <Icon
                             size={24}
                             aria-hidden="true"
-                            className={cn(
-                                'transition-colors',
-                                isActive && 'stroke-[2.5]'
-                            )}
+                            strokeWidth={isActive ? 2 : 1.8}
+                            className="transition-colors"
                         />
                         <span
                             className={cn(
-                                'text-xs transition-all',
-                                isActive && 'font-semibold'
+                                'relative max-w-full truncate pb-1.5 text-[11px] leading-[14px]',
+                                'after:absolute after:bottom-0 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full',
+                                isActive ? 'font-semibold after:bg-primary' : 'font-medium after:bg-transparent'
                             )}
                         >
                             {item.label}

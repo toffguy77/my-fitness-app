@@ -4,6 +4,10 @@
  * Displays input field for weight entry, shows previous weight for comparison,
  * quick add functionality, completion indicator, and validation.
  *
+ * Дизайн-система: вес — главным числом, изменение с вчера — нейтрально
+ * (стрелка и знак, без оценки цветом: «лучше» или «хуже» зависит от цели
+ * человека, а не от направления), записанный вес — состояние успеха.
+ *
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7
  *
  * Performance optimizations:
@@ -12,13 +16,13 @@
  */
 
 import { useState, useCallback, memo, useMemo, useEffect } from 'react'
-import { Plus, Check, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
-import { Button } from '@/shared/components/ui/Button'
+import { Plus, Pencil, Check, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react'
+import { Card, CardTitle } from '@/shared/components/ui/Card'
+import { Button, IconButton } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
-import { formatLocalDate } from '@/shared/utils/format'
+import { formatLocalDate, formatDecimal } from '@/shared/utils/format'
 import { validateWeight } from '../utils/validation'
 import { useDebouncedCallback } from '@/shared/hooks/useDebounce'
 import { AttentionBadge } from './AttentionBadge'
@@ -84,8 +88,10 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
         : null
 
     // Format weight display
+    // Показ — по-русски («67,4»), поле ввода — числом с точкой, как его разбирают.
+    const formatWeightInput = (weight: number) => (weight % 1 === 0 ? weight.toString() : weight.toFixed(1))
     const formatWeight = (weight: number) => {
-        return weight % 1 === 0 ? weight.toString() : weight.toFixed(1)
+        return formatDecimal(weight)
     }
 
     // Debounced validation function (300ms delay)
@@ -154,7 +160,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
     const handleQuickAdd = useCallback(() => {
         if (isWeightLogged) {
             // If weight is already logged, allow editing
-            setInputValue(formatWeight(currentWeight))
+            setInputValue(formatWeightInput(currentWeight))
             setIsEditing(true)
         } else {
             // If no weight logged, start editing
@@ -183,221 +189,181 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
     const showAttentionIndicator = isToday && !isWeightLogged
 
     return (
-        <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
-                            {t('dashboard.weight.title')}
-                        </CardTitle>
-                        {showAttentionIndicator && (
-                            <AttentionBadge
-                                urgency="normal"
-                                ariaLabel={t('dashboard.weight.noneToday')}
-                            />
+        <Card className={cn('flex h-full flex-col gap-4', className)}>
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <CardTitle>{t('dashboard.weight.title')}</CardTitle>
+                    {showAttentionIndicator && (
+                        <AttentionBadge
+                            urgency="normal"
+                            ariaLabel={t('dashboard.weight.noneToday')}
+                        />
+                    )}
+                </div>
+                <IconButton
+                    variant="ghost"
+                    onClick={handleQuickAdd}
+                    aria-label={isWeightLogged ? t('dashboard.weight.change') : t('dashboard.weight.add')}
+                >
+                    {isWeightLogged
+                        ? <Pencil className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
+                        : <Plus className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />}
+                </IconButton>
+            </div>
+
+            {isEditing ? (
+                <div className="space-y-3">
+                    <div>
+                        <label htmlFor="weight-input" className="sr-only">
+                            {t('dashboard.weight.kilograms')}
+                        </label>
+                        <Input
+                            id="weight-input"
+                            type="number"
+                            inputMode="decimal"
+                            step="0.1"
+                            min="0.1"
+                            max="500"
+                            placeholder={t('dashboard.weight.placeholder')}
+                            value={inputValue}
+                            onChange={(e) => handleInputChange(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            error={validationError || undefined}
+                            autoFocus
+                            aria-label={t('dashboard.weight.kilograms')}
+                            aria-describedby={validationError ? "weight-error" : undefined}
+                            aria-invalid={!!validationError}
+                        />
+                        {validationError && (
+                            <div
+                                id="weight-error"
+                                className="sr-only"
+                                role="alert"
+                                aria-live="polite"
+                            >
+                                {validationError}
+                            </div>
                         )}
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleQuickAdd}
-                        className="h-8 w-8 p-0"
-                        aria-label={isWeightLogged ? t('dashboard.weight.change') : t('dashboard.weight.add')}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="secondary"
+                            onClick={handleCancel}
+                            disabled={isSaving}
+                            aria-label={t('dashboard.weight.cancelAria')}
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleSave}
+                            isLoading={isSaving}
+                            disabled={!!validationError || !inputValue.trim()}
+                            className="flex-1"
+                            aria-label={t('dashboard.weight.saveAria')}
+                        >
+                            {t('common.save')}
+                        </Button>
+                    </div>
                 </div>
-            </CardHeader>
+            ) : isWeightLogged ? (
+                <div className="space-y-2" role="region" aria-label={t('dashboard.weight.currentAria')}>
+                    <div className="flex items-baseline gap-1">
+                        <span className="type-num-xl text-fg" aria-label={t('dashboard.weight.currentValueAria', { weight: formatWeight(currentWeight) })}>
+                            {formatWeight(currentWeight)}
+                        </span>
+                        <span className="text-base text-fg-muted" aria-hidden="true">{t('dashboard.weight.kg')}</span>
+                    </div>
 
-            <CardContent className="space-y-4">
-                {/* Current weight display or input */}
-                {isEditing ? (
-                    <div className="space-y-3">
-                        <div>
-                            <label htmlFor="weight-input" className="sr-only">
-                                {t('dashboard.weight.kilograms')}
-                            </label>
-                            <Input
-                                id="weight-input"
-                                type="number"
-                                step="0.1"
-                                min="0.1"
-                                max="500"
-                                placeholder={t('dashboard.weight.placeholder')}
-                                value={inputValue}
-                                onChange={(e) => handleInputChange(e.target.value)}
-                                onKeyDown={handleKeyPress}
-                                error={validationError || undefined}
-                                autoFocus
-                                aria-label={t('dashboard.weight.kilograms')}
-                                aria-describedby={validationError ? "weight-error" : undefined}
-                                aria-invalid={!!validationError}
-                            />
-                            {validationError && (
-                                <div
-                                    id="weight-error"
-                                    className="sr-only"
-                                    role="alert"
-                                    aria-live="polite"
-                                >
-                                    {validationError}
-                                </div>
+                    <div
+                        className="flex items-center gap-1.5 text-success-fg"
+                        role="status"
+                        aria-label={t('dashboard.weight.loggedAria')}
+                    >
+                        <Check className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                        <span className="text-sm font-medium">{t('dashboard.weight.logged')}</span>
+                    </div>
+
+                    {/* Изменение с вчера — без оценки цветом */}
+                    {weightChange !== null && (
+                        <div
+                            className="flex items-center gap-1 text-sm text-fg tabular-nums"
+                            role="status"
+                            aria-label={t('dashboard.weight.changeAria', { direction: weightChange > 0 ? t('dashboard.weight.increase') : weightChange < 0 ? t('dashboard.weight.decrease') : t('dashboard.weight.unchanged'), amount: formatDecimal(Math.abs(weightChange)) })}
+                        >
+                            {weightChange > 0 ? (
+                                <TrendingUp className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
+                            ) : weightChange < 0 ? (
+                                <TrendingDown className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
+                            ) : (
+                                <Minus className="h-4 w-4 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
+                            )}
+                            <span>
+                                {weightChange > 0 ? '+' : ''}
+                                {formatWeight(Math.abs(weightChange))} {t('dashboard.weight.kg')}
+                            </span>
+                            {weightChange !== 0 && (
+                                <span className="text-fg-muted">
+                                    {t('dashboard.weight.sinceYesterday')}
+                                </span>
                             )}
                         </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={handleSave}
-                                isLoading={isSaving}
-                                disabled={!!validationError || !inputValue.trim()}
-                                className="flex-1"
-                                aria-label={t('dashboard.weight.saveAria')}
-                            >
-                                <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                                {t('common.save')}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancel}
-                                disabled={isSaving}
-                                aria-label={t('dashboard.weight.cancelAria')}
-                            >
-                                {t('common.cancel')}
-                            </Button>
+                    )}
+
+                    {previousWeight && (
+                        <div className="text-sm text-fg-muted tabular-nums" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
+                            {t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}
                         </div>
-                    </div>
-                ) : (
-                    <div className="text-center space-y-4">
-                        {/* Current weight display */}
-                        {isWeightLogged ? (
-                            <div className="space-y-2" role="region" aria-label={t('dashboard.weight.currentAria')}>
-                                <div className="text-4xl font-bold text-gray-900">
-                                    <span aria-label={t('dashboard.weight.currentValueAria', { weight: formatWeight(currentWeight) })}>
-                                        {formatWeight(currentWeight)}
-                                    </span>
-                                    <span className="text-lg text-gray-500 ml-1" aria-hidden="true">{t('dashboard.weight.kg')}</span>
-                                </div>
+                    )}
 
-                                {/* Completion indicator */}
-                                <div
-                                    className="flex items-center justify-center gap-2 text-green-600"
-                                    role="status"
-                                    aria-label={t('dashboard.weight.loggedAria')}
-                                >
-                                    <Check className="h-4 w-4" aria-hidden="true" />
-                                    <span className="text-sm font-medium">{t('dashboard.weight.logged')}</span>
-                                </div>
+                    {/* Цель и расстояние до неё — числом, без перекраски */}
+                    {targetWeight != null && distanceToTarget != null && (
+                        <div className="flex items-center gap-1.5 text-sm text-fg-muted tabular-nums">
+                            <Target className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                            <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
+                            {Math.abs(distanceToTarget) >= 0.1 ? (
+                                <span className="text-fg">
+                                    ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} {t('dashboard.weight.kg')})
+                                </span>
+                            ) : (
+                                <span className="font-medium text-success-fg">{t('dashboard.weight.targetReached')}</span>
+                            )}
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="space-y-3" role="status" aria-label={t('dashboard.weight.emptyAria')}>
+                    <p className="text-sm text-fg-muted">
+                        {t('dashboard.weight.empty')}
+                    </p>
+                    {previousWeight && (
+                        <p className="text-sm text-fg-muted tabular-nums" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
+                            {t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}
+                        </p>
+                    )}
+                    {targetWeight != null && (
+                        <div className="flex items-center gap-1.5 text-sm text-fg-muted tabular-nums">
+                            <Target className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                            <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
+                        </div>
+                    )}
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleQuickAdd}
+                        aria-label={t('dashboard.weight.logAria')}
+                    >
+                        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                        {t('dashboard.weight.log')}
+                    </Button>
+                </div>
+            )}
 
-                                {/* Weight change comparison */}
-                                {weightChange !== null && (
-                                    <div
-                                        className={cn(
-                                            'flex items-center justify-center gap-1 text-sm',
-                                            weightChange > 0 ? 'text-red-600' :
-                                                weightChange < 0 ? 'text-green-600' : 'text-gray-600'
-                                        )}
-                                        role="status"
-                                        aria-label={t('dashboard.weight.changeAria', { direction: weightChange > 0 ? t('dashboard.weight.increase') : weightChange < 0 ? t('dashboard.weight.decrease') : t('dashboard.weight.unchanged'), amount: Math.abs(weightChange).toFixed(1) })}
-                                    >
-                                        {weightChange > 0 ? (
-                                            <TrendingUp className="h-4 w-4" aria-hidden="true" />
-                                        ) : weightChange < 0 ? (
-                                            <TrendingDown className="h-4 w-4" aria-hidden="true" />
-                                        ) : (
-                                            <Minus className="h-4 w-4" aria-hidden="true" />
-                                        )}
-                                        <span>
-                                            {weightChange > 0 ? '+' : ''}
-                                            {formatWeight(Math.abs(weightChange))} {t('dashboard.weight.kg')}
-                                        </span>
-                                        {weightChange !== 0 && (
-                                            <span className="text-gray-500">
-                                                {t('dashboard.weight.sinceYesterday')}
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Previous weight reference */}
-                                {previousWeight && (
-                                    <div className="text-xs text-gray-500" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
-                                        {t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}
-                                    </div>
-                                )}
-
-                                {/* Target weight with distance */}
-                                {targetWeight != null && distanceToTarget != null && (
-                                    <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 pt-1">
-                                        <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
-                                        <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
-                                        {Math.abs(distanceToTarget) >= 0.1 ? (
-                                            <span className={distanceToTarget > 0 ? 'text-amber-600' : 'text-green-600'}>
-                                                ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} {t('dashboard.weight.kg')})
-                                            </span>
-                                        ) : (
-                                            <span className="text-green-600 font-medium">{t('dashboard.weight.targetReached')}</span>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            /* Empty state */
-                            <div className="py-8 space-y-3" role="status" aria-label={t('dashboard.weight.emptyAria')}>
-                                <div className="text-gray-400">
-                                    <svg
-                                        className="h-12 w-12 mx-auto mb-3"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                        aria-hidden="true"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={1.5}
-                                            d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
-                                        />
-                                    </svg>
-                                </div>
-                                <p className="text-sm text-gray-500 mb-3">
-                                    {t('dashboard.weight.empty')}
-                                </p>
-                                {previousWeight && (
-                                    <p className="text-xs text-gray-400 mb-3" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
-                                        {t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}
-                                    </p>
-                                )}
-                                {/* Target weight in empty state */}
-                                {targetWeight != null && (
-                                    <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
-                                        <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
-                                        <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
-                                    </div>
-                                )}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleQuickAdd}
-                                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                                    aria-label={t('dashboard.weight.logAria')}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                                    {t('dashboard.weight.log')}
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Helper text */}
-                {!isEditing && (
-                    <div className="text-xs text-gray-400 text-center">
-                        {t('dashboard.weight.hint')}
-                    </div>
-                )}
-            </CardContent>
+            {!isEditing && (
+                <p className="mt-auto type-caption text-fg-subtle">
+                    {t('dashboard.weight.hint')}
+                </p>
+            )}
         </Card>
     )
 })

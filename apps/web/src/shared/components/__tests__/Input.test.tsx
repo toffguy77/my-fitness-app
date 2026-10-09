@@ -46,7 +46,7 @@ describe('Input', () => {
     it('applies error border styles', () => {
         render(<Input label="Name" error="Error" />)
         const input = screen.getByLabelText('Name')
-        expect(input.className).toContain('border-red-500')
+        expect(input.className).toContain('border-danger')
     })
 
     it('links error message via aria-describedby', () => {

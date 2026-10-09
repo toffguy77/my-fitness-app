@@ -1,5 +1,5 @@
 /**
- * The page no longer decides whether somebody is signed in — middleware.ts
+ * The page no longer decides whether somebody is signed in — proxy.ts
  * does that before this renders. What is left is telling "still working it
  * out" apart from "no session", which are different screens.
  */

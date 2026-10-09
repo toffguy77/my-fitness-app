@@ -2,6 +2,7 @@
 
 import { UtensilsCrossed, Dumbbell, Star, Ruler, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
+import { IconButton } from '@/shared/components/ui/Button'
 import type { TaskView, TaskType } from '../types'
 
 import { t } from '@/shared/i18n'
@@ -26,19 +27,19 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-    active: 'bg-blue-100 text-blue-800',
-    completed: 'bg-green-100 text-green-800',
-    overdue: 'bg-red-100 text-red-800',
+    active: 'bg-info-soft text-info-fg',
+    completed: 'bg-success-soft text-success-fg',
+    overdue: 'bg-danger-soft text-danger-fg',
 }
 
 function getDeadlineColor(deadline: string): string {
     const d = new Date(deadline + 'T23:59:59')
     const now = new Date()
-    if (d < now) return 'text-red-600'
+    if (d < now) return 'text-danger-fg'
     const weekFromNow = new Date()
     weekFromNow.setDate(weekFromNow.getDate() + 7)
-    if (d <= weekFromNow) return 'text-yellow-600'
-    return 'text-gray-500'
+    if (d <= weekFromNow) return 'text-warning-fg'
+    return 'text-fg-muted'
 }
 
 function formatDeadline(deadline: string): string {
@@ -86,20 +87,20 @@ function MiniCalendar({
     }
 
     return (
-        <div className="flex items-center gap-1 mt-2">
+        <div className="mt-2 flex items-center gap-1.5">
             {days.map((day) => {
                 const scheduled = isScheduled(day.dayOfWeek)
                 return (
                     <div key={day.date} className="flex flex-col items-center gap-0.5">
-                        <span className="text-[9px] text-gray-400">{dayLabels[day.dayOfWeek]}</span>
+                        <span className="text-[11px] leading-[14px] text-fg-subtle">{dayLabels[day.dayOfWeek]}</span>
                         <div
                             className={cn(
                                 'h-3 w-3 rounded-full',
                                 day.filled
-                                    ? 'bg-green-500'
+                                    ? 'bg-success'
                                     : scheduled
-                                      ? 'border-2 border-green-400 bg-transparent'
-                                      : 'bg-gray-200',
+                                      ? 'border-2 border-success bg-transparent'
+                                      : 'bg-subtle',
                             )}
                         />
                     </div>
@@ -119,53 +120,53 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
     const Icon = TYPE_ICONS[task.type] ?? Star
 
     return (
-        <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+        <div className="rounded-card border border-line bg-surface p-4">
             <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-                    <Icon className="h-4 w-4 text-gray-600" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-tile bg-subtle">
+                    <Icon className="h-5 w-5 text-fg-muted" strokeWidth={1.8} aria-hidden="true" />
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-gray-900 truncate">{task.title}</h3>
-                        <div className="flex items-center gap-2 shrink-0">
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                        <h3 className="type-headline min-w-0 truncate pt-2.5 text-fg">{task.title}</h3>
+                        <div className="flex shrink-0 items-center gap-0.5">
                             <span
                                 className={cn(
-                                    'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                                    STATUS_STYLES[task.status] ?? 'bg-gray-100 text-gray-800',
+                                    'mr-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                                    STATUS_STYLES[task.status] ?? 'bg-subtle text-fg',
                                 )}
                             >
                                 {STATUS_LABELS[task.status] ?? task.status}
                             </span>
                             {onEdit && (
-                                <button
-                                    type="button"
+                                <IconButton
+                                    variant="ghost"
                                     onClick={() => onEdit(task)}
-                                    className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                                    className="text-fg-muted hover:text-fg"
                                     aria-label={t('curator.taskCard.editAria')}
                                 >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                </button>
+                                    <Pencil className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                                </IconButton>
                             )}
                             {onDelete && (
-                                <button
-                                    type="button"
+                                <IconButton
+                                    variant="ghost"
                                     onClick={() => onDelete(task.id)}
-                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                    className="text-fg-muted hover:bg-danger-soft hover:text-danger-fg"
                                     aria-label={t('curator.taskCard.deleteAria')}
                                 >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                                    <Trash2 className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                                </IconButton>
                             )}
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-400">{TYPE_LABELS[task.type]}</span>
-                        <span className={cn('text-xs', getDeadlineColor(task.deadline))}>
+                    <div className="mt-0.5 flex items-center gap-2 text-sm">
+                        <span className="text-fg-subtle">{TYPE_LABELS[task.type]}</span>
+                        <span className={cn('tabular-nums', getDeadlineColor(task.deadline))}>
                             {t('curator.taskCard.deadline', { date: formatDeadline(task.deadline) })}
                         </span>
                     </div>
                     {task.description && (
-                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{task.description}</p>
+                        <p className="mt-1 line-clamp-2 text-sm text-fg-muted">{task.description}</p>
                     )}
                     {task.recurrence !== 'once' && task.completions && (
                         <MiniCalendar
