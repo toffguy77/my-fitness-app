@@ -12,16 +12,17 @@ import { SupportWidget } from '@/features/support/components/SupportWidget'
 import { enabledFeatures } from '@/shared/api/features'
 import { TrackView, TrackScrollDepth, EVENTS } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
+import { openGraph } from '@/shared/constants/seo'
 import { organizationJsonLd } from './organizationJsonLd'
 
 export const metadata: Metadata = {
     title: t('landing.meta.title'),
     description: t('landing.meta.description'),
-    openGraph: {
+    openGraph: openGraph({
         title: t('landing.meta.title'),
         description: t('landing.meta.ogDescription'),
         url: 'https://burcev.team',
-    },
+    }),
     alternates: {
         canonical: 'https://burcev.team',
     },
@@ -32,7 +33,9 @@ const webAppJsonLd = {
     '@type': 'WebApplication',
     name: 'BURCEV',
     url: 'https://burcev.team',
-    applicationCategory: 'HealthApplication',
+    // Полным адресом: контекст schema.org объявляет поле ссылкой, и короткое
+    // имя Яндекс достраивал до https://burcev.team/HealthApplication.
+    applicationCategory: 'https://schema.org/HealthApplication',
     operatingSystem: 'Web',
     offers: {
         '@type': 'Offer',
