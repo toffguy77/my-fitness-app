@@ -35,8 +35,11 @@ export function curatorOfferJsonLd(pageUrl: string) {
                 '@type': 'UnitPriceSpecification',
                 price,
                 priceCurrency: 'RUB',
-                unitCode: 'MON',
-                referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' },
+                // unitText, а не unitCode: контекст schema.org объявляет
+                // unitCode ссылкой, и «MON» Яндекс достраивал до
+                // https://burcev.team/MON.
+                unitText: 'месяц',
+                referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitText: 'месяц' },
             },
             availability: 'https://schema.org/InStock',
             seller: { '@type': 'Organization', name: 'BURCEV', url: 'https://burcev.team' },
