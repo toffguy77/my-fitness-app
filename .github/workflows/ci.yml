@@ -12,7 +12,10 @@ permissions:
   pull-requests: write
 
 env:
-  GO_VERSION: '1.26'
+  # Патч закреплён: по маске '1.26' setup-go отдавал 1.26.8 и после выхода
+  # 1.26.9, а govulncheck судит именно по этой версии. Держать в шаге с
+  # apps/api/Dockerfile и e2e.yml.
+  GO_VERSION: '1.26.9'
   NODE_VERSION: '24'
 
 jobs:
