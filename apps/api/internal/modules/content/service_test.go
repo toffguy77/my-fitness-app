@@ -100,17 +100,26 @@ func TestPublishArticle(t *testing.T) {
 		authorID := int64(1)
 		articleID := "article-123"
 
-		// verifyOwnership query
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(authorID))
-
-		// Publish update
 		mock.ExpectExec(`UPDATE articles SET status = 'published'`).
-			WithArgs(articleID, authorID).
+			WithArgs(articleID).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		err := service.PublishArticle(ctx, authorID, articleID, false)
+		err := service.PublishArticle(ctx, authorID, articleID)
+
+		require.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("publishes an article written by someone else", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		// The query does not mention the author: articles are shared.
+		mock.ExpectExec(`UPDATE articles SET status = 'published', published_at = NOW\(\), updated_at = NOW\(\) WHERE id = \$1$`).
+			WithArgs("article-456").
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		err := service.PublishArticle(ctx, int64(1), "article-456")
 
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -120,57 +129,16 @@ func TestPublishArticle(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		authorID := int64(1)
 		articleID := "nonexistent"
 
-		// verifyOwnership: article not found
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
+		mock.ExpectExec(`UPDATE articles SET status = 'published'`).
+			WithArgs(articleID).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectQuery(`SELECT id, status FROM articles WHERE id = \$1`).
 			WithArgs(articleID).
 			WillReturnError(sql.ErrNoRows)
 
-		err := service.PublishArticle(ctx, authorID, articleID, false)
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, apperrors.ErrNotFound)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("returns error when article belongs to different author", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		authorID := int64(1)
-		otherAuthorID := int64(2)
-		articleID := "article-456"
-
-		// verifyOwnership: different owner
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(otherAuthorID))
-
-		err := service.PublishArticle(ctx, authorID, articleID, false)
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, apperrors.ErrForbidden)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("returns error when update affects no rows", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		authorID := int64(1)
-		articleID := "article-789"
-
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(authorID))
-
-		mock.ExpectExec(`UPDATE articles SET status = 'published'`).
-			WithArgs(articleID, authorID).
-			WillReturnResult(sqlmock.NewResult(0, 0))
-
-		err := service.PublishArticle(ctx, authorID, articleID, false)
+		err := service.PublishArticle(ctx, int64(1), articleID)
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, apperrors.ErrNotFound)
@@ -189,23 +157,16 @@ func TestScheduleArticle(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		authorID := int64(1)
 		articleID := "article-123"
 		scheduledAt := time.Now().Add(24 * time.Hour)
 
-		// verifyOwnership
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(authorID))
-
-		// Schedule update
-		mock.ExpectExec(`UPDATE articles SET status = 'scheduled', scheduled_at = \$1`).
-			WithArgs(scheduledAt, articleID, authorID).
+		mock.ExpectExec(`UPDATE articles SET status = 'scheduled', scheduled_at = \$1, updated_at = NOW\(\) WHERE id = \$2$`).
+			WithArgs(scheduledAt, articleID).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		err := service.ScheduleArticle(ctx, authorID, articleID, ScheduleArticleRequest{
+		err := service.ScheduleArticle(ctx, int64(1), articleID, ScheduleArticleRequest{
 			ScheduledAt: scheduledAt,
-		}, false)
+		})
 
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -215,41 +176,16 @@ func TestScheduleArticle(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		authorID := int64(1)
 		articleID := "nonexistent"
-
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnError(sql.ErrNoRows)
-
-		err := service.ScheduleArticle(ctx, authorID, articleID, ScheduleArticleRequest{
-			ScheduledAt: time.Now().Add(24 * time.Hour),
-		}, false)
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, apperrors.ErrNotFound)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("returns error when update affects no rows", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		authorID := int64(1)
-		articleID := "article-456"
 		scheduledAt := time.Now().Add(48 * time.Hour)
 
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(authorID))
-
 		mock.ExpectExec(`UPDATE articles SET status = 'scheduled', scheduled_at = \$1`).
-			WithArgs(scheduledAt, articleID, authorID).
+			WithArgs(scheduledAt, articleID).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
-		err := service.ScheduleArticle(ctx, authorID, articleID, ScheduleArticleRequest{
+		err := service.ScheduleArticle(ctx, int64(1), articleID, ScheduleArticleRequest{
 			ScheduledAt: scheduledAt,
-		}, false)
+		})
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, apperrors.ErrNotFound)
@@ -264,61 +200,33 @@ func TestScheduleArticle(t *testing.T) {
 func TestUnpublishArticle(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("unpublishes article successfully", func(t *testing.T) {
+	t.Run("unpublishes an article, whoever wrote it", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		authorID := int64(1)
 		articleID := "article-123"
 
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
+		mock.ExpectExec(`UPDATE articles SET status = 'draft', scheduled_at = NULL, published_at = NULL, updated_at = NOW\(\) WHERE id = \$1$`).
 			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(authorID))
-
-		mock.ExpectExec(`UPDATE articles SET status = 'draft'`).
-			WithArgs(articleID, authorID).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		err := service.UnpublishArticle(ctx, authorID, articleID, false)
+		err := service.UnpublishArticle(ctx, int64(1), articleID)
 
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("returns error when unauthorized", func(t *testing.T) {
+	t.Run("returns error when article not found", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		authorID := int64(1)
-		articleID := "article-123"
-
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(int64(999)))
-
-		err := service.UnpublishArticle(ctx, authorID, articleID, false)
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, apperrors.ErrForbidden)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("returns error when update affects no rows", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		authorID := int64(1)
-		articleID := "article-123"
-
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(authorID))
+		articleID := "nonexistent"
 
 		mock.ExpectExec(`UPDATE articles SET status = 'draft'`).
-			WithArgs(articleID, authorID).
+			WithArgs(articleID).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
-		err := service.UnpublishArticle(ctx, authorID, articleID, false)
+		err := service.UnpublishArticle(ctx, int64(1), articleID)
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, apperrors.ErrNotFound)
@@ -405,7 +313,7 @@ func TestListArticles(t *testing.T) {
 		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "", "", false)
+		result, err := service.ListArticles(ctx, authorID, "", "")
 
 		require.NoError(t, err)
 		require.Len(t, result.Articles, 2)
@@ -431,7 +339,7 @@ func TestListArticles(t *testing.T) {
 		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "", "", false)
+		result, err := service.ListArticles(ctx, authorID, "", "")
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -469,7 +377,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs("published").
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "published", "", false)
+		result, err := service.ListArticles(ctx, authorID, "published", "")
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -493,7 +401,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs("training").
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "", "training", false)
+		result, err := service.ListArticles(ctx, authorID, "", "training")
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -514,7 +422,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs("published", "nutrition").
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "published", "nutrition", false)
+		result, err := service.ListArticles(ctx, authorID, "published", "nutrition")
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -534,7 +442,7 @@ func TestListArticles(t *testing.T) {
 		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "", "", false)
+		result, err := service.ListArticles(ctx, authorID, "", "")
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -558,7 +466,7 @@ func TestListArticles(t *testing.T) {
 		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "", "", false)
+		result, err := service.ListArticles(ctx, authorID, "", "")
 
 		require.NoError(t, err)
 		require.Len(t, result.Articles, 1)
@@ -579,7 +487,7 @@ func TestListArticles(t *testing.T) {
 		mock.ExpectQuery(`SELECT a\.id, a\.slug, a\.author_id, COALESCE`).
 			WillReturnError(fmt.Errorf("connection refused"))
 
-		result, err := service.ListArticles(ctx, authorID, "", "", false)
+		result, err := service.ListArticles(ctx, authorID, "", "")
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -596,39 +504,23 @@ func TestListArticles(t *testing.T) {
 func TestDeleteArticle(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("returns error when article not found for ownership check", func(t *testing.T) {
+	t.Run("deletes an article written by someone else", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		authorID := int64(1)
-		articleID := "nonexistent"
-
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnError(sql.ErrNoRows)
-
-		err := service.DeleteArticle(ctx, authorID, articleID, false)
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, apperrors.ErrNotFound)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("returns error when article belongs to different author", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		authorID := int64(1)
 		articleID := "article-123"
 
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
+		// The query does not mention the author: articles are shared.
+		mock.ExpectExec(`DELETE FROM articles WHERE id = \$1$`).
 			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(int64(999)))
+			WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(`DELETE FROM notifications WHERE action_url = \$1`).
+			WithArgs("/content/" + articleID).
+			WillReturnResult(sqlmock.NewResult(0, 0))
 
-		err := service.DeleteArticle(ctx, authorID, articleID, false)
+		err := service.DeleteArticle(ctx, int64(1), articleID)
 
-		require.Error(t, err)
-		assert.ErrorIs(t, err, apperrors.ErrForbidden)
+		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -636,40 +528,30 @@ func TestDeleteArticle(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		authorID := int64(1)
 		articleID := "article-123"
 
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
+		mock.ExpectExec(`DELETE FROM articles WHERE id = \$1`).
 			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(authorID))
-
-		mock.ExpectExec(`DELETE FROM articles WHERE id = \$1 AND author_id = \$2`).
-			WithArgs(articleID, authorID).
 			WillReturnError(fmt.Errorf("foreign key violation"))
 
-		err := service.DeleteArticle(ctx, authorID, articleID, false)
+		err := service.DeleteArticle(ctx, int64(1), articleID)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to delete article")
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("returns error when delete affects no rows", func(t *testing.T) {
+	t.Run("returns error when article not found", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		authorID := int64(1)
-		articleID := "article-123"
+		articleID := "nonexistent"
 
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
+		mock.ExpectExec(`DELETE FROM articles WHERE id = \$1`).
 			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(authorID))
-
-		mock.ExpectExec(`DELETE FROM articles WHERE id = \$1 AND author_id = \$2`).
-			WithArgs(articleID, authorID).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
-		err := service.DeleteArticle(ctx, authorID, articleID, false)
+		err := service.DeleteArticle(ctx, int64(1), articleID)
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, apperrors.ErrNotFound)
@@ -835,76 +717,6 @@ func TestCreateArticle(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, article)
 		assert.Contains(t, err.Error(), "failed to create article")
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
-}
-
-// ============================================================================
-// verifyOwnership Tests
-// ============================================================================
-
-func TestVerifyOwnership(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("succeeds when author owns the article", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		authorID := int64(1)
-		articleID := "article-123"
-
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs(articleID).
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(authorID))
-
-		err := service.verifyOwnership(ctx, authorID, articleID)
-
-		require.NoError(t, err)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("returns error for non-existent article", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs("missing").
-			WillReturnError(sql.ErrNoRows)
-
-		err := service.verifyOwnership(ctx, int64(1), "missing")
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, apperrors.ErrNotFound)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("returns unauthorized for wrong author", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs("article-123").
-			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(int64(999)))
-
-		err := service.verifyOwnership(ctx, int64(1), "article-123")
-
-		require.Error(t, err)
-		assert.ErrorIs(t, err, apperrors.ErrForbidden)
-		assert.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("returns error on database failure", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		mock.ExpectQuery(`SELECT author_id FROM articles WHERE id = \$1`).
-			WithArgs("article-123").
-			WillReturnError(fmt.Errorf("connection reset"))
-
-		err := service.verifyOwnership(ctx, int64(1), "article-123")
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to verify article ownership")
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
