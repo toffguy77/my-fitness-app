@@ -161,8 +161,11 @@ describe('ArticleList', () => {
         })
     })
 
-    it('hides action buttons for non-own articles', async () => {
-        const articles = [createArticle({ is_own: false })]
+    // Статьи — общее пространство редакции: чужая статья управляется так же,
+    // как своя. Раньше кнопки были только у своих, и администратор не мог
+    // поправить статью куратора.
+    it('shows action buttons for articles written by someone else', async () => {
+        const articles = [createArticle({ is_own: false, status: 'draft' })]
         mockListArticles.mockResolvedValue({ articles, total: 1 })
 
         render(<ArticleList />)
@@ -171,8 +174,9 @@ describe('ArticleList', () => {
             expect(screen.getByText('Test Article')).toBeInTheDocument()
         })
 
-        expect(screen.queryByText('Редактировать')).not.toBeInTheDocument()
-        expect(screen.queryByText('Удалить')).not.toBeInTheDocument()
+        expect(screen.getByText('Редактировать')).toBeInTheDocument()
+        expect(screen.getByText('Опубликовать')).toBeInTheDocument()
+        expect(screen.getByText('Удалить')).toBeInTheDocument()
     })
 
     it('handles delete with confirmation', async () => {
