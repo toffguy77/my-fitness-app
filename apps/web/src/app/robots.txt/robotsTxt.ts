@@ -1,3 +1,5 @@
+import { PRIVATE_SECTIONS } from '@/shared/constants/sections'
+
 /**
  * robots.txt, written out as text.
  *
@@ -15,15 +17,13 @@
  * new one does not need to be added anywhere.
  */
 
+/**
+ * Closed to crawlers: every private section (the same list proxy.ts guards, so
+ * a new one cannot be forgotten here), and the pages that need no account but
+ * have nothing to find.
+ */
 export const DISALLOW = [
-    '/dashboard',
-    '/food-tracker',
-    '/notifications',
-    '/profile',
-    '/settings',
-    '/chat',
-    '/curator',
-    '/admin',
+    ...PRIVATE_SECTIONS,
     // Служебный справочник дизайн-системы — для команды, не для поиска.
     '/design-system',
     // The wizard: an app screen for two audiences, empty until the session is
