@@ -26,6 +26,43 @@ func NewService(db *database.DB, log *logger.Logger) *Service {
 // RecalculateForDate recalculates and upserts KBJU targets for a user on a given date.
 // Returns nil if user profile is incomplete (missing required fields or no weight data).
 func (s *Service) RecalculateForDate(ctx context.Context, userID int64, date time.Time) (*CalculatedTargets, error) {
+	targets, err := s.CalculateForDate(ctx, userID, date)
+	if err != nil || targets == nil {
+		return targets, err
+	}
+	if err := s.storeTargets(ctx, userID, date, targets); err != nil {
+		return nil, err
+	}
+	return targets, nil
+}
+
+// TargetForDate is the target the diary shows for a date, without writing
+// anything: the stored row when there is one, otherwise a fresh calculation
+// that is not saved.
+//
+// Readers other than the diary (the meal plan) use this rather than
+// RecalculateForDate: recalculating overwrites the stored row with today's
+// profile — wrong for a past date — and fills rows for future dates that the
+// diary would later serve as they were, ignoring a curator's plan assigned in
+// between.
+func (s *Service) TargetForDate(ctx context.Context, userID int64, date time.Time) (*CalculatedTargets, error) {
+	stored, err := s.GetTargetsForDate(ctx, userID, date.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+	if stored != nil {
+		return &CalculatedTargets{
+			Calories: stored.Calories, Protein: stored.Protein, Fat: stored.Fat, Carbs: stored.Carbs,
+			BMR: stored.BMR, TDEE: stored.TDEE, WorkoutBonus: stored.WorkoutBonus,
+			WeightUsed: stored.WeightUsed, Source: stored.Source,
+		}, nil
+	}
+	return s.CalculateForDate(ctx, userID, date)
+}
+
+// CalculateForDate computes the targets for a date without storing them. Nil
+// when the profile or weight is missing.
+func (s *Service) CalculateForDate(ctx context.Context, userID int64, date time.Time) (*CalculatedTargets, error) {
 	dateStr := date.Format("2006-01-02")
 
 	// 1. Check if curator override exists (weekly_plan active for this date)
@@ -84,7 +121,11 @@ func (s *Service) RecalculateForDate(ctx context.Context, userID int64, date tim
 		targets.Source = "curator_override"
 	}
 
-	// 7. Upsert into daily_calculated_targets
+	return &targets, nil
+}
+
+func (s *Service) storeTargets(ctx context.Context, userID int64, date time.Time, targets *CalculatedTargets) error {
+	dateStr := date.Format("2006-01-02")
 	upsertQuery := `
 		INSERT INTO daily_calculated_targets
 			(user_id, date, calories, protein, fat, carbs, bmr, tdee, workout_bonus, weight_used, source, created_at)
@@ -101,17 +142,16 @@ func (s *Service) RecalculateForDate(ctx context.Context, userID int64, date tim
 			source = EXCLUDED.source,
 			created_at = NOW()
 	`
-	_, err = s.db.ExecContext(ctx, upsertQuery,
+	_, err := s.db.ExecContext(ctx, upsertQuery,
 		userID, dateStr,
 		targets.Calories, targets.Protein, targets.Fat, targets.Carbs,
 		targets.BMR, targets.TDEE, targets.WorkoutBonus, targets.WeightUsed,
 		targets.Source,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("upserting calculated targets: %w", err)
+		return fmt.Errorf("upserting calculated targets: %w", err)
 	}
-
-	return &targets, nil
+	return nil
 }
 
 // MissingInputsFor reports which of the calculation's two conditions are not

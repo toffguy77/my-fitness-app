@@ -295,6 +295,32 @@ func TestCuratorWeeklyPlanIsTheTarget(t *testing.T) {
 	assert.Equal(t, 120.0, plan.Target.Protein)
 }
 
+// Открытие плана ничего не пишет в daily_calculated_targets: прошлая дата
+// берёт ту цель, что дневник показывает за неё, а будущая не оставляет строки,
+// которую дневник потом отдал бы как есть.
+func TestOpeningPlanLeavesStoredTargetsAlone(t *testing.T) {
+	f := setup(t, "mealplan_targets_readonly")
+	const past = "2026-10-05"
+	_, err := f.db.ExecContext(f.ctx, `
+		INSERT INTO daily_calculated_targets
+			(user_id, date, calories, protein, fat, carbs, bmr, tdee, workout_bonus, weight_used, source)
+		VALUES ($1, $2, 1700, 110, 55, 190, 1500, 2000, 0, 70, 'calculated')`, f.client, past)
+	require.NoError(t, err)
+
+	plan, err := f.svc.Get(f.ctx, f.client, past)
+	require.NoError(t, err)
+	assert.Equal(t, 1700.0, plan.Target.Kcal, "a past day keeps the target the diary shows for it")
+	assert.Equal(t, 1, f.count(t,
+		`SELECT COUNT(*) FROM daily_calculated_targets WHERE user_id = $1 AND date = $2 AND calories = 1700`,
+		f.client, past))
+
+	const future = "2026-10-20"
+	_, err = f.svc.Get(f.ctx, f.client, future)
+	require.NoError(t, err)
+	assert.Zero(t, f.count(t,
+		`SELECT COUNT(*) FROM daily_calculated_targets WHERE user_id = $1 AND date = $2`, f.client, future))
+}
+
 // Сценарий «Куратор поменял цель»: план тот же, target_changed = true;
 // пересборка собирает под новую цель и снимает пометку.
 func TestCuratorChangedTarget(t *testing.T) {

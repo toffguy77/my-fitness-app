@@ -26,7 +26,7 @@ import (
 // Targets is the part of nutrition-calc the plan needs: the same target the
 // diary shows, curator's weekly plan included.
 type Targets interface {
-	RecalculateForDate(ctx context.Context, userID int64, date time.Time) (*nutritioncalc.CalculatedTargets, error)
+	TargetForDate(ctx context.Context, userID int64, date time.Time) (*nutritioncalc.CalculatedTargets, error)
 	MissingInputsFor(ctx context.Context, userID int64, date time.Time) (*nutritioncalc.MissingInputs, error)
 }
 
@@ -112,7 +112,7 @@ func (t target) nutrition() generator.Nutrition {
 
 // currentTarget is the day's target now, or nil when it cannot be calculated.
 func (s *Service) currentTarget(ctx context.Context, userID int64, d day) (*target, error) {
-	t, err := s.targets.RecalculateForDate(ctx, userID, d.at)
+	t, err := s.targets.TargetForDate(ctx, userID, d.at)
 	if err != nil {
 		return nil, fmt.Errorf("calculate target: %w", err)
 	}

@@ -27,7 +27,7 @@
 
 **Бэкенд:**
 - Новый модуль `apps/api/internal/modules/mealplan/` с чистым пакетом подбора `mealplan/generator`.
-- Цель дня: `nutrition-calc` `Service.RecalculateForDate` и `MissingInputsFor` (`apps/api/internal/modules/nutrition-calc/service.go:28`, `:124`).
+- Цель дня: `nutrition-calc` `Service.TargetForDate` (без записи) и `MissingInputsFor` (`apps/api/internal/modules/nutrition-calc/service.go:28`, `:124`).
 - Кандидаты: фильтр доступности `recipeaccess` из `recipe-catalogue`.
 - Маршруты в новом `apps/api/internal/router/mealplan.go`; `protectedRoutes` (`apps/api/internal/router/authorization_matrix_test.go:49`) и `routes.golden`.
 - `apps/api/internal/modules/account/erasure.go` — стратегия удаления новых таблиц.

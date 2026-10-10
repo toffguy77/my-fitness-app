@@ -13,7 +13,7 @@
 
 ## 3. Сервис и маршруты
 
-- [x] 3.1 Получение цели через `RecalculateForDate`, `409` с `MissingInputsFor`. Проверка: тесты «Недельный план куратора», «Нет веса». — интеграционные `TestCuratorWeeklyPlanIsTheTarget`, `TestNoWeightNoPlan`; код `target_missing` в `apperrors/codes.go`.
+- [x] 3.1 Получение цели через `TargetForDate` (без записи), `409` с `MissingInputsFor`. Проверка: тесты «Недельный план куратора», «Нет веса». — интеграционные `TestCuratorWeeklyPlanIsTheTarget`, `TestNoWeightNoPlan`; код `target_missing` в `apperrors/codes.go`. Чтение без записи — `TestOpeningPlanLeavesStoredTargetsAlone`.
 - [x] 3.2 GET плана со сборкой при первом открытии, гонка двух первых запросов, `target_changed`, недоступные блюда. Проверка: интеграционные тесты на настоящей базе «Повторное открытие», «Куратор поменял цель», «Рецепт снят с публикации», «Доступность». — плюс `TestConcurrentFirstOpens` (8 одновременных GET → один план), `TestNewVersionDoesNotChangeStoredPlan`.
 - [x] 3.3 Пересборка, альтернативы, правка блюда, настройки приёмов. Проверка: тесты «Замена блюда», «Ручной вес вне диапазона», «Ничего не выбрано». — интеграционные `TestAlternativesAndReplacement`, `TestManualGrams`, `TestSettings`, `TestReplacementValidation`, `TestRegenerateKeepsLockedLunch`.
 - [x] 3.4 Расчёт процентов, остатков и раскладки калорий. Проверка: тест «Проценты»; раскладка в сумме 100. — `TestPercentAndRemaining`, `TestCalorieSplitSumsTo100` (наибольший остаток).

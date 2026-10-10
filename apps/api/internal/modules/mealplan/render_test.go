@@ -16,7 +16,7 @@ type fixedTargets struct {
 	t *nutritioncalc.CalculatedTargets
 }
 
-func (f fixedTargets) RecalculateForDate(context.Context, int64, time.Time) (*nutritioncalc.CalculatedTargets, error) {
+func (f fixedTargets) TargetForDate(context.Context, int64, time.Time) (*nutritioncalc.CalculatedTargets, error) {
 	return f.t, nil
 }
 
