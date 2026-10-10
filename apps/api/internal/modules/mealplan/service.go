@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"hash/fnv"
 	"math"
+	"regexp"
 	"slices"
 	"time"
 
+	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
 	"github.com/burcev/api/internal/modules/mealplan/generator"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -35,12 +37,21 @@ type PhotoURLs interface {
 	PublicURL(key string) string
 }
 
+// Diary is the part of food-tracker that logs a planned dish: the entry is
+// written by the very path a manual entry takes, inside the plan's
+// transaction, so the dish and its link appear together or not at all.
+type Diary interface {
+	CreateEntryIn(ctx context.Context, q foodtracker.Execer, userID int64, req *foodtracker.CreateEntryRequest) (*foodtracker.FoodEntry, error)
+	EntryCreated(ctx context.Context, userID int64, entry *foodtracker.FoodEntry)
+}
+
 // Service is the day plan.
 type Service struct {
 	db      *database.DB
 	log     *logger.Logger
 	targets Targets
 	photos  PhotoURLs
+	diary   Diary
 	// now and newSeed are replaced in tests.
 	now     func() time.Time
 	newSeed func() int64
@@ -49,6 +60,12 @@ type Service struct {
 // NewService builds the service. photos may be nil: photo_url is then null.
 func NewService(db *database.DB, log *logger.Logger, targets Targets, photos PhotoURLs) *Service {
 	return &Service{db: db, log: log, targets: targets, photos: photos, now: time.Now, newSeed: randomSeed}
+}
+
+// WithDiary attaches the diary that "eaten" writes to.
+func (s *Service) WithDiary(d Diary) *Service {
+	s.diary = d
+	return s
 }
 
 func randomSeed() int64 {
@@ -314,6 +331,18 @@ type storedItem struct {
 	locked      bool
 	manual      bool
 	unavailable bool
+	// entryID is the stored link to a diary entry, kept through rewrites.
+	// It counts — eaten — only while the entry is on the plan's date in this
+	// meal: an entry moved elsewhere in the diary no longer eats this dish.
+	entryID    *string
+	eaten      bool
+	eatenGrams float64
+}
+
+// fixedGrams is the weight an eaten dish holds in fitting: the entry's,
+// whole grams, at least one.
+func (it *storedItem) fixedGrams() int {
+	return max(1, int(math.Round(it.eatenGrams)))
 }
 
 // loadPlan reads the client's plan for the date, nil when there is none.
@@ -341,13 +370,22 @@ func (s *Service) loadPlan(ctx context.Context, q queryer, userID int64, d day, 
 	// Блюдо показывается по сохранённой версии: план на прошлую дату не
 	// меняется от одобрения новой. Доступность — по правилу recipeaccess для
 	// рецепта, а не версии: новая одобренная версия блюдо не «снимает».
+	//
+	// Съедено — только если запись на дату плана и в приёме блюда: запись,
+	// перенесённая в дневнике, блюдо больше не «ест». Вес — из записи, поэтому
+	// правка веса в дневнике видна плану без синхронизации.
 	rows, err := q.QueryContext(ctx, `
 		SELECT i.meal_type, i.recipe_id::text, i.recipe_version_id::text, i.grams, i.locked, i.manual_grams,
 		       v.name, v.photo_key, v.portion_grams::float8,
 		       v.kcal_100::float8, v.protein_100::float8, v.fat_100::float8, v.carbs_100::float8,
 		       NOT EXISTS (SELECT 1 FROM `+recipeaccess.Join("pr", "pv")+`
-		                   WHERE pr.id = i.recipe_id AND `+recipeaccess.Available("pr", "pv", "$2")+`)
-		FROM meal_plan_items i JOIN recipe_versions v ON v.id = i.recipe_version_id
+		                   WHERE pr.id = i.recipe_id AND `+recipeaccess.Available("pr", "pv", "$2")+`),
+		       i.food_entry_id::text, e.id IS NOT NULL, COALESCE(e.portion_amount, 0)::float8
+		FROM meal_plan_items i
+		JOIN meal_plans p ON p.id = i.plan_id
+		JOIN recipe_versions v ON v.id = i.recipe_version_id
+		LEFT JOIN food_entries e ON e.id = i.food_entry_id AND e.user_id = p.user_id
+		                        AND e.date = p.date AND e.meal_type = i.meal_type
 		WHERE i.plan_id = $1`, p.id, userID)
 	if err != nil {
 		return nil, fmt.Errorf("load plan items: %w", err)
@@ -359,7 +397,8 @@ func (s *Service) loadPlan(ctx context.Context, q queryer, userID int64, d day, 
 		r := &it.recipe
 		if err := rows.Scan(&it.mealType, &r.ID, &it.versionID, &it.grams, &it.locked, &it.manual,
 			&it.name, &it.photoKey, &r.PortionGrams,
-			&r.Per100.Kcal, &r.Per100.Protein, &r.Per100.Fat, &r.Per100.Carbs, &it.unavailable); err != nil {
+			&r.Per100.Kcal, &r.Per100.Protein, &r.Per100.Fat, &r.Per100.Carbs, &it.unavailable,
+			&it.entryID, &it.eaten, &it.eatenGrams); err != nil {
 			return nil, err
 		}
 		p.items[it.mealType] = &it
@@ -378,9 +417,9 @@ func (s *Service) writeItems(ctx context.Context, tx *sql.Tx, planID string, ite
 		}
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO meal_plan_items
-				(plan_id, meal_type, recipe_id, recipe_version_id, grams, locked, manual_grams)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-			planID, m, it.recipe.ID, it.versionID, it.grams, it.locked, it.manual); err != nil {
+				(plan_id, meal_type, recipe_id, recipe_version_id, grams, locked, manual_grams, food_entry_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			planID, m, it.recipe.ID, it.versionID, it.grams, it.locked, it.manual, it.entryID); err != nil {
 			return fmt.Errorf("write plan item: %w", err)
 		}
 	}
@@ -536,6 +575,14 @@ func (s *Service) Regenerate(ctx context.Context, userID int64, rawDate string) 
 		return nil, err
 	}
 
+	// Съеденное — факт: остаётся на месте, в своей версии и с весом записи,
+	// даже если рецепт с тех пор недоступен или приём убран из настроек.
+	for m, it := range p.items {
+		if it.eaten && !slices.Contains(meals, m) {
+			meals = canonical(append(meals, m))
+		}
+	}
+
 	seed := s.newSeed()
 	in := generator.Input{Target: t.nutrition(), Recent: recent, Seed: seed, Avoid: map[string]string{}}
 	for _, it := range p.items {
@@ -546,7 +593,10 @@ func (s *Service) Regenerate(ctx context.Context, userID int64, rawDate string) 
 		// Закреплённое и ручное блюдо остаются — по текущей одобренной версии,
 		// если рецепт всё ещё доступен и подходит к приёму. Недоступное
 		// вытесняется даже закреплённым.
-		if it := p.items[m]; it != nil && (it.locked || it.manual) && cat.suits(it.recipe.ID, m) {
+		if it := p.items[m]; it != nil && it.eaten {
+			r := it.recipe
+			slot.Recipe, slot.Grams = &r, it.fixedGrams()
+		} else if it != nil && (it.locked || it.manual) && cat.suits(it.recipe.ID, m) {
 			r := cat.byID[it.recipe.ID].recipe
 			slot.Recipe = &r
 			if it.manual {
@@ -556,6 +606,11 @@ func (s *Service) Regenerate(ctx context.Context, userID int64, rawDate string) 
 		in.Slots = append(in.Slots, slot)
 	}
 	items := itemsFrom(generator.Build(in), cat, p.items)
+	for m, it := range p.items {
+		if it.eaten {
+			items[m] = it
+		}
+	}
 
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE meal_plans SET seed = $2, meal_types = $3, target_kcal = $4, target_protein = $5,
@@ -595,7 +650,8 @@ func validMealType(m string) error {
 }
 
 // fixedSlots are the plan's meals with every dish fixed and free weights
-// refitted — the shape of "keep the dishes, fit the weights".
+// refitted — the shape of "keep the dishes, fit the weights". An eaten dish
+// holds the weight of its diary entry: what was eaten is a fact.
 func fixedSlots(p *storedPlan) []generator.Slot {
 	out := []generator.Slot{}
 	for _, m := range p.mealTypes {
@@ -603,13 +659,28 @@ func fixedSlots(p *storedPlan) []generator.Slot {
 		if it := p.items[m]; it != nil {
 			r := it.recipe
 			slot.Recipe = &r
-			if it.manual {
+			switch {
+			case it.eaten:
+				slot.Grams = it.fixedGrams()
+			case it.manual:
 				slot.Grams = it.grams
 			}
 		}
 		out = append(out, slot)
 	}
 	return out
+}
+
+// refit fits the free weights of the day to the plan's target. Eaten dishes
+// keep their stored plan weight: the entry's weight is shown instead, and the
+// plan's own comes back if the entry is deleted.
+func refit(p *storedPlan) {
+	plan := generator.Build(generator.Input{Target: p.target.nutrition(), Slots: fixedSlots(p)})
+	for _, fitted := range plan.Items {
+		if it := p.items[fitted.MealType]; !it.eaten {
+			it.grams = fitted.Grams
+		}
+	}
 }
 
 // UpdateItem replaces, locks or weighs one dish and refits the free weights
@@ -652,6 +723,10 @@ func (s *Service) UpdateItem(ctx context.Context, userID int64, rawDate, mealTyp
 	}
 
 	it := p.items[mealType]
+	// Съеденное не заменяется и не перевешивается: вес — из дневника.
+	if it != nil && it.eaten && (in.RecipeID != nil || in.Grams != nil || in.ResetGrams) {
+		return nil, conflict("meal %q is already eaten", mealType)
+	}
 	if in.RecipeID != nil {
 		cat, err := s.candidates(ctx, tx, userID)
 		if err != nil {
@@ -687,10 +762,7 @@ func (s *Service) UpdateItem(ctx context.Context, userID int64, rawDate, mealTyp
 		it.locked = *in.Locked
 	}
 
-	plan := generator.Build(generator.Input{Target: p.target.nutrition(), Slots: fixedSlots(p)})
-	for _, fitted := range plan.Items {
-		p.items[fitted.MealType].grams = fitted.Grams
-	}
+	refit(p)
 	if _, err := tx.ExecContext(ctx, `UPDATE meal_plans SET updated_at = NOW() WHERE id = $1`, p.id); err != nil {
 		return nil, fmt.Errorf("touch plan: %w", err)
 	}
@@ -699,6 +771,157 @@ func (s *Service) UpdateItem(ctx context.Context, userID int64, rawDate, mealTyp
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit update: %w", err)
+	}
+	return s.reload(ctx, userID, d)
+}
+
+// ---------------------------------------------------------------------------
+// The diary: reading without assembling, "eaten", refit
+// ---------------------------------------------------------------------------
+
+// Find returns the stored plan for the date, or nil when there is none. It
+// never assembles one: the diary reads plans through it, and opening the
+// diary must not create a plan.
+func (s *Service) Find(ctx context.Context, userID int64, rawDate string) (*MealPlan, error) {
+	d, err := s.parseDate(ctx, userID, rawDate)
+	if err != nil {
+		return nil, err
+	}
+	p, err := s.loadPlan(ctx, s.db, userID, d, false)
+	if err != nil || p == nil {
+		return nil, err
+	}
+	return s.render(ctx, userID, d, p)
+}
+
+var clock = regexp.MustCompile(`^([01][0-9]|2[0-3]):[0-5][0-9]$`)
+
+// DefaultPastTime is when a dish logged for another day is put in the diary;
+// the diary groups by meal, not by the minute.
+const DefaultPastTime = "12:00"
+
+// Eat logs the planned dish of a meal to the diary: an ordinary entry in
+// grams on the plan's date in the dish's meal, of the product of the dish's
+// recipe version. The dish remembers the entry; logging it again returns that
+// entry instead of a second one.
+//
+// The plan row is locked for the whole of it, as every other change to the
+// plan locks it: two taps race to one entry, and a regeneration cannot
+// rewrite the dish between the entry and its link.
+func (s *Service) Eat(ctx context.Context, userID int64, rawDate, mealType string, in EatRequest) (*EatResult, error) {
+	if s.diary == nil {
+		return nil, errors.New("meal plan: no diary attached")
+	}
+	d, err := s.parseDate(ctx, userID, rawDate)
+	if err != nil {
+		return nil, err
+	}
+	if err := validMealType(mealType); err != nil {
+		return nil, err
+	}
+	if in.Grams != nil && (*in.Grams <= 0 || *in.Grams > MaxManualGrams) {
+		return nil, validation("grams must be above 0 and at most %d", MaxManualGrams)
+	}
+	at := DefaultPastTime
+	if in.Time != nil {
+		if !clock.MatchString(*in.Time) {
+			return nil, validation("time must be HH:MM")
+		}
+		at = *in.Time
+	} else if now := s.now().In(d.at.Location()); now.Format("2006-01-02") == d.key {
+		at = now.Format("15:04")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin eat: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	p, err := s.loadPlan(ctx, tx, userID, d, true)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, errPlanNotFound
+	}
+	it := p.items[mealType]
+	if it == nil {
+		return nil, fmt.Errorf("%w: no dish in %s", apperrors.ErrNotFound, mealType)
+	}
+	if it.eaten {
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("commit eat: %w", err)
+		}
+		plan, err := s.render(ctx, userID, d, p)
+		if err != nil {
+			return nil, err
+		}
+		return &EatResult{EntryID: *it.entryID, Plan: plan}, nil
+	}
+
+	grams := float64(it.grams)
+	if in.Grams != nil {
+		grams = *in.Grams
+	}
+	var foodID string
+	if err := tx.QueryRowContext(ctx, `SELECT recipe_product_id($1)::text`, it.versionID).Scan(&foodID); err != nil {
+		return nil, fmt.Errorf("recipe product: %w", err)
+	}
+	entry, err := s.diary.CreateEntryIn(ctx, tx, userID, &foodtracker.CreateEntryRequest{
+		FoodID: foodID, MealType: foodtracker.MealType(mealType), PortionType: foodtracker.PortionGrams,
+		PortionAmount: grams, Time: at, Date: d.key,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create diary entry: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE meal_plan_items SET food_entry_id = $3 WHERE plan_id = $1 AND meal_type = $2`,
+		p.id, mealType, entry.ID); err != nil {
+		return nil, fmt.Errorf("link diary entry: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit eat: %w", err)
+	}
+	s.diary.EntryCreated(ctx, userID, entry)
+
+	plan, err := s.reload(ctx, userID, d)
+	if err != nil {
+		return nil, err
+	}
+	return &EatResult{EntryID: entry.ID, Plan: plan, Created: true}, nil
+}
+
+// Refit fits the weights of the uneaten, not manually weighed dishes to the
+// target less what was eaten. Logging a dish never does this by itself: the
+// plan changes only when the client asks.
+func (s *Service) Refit(ctx context.Context, userID int64, rawDate string) (*MealPlan, error) {
+	d, err := s.parseDate(ctx, userID, rawDate)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin refit: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	p, err := s.loadPlan(ctx, tx, userID, d, true)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, errPlanNotFound
+	}
+	refit(p)
+	if _, err := tx.ExecContext(ctx, `UPDATE meal_plans SET updated_at = NOW() WHERE id = $1`, p.id); err != nil {
+		return nil, fmt.Errorf("touch plan: %w", err)
+	}
+	if err := s.writeItems(ctx, tx, p.id, p.items); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit refit: %w", err)
 	}
 	return s.reload(ctx, userID, d)
 }
@@ -840,14 +1063,22 @@ func (s *Service) render(ctx context.Context, userID int64, d day, p *storedPlan
 			continue
 		}
 		n := generator.For(it.recipe.Per100, it.grams)
-		totals = generator.Nutrition{Kcal: totals.Kcal + n.Kcal, Protein: totals.Protein + n.Protein,
-			Fat: totals.Fat + n.Fat, Carbs: totals.Carbs + n.Carbs}
-		out.Items = append(out.Items, PlanItem{
+		pi := PlanItem{
 			MealType: m, RecipeID: it.recipe.ID, RecipeVersionID: it.versionID, Name: it.name,
 			PhotoURL: s.photoURL(it.photoKey), Grams: it.grams, PortionGrams: it.recipe.PortionGrams,
-			Nutrition: rounded(n), PercentOfTarget: percentOf(n, tgt),
 			Locked: it.locked, ManualGrams: it.manual, Unavailable: it.unavailable,
-		})
+		}
+		if it.eaten {
+			// Съеденное считается по весу записи, а не плана.
+			g := it.eatenGrams
+			n = generator.Nutrition{Kcal: it.recipe.Per100.Kcal * g / 100, Protein: it.recipe.Per100.Protein * g / 100,
+				Fat: it.recipe.Per100.Fat * g / 100, Carbs: it.recipe.Per100.Carbs * g / 100}
+			pi.Eaten, pi.EatenGrams, pi.FoodEntryID = true, &g, it.entryID
+		}
+		pi.Nutrition, pi.PercentOfTarget = rounded(n), percentOf(n, tgt)
+		totals = generator.Nutrition{Kcal: totals.Kcal + n.Kcal, Protein: totals.Protein + n.Protein,
+			Fat: totals.Fat + n.Fat, Carbs: totals.Carbs + n.Carbs}
+		out.Items = append(out.Items, pi)
 	}
 	out.Totals = rounded(totals)
 	out.PercentOfTarget = percentOf(totals, tgt)

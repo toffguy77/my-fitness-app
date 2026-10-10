@@ -173,6 +173,8 @@ export default defineConfig<SessionOptions>({
         // Команда и куратор готовят рецепты своими входами, клиент — свежая
         // учётка с посчитанной нормой: роль проекта не нужна.
         'tests/meal-day-plan.spec.ts',
+        // Тот же порядок: рецепты через API, клиент — свежая учётка.
+        'tests/plan-diary-logging.spec.ts',
       ],
     },
   ],

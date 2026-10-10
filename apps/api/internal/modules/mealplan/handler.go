@@ -3,6 +3,7 @@ package mealplan
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -14,6 +15,9 @@ import (
 // ServiceInterface is what the handler needs; the handler tests use a fake.
 type ServiceInterface interface {
 	Get(ctx context.Context, userID int64, date string) (*MealPlan, error)
+	Find(ctx context.Context, userID int64, date string) (*MealPlan, error)
+	Eat(ctx context.Context, userID int64, date, mealType string, in EatRequest) (*EatResult, error)
+	Refit(ctx context.Context, userID int64, date string) (*MealPlan, error)
 	Regenerate(ctx context.Context, userID int64, date string) (*MealPlan, error)
 	UpdateItem(ctx context.Context, userID int64, date, mealType string, in ItemUpdate) (*MealPlan, error)
 	Alternatives(ctx context.Context, userID int64, date, mealType string) ([]Alternative, error)
@@ -50,6 +54,8 @@ func (h *Handler) fail(c *gin.Context, err error, what string) {
 	case errors.As(err, &missing):
 		response.ErrorCode(c, http.StatusConflict, apperrors.CodeTargetMissing,
 			"Цель дня не рассчитать: не хватает данных", map[string]any{"missing": missing.Missing})
+	case errors.Is(err, apperrors.ErrConflict):
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict, err.Error(), nil)
 	case errors.Is(err, apperrors.ErrValidation):
 		response.ErrorCode(c, http.StatusUnprocessableEntity, apperrors.CodeValidation, err.Error(), nil)
 	case errors.Is(err, apperrors.ErrNotFound):
@@ -60,15 +66,70 @@ func (h *Handler) fail(c *gin.Context, err error, what string) {
 	}
 }
 
-// Get handles GET /meal-plans/:date.
+// Get handles GET /meal-plans/:date. With ?generate=false it only reads: no
+// plan answers 204 and none is assembled — the diary asks this way.
 func (h *Handler) Get(c *gin.Context) {
 	userID, ok := h.userID(c)
 	if !ok {
 		return
 	}
+	if c.Query("generate") == "false" {
+		plan, err := h.service.Find(c.Request.Context(), userID, c.Param("date"))
+		if err != nil {
+			h.fail(c, err, "find")
+			return
+		}
+		if plan == nil {
+			c.Status(http.StatusNoContent)
+			return
+		}
+		response.Success(c, http.StatusOK, plan)
+		return
+	}
 	plan, err := h.service.Get(c.Request.Context(), userID, c.Param("date"))
 	if err != nil {
 		h.fail(c, err, "get")
+		return
+	}
+	response.Success(c, http.StatusOK, plan)
+}
+
+// Eat handles POST /meal-plans/:date/items/:mealType/eat: 201 with the new
+// entry, 200 with the existing one when the dish was already logged.
+func (h *Handler) Eat(c *gin.Context) {
+	userID, ok := h.userID(c)
+	if !ok {
+		return
+	}
+	var in EatRequest
+	// Тело необязательно: «Съел» без правки веса шлёт пустой запрос.
+	if c.Request.ContentLength != 0 {
+		if err := c.ShouldBindJSON(&in); err != nil && !errors.Is(err, io.EOF) {
+			response.Error(c, http.StatusBadRequest, "Неверный формат запроса")
+			return
+		}
+	}
+	out, err := h.service.Eat(c.Request.Context(), userID, c.Param("date"), c.Param("mealType"), in)
+	if err != nil {
+		h.fail(c, err, "eat")
+		return
+	}
+	status := http.StatusOK
+	if out.Created {
+		status = http.StatusCreated
+	}
+	response.Success(c, status, out)
+}
+
+// Refit handles POST /meal-plans/:date/refit.
+func (h *Handler) Refit(c *gin.Context) {
+	userID, ok := h.userID(c)
+	if !ok {
+		return
+	}
+	plan, err := h.service.Refit(c.Request.Context(), userID, c.Param("date"))
+	if err != nil {
+		h.fail(c, err, "refit")
 		return
 	}
 	response.Success(c, http.StatusOK, plan)

@@ -45,6 +45,11 @@ export const EVENTS = {
     planItemLocked: 'plan_item_locked',
     planGramsSet: 'plan_grams_set',
     planOffTarget: 'plan_off_target',
+    // Связь плана с дневником. source у plan_item_eaten — где нажали:
+    // `plan` — «Съел» в плане, `diary` — «+» в блоке «По плану» дневника.
+    planItemEaten: 'plan_item_eaten',
+    planRefit: 'plan_refit',
+    recipeLoggedFromSearch: 'recipe_logged_from_search',
 } as const
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS]

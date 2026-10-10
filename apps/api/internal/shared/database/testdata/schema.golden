@@ -85,6 +85,7 @@ INDEX magic_links idx_magic_links_expires btree (expires_at)
 INDEX magic_links idx_magic_links_user_id btree (user_id)
 INDEX magic_links magic_links_pkey btree (id)
 INDEX magic_links magic_links_token_hash_key btree (token_hash)
+INDEX meal_plan_items idx_meal_plan_items_food_entry btree (food_entry_id) WHERE (food_entry_id IS NOT NULL)
 INDEX meal_plan_items idx_meal_plan_items_recipe btree (recipe_id)
 INDEX meal_plan_items idx_meal_plan_items_recipe_version btree (recipe_version_id)
 INDEX meal_plan_items meal_plan_items_pkey btree (plan_id, meal_type)
@@ -506,6 +507,7 @@ magic_links.ip_address text
 magic_links.token_hash text NOT NULL
 magic_links.user_agent text
 magic_links.user_id bigint
+meal_plan_items.food_entry_id uuid
 meal_plan_items.grams integer NOT NULL
 meal_plan_items.locked boolean NOT NULL DEFAULT false
 meal_plan_items.manual_grams boolean NOT NULL DEFAULT false

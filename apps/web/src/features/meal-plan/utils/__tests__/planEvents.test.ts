@@ -1,6 +1,6 @@
 import { track } from '@/shared/analytics'
 import { plan } from '../../testing/fixtures'
-import { resetPlanEventsForTests, trackPlanAction, trackPlanViewed } from '../planEvents'
+import { resetPlanEventsForTests, trackPlanAction, trackPlanItemEaten, trackPlanRefit, trackPlanViewed } from '../planEvents'
 
 jest.mock('@/shared/analytics', () => ({
     EVENTS: jest.requireActual('@/shared/analytics/events').EVENTS,
@@ -64,5 +64,19 @@ describe('события плана', () => {
         expect(track).toHaveBeenCalledTimes(1)
         spy.mockRestore()
         set.mockRestore()
+    })
+})
+
+describe('события связи с дневником', () => {
+    it('plan_item_eaten — с источником', () => {
+        trackPlanItemEaten('plan')
+        trackPlanItemEaten('diary')
+        expect(track).toHaveBeenNthCalledWith(1, 'plan_item_eaten', { source: 'plan' })
+        expect(track).toHaveBeenNthCalledWith(2, 'plan_item_eaten', { source: 'diary' })
+    })
+
+    it('plan_refit — без свойств', () => {
+        trackPlanRefit()
+        expect(track).toHaveBeenCalledWith('plan_refit')
     })
 })

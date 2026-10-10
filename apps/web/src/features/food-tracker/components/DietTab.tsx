@@ -19,6 +19,7 @@ import { useFoodTrackerStore } from '../store/foodTrackerStore';
 import type { MealType, FoodEntry, WaterLog, EntryMethodTab } from '../types';
 import { CalculateTargetPrompt } from '@/features/nutrition-calc/components/CalculateTargetPrompt';
 import type { MissingTargetInputs } from '@/features/nutrition-calc/types';
+import { useDiaryPlan } from '@/features/meal-plan';
 import { t } from '@/shared/i18n';
 
 // ============================================================================
@@ -96,7 +97,20 @@ export function DietTab({
         waterEnabled,
         selectedDate,
         addWater,
+        fetchDayData,
     } = useFoodTrackerStore();
+
+    // Блюда плана под приёмами пищи. Передаются сохранённые записи (без
+    // временных оптимистичных): удалённая или перенесённая запись съеденного
+    // блюда возвращает его под «По плану».
+    const savedEntries = MEAL_TYPES.flatMap((mealType) =>
+        (entries[mealType] ?? [])
+            .filter((entry) => !entry.id.startsWith('temp_'))
+            .map((entry) => ({ id: entry.id, mealType }))
+    );
+    const diaryPlan = useDiaryPlan(selectedDate, savedEntries, () => {
+        void fetchDayData(selectedDate);
+    });
 
     // Local state for modal
     const [isModalOpen, setIsModalOpen] = useState(openEntryOn !== null);
@@ -188,6 +202,9 @@ export function DietTab({
                         onEntryClick={handleEntryClick}
                         onEditEntry={handleEditEntry}
                         onDeleteEntry={handleDeleteEntry}
+                        planned={diaryPlan.plannedFor(mealType)}
+                        onLogPlanned={diaryPlan.log}
+                        loggingPlanned={diaryPlan.logging === mealType}
                     />
                 ))}
             </div>

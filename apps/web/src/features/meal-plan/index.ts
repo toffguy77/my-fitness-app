@@ -5,5 +5,6 @@ export { PlanWarnings, EmptySlotNotice, TargetMissingNotice } from './components
 export { DayTotals } from './components/DayTotals'
 export { MealPlanSettingsForm } from './components/MealPlanSettingsForm'
 export { useMealPlan } from './hooks/useMealPlan'
+export { useDiaryPlan, type DiaryPlanState } from './hooks/useDiaryPlan'
 export { mealPlanApi } from './api/mealPlanApi'
 export type * from './types'

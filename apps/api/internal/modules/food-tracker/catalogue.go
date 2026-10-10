@@ -37,7 +37,9 @@ var ErrNotCatalogueFood = fmt.Errorf("%w: not a catalogue food", apperrors.ErrVa
 //
 // Unlike getFoodItemByID it refuses personal foods: neither user_foods nor
 // food_items with source 'user' may become an ingredient of a recipe everyone
-// sees, or a client's exclusion that a recipe can match.
+// sees, or a client's exclusion that a recipe can match. Recipe products
+// (source 'recipe') are refused too: a dish is not an ingredient, and an
+// exclusion of one would hide nothing — the rule matches ingredients.
 func (s *Service) EnsureCatalogueFood(ctx context.Context, foodID string) (*CatalogueFood, error) {
 	foodID = strings.TrimSpace(foodID)
 	if _, err := uuid.Parse(foodID); err == nil {
@@ -46,7 +48,7 @@ func (s *Service) EnsureCatalogueFood(ctx context.Context, foodID string) (*Cata
 			SELECT name, COALESCE(calories_per_100, 0), COALESCE(protein_per_100, 0),
 			       COALESCE(fat_per_100, 0), COALESCE(carbs_per_100, 0), default_weight
 			FROM food_items
-			WHERE id = $1 AND COALESCE(source, 'database') <> 'user'`, foodID).Scan(
+			WHERE id = $1 AND COALESCE(source, 'database') NOT IN ('user', 'recipe')`, foodID).Scan(
 			&food.Name, &food.Kcal100, &food.Protein100, &food.Fat100, &food.Carbs100, &food.DefaultWeight)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotCatalogueFood
@@ -102,7 +104,7 @@ func (s *Service) EnsureCatalogueFood(ctx context.Context, foodID string) (*Cata
 }
 
 // SearchCatalogue searches the shared catalogue only: products and food_items
-// whose source is not 'user'.
+// whose source is neither 'user' nor 'recipe'.
 //
 // SearchFoods mixes in the caller's user_foods, and falls back to other
 // people's — right for a diary, wrong for a recipe: a staff member's personal
@@ -139,7 +141,7 @@ func (s *Service) SearchCatalogue(ctx context.Context, query string, limit int) 
 			        CASE WHEN verified = true THEN 0 WHEN source = 'database' THEN 1 ELSE 2 END
 			 FROM food_items
 			 WHERE search_vector @@ plainto_tsquery('russian', $1)
-			   AND COALESCE(source, 'database') <> 'user'
+			   AND COALESCE(source, 'database') NOT IN ('user', 'recipe')
 			 ORDER BY ts_rank(search_vector, plainto_tsquery('russian', $1)) DESC
 			 LIMIT 100)
 		)

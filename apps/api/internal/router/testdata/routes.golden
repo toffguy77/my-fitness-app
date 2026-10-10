@@ -155,6 +155,8 @@ POST /api/v1/food-tracker/user-foods/clone
 POST /api/v1/food-tracker/water
 POST /api/v1/leads/curator-request
 POST /api/v1/logs
+POST /api/v1/meal-plans/:date/items/:mealType/eat
+POST /api/v1/meal-plans/:date/refit
 POST /api/v1/meal-plans/:date/regenerate
 POST /api/v1/notifications/:id/read
 POST /api/v1/notifications/mark-all-read

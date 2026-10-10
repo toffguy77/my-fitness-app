@@ -108,6 +108,8 @@ var protectedRoutes = map[string]protection{
 	"POST /api/v1/meal-plans/:date/regenerate":                  protOwner,
 	"GET /api/v1/meal-plans/:date/items/:mealType/alternatives": protOwner,
 	"PUT /api/v1/meal-plans/:date/items/:mealType":              protOwner,
+	"POST /api/v1/meal-plans/:date/items/:mealType/eat":         protOwner,
+	"POST /api/v1/meal-plans/:date/refit":                       protOwner,
 
 	// Privileged roles that are meant to see other users' data.
 	"GET /api/v1/admin/conversations/:id/messages": protRole,

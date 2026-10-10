@@ -85,3 +85,22 @@ export function resetPlanEventsForTests(): void {
         // нечего чистить
     }
 }
+
+/** Где блюдо плана записали в дневник. */
+export type EatSource = 'plan' | 'diary'
+
+/**
+ * Блюдо плана записано в дневник.
+ *
+ * Два вызова с литералами, а не `{ source }`: check-codebase-integrity сверяет
+ * значение со словарём сервера только у литерала.
+ */
+export function trackPlanItemEaten(source: EatSource): void {
+    if (source === 'plan') track(EVENTS.planItemEaten, { source: 'plan' })
+    else track(EVENTS.planItemEaten, { source: 'diary' })
+}
+
+/** «Подогнать остаток» дошло до сервера. */
+export function trackPlanRefit(): void {
+    track(EVENTS.planRefit)
+}

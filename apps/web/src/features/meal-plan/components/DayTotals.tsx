@@ -1,4 +1,6 @@
 import { color as role } from '@burcev/design-tokens'
+import { SlidersHorizontal } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 import { ProgressBar } from '@/shared/components/ui/ProgressBar'
 import { MACRO_COLORS, MACRO_KEYS, MACRO_TEXT_COLORS, type MacroKey } from '@/shared/constants/macros'
 import { t } from '@/shared/i18n'
@@ -22,15 +24,25 @@ function remainingText(remaining: number): string {
     return remaining < 0 ? t('mealPlan.totals.over', { value }) : t('mealPlan.totals.left', { value })
 }
 
+interface DayTotalsProps {
+    plan: MealPlan
+    /** «Подогнать остаток»; без него кнопки нет. */
+    onRefit?: () => void
+    refitting?: boolean
+    disabled?: boolean
+}
+
 /**
  * Итоги дня: калории и Б/Ж/У в граммах, процент от цели, остаток и раскладка
- * калорий по Б/Ж/У.
+ * калорий по Б/Ж/У. Когда хоть одно блюдо съедено — «Подогнать остаток»:
+ * без нажатия запись в дневник веса несъеденных не двигает.
  *
  * Цвет нутриента опознаёт его и не меняется от выполнения цели (openspec
  * macro-colour-system); перебор сказан словами. У калорий цвета нутриента нет —
  * полоса в основном цвете, как дуга на главной.
  */
-export function DayTotals({ plan }: { plan: MealPlan }) {
+export function DayTotals({ plan, onRefit, refitting = false, disabled = false }: DayTotalsProps) {
+    const canRefit = !!onRefit && plan.items.some((item) => item.eaten)
     const kcal = Math.round(plan.totals.kcal)
     const targetKcal = Math.round(plan.target.kcal)
     const kcalLeft = Math.round(plan.remaining.kcal)
@@ -126,6 +138,16 @@ export function DayTotals({ plan }: { plan: MealPlan }) {
                     ))}
                 </p>
             </div>
+
+            {canRefit && (
+                <div className="flex flex-col gap-1">
+                    <Button variant="secondary" block onClick={onRefit} isLoading={refitting} disabled={disabled}>
+                        <SlidersHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                        {t('mealPlan.refit.action')}
+                    </Button>
+                    <p className="text-xs text-fg-subtle">{t('mealPlan.refit.hint')}</p>
+                </div>
+            )}
         </section>
     )
 }

@@ -46,7 +46,7 @@ func TestSearchFoods(t *testing.T) {
 		"id", "name", "brand", "category", "serving_size", "serving_unit",
 		"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
 		"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
-		"created_at", "updated_at", "rank", "source_priority",
+		"created_at", "updated_at", "rank", "source_priority", "recipe_id",
 	}
 
 	t.Run("successfully searches foods with Latin query", func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID, "Apple", nil, "fruits", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
+			AddRow(foodID, "Apple", nil, "fruits", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, nil)
 
 		mock.ExpectQuery(`WITH matched`).
 			WithArgs(query, limit+1, 0, int64(1)).
@@ -88,7 +88,7 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID, "Яблоко", nil, "фрукты", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
+			AddRow(foodID, "Яблоко", nil, "фрукты", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, nil)
 
 		mock.ExpectQuery(`WITH matched`).
 			WithArgs(query, limit+1, 0, int64(1)).
@@ -189,8 +189,8 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID1, "Курица грудка", nil, "мясо", 100.0, "г", 165.0, 31.0, 3.6, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.2, 1).
-			AddRow(foodID2, "Курица бедро", nil, "мясо", 100.0, "г", 209.0, 26.0, 10.9, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
+			AddRow(foodID1, "Курица грудка", nil, "мясо", 100.0, "г", 165.0, 31.0, 3.6, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.2, 1, nil).
+			AddRow(foodID2, "Курица бедро", nil, "мясо", 100.0, "г", 209.0, 26.0, 10.9, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, nil)
 
 		mock.ExpectQuery(`WITH matched`).
 			WithArgs(query, limit+1, 0, int64(1)).
@@ -235,7 +235,7 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID, "Рис белый", nil, "крупы", 100.0, "г", 130.0, 2.7, 0.3, 28.2, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
+			AddRow(foodID, "Рис белый", nil, "крупы", 100.0, "г", 130.0, 2.7, 0.3, 28.2, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, nil)
 
 		mock.ExpectQuery(`WITH matched`).
 			WithArgs(query, limit+1, 0, int64(1)).
@@ -267,7 +267,7 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID, "Молоко 3.2%", nil, "молочные", 100.0, "мл", 60.0, 2.9, 3.2, 4.7, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
+			AddRow(foodID, "Молоко 3.2%", nil, "молочные", 100.0, "мл", 60.0, 2.9, 3.2, 4.7, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, nil)
 
 		mock.ExpectQuery(`WITH matched`).
 			WithArgs(query, limit+1, offset, int64(1)).

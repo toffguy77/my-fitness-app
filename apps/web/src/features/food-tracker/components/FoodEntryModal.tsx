@@ -29,6 +29,7 @@ import { useFoodTrackerStore } from '../store/foodTrackerStore';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
 import { t } from '@/shared/i18n';
+import { EVENTS, track } from '@/shared/analytics';
 import { Button, IconButton } from '@/shared/components/ui/Button';
 
 // ============================================================================
@@ -334,7 +335,7 @@ export function FoodEntryModal({
                 const now = new Date();
                 const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-                await addEntry(mealType, {
+                const created = await addEntry(mealType, {
                     foodId: selectedFood.id,
                     mealType,
                     portionType,
@@ -347,6 +348,11 @@ export function FoodEntryModal({
                     fat: calculatedNutrition.fat,
                     carbs: calculatedNutrition.carbs,
                 });
+                // Блюдо каталога записано из поиска — доходят ли рецепты до
+                // дневника вне плана.
+                if (created && selectedFood.source === 'recipe') {
+                    track(EVENTS.recipeLoggedFromSearch);
+                }
 
                 const nextIndex = batchIndex + 1;
                 if (batchFoods.length > 0 && nextIndex < batchFoods.length) {

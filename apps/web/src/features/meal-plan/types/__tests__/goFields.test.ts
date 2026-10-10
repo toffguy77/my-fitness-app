@@ -78,6 +78,9 @@ describe('типы плана совпадают с json-тегами Go', () =>
         ['Alternative', ['Alternative', 'AlternativeResponse']],
         ['PlanItemUpdate', ['PlanItemUpdate', 'ItemUpdate', 'UpdateItemInput', 'ItemInput']],
         ['MealPlanSettings', ['MealPlanSettings', 'Settings', 'SettingsInput']],
+        // plan-diary-logging: «Съел».
+        ['EatRequest', ['EatRequest', 'EatInput', 'EatItemInput', 'EatBody']],
+        ['EatResponse', ['EatResponse', 'EatResult', 'EatOutput']],
     ])('%s', (tsName, candidates) => {
         const name = goName(candidates)
         // Пустой разбор с обеих сторон совпал бы — и ничего бы не проверил.
