@@ -255,6 +255,31 @@ After the merge, `.github/workflows/release-notify.yml` waits until prod's
 (topic «Releases»). Without the section the workflow fails instead of posting
 the technical body. Preview: `node scripts/release-notify.mjs <PR> --dry-run`.
 
+## SEO: новые разделы и страницы
+
+Главный поисковик — Яндекс. Полные правила — `docs/seo/README.md`; **сверяться
+с ними при каждой новой странице, новом разделе и правке публичной страницы.**
+
+Каждая страница `app/**/page.tsx` записана в `SURFACE` в
+`apps/web/src/app/__tests__/seo-surface.test.ts` с видом `public`,
+`public-dynamic`, `private`, `closed` или `utility`. Страница без записи
+**валит сборку**; для каждого вида тест проверяет своё: публичная — в sitemap,
+canonical на себя, полный Open Graph, бренд в заголовке один раз; приватная —
+за входом и в Disallow; служебная — с `noindex`.
+
+- Раздел за входом — одна строка в `PRIVATE_SECTIONS`
+  (`shared/constants/sections.ts`). Её читают и `proxy.ts`, и `robots.txt`;
+  `/menu` ушёл в прод открытым для робота, потому что списков было два.
+- Open Graph публичной страницы — только через `openGraph()` из
+  `shared/constants/seo.ts`: свой блок целиком заменяет блок layout.
+- Релизный PR в `main` содержит раздел **«Поиск»**: публичные адреса,
+  добавленные или изменённые, — или «публичных изменений нет».
+- **Переобход — шаг выкатки, а не просьба к владельцу.** Кто ведёт релиз, тот
+  после `/ready` с новой версией прогоняет `docs/seo/check-prod.sh` и отправляет
+  адреса из раздела «Поиск» на переобход (`webmaster_recrawl`, квота 150 в
+  сутки). Приватное и служебное не отправлять. Валидатор микроразметки API не
+  имеет — его просят прогнать владельца Вебмастера.
+
 ## Служебные учётки
 
 Учётки прогона (`*@burcev.test` и `e2e-*@burcev.team`) живут на проде

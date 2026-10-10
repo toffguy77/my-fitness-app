@@ -15,30 +15,9 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
+import { inPrivateSection } from '@/shared/constants/sections'
 
 const SESSION_MARKER = 'session_present'
-
-/** The screens that need an account. Anything else is open to a visitor. */
-const PROTECTED = [
-    '/dashboard',
-    '/food-tracker',
-    '/menu',
-    '/chat',
-    '/profile',
-    '/settings',
-    '/notifications',
-    '/curator',
-    '/admin',
-    // '/onboarding' is deliberately absent: the same path serves the guest
-    // calculator, which is the product's front door and needs no account. The
-    // page itself decides which of the two audiences it is looking at.
-]
-
-function needsAnAccount(pathname: string): boolean {
-    return PROTECTED.some(
-        (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
-    )
-}
 
 /**
  * A per-response nonce, so the content policy can name the one inline script
@@ -193,7 +172,7 @@ export async function proxy(request: NextRequest) {
         return redirect
     }
 
-    if (needsAnAccount(request.nextUrl.pathname) && !request.cookies.has(SESSION_MARKER)) {
+    if (inPrivateSection(request.nextUrl.pathname) && !request.cookies.has(SESSION_MARKER)) {
         // Where they were going, so signing in returns them there rather than
         // to a dashboard they did not ask for.
         const signIn = new URL('/auth', request.url)
