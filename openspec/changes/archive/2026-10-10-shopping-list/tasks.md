@@ -33,4 +33,4 @@
   *Сделано:* `e2e/tests/shopping-list.spec.ts`, в проекте `auth-tests`. Локально (своя база, seed-e2e, production-сборка, прокси 3070, `--workers=1`) — прошёл вместе с `meal-day-plan.spec.ts`: 2 из 2. В CI — после слияния.
 - [x] 4.2 `docs/user-guide/` — список покупок; `make sync-knowledge`. Проверка: `TestKnowledgeMatchesUserGuide`.
   *Сделано:* раздел «Список покупок» в `10-меню-и-рецепты.md`, `make sync-knowledge`, `go test ./internal/modules/support/` — зелёный.
-- [ ] 4.3 Слить в `dev` и пройти сценарий на new.burcev.team. Проверка: ручной проход, логи API без ошибок.
+- [x] 4.3 Слить в `dev` и пройти сценарий на new.burcev.team. Проверка: ручной проход, логи API без ошибок. **Пройдено на dev 2026-10-10: граммы сходятся с ручным расчётом, «Скопировать» кладёт текст, события shopping_list_opened/shared пришли. Найдено и исправлено: продукты уходили в «Прочее» из-за категорий-магазинов — отдел по названию (PR #244).**
