@@ -29,6 +29,7 @@ import (
 	"github.com/burcev/api/internal/modules/metrika"
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
+	"github.com/burcev/api/internal/modules/recipes"
 	"github.com/burcev/api/internal/modules/support"
 	"github.com/burcev/api/internal/modules/supportbridge"
 	"github.com/burcev/api/internal/modules/telegramlink"
@@ -386,6 +387,20 @@ func main() {
 	// принадлежность записи человеку обеспечена самим местом вызова.
 	foodTrackerService := foodtracker.NewService(db, log).WithAnalytics(analyticsService)
 
+	// Каталог рецептов. Хранилище контента и MCP ВкусВилла необязательны:
+	// без них загрузка фото и импорт отвечают 503. Интерфейс получает nil
+	// явно, а не через типизированный nil-указатель, иначе проверка на nil в
+	// сервисе не сработала бы.
+	var recipePhotos recipes.PhotoStore
+	if contentS3 != nil {
+		recipePhotos = contentS3
+	}
+	var vkusvill *recipes.VkusvillClient
+	if cfg.Features.RecipeImport {
+		vkusvill = recipes.NewVkusvillClient(cfg.VkusvillMCPURL)
+	}
+	recipesService := recipes.NewService(db, log, foodTrackerService, recipePhotos, vkusvill)
+
 	// Leads outlive the browser session they were created in, so their resume
 	// links are signed with the same secret that signs sessions.
 	leadsService := leads.NewService(db.DB, log, cfg.JWTSecret)
@@ -677,6 +692,7 @@ func main() {
 		TelegramLink: telegramlink.NewHandler(telegramlink.NewService(db.DB), log, cfg.TelegramBotUsername),
 		Metrics:      metrics,
 		Content:      content.NewHandler(cfg, log, contentService),
+		Recipes:      recipes.NewHandler(cfg, log, recipesService),
 	})
 
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())

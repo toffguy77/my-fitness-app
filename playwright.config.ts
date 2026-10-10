@@ -168,6 +168,8 @@ export default defineConfig<SessionOptions>({
         // Дизайн-система на живом стенде: тема с сервера, быстрая запись,
         // навигация по адресу и гидратация — под всеми тремя ролями.
         'tests/design-system.spec.ts',
+        // Три роли, у каждой свой вход — роль проекта не нужна.
+        'tests/recipe-catalogue.spec.ts',
       ],
     },
   ],

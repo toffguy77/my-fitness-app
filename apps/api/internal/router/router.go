@@ -27,6 +27,7 @@ import (
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
+	"github.com/burcev/api/internal/modules/recipes"
 	"github.com/burcev/api/internal/modules/support"
 	"github.com/burcev/api/internal/modules/telegramlink"
 	"github.com/burcev/api/internal/modules/users"
@@ -75,6 +76,7 @@ type Deps struct {
 	// Metrics is optional; when nil no instrumentation is installed.
 	Metrics *telemetry.Metrics
 	Content *content.Handler
+	Recipes *recipes.Handler
 }
 
 // New builds the engine with global middleware and every route registered.
@@ -137,6 +139,7 @@ func New(d Deps) *gin.Engine {
 	registerCuratorRoutes(v1, d)
 	registerAdminRoutes(v1, d)
 	registerContentRoutes(v1, d)
+	registerRecipeRoutes(v1, d)
 	registerLeadRoutes(v1, d)
 	registerCuratorRequestRoute(v1, d)
 	registerCuratorLeadRoutes(v1, d)

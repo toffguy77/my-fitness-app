@@ -20,6 +20,8 @@ describe('FooterNavigation', () => {
             ['/dashboard', 'dashboard'],
             ['/food-tracker', 'food-tracker'],
             ['/chat', 'chat'],
+            ['/menu', 'menu'],
+            ['/menu/recipes/abc', 'menu'],
             ['/content/some-article', 'content'],
         ])('%s → %s', (path, id) => {
             mockPathname = path
@@ -72,7 +74,7 @@ describe('FooterNavigation', () => {
 
             expect(getByText('Дашборд')).toBeInTheDocument()
             expect(getByText('Фудтрекер')).toBeInTheDocument()
-            expect(getByText('Тренировка')).toBeInTheDocument()
+            expect(getByText('Меню')).toBeInTheDocument()
             expect(getByText('Чат')).toBeInTheDocument()
             expect(getByText('Контент')).toBeInTheDocument()
         })
@@ -86,13 +88,27 @@ describe('FooterNavigation', () => {
             expect(dashboardItem).toHaveClass('text-fg')
         })
 
-        it('should mark Workout item as disabled', () => {
+        // Заглушки «Тренировка» больше нет: на её месте активное «Меню».
+        it('has no workout stub and no disabled items', () => {
+            const { container, queryByText } = render(<FooterNavigation />)
+
+            expect(container.querySelector('[data-testid="nav-item-workout"]')).toBeNull()
+            expect(queryByText('Тренировка')).toBeNull()
+            expect(container.querySelectorAll('[data-testid^="nav-item-"][disabled]')).toHaveLength(0)
+        })
+
+        it('the Menu item is enabled and sits where the workout stub was', () => {
             const { container } = render(<FooterNavigation />)
 
-            const workoutItem = container.querySelector('[data-testid="nav-item-workout"]')
-            expect(workoutItem).toHaveAttribute('disabled')
-            expect(workoutItem).toHaveAttribute('aria-disabled', 'true')
-            expect(workoutItem).toHaveClass('opacity-40')
+            const menuItem = container.querySelector('[data-testid="nav-item-menu"]')
+            expect(menuItem).not.toHaveAttribute('disabled')
+            expect(NAVIGATION_ITEMS.map((item) => item.id)).toEqual([
+                'dashboard',
+                'food-tracker',
+                'menu',
+                'chat',
+                'content',
+            ])
         })
 
         it('should navigate when enabled item is clicked', () => {
@@ -105,13 +121,14 @@ describe('FooterNavigation', () => {
             expect(mockPush).toHaveBeenCalledWith('/food-tracker')
         })
 
-        it('should not navigate when disabled item is clicked', () => {
+        it('opens /menu when the Menu item is clicked', () => {
             const { container } = render(<FooterNavigation />)
 
-            const workoutItem = container.querySelector('[data-testid="nav-item-workout"]')
-            fireEvent.click(workoutItem!)
+            const menuItem = container.querySelector('[data-testid="nav-item-menu"]')
+            fireEvent.click(menuItem!)
 
-            expect(mockPush).not.toHaveBeenCalled()
+            expect(mockPush).toHaveBeenCalledWith('/menu')
+            expect(menuItem).toHaveAttribute('aria-current', 'page')
         })
 
         it('should update active state when navigation item is clicked', () => {
@@ -143,14 +160,13 @@ describe('FooterNavigation', () => {
             expect(mockOnNavigate).toHaveBeenCalledWith('chat')
         })
 
-        it('should not call onNavigate for disabled items', () => {
+        it('calls onNavigate with menu for the Menu item', () => {
             const mockOnNavigate = jest.fn()
             const { container } = render(<FooterNavigation onNavigate={mockOnNavigate} />)
 
-            const workoutItem = container.querySelector('[data-testid="nav-item-workout"]')
-            fireEvent.click(workoutItem!)
+            fireEvent.click(container.querySelector('[data-testid="nav-item-menu"]')!)
 
-            expect(mockOnNavigate).not.toHaveBeenCalled()
+            expect(mockOnNavigate).toHaveBeenCalledWith('menu')
         })
 
         it('should accept custom activeItem prop', () => {

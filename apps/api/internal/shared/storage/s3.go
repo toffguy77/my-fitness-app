@@ -130,7 +130,7 @@ func (s *S3Client) uploadWithACL(ctx context.Context, key string, data io.Reader
 		return "", fmt.Errorf("failed to upload file to S3: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/%s/%s", s.endpoint, s.bucket, s.prefixKey(key))
+	url := s.PublicURL(key)
 
 	s.log.Info("File uploaded to S3",
 		"key", key,
@@ -141,6 +141,13 @@ func (s *S3Client) uploadWithACL(ctx context.Context, key string, data io.Reader
 	)
 
 	return url, nil
+}
+
+// PublicURL is the address an object uploaded with UploadPublicFile is served
+// from — the same formula the upload returns, so a caller that stores only the
+// key (recipe photos) rebuilds the URL without asking S3.
+func (s *S3Client) PublicURL(key string) string {
+	return fmt.Sprintf("%s/%s/%s", s.endpoint, s.bucket, s.prefixKey(key))
 }
 
 // GetFile downloads a file from S3 and returns its content as bytes.

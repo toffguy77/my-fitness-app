@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":3,"error":{"code":-32602,"message":"Invalid parameters for tool 'vkusvill_recipes': Missing required properties: `sort`.","data":{"validation_errors":[{"pointer":"/","keyword":"required","message":"Missing required properties: `sort`."}]}}}

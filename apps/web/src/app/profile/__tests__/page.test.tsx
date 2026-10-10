@@ -252,6 +252,10 @@ describe('ProfilePage', () => {
         await waitFor(() => {
             expect(screen.getByText('Настройки профиля')).toBeInTheDocument()
             expect(screen.getByText('Тело и цели')).toBeInTheDocument()
+            expect(screen.getByRole('link', { name: 'Ограничения в питании' })).toHaveAttribute(
+                'href',
+                '/settings/food-restrictions'
+            )
             expect(screen.getByText('Аккаунты социальных сетей')).toBeInTheDocument()
             expect(screen.getByText('Apple Health')).toBeInTheDocument()
             expect(screen.getByText('Уведомления')).toBeInTheDocument()

@@ -48,6 +48,9 @@ func registerCuratorRoutes(v1 *gin.RouterGroup, d Deps) {
 
 		// Implemented in nutrition-calc; safe because the group guards it.
 		client.GET("/targets/history", d.NutritionCalc.GetClientHistory)
+
+		// Implemented in recipes (router/recipes.go); guarded by this group.
+		registerCuratorClientRecipeRoutes(client, d)
 	}
 }
 

@@ -9,7 +9,7 @@ import { t } from '@/shared/i18n'
 /**
  * Navigation item identifiers
  */
-export type NavigationItemId = 'dashboard' | 'food-tracker' | 'workout' | 'chat' | 'content'
+export type NavigationItemId = 'dashboard' | 'food-tracker' | 'menu' | 'chat' | 'content'
 
 /**
  * Configuration for a single navigation item
