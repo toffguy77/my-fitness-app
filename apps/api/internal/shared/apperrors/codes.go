@@ -86,6 +86,13 @@ const (
 	// ("Действие невозможно в текущем состоянии") не говорит человеку, что
 	// адрес уже занят и что делать — запросить ссылку для входа заново.
 	CodeMagicLinkAccountExists = "magic_link_account_exists"
+
+	// CodeTargetMissing: план питания на дату не собрать, потому что цель дня
+	// не рассчитать — в params.missing перечислено, чего не хватает
+	// ("profile", "weight"). Не общий CodeConflict: клиенту нужно не
+	// «действие невозможно», а куда пойти заполнить. Как и выше, обработчик
+	// ставит код сам; в карту ниже он не входит.
+	CodeTargetMissing = "target_missing"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map

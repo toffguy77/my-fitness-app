@@ -45,7 +45,8 @@ async function dismissCookieBanner(page: Page) {
 }
 
 async function searchMenu(page: Page, name: string) {
-    await page.goto('/menu')
+    // «Меню» открывается на плане дня; каталог — вкладка «Рецепты».
+    await page.goto('/menu?tab=recipes')
     await expect(page.getByRole('heading', { level: 1, name: 'Меню' })).toBeVisible({ timeout: 15000 })
     await dismissCookieBanner(page)
     await page.getByLabel('Поиск рецептов').fill(name)
@@ -150,7 +151,7 @@ test('рецепт проходит путь от команды до клиен
     await expect(page.getByRole('heading', { name: 'Ингредиенты' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Не предлагать это блюдо' }).click()
-    await expect(page).toHaveURL(/\/menu$/, { timeout: 15000 })
+    await expect(page).toHaveURL(/\/menu\?tab=recipes$/, { timeout: 15000 })
 
     await searchMenu(page, RECIPE_NAME)
     await expect(page.getByText('По этому запросу ничего не нашлось')).toBeVisible({ timeout: 15000 })

@@ -36,6 +36,15 @@ export const EVENTS = {
     recipeRejected: 'recipe_rejected',
     recipeSubmitted: 'recipe_submitted',
     recipeApproved: 'recipe_approved',
+    // План питания на день. Тоже без свойств: plan_generated — первое открытие
+    // даты за сессию (в ответе нет признака свежей сборки), plan_off_target —
+    // собранный сервером день вне допуска.
+    planGenerated: 'plan_generated',
+    planRegenerated: 'plan_regenerated',
+    planItemReplaced: 'plan_item_replaced',
+    planItemLocked: 'plan_item_locked',
+    planGramsSet: 'plan_grams_set',
+    planOffTarget: 'plan_off_target',
 } as const
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS]

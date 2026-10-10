@@ -22,8 +22,11 @@ export const CATALOGUE_PAGE_SIZE = 20
  *
  * Доступность решает сервер (аллергены, исключения, скрытые и отклонённые);
  * здесь только поиск по названию и фильтр по приёму пищи.
+ *
+ * `embedded` — каталог внутри вкладки «Рецепты» раздела «Меню»: заголовок и
+ * поля страницы там свои, а `menu_opened` отправляет сам раздел.
  */
-export function RecipeCatalogue() {
+export function RecipeCatalogue({ embedded = false }: { embedded?: boolean } = {}) {
     const [search, setSearch] = useState('')
     const [mealType, setMealType] = useState<MealType | null>(null)
     const query = useDebounce(search.trim(), 300)
@@ -31,8 +34,8 @@ export function RecipeCatalogue() {
     const [loadingMore, setLoadingMore] = useState(false)
 
     useEffect(() => {
-        track(EVENTS.menuOpened)
-    }, [])
+        if (!embedded) track(EVENTS.menuOpened)
+    }, [embedded])
 
     const key = `${query}|${mealType ?? ''}`
     const loadFirst = useCallback(
@@ -65,11 +68,13 @@ export function RecipeCatalogue() {
     }
 
     return (
-        <div className="mx-auto flex w-full max-w-content flex-col gap-5 px-screen-x py-5">
-            <header className="flex flex-col gap-1">
-                <h1 className="type-title-1 text-fg">{t('recipes.menu.title')}</h1>
-                <p className="text-sm text-fg-muted">{t('recipes.menu.subtitle')}</p>
-            </header>
+        <div className={embedded ? 'flex flex-col gap-5' : 'mx-auto flex w-full max-w-content flex-col gap-5 px-screen-x py-5'}>
+            {!embedded && (
+                <header className="flex flex-col gap-1">
+                    <h1 className="type-title-1 text-fg">{t('recipes.menu.title')}</h1>
+                    <p className="text-sm text-fg-muted">{t('recipes.menu.subtitle')}</p>
+                </header>
+            )}
 
             <div className="relative">
                 <Search

@@ -102,6 +102,12 @@ var protectedRoutes = map[string]protection{
 	"GET /api/v1/recipes/:id":           protOwner,
 	"POST /api/v1/recipes/:id/reject":   protOwner,
 	"DELETE /api/v1/recipes/:id/reject": protOwner,
+	// План питания на день: :date — дата, :mealType — приём пищи, а не чья-то
+	// запись; владелец — из сессии, каждый запрос сервиса ограничен им.
+	"GET /api/v1/meal-plans/:date":                              protOwner,
+	"POST /api/v1/meal-plans/:date/regenerate":                  protOwner,
+	"GET /api/v1/meal-plans/:date/items/:mealType/alternatives": protOwner,
+	"PUT /api/v1/meal-plans/:date/items/:mealType":              protOwner,
 
 	// Privileged roles that are meant to see other users' data.
 	"GET /api/v1/admin/conversations/:id/messages": protRole,

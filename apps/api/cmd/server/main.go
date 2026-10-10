@@ -26,6 +26,7 @@ import (
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
 	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/modules/logs"
+	"github.com/burcev/api/internal/modules/mealplan"
 	"github.com/burcev/api/internal/modules/metrika"
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
@@ -401,6 +402,15 @@ func main() {
 	}
 	recipesService := recipes.NewService(db, log, foodTrackerService, recipePhotos, vkusvill)
 
+	// План питания на день: цель — та же, что в дневнике (nutrition-calc),
+	// фото блюд — из того же хранилища, что у каталога. Без хранилища
+	// photo_url — null, а не ошибка.
+	var mealPlanPhotos mealplan.PhotoURLs
+	if recipePhotos != nil {
+		mealPlanPhotos = recipePhotos
+	}
+	mealPlanService := mealplan.NewService(db, log, nutritionCalcSvc, mealPlanPhotos)
+
 	// Leads outlive the browser session they were created in, so their resume
 	// links are signed with the same secret that signs sessions.
 	leadsService := leads.NewService(db.DB, log, cfg.JWTSecret)
@@ -693,6 +703,7 @@ func main() {
 		Metrics:      metrics,
 		Content:      content.NewHandler(cfg, log, contentService),
 		Recipes:      recipes.NewHandler(cfg, log, recipesService),
+		MealPlan:     mealplan.NewHandler(log, mealPlanService),
 	})
 
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())

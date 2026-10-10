@@ -167,7 +167,7 @@ describe('RecipeDetail', () => {
 
         fireEvent.click(await screen.findByRole('button', { name: 'Не предлагать это блюдо' }))
 
-        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/menu'))
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/menu?tab=recipes'))
         expect(post).toHaveBeenCalledWith(`/api/v1/recipes/${RECIPE_ID}/reject`, {})
         expect(track).toHaveBeenCalledWith('recipe_rejected')
         expect(toast.success).toHaveBeenCalled()

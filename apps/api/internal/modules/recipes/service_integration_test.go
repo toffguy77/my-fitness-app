@@ -138,6 +138,16 @@ func TestMigration092UpIsRepeatableAndDownReverts(t *testing.T) {
 	_, err = f.db.ExecContext(f.ctx, string(up))
 	require.NoError(t, err, "second up must be a no-op")
 
+	// Откат идёт в обратном порядке: сначала снимаются миграции, ссылающиеся
+	// на рецепты (093 — блюда плана питания), иначе DROP TABLE recipes упрётся
+	// во внешний ключ — как упёрся бы и настоящий откат.
+	for _, later := range []string{"093_meal_plans_down.sql"} {
+		laterDown, err := migrations.FS.ReadFile(later)
+		require.NoError(t, err)
+		_, err = f.db.ExecContext(f.ctx, string(laterDown))
+		require.NoError(t, err, later)
+	}
+
 	_, err = f.db.ExecContext(f.ctx, string(down))
 	require.NoError(t, err)
 	var left int

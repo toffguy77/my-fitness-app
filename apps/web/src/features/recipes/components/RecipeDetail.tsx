@@ -36,7 +36,7 @@ export function RecipeDetail({ id }: RecipeDetailProps) {
             await recipesApi.reject(id)
             track(EVENTS.recipeRejected)
             toast.success(t('recipes.detail.rejected'))
-            router.push('/menu')
+            router.push('/menu?tab=recipes')
         } catch (err) {
             toast.error(messageForOr(err, t('recipes.detail.rejectFailed')))
             setRejecting(false)

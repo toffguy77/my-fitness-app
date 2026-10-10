@@ -63,6 +63,16 @@ const (
 	EventRecipeRejected  = "recipe_rejected"
 	EventRecipeSubmitted = "recipe_submitted"
 	EventRecipeApproved  = "recipe_approved"
+
+	// План питания на день. plan_generated — первая сборка даты,
+	// plan_off_target — показан план вне допуска: хватает ли каталога, видно
+	// только по нему.
+	EventPlanGenerated    = "plan_generated"
+	EventPlanRegenerated  = "plan_regenerated"
+	EventPlanItemReplaced = "plan_item_replaced"
+	EventPlanItemLocked   = "plan_item_locked"
+	EventPlanGramsSet     = "plan_grams_set"
+	EventPlanOffTarget    = "plan_off_target"
 )
 
 // Definition declares one event.
@@ -186,6 +196,16 @@ var Dictionary = map[string]Definition{
 	EventRecipeRejected:  {},
 	EventRecipeSubmitted: {},
 	EventRecipeApproved:  {},
+
+	// Без свойств: какое блюдо и какой показатель — не то, по чему
+	// группируется отчёт, а граммы и КБЖУ — данные о питании человека.
+	// Отправляет браузер: это действия клиента в интерфейсе.
+	EventPlanGenerated:    {},
+	EventPlanRegenerated:  {},
+	EventPlanItemReplaced: {},
+	EventPlanItemLocked:   {},
+	EventPlanGramsSet:     {},
+	EventPlanOffTarget:    {},
 }
 
 // AllEventNames returns every event name in the dictionary, sorted so the
