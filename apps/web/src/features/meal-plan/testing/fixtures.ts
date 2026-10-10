@@ -1,5 +1,5 @@
 // i18n-exempt-file — тестовые данные, их никто не читает в интерфейсе.
-import type { Alternative, MealPlan, PlanItem } from '../types'
+import type { Alternative, MealPlan, PlanItem, ShoppingList } from '../types'
 
 export const DATE = '2026-10-10'
 export const PHOTO_URL = 'https://storage.yandexcloud.net/curator-content/recipes/aaa.jpg'
@@ -55,6 +55,37 @@ export function alternative(overrides: Partial<Alternative> = {}): Alternative {
         grams: 280,
         nutrition: { kcal: 510, protein: 42, fat: 12, carbs: 55 },
         day_totals: { kcal: 1990, protein: 118, fat: 66, carbs: 245 },
+        ...overrides,
+    }
+}
+
+export function shoppingList(overrides: Partial<ShoppingList> = {}): ShoppingList {
+    return {
+        from: '2026-10-13',
+        to: '2026-10-15',
+        has_plans: true,
+        departments: [
+            {
+                name: 'Овощи и зелень',
+                items: [
+                    { food_id: 'f-cucumber', name: 'Огурцы', grams: 300, pieces: null, piece_grams: null, quantity_text: '300 г' },
+                    { food_id: 'f-tomato', name: 'Томаты', grams: 250, pieces: null, piece_grams: null, quantity_text: '250 г' },
+                ],
+            },
+            {
+                name: 'Мясо и птица',
+                items: [
+                    { food_id: 'f-chicken', name: 'Филе куриное', grams: 500, pieces: null, piece_grams: null, quantity_text: '500 г' },
+                ],
+            },
+            {
+                name: 'Молочное и яйца',
+                items: [
+                    { food_id: 'f-egg', name: 'Яйцо куриное', grams: 210, pieces: 4, piece_grams: 220, quantity_text: '4 шт. (≈220 г)' },
+                ],
+            },
+        ],
+        at_home: ['Перец чёрный', 'Соль'],
         ...overrides,
     }
 }

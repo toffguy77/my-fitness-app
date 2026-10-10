@@ -47,6 +47,12 @@ beforeEach(() => {
 })
 
 describe('DayPlanView — показ', () => {
+    it('вход в список покупок', async () => {
+        get.mockResolvedValue(plan())
+        render(<DayPlanView />)
+        expect(await screen.findByRole('link', { name: 'Список покупок' })).toHaveAttribute('href', '/menu/shopping')
+    })
+
     it('итоги дня: граммы, проценты, остаток и раскладка калорий', async () => {
         get.mockResolvedValue(plan())
         render(<DayPlanView />)

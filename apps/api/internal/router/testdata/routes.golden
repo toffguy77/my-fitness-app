@@ -90,6 +90,7 @@ GET /api/v1/public/leads/unsubscribe
 GET /api/v1/public/support/web/messages
 GET /api/v1/recipes
 GET /api/v1/recipes/:id
+GET /api/v1/shopping-list
 GET /api/v1/users/me/curator-group
 GET /api/v1/users/me/deletion
 GET /api/v1/users/me/export

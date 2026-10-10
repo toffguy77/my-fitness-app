@@ -175,6 +175,8 @@ export default defineConfig<SessionOptions>({
         'tests/meal-day-plan.spec.ts',
         // Тот же порядок: рецепты через API, клиент — свежая учётка.
         'tests/plan-diary-logging.spec.ts',
+        // Те же рецепты и свежий клиент, что у плана дня: роль проекта не нужна.
+        'tests/shopping-list.spec.ts',
       ],
     },
   ],

@@ -50,6 +50,10 @@ export const EVENTS = {
     planItemEaten: 'plan_item_eaten',
     planRefit: 'plan_refit',
     recipeLoggedFromSearch: 'recipe_logged_from_search',
+    // Список покупок. days — длина диапазона (1–14), method — copy | share:
+    // оба свойства объявлены в dictionary.go с перечнем значений.
+    shoppingListOpened: 'shopping_list_opened',
+    shoppingListShared: 'shopping_list_shared',
 } as const
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS]

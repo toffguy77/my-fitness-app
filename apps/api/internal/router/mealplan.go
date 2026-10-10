@@ -9,7 +9,8 @@ import (
 //
 // Only a client has a plan: it is assembled for the caller's own target from
 // the recipes the caller may see. The owner always comes from the session —
-// :date and :mealType name a day and a meal, never somebody's record.
+// :date and :mealType name a day and a meal, never somebody's record. The
+// shopping list is read from the same plans and is the caller's too.
 func registerMealPlanRoutes(v1 *gin.RouterGroup, d Deps) {
 	client := v1.Group("")
 	client.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
@@ -23,5 +24,6 @@ func registerMealPlanRoutes(v1 *gin.RouterGroup, d Deps) {
 		client.POST("/meal-plans/:date/refit", d.MealPlan.Refit)
 		client.GET("/meal-plan-settings", d.MealPlan.GetSettings)
 		client.PUT("/meal-plan-settings", d.MealPlan.SetSettings)
+		client.GET("/shopping-list", d.MealPlan.ShoppingList)
 	}
 }

@@ -20,6 +20,8 @@ type fakeService struct {
 	err      error
 	gotUser  int64
 	gotDate  string
+	gotFrom  string
+	gotTo    string
 	gotMeal  string
 	gotInput ItemUpdate
 	gotEat   EatRequest
@@ -82,6 +84,11 @@ func (f *fakeService) SetSettings(_ context.Context, userID int64, in Settings) 
 	return &in, f.err
 }
 
+func (f *fakeService) ShoppingList(_ context.Context, userID int64, from, to string) (*ShoppingList, error) {
+	f.gotUser, f.gotFrom, f.gotTo = userID, from, to
+	return &ShoppingList{From: from, To: to, Departments: []ShoppingDepartment{}, AtHome: []string{}}, f.err
+}
+
 func engine(svc ServiceInterface) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	h := NewHandler(logger.New(), svc)
@@ -95,6 +102,7 @@ func engine(svc ServiceInterface) *gin.Engine {
 	e.POST("/meal-plans/:date/refit", h.Refit)
 	e.GET("/meal-plan-settings", h.GetSettings)
 	e.PUT("/meal-plan-settings", h.SetSettings)
+	e.GET("/shopping-list", h.ShoppingList)
 	return e
 }
 
@@ -166,6 +174,7 @@ func TestHandlerErrorMapping(t *testing.T) {
 			{http.MethodGet, "/meal-plans/2026-10-11?generate=false", ""},
 			{http.MethodPost, "/meal-plans/2026-10-11/items/lunch/eat", ""},
 			{http.MethodPost, "/meal-plans/2026-10-11/refit", ""},
+			{http.MethodGet, "/shopping-list?from=2026-10-01&to=2026-10-20", ""},
 		} {
 			w, _ := do(e, r.method, r.path, r.body)
 			assert.Equal(t, c.code, w.Code, "%s %s with %v", r.method, r.path, c.err)
@@ -238,4 +247,24 @@ func TestHandlerRequiresSession(t *testing.T) {
 	e.GET("/meal-plans/:date", h.Get)
 	w, _ := do(e, http.MethodGet, "/meal-plans/2026-10-11", "")
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+// Список покупок: владелец из сессии, диапазон из строки запроса как есть —
+// проверяет его сервис.
+func TestHandlerShoppingList(t *testing.T) {
+	svc := &fakeService{}
+	e := engine(svc)
+	w, body := do(e, http.MethodGet, "/shopping-list?from=2026-10-13&to=2026-10-15", "")
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, int64(7), svc.gotUser)
+	assert.Equal(t, "2026-10-13", svc.gotFrom)
+	assert.Equal(t, "2026-10-15", svc.gotTo)
+	data := body["data"].(map[string]any)
+	assert.Equal(t, []any{}, data["departments"])
+	assert.Equal(t, []any{}, data["at_home"])
+	assert.Equal(t, false, data["has_plans"])
+
+	_, _ = do(e, http.MethodGet, "/shopping-list", "")
+	assert.Empty(t, svc.gotFrom)
+	assert.Empty(t, svc.gotTo)
 }

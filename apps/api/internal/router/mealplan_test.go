@@ -22,6 +22,9 @@ func TestOnlyClientHasMealPlan(t *testing.T) {
 		{http.MethodPut, "/api/v1/meal-plans/2026-10-10/items/lunch"},
 		{http.MethodGet, "/api/v1/meal-plan-settings"},
 		{http.MethodPut, "/api/v1/meal-plan-settings"},
+		// Сценарий «Куратор» списка покупок.
+		{http.MethodGet, "/api/v1/shopping-list"},
+		{http.MethodGet, "/api/v1/shopping-list?from=2026-10-10&to=2026-10-11"},
 	}
 	for _, r := range routes {
 		for _, role := range []string{"coordinator", "super_admin"} {

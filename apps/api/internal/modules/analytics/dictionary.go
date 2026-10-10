@@ -81,6 +81,9 @@ const (
 	EventPlanItemEaten          = "plan_item_eaten"
 	EventPlanRefit              = "plan_refit"
 	EventRecipeLoggedFromSearch = "recipe_logged_from_search"
+	// Список покупок по планам: открывают ли его и уносят ли текст.
+	EventShoppingListOpened = "shopping_list_opened"
+	EventShoppingListShared = "shopping_list_shared"
 )
 
 // Definition declares one event.
@@ -224,6 +227,19 @@ var Dictionary = map[string]Definition{
 	},
 	EventPlanRefit:              {},
 	EventRecipeLoggedFromSearch: {},
+	// days — длина диапазона: от 1 до 14 дней, больше маршрут не отдаёт, так что
+	// значения перечислены. method — скопирован текст или отдан системному
+	// «Поделиться». Продуктов и граммов нет: это данные о питании человека.
+	EventShoppingListOpened: {
+		Required: []string{"days"},
+		Values: map[string][]string{"days": {
+			"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
+		}},
+	},
+	EventShoppingListShared: {
+		Required: []string{"method"},
+		Values:   map[string][]string{"method": {"copy", "share"}},
+	},
 }
 
 // AllEventNames returns every event name in the dictionary, sorted so the
