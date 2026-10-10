@@ -20,3 +20,25 @@ export function articlePath(article: Addressable): string {
 export function articleUrl(article: Addressable): string {
     return `${SITE_URL}${articlePath(article)}`
 }
+
+/**
+ * Where the editor returns after saving, when it was opened from an article.
+ *
+ * The address arrives in the query string, so only a page of our own article
+ * is accepted — a slug or an id under /content/, nothing else. Anything wider
+ * would let a link to the editor send somebody to another site after saving.
+ */
+export function articleReturnPath(from: string | null | undefined): string | null {
+    if (!from) return null
+    return /^\/content\/[A-Za-z0-9-]+$/.test(from) ? from : null
+}
+
+/**
+ * The editor of an article for whoever may edit it, or null for anyone else.
+ * Curators edit in their section and admins in theirs; both return to `from`.
+ */
+export function articleEditPath(role: string | undefined, articleId: string, from: string): string | null {
+    const section = role === 'coordinator' ? '/curator' : role === 'super_admin' ? '/admin' : null
+    if (!section) return null
+    return `${section}/content/${articleId}/edit?from=${encodeURIComponent(from)}`
+}

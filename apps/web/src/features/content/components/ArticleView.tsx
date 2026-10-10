@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { AlertCircle, ArrowLeft } from 'lucide-react'
 import { contentApi, publicContentApi } from '@/features/content/api/contentApi'
 import { ArticleContent } from './ArticleContent'
+import { ArticleEditLink } from './ArticleEditLink'
 import type { Article } from '@/features/content/types'
 
 // ============================================================================
@@ -95,6 +96,7 @@ export function ArticleView({ articleId }: ArticleViewProps) {
         <ArticleContent
             article={article}
             byline={article.author_name ? <p>{article.author_name}</p> : null}
+            actions={<ArticleEditLink articleId={article.id} from={`/content/${articleId}`} />}
         />
     )
 }
