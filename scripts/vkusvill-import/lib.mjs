@@ -273,3 +273,11 @@ export function mealTypesFor(imported, recipe, portionKcal) {
     if ((snacky && portionKcal <= 350) || (out.has('breakfast') && portionKcal <= 300)) out.add('snack')
     return ['breakfast', 'lunch', 'dinner', 'snack'].filter((m) => out.has(m))
 }
+
+/**
+ * Вес ингредиента для черновика: до десятых грамма и не меньше 0,1 г. Целые
+ * граммы обращали 0,2 г лаврового листа в 0, и сервер отвергал черновик.
+ */
+export function ingredientGrams(grams) {
+    return Math.max(0.1, Math.round(grams * 10) / 10)
+}

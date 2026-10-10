@@ -28,6 +28,7 @@ import {
     compareWithVkusvill,
     deriveYield,
     eligible,
+    ingredientGrams,
     ingredientLines,
     mealTypesFor,
     parseQuantity,
@@ -43,6 +44,8 @@ const opt = (name, fallback) => {
 const BASE = opt('base')
 const DRY = args.includes('--dry-run')
 const LIMIT = Number(opt('limit', '0')) || Infinity
+// --only 123,456 — только эти рецепты ВкусВилла (например, перепрогнать отказы).
+const ONLY = new Set((opt('only', '') || '').split(',').filter(Boolean).map(Number))
 const REPORT = opt('report', 'vkusvill-import-report.json')
 const MCP = process.env.VKUSVILL_MCP_URL || 'https://mcp.vkusvill.ru/mcp'
 const CATEGORIES = [339, 2273, 2277, 2368, 2370] // завтрак, обед, ужин, много белка, низкокалорийное
@@ -206,7 +209,7 @@ async function importRecipe(recipe, plan) {
         ingredients: w.ingredients.map((ing, i) => ({
             food_id: plan.lines[i].candidate.food_id,
             source_name: ing.source_name,
-            grams: plan.lines[i].toTaste ? null : Math.round(plan.lines[i].grams),
+            grams: plan.lines[i].toTaste ? null : ingredientGrams(plan.lines[i].grams),
             display_quantity: ing.display_quantity,
             to_taste: plan.lines[i].toTaste,
         })),
@@ -252,7 +255,7 @@ async function collect() {
 
 const report = { base: BASE, dryRun: DRY, startedAt: new Date().toISOString(), imported: [], skipped: [], rejected: [] }
 const save = () => writeFileSync(REPORT, JSON.stringify(report, null, 2))
-const recipes = (await collect()).slice(0, LIMIT)
+const recipes = (await collect()).filter((r) => !ONLY.size || ONLY.has(r.id)).slice(0, LIMIT)
 console.error(`к разбору: ${recipes.length}`)
 for (const [i, r] of recipes.entries()) {
     const plan = await analyse(r)

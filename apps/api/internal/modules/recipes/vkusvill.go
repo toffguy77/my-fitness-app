@@ -394,7 +394,8 @@ func cleanText(s string) string {
 	s = htmlTag.ReplaceAllString(s, "")
 	lines := strings.Split(s, "\n")
 	for i, line := range lines {
-		lines[i] = strings.TrimSpace(line)
+		// «так и &nbsp;хочется» — неразрывный пробел рядом с обычным.
+		lines[i] = strings.Join(strings.Fields(line), " ")
 	}
 	s = manyBlankLines.ReplaceAllString(strings.Join(lines, "\n"), "\n\n")
 	return strings.TrimSpace(s)
