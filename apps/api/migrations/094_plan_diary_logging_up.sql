@@ -46,8 +46,11 @@ BEGIN
     END LOOP;
 END $$;
 
+-- NOT VALID: существующие строки уже прошли прежнюю, более узкую проверку, так
+-- что сканировать 3+ млн строк под эксклюзивной блокировкой незачем — это
+-- секунды простоя на каждой выкатке. Новые и изменённые строки проверяются.
 ALTER TABLE food_items ADD CONSTRAINT food_items_source_check
-    CHECK (source IN ('database', 'usda', 'openfoodfacts', 'user', 'recipe'));
+    CHECK (source IN ('database', 'usda', 'openfoodfacts', 'user', 'recipe')) NOT VALID;
 
 -- ---------------------------------------------------------------------------
 -- Продукты версий, одобренных до этой миграции
