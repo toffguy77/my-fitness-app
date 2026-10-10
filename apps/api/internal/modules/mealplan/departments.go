@@ -55,29 +55,29 @@ var departmentRules = []departmentRule{
 		"вино", "пиво", "алкогол", "alkogol", "водка", "виски", "коньяк", " ром,",
 		"ликёр", "шампанск", "сидр", "медовух",
 	}},
-	{DeptFish, []string{"рыб", "морепродукт", " икр", "краб", "морская капуста", "морской капуст", "ryba", "seafood"}},
+	{DeptFish, []string{"рыб", "морепродукт", " икр", "краб", "морская капуста", "морской капуст", "ryba", "seafood", "треск", "лосос", "сёмг", "семг", "форел", "тунец", "тунц", "скумбри", "сельдь", "минтай", "хек", "горбуш", "креветк", "кальмар", "мидии", "пангасиус"}},
 	{DeptMeat, []string{
 		"мяс", "myaso", "птиц", "курица", "индейк", "говядин", "телятин", "свинин", "баранин",
 		"кролик", "дичь", "колбас", "kolbasa", "сосиск", "сардельк", "ветчин", "деликатес",
-		"субпродукт", "шашлык", "фарш",
+		"субпродукт", "шашлык", "фарш", "курин", "цыпл", "грудк", "бедр", "окороч", "голен", "говяж", "свин", "бекон",
 	}},
 	{DeptDairy, []string{
 		"молоч", "molochn", "молок", "сгущ", "сыр", "syry", "творог", "творож", "кефир",
 		"йогурт", "сметан", "сливк", "сливоч", "ряженк", "простокваш", "мацони", "яйц",
-		"lacteos", "dairy",
+		"lacteos", "dairy", "брынз", "моцарел", "рикотт", "маскарпон",
 	}},
 	{DeptVegetables, []string{
 		"овощ", "ovoshch", "зелень", "салат", "гриб", "картоф", "капуст", "кабачк", "баклажан",
 		"лук,", "чеснок", "корнеплод", "огурц", "помидор", "соленья", "оливки", "маслины",
-		"vegetable",
+		"vegetable", "брокколи", "морков", "свекл", "томаты", "огурец", "шпинат", "сельдер", "тыкв", "редис", "спарж", "руккол", "петрушк", "укроп", "базилик", "кинз",
 	}},
 	{DeptFruits, []string{
 		"фрукт", "ягод", "цитрус", "яблок", "груш", "банан", "манго", "авокадо", "персик",
-		"абрикос", "fruit",
+		"абрикос", "fruit", "лимон", "лайм", "апельсин", "мандарин", "грейпфрут", "киви", "ананас", "виноград", "вишн", "черешн", "клубник", "малин", "черник", "голубик", "смородин", "гранат", "хурм",
 	}},
 	{DeptGrains, []string{
 		"круп", "krupy", "макарон", " рис", "бобов", " мук", "хлопья", "каш",
-		"гречн", "лапша", "мюсли", "гранол", "отруб", "бакалея", "завтрак",
+		"гречн", "лапша", "мюсли", "гранол", "отруб", "бакалея", "завтрак", "гречк", "овсян", "булгур", "киноа", "перлов", "пшен", "кускус", "спагетти", "фасол", "чечевиц", " нут ",
 	}},
 	{DeptBread, []string{
 		"хлеб", "khleb", "пекарн", "выпечк", "vypechka", "булоч", "сдоб", "багет", "чиабатт", "лаваш",
@@ -94,16 +94,43 @@ var departmentRules = []departmentRule{
 // DepartmentOf maps a catalogue category to a store department; a category
 // nothing matches, or none at all, is «Прочее».
 func DepartmentOf(category string) string {
-	c := " " + strings.ToLower(strings.Join(strings.Fields(category), " ")) + " "
-	if strings.TrimSpace(c) == "" {
-		return DeptOther
+	dept, _ := matchDepartment(departmentRules, category)
+	return dept
+}
+
+// nameRules are tried on a product name. Eggs come first: «Яйцо куриное»
+// would otherwise match «курин» and land among the meat.
+var nameRules = append([]departmentRule{{DeptDairy, []string{"яйц", "яйко"}}}, departmentRules...)
+
+// DepartmentFor is the department of an ingredient: by its category, and by
+// its name when the category says nothing.
+//
+// The name is not a fallback for rare cases. In the shared catalogue the
+// category is often a shop or a brand — «Пятерочка», «Бондюэль» — and
+// openfoodfacts imports bring «Прочее»: on dev, plain chicken, cod, cottage
+// cheese and buckwheat all went to «Прочее» by category alone.
+func DepartmentFor(category, name string) string {
+	if dept, matched := matchDepartment(departmentRules, category); matched {
+		return dept
 	}
-	for _, rule := range departmentRules {
+	dept, _ := matchDepartment(nameRules, name)
+	return dept
+}
+
+// matchDepartment reports the first rule that matches, and whether any did:
+// an explicit «Прочее» (a meat substitute, sweets) is a decision, an unknown
+// category is not.
+func matchDepartment(rules []departmentRule, text string) (string, bool) {
+	c := " " + strings.ToLower(strings.Join(strings.Fields(text), " ")) + " "
+	if strings.TrimSpace(c) == "" {
+		return DeptOther, false
+	}
+	for _, rule := range rules {
 		for _, s := range rule.substrings {
 			if strings.Contains(c, s) {
-				return rule.department
+				return rule.department, true
 			}
 		}
 	}
-	return DeptOther
+	return DeptOther, false
 }

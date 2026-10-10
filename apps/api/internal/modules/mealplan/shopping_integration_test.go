@@ -38,7 +38,7 @@ func setupShopping(t *testing.T, prefix string) *shopFixture {
 	weight := 55.0
 	f.egg = f.namedFood(t, "Яйцо куриное", "Яйца", &weight)
 	f.salt = f.namedFood(t, "Соль", "Специи и приправы", nil)
-	f.apple = f.namedFood(t, "Яблоко", "Неведомая категория", nil)
+	f.apple = f.namedFood(t, "Ингредиент X", "Неведомая категория", nil)
 
 	yield := 1020.0
 	f.stew = f.publish(t, f.recipe("Рагу из курицы", &yield,
@@ -173,7 +173,7 @@ func TestShoppingListAddsUpPlansWithoutBuildingThem(t *testing.T) {
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM meal_plans WHERE user_id = $1 AND date = '2026-10-13'`, f.client),
 		"a day without a plan stays without one")
 
-	// Неизвестная категория — «Прочее», округление 123 → 130.
+	// Ни категория, ни название не дают отдела — «Прочее», округление 123 → 130.
 	l, err = f.svc.ShoppingList(f.ctx, f.client, "2026-10-15", "2026-10-15")
 	require.NoError(t, err)
 	dept, apple = findItem(l, f.apple)

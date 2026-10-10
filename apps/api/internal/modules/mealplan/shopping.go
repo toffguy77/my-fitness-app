@@ -137,7 +137,7 @@ func buildShoppingList(from, to string, hasPlans bool, lines []shoppingLine) Sho
 			it.Pieces, it.PieceGrams = &n, &g
 			it.QuantityText = fmt.Sprintf("%d шт. (≈%d г)", n, g)
 		}
-		dept := DepartmentOf(a.line.category)
+		dept := DepartmentFor(a.line.category, a.line.name)
 		byDept[dept] = append(byDept[dept], it)
 	}
 
