@@ -206,4 +206,39 @@ describe('«По плану» в дневнике', () => {
         expect(get).toHaveBeenLastCalledWith(EXISTING)
         expect(await within(slot('Обед')).findByTestId('planned-block')).toHaveTextContent('Плов с курицей')
     })
+
+    // Страж дизайн-системы в E2E поймал второй одинаковый запрос плана на
+    // каждом открытии дневника: записи приходят после первой отрисовки.
+    it('открытие дневника: план спрашивается один раз, даже когда записи приходят позже', async () => {
+        get.mockResolvedValue(lunchEatenPlan())
+        const { rerenderWith } = renderDiary(EMPTY)
+        await within(slot('Ужин')).findByText('Треска с овощами')
+
+        rerenderWith({ ...EMPTY, lunch: [entry()], breakfast: [entry({ id: 'manual', mealType: 'breakfast' })] })
+        await within(slot('Ужин')).findByText('Треска с овощами')
+
+        expect(get).toHaveBeenCalledTimes(1)
+    })
+
+    it('новая запись вне плана план не перечитывает', async () => {
+        get.mockResolvedValue(lunchEatenPlan())
+        const { rerenderWith } = renderDiary({ ...EMPTY, lunch: [entry()] })
+        await within(slot('Ужин')).findByText('Треска с овощами')
+
+        rerenderWith({ ...EMPTY, lunch: [entry()], snack: [entry({ id: 'apple', mealType: 'snack' })] })
+
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(get).toHaveBeenCalledTimes(1)
+    })
+
+    it('перенос записи в другой приём возвращает блюдо под «По плану»', async () => {
+        get.mockResolvedValueOnce(lunchEatenPlan()).mockResolvedValueOnce(todayPlan())
+        const { rerenderWith } = renderDiary({ ...EMPTY, lunch: [entry()] })
+        await within(slot('Ужин')).findByText('Треска с овощами')
+
+        rerenderWith({ ...EMPTY, dinner: [entry({ mealType: 'dinner' })] })
+
+        await waitFor(() => expect(get).toHaveBeenCalledTimes(2))
+        expect(await within(slot('Обед')).findByTestId('planned-block')).toHaveTextContent('Плов с курицей')
+    })
 })

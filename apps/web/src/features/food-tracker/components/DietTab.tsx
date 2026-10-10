@@ -100,14 +100,15 @@ export function DietTab({
         fetchDayData,
     } = useFoodTrackerStore();
 
-    // Блюда плана под приёмами пищи. Отпечаток — сохранённые записи (без
-    // временных оптимистичных): изменились они — план перечитывается.
-    const entriesKey = MEAL_TYPES.flatMap((mealType) => entries[mealType] ?? [])
-        .map((entry) => entry.id)
-        .filter((id) => !id.startsWith('temp_'))
-        .sort()
-        .join(',');
-    const diaryPlan = useDiaryPlan(selectedDate, entriesKey, () => {
+    // Блюда плана под приёмами пищи. Передаются сохранённые записи (без
+    // временных оптимистичных): удалённая или перенесённая запись съеденного
+    // блюда возвращает его под «По плану».
+    const savedEntries = MEAL_TYPES.flatMap((mealType) =>
+        (entries[mealType] ?? [])
+            .filter((entry) => !entry.id.startsWith('temp_'))
+            .map((entry) => ({ id: entry.id, mealType }))
+    );
+    const diaryPlan = useDiaryPlan(selectedDate, savedEntries, () => {
         void fetchDayData(selectedDate);
     });
 
