@@ -39,7 +39,7 @@ func createArticle(t *testing.T, s *Service, authorID int64, title, audience str
 
 func publish(t *testing.T, s *Service, authorID int64, id string) {
 	t.Helper()
-	require.NoError(t, s.PublishArticle(context.Background(), authorID, id, true))
+	require.NoError(t, s.PublishArticle(context.Background(), authorID, id))
 }
 
 func TestSlug_AssignedOnCreate(t *testing.T) {
@@ -80,12 +80,12 @@ func TestSlug_StableAfterPublication(t *testing.T) {
 	publish(t, s, author, a.ID)
 
 	newTitle := "Совсем другой заголовок"
-	updated, err := s.UpdateArticle(ctx, author, a.ID, UpdateArticleRequest{Title: &newTitle}, true)
+	updated, err := s.UpdateArticle(ctx, author, a.ID, UpdateArticleRequest{Title: &newTitle})
 	require.NoError(t, err)
 	assert.Equal(t, "pervyy-zagolovok", updated.Slug, "a title edit must not move a published address")
 
 	other := "drugoy-adres"
-	_, err = s.UpdateArticle(ctx, author, a.ID, UpdateArticleRequest{Slug: &other}, true)
+	_, err = s.UpdateArticle(ctx, author, a.ID, UpdateArticleRequest{Slug: &other})
 	assert.ErrorIs(t, err, apperrors.ErrConflict)
 
 	got, err := s.GetPublicArticle(ctx, "pervyy-zagolovok")
@@ -101,11 +101,11 @@ func TestSlug_DraftMayChange(t *testing.T) {
 	taken := createArticle(t, s, author, "Занято", "all")
 
 	free := "novyy-adres"
-	updated, err := s.UpdateArticle(ctx, author, a.ID, UpdateArticleRequest{Slug: &free}, true)
+	updated, err := s.UpdateArticle(ctx, author, a.ID, UpdateArticleRequest{Slug: &free})
 	require.NoError(t, err)
 	assert.Equal(t, "novyy-adres", updated.Slug)
 
-	_, err = s.UpdateArticle(ctx, author, a.ID, UpdateArticleRequest{Slug: &taken.Slug}, true)
+	_, err = s.UpdateArticle(ctx, author, a.ID, UpdateArticleRequest{Slug: &taken.Slug})
 	assert.ErrorIs(t, err, apperrors.ErrConflict)
 }
 
