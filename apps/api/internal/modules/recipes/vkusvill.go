@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -354,16 +355,49 @@ func MapAllergens(list []vkusvillNamed) []string {
 	return out
 }
 
-var htmlTag = regexp.MustCompile(`<[^>]*>`)
+var (
+	htmlTag        = regexp.MustCompile(`<[^>]*>`)
+	paragraphBreak = regexp.MustCompile(`(?i)</p\s*>|<br\s*/?>`)
+	manyBlankLines = regexp.MustCompile(`\n{3,}`)
+)
 
 // isSectionHeading: «<b>Для подачи:</b>» with no quantity is a heading of the
-// ingredient list, not an ingredient.
+// ingredient list, not an ingredient. The markup may arrive escaped
+// («&lt;b&gt;»), so the name is decoded before looking for it.
 func isSectionHeading(ing VkusvillIngr) bool {
-	return ing.Quantity == nil || strings.Contains(ing.Name, "<")
+	return ing.Quantity == nil || strings.Contains(decodeEntities(ing.Name), "<")
 }
 
+// decodeEntities undoes HTML escaping, twice at most: ВкусВилл sends step
+// texts as «&lt;p&gt;…&lt;/p&gt;», and a double-escaped «&amp;lt;» needs two
+// passes to become a tag that can be removed.
+func decodeEntities(s string) string {
+	for i := 0; i < 2; i++ {
+		d := html.UnescapeString(s)
+		if d == s {
+			break
+		}
+		s = d
+	}
+	return s
+}
+
+// cleanText turns ВкусВилл markup into plain text: entities decoded,
+// paragraphs and line breaks kept as blank lines, every other tag dropped.
+// Without the decoding, step texts reached clients as literal «&lt;p&gt;».
 func cleanText(s string) string {
-	return strings.TrimSpace(htmlTag.ReplaceAllString(s, ""))
+	s = decodeEntities(s)
+	s = strings.ReplaceAll(s, "\u00a0", " ")
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	s = paragraphBreak.ReplaceAllString(s, "\n\n")
+	s = htmlTag.ReplaceAllString(s, "")
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSpace(line)
+	}
+	s = manyBlankLines.ReplaceAllString(strings.Join(lines, "\n"), "\n\n")
+	return strings.TrimSpace(s)
 }
 
 // ---------------------------------------------------------------------------
