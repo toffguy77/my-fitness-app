@@ -11,7 +11,7 @@
 
 import type { EventName, EventProperties } from './events'
 import { isMirrored } from './events'
-import { callCounter, counterAllowed } from './counter'
+import { reachGoal } from './counter'
 
 const VISITOR_KEY = 'analytics_visitor_id'
 const ENDPOINT = '/api/v1/public/analytics/events'
@@ -76,14 +76,13 @@ export function track(name: EventName, properties?: EventProperties): void {
  *
  * The name alone. Nothing else is passed — see MIRRORED_EVENTS for why.
  *
- * Silent when there is no counter: no id, no consent and an ad blocker all
- * look the same from here, and none of them is a reason to lose the event from
- * our own batch.
+ * A goal that comes before the counter is up waits for it (see reachGoal);
+ * whatever happens to the goal, the event stays in our own batch.
  */
 function mirror(name: EventName): void {
-    if (!isMirrored(name) || !counterAllowed()) return
+    if (!isMirrored(name)) return
 
-    callCounter('reachGoal', name)
+    reachGoal(name)
 }
 
 /** Sends whatever has accumulated. */
