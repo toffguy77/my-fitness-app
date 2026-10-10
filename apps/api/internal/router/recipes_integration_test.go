@@ -42,6 +42,11 @@ func TestCuratorRecipeRoutesRespectTheRelationship(t *testing.T) {
 	var recipeID string
 	require.NoError(t, f.db.QueryRowContext(ctx,
 		`INSERT INTO recipes DEFAULT VALUES RETURNING id::text`).Scan(&recipeID))
+	// Скрыть можно только рецепт, который клиент вообще мог бы увидеть.
+	_, err := f.db.ExecContext(ctx,
+		`INSERT INTO recipe_versions (recipe_id, version, state, name, meal_types)
+		 VALUES ($1, 1, 'approved', 'Рецепт', '{lunch}')`, recipeID)
+	require.NoError(t, err)
 
 	hide := func(client int64) int {
 		return f.do(t, http.MethodPut,

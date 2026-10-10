@@ -306,22 +306,23 @@ func writeVersion(ctx context.Context, tx *sql.Tx, versionID string, userID int6
 	// Кандидаты из импорта переживают сохранение, пока ингредиент с тем же
 	// исходным названием не подтверждён: редактор их не присылает.
 	candidates := map[string][]byte{}
-	rows, err := tx.QueryContext(ctx,
-		`SELECT source_name, candidates::text FROM recipe_ingredients
-		 WHERE version_id = $1 AND source_name IS NOT NULL AND candidates IS NOT NULL`, versionID)
-	if err != nil {
-		return fmt.Errorf("read candidates: %w", err)
-	}
-	for rows.Next() {
-		var name, raw string
-		if err := rows.Scan(&name, &raw); err != nil {
-			_ = rows.Close()
-			return err
+	if err := func() error {
+		rows, err := tx.QueryContext(ctx,
+			`SELECT source_name, candidates::text FROM recipe_ingredients
+			 WHERE version_id = $1 AND source_name IS NOT NULL AND candidates IS NOT NULL`, versionID)
+		if err != nil {
+			return fmt.Errorf("read candidates: %w", err)
 		}
-		candidates[name] = []byte(raw)
-	}
-	_ = rows.Close()
-	if err := rows.Err(); err != nil {
+		defer func() { _ = rows.Close() }()
+		for rows.Next() {
+			var name, raw string
+			if err := rows.Scan(&name, &raw); err != nil {
+				return err
+			}
+			candidates[name] = []byte(raw)
+		}
+		return rows.Err()
+	}(); err != nil {
 		return err
 	}
 
@@ -1023,22 +1024,23 @@ func (s *Service) Restrictions(ctx context.Context, userID int64, forCurator boo
 	}
 	out.Allergens = decodeStrings([]byte(raw))
 
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT f.id::text, f.name FROM user_excluded_foods e JOIN food_items f ON f.id = e.food_id
-		WHERE e.user_id = $1 ORDER BY f.name`, userID)
-	if err != nil {
-		return nil, fmt.Errorf("load excluded foods: %w", err)
-	}
-	for rows.Next() {
-		var f FoodRef
-		if err := rows.Scan(&f.FoodID, &f.Name); err != nil {
-			_ = rows.Close()
-			return nil, err
+	if err := func() error {
+		rows, err := s.db.QueryContext(ctx, `
+			SELECT f.id::text, f.name FROM user_excluded_foods e JOIN food_items f ON f.id = e.food_id
+			WHERE e.user_id = $1 ORDER BY f.name`, userID)
+		if err != nil {
+			return fmt.Errorf("load excluded foods: %w", err)
 		}
-		out.ExcludedFoods = append(out.ExcludedFoods, f)
-	}
-	_ = rows.Close()
-	if err := rows.Err(); err != nil {
+		defer func() { _ = rows.Close() }()
+		for rows.Next() {
+			var f FoodRef
+			if err := rows.Scan(&f.FoodID, &f.Name); err != nil {
+				return err
+			}
+			out.ExcludedFoods = append(out.ExcludedFoods, f)
+		}
+		return rows.Err()
+	}(); err != nil {
 		return nil, err
 	}
 
