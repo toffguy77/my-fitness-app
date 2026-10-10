@@ -7,7 +7,8 @@ import { ArticleView } from '@/features/content/components/ArticleView'
 import { ArticleContent } from '@/features/content/components/ArticleContent'
 import { ArticleAuthor } from '@/features/content/components/ArticleAuthor'
 import { ArticleCta } from '@/features/content/components/ArticleCta'
-import { articleUrl, SITE_URL } from '@/features/content/utils/articlePath'
+import { ArticleEditLink } from '@/features/content/components/ArticleEditLink'
+import { articlePath, articleUrl, SITE_URL } from '@/features/content/utils/articlePath'
 import type { Article } from '@/features/content/types'
 
 const API_URL = process.env.INTERNAL_API_URL || 'http://api:4000'
@@ -122,7 +123,11 @@ export default async function ArticlePage({ params }: PageProps) {
         <>
             <JsonLd data={articleJsonLd} />
             <JsonLd data={breadcrumbsJsonLd} />
-            <ArticleContent article={article} byline={<ArticleAuthor author={EXPERT_AUTHOR} />}>
+            <ArticleContent
+                article={article}
+                byline={<ArticleAuthor author={EXPERT_AUTHOR} />}
+                actions={<ArticleEditLink articleId={article.id} from={articlePath(article)} />}
+            >
                 <ArticleCta />
             </ArticleContent>
         </>

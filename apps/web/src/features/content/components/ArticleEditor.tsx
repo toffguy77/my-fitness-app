@@ -1,9 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { contentApi } from '@/features/content/api/contentApi'
 import type {
     Article,
@@ -25,8 +23,10 @@ import {
 import { Card, CardHeader } from '@/shared/components/ui/Card'
 import { IconButton } from '@/shared/components/ui/Button'
 import { cn } from '@/shared/utils/cn'
-import { ArticleForm } from './ArticleForm'
-import { ARTICLE_BODY_CLASSES } from './ArticleContent'
+import { EXPERT_AUTHOR } from '@/shared/constants/author'
+import { ArticleForm, type ArticleDraft } from './ArticleForm'
+import { ArticleAuthor } from './ArticleAuthor'
+import { ArticleContent } from './ArticleContent'
 import { FileUploader } from './FileUploader'
 import { MediaUploader } from './MediaUploader'
 
@@ -94,6 +94,8 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor')
     const [importedData, setImportedData] = useState<ParsedArticle | undefined>(undefined)
+    // The form's fields as they are now, unsaved — what the preview shows.
+    const [draft, setDraft] = useState<ArticleDraft | null>(null)
     const [isDragging, setIsDragging] = useState(false)
 
     // Fetch article for editing
@@ -125,6 +127,16 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
         fetchArticle()
         return () => { cancelled = true }
     }, [articleId])
+
+    // The field grows with the text, so the page scrolls instead of a box
+    // inside it. Measured after every change and when the tab comes back.
+    useLayoutEffect(() => {
+        const textarea = textareaRef.current
+        if (!textarea || activeTab !== 'editor') return
+        textarea.style.height = 'auto'
+        // scrollHeight covers the padding but not the border.
+        textarea.style.height = `${textarea.scrollHeight + textarea.offsetHeight - textarea.clientHeight}px`
+    }, [body, activeTab, fetching])
 
     // Toolbar click handler
     const handleToolbar = useCallback((action: ToolbarAction) => {
@@ -298,6 +310,7 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
                 <ArticleForm
                     article={article}
                     importedData={importedData}
+                    onDraftChange={setDraft}
                     onSave={handleSave}
                     onPublish={article ? handlePublish : undefined}
                     onSchedule={article ? handleSchedule : undefined}
@@ -305,17 +318,21 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
                 />
             </Card>
 
-            {/* Mobile toggle: два варианта — сегменты, выбранный — инверсия чернилами */}
-            <div className="flex gap-1 rounded-full border border-line p-1 md:hidden">
+            {/* Текст и превью — вкладки на всю ширину на любом экране: две
+                колонки в узкой странице не давали ни писать, ни читать. */}
+            <div className="flex gap-1 rounded-full border border-line p-1" role="tablist" aria-label="Текст или превью">
                 {([
-                    ['editor', 'Редактор'],
+                    ['editor', 'Текст'],
                     ['preview', 'Превью'],
                 ] as const).map(([tab, label]) => (
                     <button
                         key={tab}
                         type="button"
+                        role="tab"
+                        id={`article-tab-${tab}`}
+                        aria-controls={`article-panel-${tab}`}
+                        aria-selected={activeTab === tab}
                         onClick={() => setActiveTab(tab)}
-                        aria-pressed={activeTab === tab}
                         className={cn(
                             'h-10 flex-1 rounded-full px-3 text-sm font-semibold transition-colors duration-150',
                             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
@@ -327,64 +344,68 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
                 ))}
             </div>
 
-            {/* Editor + Preview layout */}
-            <div className="grid gap-4 md:grid-cols-2">
-                {/* Editor panel */}
-                <div
-                    className={cn('space-y-2', activeTab !== 'editor' && 'hidden md:block')}
-                >
-                    {/* Toolbar */}
-                    <div className="flex gap-1 rounded-tile border border-line bg-surface p-1" role="toolbar" aria-label="Форматирование">
-                        {TOOLBAR_ITEMS.map((item) => {
-                            const Icon = item.icon
-                            return (
-                                <IconButton
-                                    key={item.action}
-                                    variant="ghost"
-                                    onClick={() => handleToolbar(item.action)}
-                                    title={item.label}
-                                    aria-label={item.label}
-                                    className="rounded-field"
-                                >
-                                    <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden="true" />
-                                </IconButton>
-                            )
-                        })}
-                    </div>
+            <div
+                id="article-panel-editor"
+                role="tabpanel"
+                aria-labelledby="article-tab-editor"
+                hidden={activeTab !== 'editor'}
+                className="space-y-2"
+            >
+                {/* Toolbar */}
+                <div className="flex gap-1 rounded-tile border border-line bg-surface p-1" role="toolbar" aria-label="Форматирование">
+                    {TOOLBAR_ITEMS.map((item) => {
+                        const Icon = item.icon
+                        return (
+                            <IconButton
+                                key={item.action}
+                                variant="ghost"
+                                onClick={() => handleToolbar(item.action)}
+                                title={item.label}
+                                aria-label={item.label}
+                                className="rounded-field"
+                            >
+                                <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden="true" />
+                            </IconButton>
+                        )
+                    })}
+                </div>
 
-                    {/* Textarea */}
-                    <textarea
-                        ref={textareaRef}
-                        value={body}
-                        onChange={(e) => setBody(e.target.value)}
-                        placeholder="Напишите статью в формате Markdown..."
-                        className="h-96 w-full resize-y rounded-field border border-line bg-surface px-4 py-3 font-mono text-base text-fg placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
+                {/* Растёт вместе с текстом; шрифт — как у текста статьи. */}
+                <textarea
+                    ref={textareaRef}
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    placeholder="Напишите статью в формате Markdown..."
+                    className="min-h-96 w-full resize-none overflow-hidden rounded-field border border-line bg-surface px-4 py-3 text-[17px] leading-[28px] text-fg placeholder:text-fg-subtle transition-colors focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-focus/30"
+                />
+            </div>
+
+            {activeTab === 'preview' && (
+                <div
+                    id="article-panel-preview"
+                    role="tabpanel"
+                    aria-labelledby="article-tab-preview"
+                    className="rounded-card border border-line bg-canvas"
+                >
+                    {/* Та же страница статьи, что увидит читатель: публичная
+                        подписана экспертом, личная — именем куратора. */}
+                    <ArticleContent
+                        article={{
+                            title: (draft?.title ?? article?.title ?? '').trim() || 'Без заголовка',
+                            category: draft?.category ?? article?.category ?? 'general',
+                            cover_image_url: draft?.cover_image_url ?? article?.cover_image_url,
+                            published_at: article?.published_at,
+                            body,
+                        }}
+                        byline={
+                            (draft?.audience_scope ?? article?.audience_scope ?? 'all') === 'all'
+                                ? <ArticleAuthor author={EXPERT_AUTHOR} />
+                                : article?.author_name ? <p>{article.author_name}</p> : null
+                        }
+                        backLink={false}
                     />
                 </div>
-
-                {/* Preview panel */}
-                <div
-                    className={cn(
-                        'min-h-[24rem] rounded-card border border-line bg-surface p-5',
-                        activeTab !== 'preview' && 'hidden md:block'
-                    )}
-                >
-                    <p className="mb-3 type-overline text-fg-subtle">
-                        Превью
-                    </p>
-                    {body.trim() ? (
-                        <div className={ARTICLE_BODY_CLASSES}>
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {body}
-                            </ReactMarkdown>
-                        </div>
-                    ) : (
-                        <p className="py-8 text-center text-sm text-fg-muted">
-                            Начните писать, чтобы увидеть превью
-                        </p>
-                    )}
-                </div>
-            </div>
+            )}
         </div>
     )
 }
