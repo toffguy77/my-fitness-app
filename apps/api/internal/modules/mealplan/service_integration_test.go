@@ -33,6 +33,7 @@ type fixture struct {
 	db      *database.DB
 	svc     *Service
 	recipes *recipes.Service
+	diary   *foodtracker.Service
 	team    int64
 	curator int64
 	client  int64
@@ -44,10 +45,12 @@ func setup(t *testing.T, prefix string) *fixture {
 	t.Helper()
 	db := testsupport.SchemaWithMigrations(t, prefix)
 	log := logger.New()
+	diary := foodtracker.NewService(db, log)
 	f := &fixture{
 		ctx: context.Background(), db: db,
-		svc:     NewService(db, log, nutritioncalc.NewService(db, log), nil),
-		recipes: recipes.NewService(db, log, foodtracker.NewService(db, log), nil, nil),
+		svc:     NewService(db, log, nutritioncalc.NewService(db, log), nil).WithDiary(diary),
+		recipes: recipes.NewService(db, log, diary, nil, nil),
+		diary:   diary,
 		foods:   map[string]string{}, ids: map[string]string{},
 	}
 	moscow, err := time.LoadLocation("Europe/Moscow")

@@ -95,7 +95,12 @@ export function DayPlanView({ initialDate }: DayPlanViewProps) {
                         regenerating={pending === 'regenerate'}
                         disabled={busy}
                     />
-                    <DayTotals plan={plan} />
+                    <DayTotals
+                        plan={plan}
+                        onRefit={state.refit}
+                        refitting={pending === 'refit'}
+                        disabled={busy}
+                    />
                     <ul className="flex flex-col gap-3" aria-busy={busy}>
                         {MEAL_TYPES.map((mealType) => {
                             const item = plan.items.find((candidate) => candidate.meal_type === mealType)
@@ -103,8 +108,9 @@ export function DayPlanView({ initialDate }: DayPlanViewProps) {
                                 return (
                                     <li key={mealType}>
                                         <MealSlotCard
-                                            // Новый вес или блюдо с сервера — новый черновик поля веса.
-                                            key={`${item.recipe_id}:${item.grams}`}
+                                            // Новый вес, блюдо или отметка «съедено» с сервера —
+                                            // новые черновики полей веса.
+                                            key={`${item.recipe_id}:${item.grams}:${item.eaten ? 'eaten' : 'planned'}`}
                                             item={item}
                                             disabled={busy}
                                             busy={pending === mealType}
@@ -112,6 +118,7 @@ export function DayPlanView({ initialDate }: DayPlanViewProps) {
                                             onToggleLock={() => state.toggleLock(item)}
                                             onSetGrams={(grams) => state.setGrams(mealType, grams)}
                                             onResetGrams={() => state.resetGrams(mealType)}
+                                            onEat={(grams) => state.eat(mealType, grams)}
                                         />
                                     </li>
                                 )

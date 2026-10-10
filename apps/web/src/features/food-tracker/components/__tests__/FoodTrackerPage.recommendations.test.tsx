@@ -18,6 +18,10 @@ import {
 } from '../../api/recommendationsApi';
 import type { RecommendationsData } from '../../api/recommendationsApi';
 
+// План дня в дневнике: этот тест не о нём. Плана нет — блока «По плану» нет.
+jest.mock('@/features/meal-plan/api/mealPlanApi', () => ({
+    mealPlanApi: { getExisting: jest.fn().mockResolvedValue(undefined), eat: jest.fn() },
+}))
 jest.mock('../../hooks/useFoodTracker');
 jest.mock('../../api/recommendationsApi', () => ({
     fetchRecommendations: jest.fn(),

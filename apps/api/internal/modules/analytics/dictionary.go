@@ -73,6 +73,14 @@ const (
 	EventPlanItemLocked   = "plan_item_locked"
 	EventPlanGramsSet     = "plan_grams_set"
 	EventPlanOffTarget    = "plan_off_target"
+
+	// План и дневник. plan_item_eaten — блюдо плана записано в дневник:
+	// source говорит, откуда нажали — из плана или из блока «По плану» в
+	// дневнике. Главная метрика раздела — доля дней с записями у клиентов с
+	// планом против клиентов без него.
+	EventPlanItemEaten          = "plan_item_eaten"
+	EventPlanRefit              = "plan_refit"
+	EventRecipeLoggedFromSearch = "recipe_logged_from_search"
 )
 
 // Definition declares one event.
@@ -206,6 +214,16 @@ var Dictionary = map[string]Definition{
 	EventPlanItemLocked:   {},
 	EventPlanGramsSet:     {},
 	EventPlanOffTarget:    {},
+
+	// source — где нажали «Съел» или «+»; значения перечислены, чтобы опечатка
+	// не стала строкой, которой не соответствует ни один отчёт. Какое блюдо и
+	// сколько граммов — не свойства события, по той же причине, что выше.
+	EventPlanItemEaten: {
+		Required: []string{"source"},
+		Values:   map[string][]string{"source": {"plan", "diary"}},
+	},
+	EventPlanRefit:              {},
+	EventRecipeLoggedFromSearch: {},
 }
 
 // AllEventNames returns every event name in the dictionary, sorted so the

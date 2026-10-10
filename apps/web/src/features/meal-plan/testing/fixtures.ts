@@ -18,6 +18,9 @@ export function item(overrides: Partial<PlanItem> = {}): PlanItem {
         locked: false,
         manual_grams: false,
         unavailable: false,
+        eaten: false,
+        eaten_grams: null,
+        food_entry_id: null,
         ...overrides,
     }
 }

@@ -19,6 +19,8 @@ func registerMealPlanRoutes(v1 *gin.RouterGroup, d Deps) {
 		client.POST("/meal-plans/:date/regenerate", d.MealPlan.Regenerate)
 		client.GET("/meal-plans/:date/items/:mealType/alternatives", d.MealPlan.Alternatives)
 		client.PUT("/meal-plans/:date/items/:mealType", d.MealPlan.UpdateItem)
+		client.POST("/meal-plans/:date/items/:mealType/eat", d.MealPlan.Eat)
+		client.POST("/meal-plans/:date/refit", d.MealPlan.Refit)
 		client.GET("/meal-plan-settings", d.MealPlan.GetSettings)
 		client.PUT("/meal-plan-settings", d.MealPlan.SetSettings)
 	}

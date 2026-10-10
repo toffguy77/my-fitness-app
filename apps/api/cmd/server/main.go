@@ -409,7 +409,7 @@ func main() {
 	if recipePhotos != nil {
 		mealPlanPhotos = recipePhotos
 	}
-	mealPlanService := mealplan.NewService(db, log, nutritionCalcSvc, mealPlanPhotos)
+	mealPlanService := mealplan.NewService(db, log, nutritionCalcSvc, mealPlanPhotos).WithDiary(foodTrackerService)
 
 	// Leads outlive the browser session they were created in, so their resume
 	// links are signed with the same secret that signs sessions.

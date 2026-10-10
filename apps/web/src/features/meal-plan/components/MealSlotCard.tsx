@@ -2,7 +2,7 @@
 
 import { useId, useState, type FormEvent } from 'react'
 import Link from 'next/link'
-import { Lock, LockOpen, Repeat } from 'lucide-react'
+import { Check, Lock, LockOpen, Repeat } from 'lucide-react'
 import { NutritionLine } from '@/features/recipes/components/NutritionLine'
 import { RecipePhoto } from '@/features/recipes/components/RecipePhoto'
 import { Button } from '@/shared/components/ui/Button'
@@ -27,23 +27,34 @@ interface MealSlotCardProps {
     onToggleLock: () => void
     onSetGrams: (grams: number) => void
     onResetGrams: () => void
+    /** «Съел»: без веса — вес из плана. */
+    onEat: (grams?: number) => void
+}
+
+/** Целый вес в границах, которые принимает сервер. */
+function parseGrams(draft: string): number | null {
+    const parsed = Number(draft)
+    return draft.trim() !== '' && Number.isInteger(parsed) && parsed > 0 && parsed <= MAX_GRAMS ? parsed : null
 }
 
 /**
  * Блюдо приёма пищи: фото, название со ссылкой на рецепт, вес, КБЖУ,
- * «Заменить» и «Закрепить».
+ * «Съел», «Заменить» и «Закрепить».
+ *
+ * Съеденное блюдо — факт дневника: показан вес из записи и отметка «Съедено»,
+ * а вес, замена и закрепление скрыты (сервер их для съеденного отвергает).
  *
  * Поле веса держит черновик, пока его не применили: каждое применение
  * пересобирает весь день, так что запрос на каждую цифру был бы лишним. Родитель
  * пересоздаёт карточку по весу из ответа (`key`), и черновик сбрасывается сам.
  */
-export function MealSlotCard({ item, disabled, busy, onReplace, onToggleLock, onSetGrams, onResetGrams }: MealSlotCardProps) {
+export function MealSlotCard({ item, disabled, busy, onReplace, onToggleLock, onSetGrams, onResetGrams, onEat }: MealSlotCardProps) {
     const fieldId = useId()
     const errorId = useId()
     const [draft, setDraft] = useState(String(item.grams))
     const mealLabel = t(`recipes.mealTypes.${item.meal_type}`)
-    const parsed = Number(draft)
-    const valid = draft.trim() !== '' && Number.isInteger(parsed) && parsed > 0 && parsed <= MAX_GRAMS
+    const parsed = parseGrams(draft) ?? NaN
+    const valid = !Number.isNaN(parsed)
     const changed = valid && parsed !== item.grams
 
     const handleSubmit = (event: FormEvent) => {
@@ -60,11 +71,21 @@ export function MealSlotCard({ item, disabled, busy, onReplace, onToggleLock, on
         >
             <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium uppercase tracking-wide text-fg-subtle">{mealLabel}</span>
-                {item.locked && (
-                    <span className="flex items-center gap-1 text-xs font-medium text-fg-muted">
-                        <Lock className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
-                        {t('mealPlan.slot.locked')}
+                {item.eaten ? (
+                    <span
+                        className="flex items-center gap-1 rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-medium text-success-fg"
+                        data-testid={`plan-item-${item.meal_type}-eaten`}
+                    >
+                        <Check className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden="true" />
+                        {t('mealPlan.slot.eaten')}
                     </span>
+                ) : (
+                    item.locked && (
+                        <span className="flex items-center gap-1 text-xs font-medium text-fg-muted">
+                            <Lock className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+                            {t('mealPlan.slot.locked')}
+                        </span>
+                    )
                 )}
             </div>
 
@@ -83,7 +104,9 @@ export function MealSlotCard({ item, disabled, busy, onReplace, onToggleLock, on
                         </span>
                     )}
                     <p className="text-xs text-fg-muted tabular-nums">
-                        {t('recipes.nutrition.grams', { value: item.grams })}
+                        {item.eaten
+                            ? t('mealPlan.slot.eatenGrams', { value: Math.round(item.eaten_grams ?? item.grams) })
+                            : t('recipes.nutrition.grams', { value: item.grams })}
                         <span aria-hidden="true"> · </span>
                         {t('mealPlan.slot.portion', { value: Math.round(item.portion_grams) })}
                     </p>
@@ -94,84 +117,181 @@ export function MealSlotCard({ item, disabled, busy, onReplace, onToggleLock, on
                 </div>
             </div>
 
-            {/* Проверку веса форма делает сама: браузерная по `step` отвергла бы
-                любой вес не из ряда 1, 11, 21… — а вручную задают и 250 г. */}
-            <form onSubmit={handleSubmit} noValidate className="flex flex-wrap items-end gap-2">
-                <div className="flex flex-col gap-1">
-                    <label htmlFor={fieldId} className="text-xs font-medium text-fg-muted">
-                        {t('mealPlan.slot.grams')}
-                    </label>
-                    <input
-                        id={fieldId}
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        max={MAX_GRAMS}
-                        step={10}
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        disabled={disabled}
-                        aria-label={t('mealPlan.slot.gramsAria', { name: item.name })}
-                        aria-invalid={!valid}
-                        aria-describedby={valid ? undefined : errorId}
-                        className={GRAMS_FIELD}
-                    />
-                </div>
-                {changed && (
-                    <Button type="submit" variant="secondary" size="sm" disabled={disabled} isLoading={busy} className="h-11">
-                        {t('mealPlan.slot.gramsApply')}
-                    </Button>
-                )}
-                {!valid && (
-                    <p id={errorId} role="alert" className="basis-full text-sm text-danger-fg">
-                        {t('mealPlan.slot.gramsInvalid')}
-                    </p>
-                )}
-            </form>
+            {!item.eaten && (
+                <>
+                    <EatControls item={item} disabled={disabled} busy={busy} onEat={onEat} />
+                    {/* Проверку веса форма делает сама: браузерная по `step` отвергла бы
+                        любой вес не из ряда 1, 11, 21… — а вручную задают и 250 г. */}
+                    <form onSubmit={handleSubmit} noValidate className="flex flex-wrap items-end gap-2">
+                        <div className="flex flex-col gap-1">
+                            <label htmlFor={fieldId} className="text-xs font-medium text-fg-muted">
+                                {t('mealPlan.slot.grams')}
+                            </label>
+                            <input
+                                id={fieldId}
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                max={MAX_GRAMS}
+                                step={10}
+                                value={draft}
+                                onChange={(e) => setDraft(e.target.value)}
+                                disabled={disabled}
+                                aria-label={t('mealPlan.slot.gramsAria', { name: item.name })}
+                                aria-invalid={!valid}
+                                aria-describedby={valid ? undefined : errorId}
+                                className={GRAMS_FIELD}
+                            />
+                        </div>
+                        {changed && (
+                            <Button type="submit" variant="secondary" size="sm" disabled={disabled} isLoading={busy} className="h-11">
+                                {t('mealPlan.slot.gramsApply')}
+                            </Button>
+                        )}
+                        {!valid && (
+                            <p id={errorId} role="alert" className="basis-full text-sm text-danger-fg">
+                                {t('mealPlan.slot.gramsInvalid')}
+                            </p>
+                        )}
+                    </form>
 
-            {item.manual_grams && (
-                <div className="flex flex-wrap items-center gap-x-3 text-sm">
-                    <span className="text-fg-muted">{t('mealPlan.slot.manual')}</span>
-                    <button
-                        type="button"
-                        onClick={onResetGrams}
-                        disabled={disabled}
-                        className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline disabled:opacity-50"
-                    >
-                        {t('mealPlan.slot.resetGrams')}
-                    </button>
-                </div>
-            )}
-
-            <div className="flex gap-2">
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={onReplace}
-                    disabled={disabled}
-                    aria-label={t('mealPlan.slot.replaceAria', { name: item.name })}
-                    className="flex-1"
-                >
-                    <Repeat className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
-                    {t('mealPlan.slot.replace')}
-                </Button>
-                <Button
-                    variant={item.locked ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={onToggleLock}
-                    disabled={disabled}
-                    aria-pressed={item.locked}
-                    aria-label={t(item.locked ? 'mealPlan.slot.unlockAria' : 'mealPlan.slot.lockAria', { name: item.name })}
-                    className="flex-1"
-                >
-                    {item.locked ? (
-                        <Lock className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
-                    ) : (
-                        <LockOpen className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                    {item.manual_grams && (
+                        <div className="flex flex-wrap items-center gap-x-3 text-sm">
+                            <span className="text-fg-muted">{t('mealPlan.slot.manual')}</span>
+                            <button
+                                type="button"
+                                onClick={onResetGrams}
+                                disabled={disabled}
+                                className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline disabled:opacity-50"
+                            >
+                                {t('mealPlan.slot.resetGrams')}
+                            </button>
+                        </div>
                     )}
-                    {item.locked ? t('mealPlan.slot.locked') : t('mealPlan.slot.lock')}
-                </Button>
-            </div>
+
+                    <div className="flex gap-2">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={onReplace}
+                            disabled={disabled}
+                            aria-label={t('mealPlan.slot.replaceAria', { name: item.name })}
+                            className="flex-1"
+                        >
+                            <Repeat className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                            {t('mealPlan.slot.replace')}
+                        </Button>
+                        <Button
+                            variant={item.locked ? 'primary' : 'secondary'}
+                            size="sm"
+                            onClick={onToggleLock}
+                            disabled={disabled}
+                            aria-pressed={item.locked}
+                            aria-label={t(item.locked ? 'mealPlan.slot.unlockAria' : 'mealPlan.slot.lockAria', { name: item.name })}
+                            className="flex-1"
+                        >
+                            {item.locked ? (
+                                <Lock className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                            ) : (
+                                <LockOpen className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                            )}
+                            {item.locked ? t('mealPlan.slot.locked') : t('mealPlan.slot.lock')}
+                        </Button>
+                    </div>
+                </>
+            )}
         </article>
+    )
+}
+
+interface EatControlsProps {
+    item: PlanItem
+    disabled: boolean
+    busy: boolean
+    onEat: (grams?: number) => void
+}
+
+/**
+ * «Съел» и запись с другим весом.
+ *
+ * Чаще едят ровно по плану — поэтому главное действие без вопросов, а правка
+ * веса раскрывается рядом и не мешает. Вес плана при этом не меняется: в
+ * дневник уходит съеденный.
+ */
+function EatControls({ item, disabled, busy, onEat }: EatControlsProps) {
+    const fieldId = useId()
+    const errorId = useId()
+    const [adjusting, setAdjusting] = useState(false)
+    const [draft, setDraft] = useState(String(item.grams))
+    const grams = parseGrams(draft)
+
+    const handleSubmit = (event: FormEvent) => {
+        event.preventDefault()
+        if (grams !== null && !disabled) onEat(grams)
+    }
+
+    return (
+        <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Button
+                    size="sm"
+                    onClick={() => onEat()}
+                    disabled={disabled}
+                    isLoading={busy && !adjusting}
+                    aria-label={t('mealPlan.slot.eatAria', { name: item.name, grams: item.grams })}
+                    className="h-11"
+                >
+                    <Check className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
+                    {t('mealPlan.slot.eat')}
+                </Button>
+                <button
+                    type="button"
+                    onClick={() => setAdjusting((open) => !open)}
+                    disabled={disabled}
+                    aria-expanded={adjusting}
+                    className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline disabled:opacity-50"
+                >
+                    {t('mealPlan.slot.eatOtherGrams')}
+                </button>
+            </div>
+            {adjusting && (
+                <form onSubmit={handleSubmit} noValidate className="flex flex-wrap items-end gap-2">
+                    <div className="flex flex-col gap-1">
+                        <label htmlFor={fieldId} className="text-xs font-medium text-fg-muted">
+                            {t('mealPlan.slot.eatenGramsLabel')}
+                        </label>
+                        <input
+                            id={fieldId}
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={MAX_GRAMS}
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            disabled={disabled}
+                            aria-label={t('mealPlan.slot.eatenGramsAria', { name: item.name })}
+                            aria-invalid={grams === null}
+                            aria-describedby={grams === null ? errorId : undefined}
+                            className={GRAMS_FIELD}
+                        />
+                    </div>
+                    <Button
+                        type="submit"
+                        variant="secondary"
+                        size="sm"
+                        disabled={disabled || grams === null}
+                        isLoading={busy && adjusting}
+                        className="h-11"
+                    >
+                        {t('mealPlan.slot.eatSubmit')}
+                    </Button>
+                    {grams === null && (
+                        <p id={errorId} role="alert" className="basis-full text-sm text-danger-fg">
+                            {t('mealPlan.slot.gramsInvalid')}
+                        </p>
+                    )}
+                </form>
+            )}
+        </div>
     )
 }

@@ -28,4 +28,21 @@ describe('mealPlanApi — пути и тела по контракту', () => {
         await mealPlanApi.saveSettings({ meal_types: ['lunch'] })
         expect(apiClient.put).toHaveBeenLastCalledWith('/api/v1/meal-plan-settings', { meal_types: ['lunch'] })
     })
+
+    it('план без сборки, «Съел», подгонка остатка', async () => {
+        await mealPlanApi.getExisting('2026-10-10')
+        expect(apiClient.get).toHaveBeenLastCalledWith('/api/v1/meal-plans/2026-10-10?generate=false')
+
+        await mealPlanApi.eat('2026-10-10', 'lunch')
+        expect(apiClient.post).toHaveBeenLastCalledWith('/api/v1/meal-plans/2026-10-10/items/lunch/eat', {})
+
+        await mealPlanApi.eat('2026-10-10', 'dinner', { grams: 280, time: '19:05' })
+        expect(apiClient.post).toHaveBeenLastCalledWith('/api/v1/meal-plans/2026-10-10/items/dinner/eat', {
+            grams: 280,
+            time: '19:05',
+        })
+
+        await mealPlanApi.refit('2026-10-10')
+        expect(apiClient.post).toHaveBeenLastCalledWith('/api/v1/meal-plans/2026-10-10/refit', {})
+    })
 })

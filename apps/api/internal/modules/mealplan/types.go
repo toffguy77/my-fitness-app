@@ -50,6 +50,12 @@ type PlanItem struct {
 	Locked          bool      `json:"locked"`
 	ManualGrams     bool      `json:"manual_grams"`
 	Unavailable     bool      `json:"unavailable"`
+	// Eaten: a diary entry on the plan's date in this meal was made from this
+	// dish (plan-diary-logging). Nutrition and the day's totals then use
+	// EatenGrams — the entry's weight, not the plan's.
+	Eaten       bool     `json:"eaten"`
+	EatenGrams  *float64 `json:"eaten_grams"`
+	FoodEntryID *string  `json:"food_entry_id"`
 }
 
 // ReasonNoRecipes: no recipe the client may see suits the meal.
@@ -112,6 +118,22 @@ type ItemUpdate struct {
 	ResetGrams bool     `json:"reset_grams"`
 }
 
+// EatRequest logs a planned dish to the diary. Absent grams are the plan's
+// weight; absent time is the client's current time today, 12:00 on other days.
+type EatRequest struct {
+	Grams *float64 `json:"grams"`
+	Time  *string  `json:"time"`
+}
+
+// EatResult is the diary entry of the dish and the plan after it.
+type EatResult struct {
+	EntryID string    `json:"entry_id"`
+	Plan    *MealPlan `json:"plan"`
+	// Created is false when the dish had already been logged and the existing
+	// entry is returned.
+	Created bool `json:"-"`
+}
+
 // TargetMissingError says the day's target cannot be calculated and why.
 // Missing holds "profile" and/or "weight".
 type TargetMissingError struct{ Missing []string }
@@ -122,6 +144,10 @@ func (e *TargetMissingError) Error() string {
 
 // Unwrap makes it an ErrConflict for errors.Is.
 func (e *TargetMissingError) Unwrap() error { return apperrors.ErrConflict }
+
+func conflict(format string, args ...any) error {
+	return fmt.Errorf("%w: "+format, append([]any{apperrors.ErrConflict}, args...)...)
+}
 
 func validation(format string, args ...any) error {
 	return fmt.Errorf("%w: "+format, append([]any{apperrors.ErrValidation}, args...)...)

@@ -14,6 +14,7 @@ import userEvent from '@testing-library/user-event';
 import { FoodEntryModal } from '../FoodEntryModal';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';
+import { track } from '@/shared/analytics';
 import { FoodEntry, MealType } from '../../types';
 // Type-only imports of the modules being mocked: erased at runtime, so the
 // mocks stay mocks, and a prop renamed in the real component breaks the stand-in
@@ -51,6 +52,11 @@ jest.mock('@/shared/utils/api-client', () => ({
         get: jest.fn().mockResolvedValue({ items: [] }),
         post: jest.fn().mockResolvedValue({}),
     },
+}));
+
+jest.mock('@/shared/analytics', () => ({
+    EVENTS: jest.requireActual('@/shared/analytics/events').EVENTS,
+    track: jest.fn(),
 }));
 
 jest.mock('@/config/api', () => ({
@@ -103,6 +109,24 @@ jest.mock('../SearchTab', () => ({
                 }
             >
                 Select User Food
+            </button>
+            <button
+                data-testid="select-recipe-btn"
+                onClick={() =>
+                    onSelectFood({
+                        id: 'recipe-food-1',
+                        name: 'Плов с курицей',
+                        category: 'Блюда',
+                        servingSize: 350,
+                        servingUnit: 'g',
+                        nutritionPer100: { calories: 150, protein: 9, fat: 4, carbs: 18 },
+                        source: 'recipe',
+                        verified: true,
+                        recipeId: 'recipe-1',
+                    })
+                }
+            >
+                Select Recipe
             </button>
             {onManualEntry && (
                 <button data-testid="manual-entry-btn" onClick={onManualEntry}>
@@ -932,6 +956,52 @@ describe('FoodEntryModal Branch Coverage', () => {
             await act(async () => {
                 resolveAdd!();
             });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // Рецепт из поиска (plan-diary-logging, 5.4)
+    // -------------------------------------------------------------------------
+    describe('recipe_logged_from_search', () => {
+        it('рецепт записан — событие отправлено', async () => {
+            mockAddEntry.mockResolvedValueOnce({ id: 'entry-1' });
+            const user = userEvent.setup();
+            render(<FoodEntryModal isOpen={true} onClose={jest.fn()} mealType="dinner" />);
+
+            await user.click(screen.getByTestId('select-recipe-btn'));
+            await user.click(screen.getByTestId('set-portion'));
+            await user.click(screen.getByText('Добавить'));
+
+            await waitFor(() =>
+                expect(mockAddEntry).toHaveBeenCalledWith('dinner', expect.objectContaining({ foodId: 'recipe-food-1' }))
+            );
+            expect(track).toHaveBeenCalledWith('recipe_logged_from_search');
+        });
+
+        it('запись рецепта не удалась — события нет', async () => {
+            mockAddEntry.mockResolvedValueOnce(null);
+            const user = userEvent.setup();
+            render(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
+
+            await user.click(screen.getByTestId('select-recipe-btn'));
+            await user.click(screen.getByTestId('set-portion'));
+            await user.click(screen.getByText('Добавить'));
+
+            await waitFor(() => expect(mockAddEntry).toHaveBeenCalled());
+            expect(track).not.toHaveBeenCalledWith('recipe_logged_from_search');
+        });
+
+        it('обычный продукт — события нет', async () => {
+            mockAddEntry.mockResolvedValueOnce({ id: 'entry-2' });
+            const user = userEvent.setup();
+            render(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
+
+            await user.click(screen.getByTestId('select-food-btn'));
+            await user.click(screen.getByTestId('set-portion'));
+            await user.click(screen.getByText('Добавить'));
+
+            await waitFor(() => expect(mockAddEntry).toHaveBeenCalled());
+            expect(track).not.toHaveBeenCalledWith('recipe_logged_from_search');
         });
     });
 });

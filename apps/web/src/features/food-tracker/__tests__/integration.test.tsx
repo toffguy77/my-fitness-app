@@ -12,6 +12,10 @@ import { FoodTrackerTabs } from '../components/FoodTrackerTabs';
 import { DatePicker } from '../components/DatePicker';
 import { FoodEntry, KBZHU, EntriesByMealType } from '../types';
 
+// План дня в дневнике: этот тест не о нём. Плана нет — блока «По плану» нет.
+jest.mock('@/features/meal-plan/api/mealPlanApi', () => ({
+    mealPlanApi: { getExisting: jest.fn().mockResolvedValue(undefined), eat: jest.fn() },
+}))
 // Mock the API client
 jest.mock('@/shared/utils/api-client', () => ({
     apiClient: {

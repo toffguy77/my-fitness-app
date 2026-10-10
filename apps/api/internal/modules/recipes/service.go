@@ -850,11 +850,40 @@ func (s *Service) Approve(ctx context.Context, curatorID int64, recipeID string,
 	if n, _ := res.RowsAffected(); n == 0 {
 		return nil, errWrongState
 	}
+	if err := insertProduct(ctx, tx, versionID); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return s.loadVersion(ctx, s.db, `v.id = $1`, versionID)
 }
+
+// insertProduct makes the approved version a product of the food catalogue:
+// source 'recipe', КБЖУ per 100 g of the finished dish, the portion as the
+// default weight. A diary entry of the dish is an ordinary entry of this
+// product, so it keeps this version's КБЖУ whatever is approved later.
+//
+// The id is recipe_product_id(version) (migration 094) — the one derivation,
+// shared with the plan's "eaten" and diary search. Repeatable: ON CONFLICT.
+func insertProduct(ctx context.Context, q queryer, versionID string) error {
+	if _, err := q.ExecContext(ctx, `
+		INSERT INTO food_items (id, name, category, serving_size, serving_unit,
+		                        calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+		                        source, verified, default_weight, created_at, updated_at)
+		SELECT recipe_product_id(v.id), v.name, '`+ProductCategory+`',
+		       COALESCE(NULLIF(v.portion_grams, 0), 100), 'g',
+		       v.kcal_100, v.protein_100, v.fat_100, v.carbs_100,
+		       'recipe', true, NULLIF(v.portion_grams, 0), NOW(), NOW()
+		FROM recipe_versions v WHERE v.id = $1
+		ON CONFLICT (id) DO NOTHING`, versionID); err != nil {
+		return fmt.Errorf("insert recipe product: %w", err)
+	}
+	return nil
+}
+
+// ProductCategory is the catalogue category of recipe products.
+const ProductCategory = "Блюда"
 
 // Return sends the version under review back to the team with a comment.
 func (s *Service) Return(ctx context.Context, curatorID int64, recipeID, comment string) (*RecipeVersion, error) {

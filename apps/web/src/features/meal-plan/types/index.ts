@@ -39,6 +39,15 @@ export interface PlanItem {
     manual_grams: boolean
     /** Рецепт снят, скрыт или стал недоступен клиенту. */
     unavailable: boolean
+    /**
+     * Есть запись дневника на дату и приём пищи этого блюда
+     * (`openspec/changes/plan-diary-logging/api.md`).
+     */
+    eaten: boolean
+    /** Вес из записи дневника, а не из плана; `null`, пока не съедено. */
+    eaten_grams: number | null
+    /** Запись дневника; только когда `eaten`. */
+    food_entry_id: string | null
 }
 
 export interface EmptySlot {
@@ -91,6 +100,19 @@ export interface PlanItemUpdate {
     grams?: number
     locked?: boolean
     reset_grams?: boolean
+}
+
+/** «Съел»: без `grams` — вес из плана, без `time` — решает сервер. */
+export interface EatRequest {
+    grams?: number
+    /** `HH:MM`. */
+    time?: string
+}
+
+/** Запись дневника и план, пересчитанный с ней. */
+export interface EatResponse {
+    entry_id: string
+    plan: MealPlan
 }
 
 export interface MealPlanSettings {

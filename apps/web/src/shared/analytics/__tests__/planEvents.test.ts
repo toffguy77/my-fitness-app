@@ -17,8 +17,25 @@ describe('события плана питания', () => {
         ['planItemLocked', 'plan_item_locked'],
         ['planGramsSet', 'plan_grams_set'],
         ['planOffTarget', 'plan_off_target'],
+        ['planItemEaten', 'plan_item_eaten'],
+        ['planRefit', 'plan_refit'],
+        ['recipeLoggedFromSearch', 'recipe_logged_from_search'],
     ])('%s → %s', (key, name) => {
         expect(EVENTS[key as keyof typeof EVENTS]).toBe(name)
         expect(GO_DICTIONARY).toContain(`"${name}"`)
+    })
+})
+
+describe('plan_item_eaten: source — объявленное свойство', () => {
+    // Необъявленное свойство отвергает событие вместе с пакетом. Объявление —
+    // от имени события до следующего объявления в словаре.
+    it('source и значения plan, diary объявлены', () => {
+        const start = GO_DICTIONARY.indexOf('EventPlanItemEaten:')
+        expect(start).toBeGreaterThan(-1)
+        const next = GO_DICTIONARY.slice(start + 1).search(/\n\s*Event\w+:/)
+        const declaration = GO_DICTIONARY.slice(start, next === -1 ? undefined : start + 1 + next)
+        expect(declaration).toContain('"source"')
+        expect(declaration).toContain('"plan"')
+        expect(declaration).toContain('"diary"')
     })
 })

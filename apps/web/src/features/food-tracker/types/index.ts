@@ -32,7 +32,7 @@ export type PortionType = 'grams' | 'milliliters' | 'portion';
 /**
  * Data source for food items
  */
-export type FoodSource = 'database' | 'usda' | 'openfoodfacts' | 'user' | 'ai';
+export type FoodSource = 'database' | 'usda' | 'openfoodfacts' | 'user' | 'ai' | 'recipe';
 
 // ============================================================================
 // Food Item Types
@@ -53,6 +53,8 @@ export interface FoodItem {
     source: FoodSource;
     verified: boolean;
     additionalNutrients?: Record<string, number>;
+    /** Рецепт, версией которого является продукт; только у `source: 'recipe'`. */
+    recipeId?: string;
 }
 
 /**

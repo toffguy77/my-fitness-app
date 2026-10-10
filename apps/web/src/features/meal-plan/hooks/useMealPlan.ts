@@ -7,10 +7,11 @@ import { t } from '@/shared/i18n'
 import { useResource } from '@/features/recipes/hooks/useResource'
 import { mealPlanApi } from '../api/mealPlanApi'
 import type { MealPlan, MealType, PlanItem } from '../types'
-import { trackPlanAction, trackPlanViewed, type PlanAction } from '../utils/planEvents'
+import { eatRequest } from '../utils/eatRequest'
+import { trackPlanAction, trackPlanItemEaten, trackPlanRefit, trackPlanViewed, type PlanAction } from '../utils/planEvents'
 
-/** Что сейчас ждёт ответа сервера: пересборка или правка конкретного приёма. */
-export type PendingAction = 'regenerate' | MealType | null
+/** Что сейчас ждёт ответа сервера: пересборка, подгонка или правка конкретного приёма. */
+export type PendingAction = 'regenerate' | 'refit' | MealType | null
 
 export interface MealPlanState {
     plan: MealPlan | undefined
@@ -23,6 +24,10 @@ export interface MealPlanState {
     toggleLock: (item: PlanItem) => Promise<boolean>
     setGrams: (mealType: MealType, grams: number) => Promise<boolean>
     resetGrams: (mealType: MealType) => Promise<boolean>
+    /** «Съел»: без `grams` — вес из плана. */
+    eat: (mealType: MealType, grams?: number) => Promise<boolean>
+    /** «Подогнать остаток». */
+    refit: () => Promise<boolean>
 }
 
 /**
@@ -87,5 +92,26 @@ export function useMealPlan(date: string): MealPlanState {
             mutate(mealType, 'grams_set', () => mealPlanApi.updateItem(date, mealType, { grams }), t('mealPlan.updateFailed')),
         resetGrams: (mealType) =>
             mutate(mealType, null, () => mealPlanApi.updateItem(date, mealType, { reset_grams: true }), t('mealPlan.updateFailed')),
+        eat: async (mealType, grams) => {
+            const ok = await mutate(
+                mealType,
+                null,
+                async () => (await mealPlanApi.eat(date, mealType, eatRequest(date, grams))).plan,
+                t('mealPlan.eat.failed')
+            )
+            if (ok) {
+                trackPlanItemEaten('plan')
+                toast.success(t('mealPlan.eat.done'))
+            }
+            return ok
+        },
+        refit: async () => {
+            const ok = await mutate('refit', null, () => mealPlanApi.refit(date), t('mealPlan.refit.failed'))
+            if (ok) {
+                trackPlanRefit()
+                toast.success(t('mealPlan.refit.done'))
+            }
+            return ok
+        },
     }
 }
