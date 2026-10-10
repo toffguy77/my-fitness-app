@@ -34,7 +34,7 @@
   *Сделано:* `useDiaryPlan` (только `?generate=false`, вне окна ±30 дней — без запроса, ошибки молча), план перечитывается при смене записей дневника (удаление возвращает блюдо); «+» → `eat`, затем `fetchDayData`. Тесты: `food-tracker/components/__tests__/DietTab.planned.test.tsx` (8: «Есть план», «Плана нет» без собирающего GET, «Съеденное не дублируется», «+», удаление).
 - [x] 5.3 Пометка «рецепт» в поиске дневника. Проверка: Jest + RTL.
   *Сделано:* `FoodSource` += `recipe`, `FoodItem.recipeId`; пометка и ссылка на `/menu/recipes/[id]` (щелчок и Enter по ссылке блюдо не выбирают). Тесты: `SearchTab.recipe.test.tsx` (4), сторож имён против Go — `food-tracker/types/__tests__/recipeFields.test.ts`.
-- [ ] 5.4 События `plan_item_eaten`, `plan_refit`, `recipe_logged_from_search`. Проверка: Jest на отправку; события на dev в `analytics_events`.
+- [x] 5.4 События `plan_item_eaten`, `plan_refit`, `recipe_logged_from_search`. Проверка: Jest на отправку; события на dev в `analytics_events`. **События на dev 2026-10-10: plan_item_eaten {source: plan} и {source: diary}, plan_refit, recipe_logged_from_search.**
   — бэкенд: объявлены в `analytics/dictionary.go` (`plan_item_eaten.source` обязательное, `plan|diary`). Фронтенд и dev — открыто.
   *Сделано на клиенте:* события в `events.ts`, отправка проверена Jest (`PlanEaten`, `DietTab.planned`, `FoodEntryModal.branches`, `planEvents`); словарь сверен (`shared/analytics/__tests__/planEvents.test.ts`, check-codebase-integrity). Остаётся: проверка на dev в `analytics_events` после выкатки.
 - [x] 5.5 Lint, type-check, все статические проверки из корня. Проверка: зелёные.
@@ -42,7 +42,7 @@
 
 ## 6. E2E и документация
 
-- [ ] 6.1 Playwright `e2e/tests/plan-diary-logging.spec.ts`: план с блюдами → «Съел» обед → запись в дневнике в обеде с весом плана → в дневнике под ужином «По плану» → «+» → запись → удаление обеда из дневника → обед в плане снова несъеденный → поиск находит рецепт с пометкой. Проверка: локально через `:3070` и в CI.
+- [x] 6.1 Playwright `e2e/tests/plan-diary-logging.spec.ts`: план с блюдами → «Съел» обед → запись в дневнике в обеде с весом плана → в дневнике под ужином «По плану» → «+» → запись → удаление обеда из дневника → обед в плане снова несъеденный → поиск находит рецепт с пометкой. Проверка: локально через `:3070` и в CI. **Спек в CI (вручную запущенный e2e.yml) зелёный на PR #238.**
   *Локально пройдено* (своя база в `burcev-itest`, прод-сборка web, прокси 3070, `--workers=1`): вместе с `meal-day-plan` и пятью спеками дневника — 19 из 19. Остаётся CI.
 - [x] 6.2 `docs/user-guide/02-ведение-дневника-питания.md` — запись из плана; `make sync-knowledge`. Проверка: `TestKnowledgeMatchesUserGuide`.
-- [ ] 6.3 Слить в `dev` и пройти сценарий на new.burcev.team. Проверка: ручной проход, логи API без ошибок.
+- [x] 6.3 Слить в `dev` и пройти сценарий на new.burcev.team. Проверка: ручной проход, логи API без ошибок. **Пройдено на dev 2026-10-10: «Съел» (201, повтор — та же запись), замена съеденного — 409, «По плану» в дневнике, «+», удаление записи возвращает блюдо, подгонка остатка, рецепт из поиска дневника; ошибок API нет.**

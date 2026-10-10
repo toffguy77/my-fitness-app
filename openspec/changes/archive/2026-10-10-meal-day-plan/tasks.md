@@ -24,11 +24,11 @@
 - [x] 4.1 `features/meal-plan/`: API-клиент, типы, `DayPlanView`, `MealSlotCard`, `AlternativesSheet`, `PlanWarnings`. Проверка: Jest + RTL, включая состояние «нет цели» и «нет рецептов».
 - [x] 4.2 `/menu` открывается на плане сегодня, вкладка «Рецепты», переключение даты. Проверка: Jest + RTL.
 - [x] 4.3 Выбор приёмов пищи для плана в настройках. Проверка: Jest + RTL.
-- [ ] 4.4 События `plan_generated`, `plan_regenerated`, `plan_item_replaced`, `plan_item_locked`, `plan_grams_set`, `plan_off_target`. Проверка: Jest на отправку; события видны на dev в `analytics_events`.
+- [x] 4.4 События `plan_generated`, `plan_regenerated`, `plan_item_replaced`, `plan_item_locked`, `plan_grams_set`, `plan_off_target`. Проверка: Jest на отправку; события видны на dev в `analytics_events`. **События на dev в analytics_events 2026-10-10: plan_generated, plan_regenerated, plan_item_replaced, plan_item_locked, plan_grams_set, plan_off_target.**
 - [x] 4.5 Lint, type-check, все статические проверки из корня. Проверка: зелёные.
 
 ## 5. E2E и документация
 
-- [ ] 5.1 Playwright `e2e/tests/meal-day-plan.spec.ts`: подготовка одобренных рецептов через API → клиент открывает «Меню» → видит план с блюдами на выбранные приёмы и проценты → закрепляет обед, пересобирает, обед на месте → задаёт вес вручную, итоги пересчитаны → заменяет ужин альтернативой. Рецепты и планы удаляются после прогона. Проверка: локально через `:3070` и в CI.
-- [ ] 5.2 `docs/user-guide/` — как собирается план и что значат предупреждения; `make sync-knowledge`. Проверка: `TestKnowledgeMatchesUserGuide`.
-- [ ] 5.3 Слить в `dev` и пройти сценарий на new.burcev.team. Проверка: ручной проход, логи API без ошибок.
+- [x] 5.1 Playwright `e2e/tests/meal-day-plan.spec.ts`: подготовка одобренных рецептов через API → клиент открывает «Меню» → видит план с блюдами на выбранные приёмы и проценты → закрепляет обед, пересобирает, обед на месте → задаёт вес вручную, итоги пересчитаны → заменяет ужин альтернативой. Рецепты и планы удаляются после прогона. Проверка: локально через `:3070` и в CI. **Спек в CI (вручную запущенный e2e.yml) зелёный на PR #237.**
+- [x] 5.2 `docs/user-guide/` — как собирается план и что значат предупреждения; `make sync-knowledge`. Проверка: `TestKnowledgeMatchesUserGuide`. **Раздел «План питания на день» в docs/user-guide/10-меню-и-рецепты.md, база знаний синхронизирована.**
+- [x] 5.3 Слить в `dev` и пройти сценарий на new.burcev.team. Проверка: ручной проход, логи API без ошибок. **Пройдено на dev 2026-10-10 учёткой e2e-client: план из 4 блюд, честный недобор («Не хватает 477 ккал»), закрепление, ручной вес, пересборка, замена; ошибок API нет.**
