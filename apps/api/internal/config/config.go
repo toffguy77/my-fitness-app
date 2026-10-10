@@ -49,6 +49,10 @@ type Features struct {
 	// without a token: local development has no business holding one, and an
 	// upload signed with nothing would fail on every run.
 	AdsAttribution bool
+	// RecipeImport — импорт рецептов ВкусВилла в черновики. Нужны адрес MCP
+	// (по умолчанию задан) и хранилище контента: фото копируются к нам, а
+	// черновик со ссылками на чужой сервер — не то, что обещает спека.
+	RecipeImport bool
 }
 
 // Disabled returns the names of the capabilities that are turned off, in a
@@ -72,6 +76,7 @@ func (f Features) Disabled() []string {
 		{"error_reporting", f.ErrorReporting},
 		{"tracing", f.Tracing},
 		{"ads_attribution", f.AdsAttribution},
+		{"recipe_import", f.RecipeImport},
 	} {
 		if !c.on {
 			off = append(off, c.name)
@@ -96,6 +101,7 @@ func (f Features) Map() map[string]bool {
 		"error_reporting":  f.ErrorReporting,
 		"tracing":          f.Tracing,
 		"ads_attribution":  f.AdsAttribution,
+		"recipe_import":    f.RecipeImport,
 	}
 }
 
@@ -249,6 +255,10 @@ type Config struct {
 	MetrikaOAuthToken string
 	MetrikaCounterID  string
 
+	// VkusvillMCPURL — адрес MCP ВкусВилла для импорта рецептов. Пусто —
+	// импорт выключен (VKUSVILL_MCP_URL=off).
+	VkusvillMCPURL string
+
 	// Migrations
 	MigrationBaseline int
 
@@ -309,6 +319,7 @@ func Load() (*Config, error) {
 		SentryDSN:         getEnv("SENTRY_DSN", ""),
 		MetrikaOAuthToken: getEnv("YANDEX_METRIKA_OAUTH_TOKEN", ""),
 		MetrikaCounterID:  getEnv("YANDEX_METRIKA_COUNTER_ID", ""),
+		VkusvillMCPURL:    vkusvillMCPURL(getEnv("VKUSVILL_MCP_URL", DefaultVkusvillMCPURL)),
 		OTLPEndpoint:      getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
 
 		// SMTP Configuration (Yandex Mail)
@@ -454,6 +465,22 @@ func visionDefaultAuthScheme() string {
 	return llm.DefaultAuthScheme
 }
 
+// DefaultVkusvillMCPURL — публичный MCP ВкусВилла; авторизации для рецептов
+// не требует.
+const DefaultVkusvillMCPURL = "https://mcp.vkusvill.ru/mcp"
+
+// vkusvillMCPURL выключает импорт значением "off".
+//
+// У адреса есть умолчание, поэтому пустое значение выключить его не может:
+// getEnv подставит умолчание, а compose передаёт пустую строку, когда
+// переменная не задана. Нужен явный выключатель.
+func vkusvillMCPURL(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), "off") {
+		return ""
+	}
+	return value
+}
+
 // deriveFeatures turns the presence of credentials into capability flags.
 func deriveFeatures(c *Config) Features {
 	s3 := func(key, secret string) bool { return key != "" && secret != "" }
@@ -496,6 +523,9 @@ func deriveFeatures(c *Config) Features {
 		AdsAttribution: c.MetrikaOAuthToken != "" && c.MetrikaCounterID != "",
 
 		ErrorReporting: c.SentryDSN != "",
+
+		RecipeImport: c.VkusvillMCPURL != "" &&
+			s3(c.ContentS3AccessKeyID, c.ContentS3SecretAccessKey),
 
 		// Наличие адреса — намерение, а не результат: экспортёр ещё должен
 		// подняться. Пока он не поднялся, признак остаётся выключенным, и

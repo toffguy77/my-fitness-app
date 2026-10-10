@@ -30,6 +30,7 @@ func prodEnv(t *testing.T) {
 		"CONTENT_S3_ACCESS_KEY_ID", "CONTENT_S3_SECRET_ACCESS_KEY",
 		"FOOD_PHOTOS_S3_ACCESS_KEY_ID", "FOOD_PHOTOS_S3_SECRET_ACCESS_KEY",
 		"S3_PATH_PREFIX", "CONTENT_S3_PATH_PREFIX", "DB_MIGRATION_BASELINE",
+		"VKUSVILL_MCP_URL",
 	} {
 		t.Setenv(k, "")
 		os.Unsetenv(k)
@@ -222,4 +223,60 @@ func TestFeatures_AdsAttributionNeedsBoth(t *testing.T) {
 			assert.Contains(t, cfg.Features.Disabled(), "ads_attribution")
 		})
 	}
+}
+
+// Импорт рецептов проверен во включённом состоянии, а не только в
+// выключенном: так ads_attribution и уехала мёртвой — поле было, присваивания
+// не было, и проверка «выключено без настроек» проходила.
+func TestFeatures_RecipeImportOnWithDefaultURLAndContentStorage(t *testing.T) {
+	prodEnv(t)
+	t.Setenv("CONTENT_S3_ACCESS_KEY_ID", "key")
+	t.Setenv("CONTENT_S3_SECRET_ACCESS_KEY", "secret")
+
+	cfg, err := loadIn(t)
+
+	require.NoError(t, err)
+	assert.Equal(t, DefaultVkusvillMCPURL, cfg.VkusvillMCPURL)
+	assert.True(t, cfg.Features.RecipeImport)
+	assert.NotContains(t, cfg.Features.Disabled(), "recipe_import")
+	assert.True(t, cfg.Features.Map()["recipe_import"])
+}
+
+func TestFeatures_RecipeImportHonoursExplicitURL(t *testing.T) {
+	prodEnv(t)
+	t.Setenv("CONTENT_S3_ACCESS_KEY_ID", "key")
+	t.Setenv("CONTENT_S3_SECRET_ACCESS_KEY", "secret")
+	t.Setenv("VKUSVILL_MCP_URL", "http://mcp.example.test/mcp")
+
+	cfg, err := loadIn(t)
+
+	require.NoError(t, err)
+	assert.Equal(t, "http://mcp.example.test/mcp", cfg.VkusvillMCPURL)
+	assert.True(t, cfg.Features.RecipeImport)
+}
+
+// Фото копируются в хранилище контента; без него импорт выключен.
+func TestFeatures_RecipeImportNeedsContentStorage(t *testing.T) {
+	prodEnv(t)
+
+	cfg, err := loadIn(t)
+
+	require.NoError(t, err)
+	assert.False(t, cfg.Features.RecipeImport)
+	assert.Contains(t, cfg.Features.Disabled(), "recipe_import")
+}
+
+// У адреса есть умолчание, поэтому выключатель — явное "off".
+func TestFeatures_RecipeImportSwitchedOff(t *testing.T) {
+	prodEnv(t)
+	t.Setenv("CONTENT_S3_ACCESS_KEY_ID", "key")
+	t.Setenv("CONTENT_S3_SECRET_ACCESS_KEY", "secret")
+	t.Setenv("VKUSVILL_MCP_URL", "off")
+
+	cfg, err := loadIn(t)
+
+	require.NoError(t, err)
+	assert.Empty(t, cfg.VkusvillMCPURL)
+	assert.False(t, cfg.Features.RecipeImport)
+	assert.Contains(t, cfg.Features.Disabled(), "recipe_import")
 }

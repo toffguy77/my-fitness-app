@@ -21,6 +21,9 @@ INDEX barcode_cache idx_barcode_cache_source btree (source)
 INDEX categories categories_pkey btree (id)
 INDEX categories categories_slug_key btree (slug)
 INDEX categories idx_categories_source btree (source)
+INDEX client_hidden_recipes client_hidden_recipes_pkey btree (client_id, recipe_id)
+INDEX client_hidden_recipes idx_client_hidden_recipes_hidden_by btree (hidden_by) WHERE (hidden_by IS NOT NULL)
+INDEX client_hidden_recipes idx_client_hidden_recipes_recipe btree (recipe_id)
 INDEX content_notification_mute content_notification_mute_pkey btree (user_id)
 INDEX content_notification_preferences content_notification_preferences_pkey btree (user_id, category)
 INDEX conversations conversations_pkey btree (id)
@@ -124,6 +127,18 @@ INDEX products products_pkey btree (id)
 INDEX push_subscriptions idx_push_subscriptions_user btree (user_id)
 INDEX push_subscriptions push_subscriptions_endpoint_key btree (endpoint)
 INDEX push_subscriptions push_subscriptions_pkey btree (id)
+INDEX recipe_ingredients idx_recipe_ingredients_food btree (food_id) WHERE (food_id IS NOT NULL)
+INDEX recipe_ingredients recipe_ingredients_pkey btree (version_id, "position")
+INDEX recipe_steps recipe_steps_pkey btree (version_id, "position")
+INDEX recipe_versions idx_recipe_versions_approved_by btree (approved_by) WHERE (approved_by IS NOT NULL)
+INDEX recipe_versions idx_recipe_versions_edited_by btree (edited_by) WHERE (edited_by IS NOT NULL)
+INDEX recipe_versions recipe_versions_pkey btree (id)
+INDEX recipe_versions recipe_versions_recipe_id_version_key btree (recipe_id, version)
+INDEX recipe_versions uq_recipe_versions_approved btree (recipe_id) WHERE (state = 'approved'::text)
+INDEX recipe_versions uq_recipe_versions_working btree (recipe_id) WHERE (state = ANY (ARRAY['draft'::text, 'review'::text]))
+INDEX recipes idx_recipes_created_by btree (created_by) WHERE (created_by IS NOT NULL)
+INDEX recipes recipes_pkey btree (id)
+INDEX recipes recipes_source_ref_key btree (source_ref)
 INDEX refresh_tokens idx_refresh_tokens_user_id btree (user_id)
 INDEX refresh_tokens refresh_tokens_pkey btree (id)
 INDEX refresh_tokens refresh_tokens_token_hash_key btree (token_hash)
@@ -167,9 +182,12 @@ INDEX user_consents idx_user_consents_user_id btree (user_id)
 INDEX user_consents user_consents_pkey btree (id)
 INDEX user_custom_recommendations idx_user_custom_recommendations_user_id btree (user_id)
 INDEX user_custom_recommendations user_custom_recommendations_pkey btree (id)
+INDEX user_excluded_foods idx_user_excluded_foods_food btree (food_id)
+INDEX user_excluded_foods user_excluded_foods_pkey btree (user_id, food_id)
 INDEX user_favorite_foods idx_user_favorite_foods_food btree (food_id)
 INDEX user_favorite_foods user_favorite_foods_pkey btree (id)
 INDEX user_favorite_foods user_favorite_foods_user_id_food_id_key btree (user_id, food_id)
+INDEX user_food_restrictions user_food_restrictions_pkey btree (user_id)
 INDEX user_foods idx_user_foods_name_fts gin (to_tsvector('russian'::regconfig, ((COALESCE(name, ''::text) || ' '::text) || COALESCE(brand, ''::text))))
 INDEX user_foods idx_user_foods_user_id btree (user_id)
 INDEX user_foods user_foods_pkey btree (id)
@@ -177,6 +195,8 @@ INDEX user_nutrient_preferences idx_user_nutrient_preferences_nutrient btree (nu
 INDEX user_nutrient_preferences idx_user_nutrient_preferences_tracked btree (user_id, is_tracked) WHERE (is_tracked = true)
 INDEX user_nutrient_preferences user_nutrient_preferences_pkey btree (id)
 INDEX user_nutrient_preferences user_nutrient_preferences_user_id_nutrient_id_key btree (user_id, nutrient_id)
+INDEX user_rejected_recipes idx_user_rejected_recipes_recipe btree (recipe_id)
+INDEX user_rejected_recipes user_rejected_recipes_pkey btree (user_id, recipe_id)
 INDEX user_settings user_settings_pkey btree (id)
 INDEX user_settings user_settings_user_id_key btree (user_id)
 INDEX users idx_users_deletion_requested btree (deletion_requested_at) WHERE (deletion_requested_at IS NOT NULL)
@@ -241,6 +261,10 @@ categories.slug text NOT NULL
 categories.source text NOT NULL DEFAULT 'health-diet'
 categories.source_url text NOT NULL
 categories.type text NOT NULL
+client_hidden_recipes.client_id bigint NOT NULL
+client_hidden_recipes.created_at timestamp with time zone NOT NULL DEFAULT now()
+client_hidden_recipes.hidden_by bigint
+client_hidden_recipes.recipe_id uuid NOT NULL
 content_notification_mute.muted_at timestamp with time zone DEFAULT now()
 content_notification_mute.user_id bigint NOT NULL
 content_notification_preferences.category USER-DEFINED NOT NULL
@@ -606,6 +630,52 @@ push_subscriptions.last_used_at timestamp with time zone
 push_subscriptions.p256dh text NOT NULL
 push_subscriptions.user_agent text
 push_subscriptions.user_id bigint NOT NULL
+recipe_ingredients.candidates jsonb
+recipe_ingredients.display_quantity text
+recipe_ingredients.food_id uuid
+recipe_ingredients.grams numeric
+recipe_ingredients.position integer NOT NULL
+recipe_ingredients.source_name text
+recipe_ingredients.to_taste boolean NOT NULL DEFAULT false
+recipe_ingredients.version_id uuid NOT NULL
+recipe_steps.photo_key text
+recipe_steps.position integer NOT NULL
+recipe_steps.text text NOT NULL
+recipe_steps.version_id uuid NOT NULL
+recipe_versions.allergens ARRAY NOT NULL DEFAULT '{}'[]
+recipe_versions.approved_at timestamp with time zone
+recipe_versions.approved_by bigint
+recipe_versions.approximate boolean NOT NULL DEFAULT true
+recipe_versions.carbs_100 numeric NOT NULL DEFAULT 0
+recipe_versions.complexity text NOT NULL DEFAULT 'easy'
+recipe_versions.cook_minutes integer NOT NULL DEFAULT 0
+recipe_versions.created_at timestamp with time zone NOT NULL DEFAULT now()
+recipe_versions.description text NOT NULL DEFAULT ''
+recipe_versions.edited_by bigint
+recipe_versions.fat_100 numeric NOT NULL DEFAULT 0
+recipe_versions.id uuid NOT NULL DEFAULT gen_random_uuid()
+recipe_versions.kcal_100 numeric NOT NULL DEFAULT 0
+recipe_versions.meal_types ARRAY NOT NULL DEFAULT '{}'[]
+recipe_versions.name text NOT NULL DEFAULT ''
+recipe_versions.photo_key text
+recipe_versions.portion_grams numeric NOT NULL DEFAULT 0
+recipe_versions.protein_100 numeric NOT NULL DEFAULT 0
+recipe_versions.recipe_id uuid NOT NULL
+recipe_versions.review_comment text
+recipe_versions.servings integer NOT NULL DEFAULT 1
+recipe_versions.state text NOT NULL DEFAULT 'draft'
+recipe_versions.tags ARRAY NOT NULL DEFAULT '{}'[]
+recipe_versions.total_grams numeric NOT NULL DEFAULT 0
+recipe_versions.updated_at timestamp with time zone NOT NULL DEFAULT now()
+recipe_versions.version integer NOT NULL
+recipe_versions.yield_grams numeric
+recipes.created_at timestamp with time zone NOT NULL DEFAULT now()
+recipes.created_by bigint
+recipes.id uuid NOT NULL DEFAULT gen_random_uuid()
+recipes.source text NOT NULL DEFAULT 'manual'
+recipes.source_ref text
+recipes.status text NOT NULL DEFAULT 'published'
+recipes.updated_at timestamp with time zone NOT NULL DEFAULT now()
 refresh_tokens.created_at timestamp without time zone NOT NULL DEFAULT now()
 refresh_tokens.expires_at timestamp without time zone NOT NULL
 refresh_tokens.id bigint NOT NULL DEFAULT nextval('refresh_tokens_id_seq')
@@ -714,10 +784,16 @@ user_custom_recommendations.name text NOT NULL
 user_custom_recommendations.unit text NOT NULL
 user_custom_recommendations.updated_at timestamp with time zone DEFAULT now()
 user_custom_recommendations.user_id bigint NOT NULL
+user_excluded_foods.created_at timestamp with time zone NOT NULL DEFAULT now()
+user_excluded_foods.food_id uuid NOT NULL
+user_excluded_foods.user_id bigint NOT NULL
 user_favorite_foods.created_at timestamp with time zone DEFAULT now()
 user_favorite_foods.food_id uuid NOT NULL
 user_favorite_foods.id uuid NOT NULL DEFAULT gen_random_uuid()
 user_favorite_foods.user_id bigint NOT NULL
+user_food_restrictions.allergens ARRAY NOT NULL DEFAULT '{}'[]
+user_food_restrictions.updated_at timestamp with time zone NOT NULL DEFAULT now()
+user_food_restrictions.user_id bigint NOT NULL
 user_foods.brand text
 user_foods.calories_per_100 numeric NOT NULL
 user_foods.carbs_per_100 numeric NOT NULL DEFAULT 0
@@ -736,6 +812,9 @@ user_nutrient_preferences.id uuid NOT NULL DEFAULT gen_random_uuid()
 user_nutrient_preferences.is_tracked boolean DEFAULT true
 user_nutrient_preferences.nutrient_id uuid NOT NULL
 user_nutrient_preferences.user_id bigint NOT NULL
+user_rejected_recipes.created_at timestamp with time zone NOT NULL DEFAULT now()
+user_rejected_recipes.recipe_id uuid NOT NULL
+user_rejected_recipes.user_id bigint NOT NULL
 user_settings.activity_level character varying DEFAULT 'moderate'
 user_settings.apple_health_enabled boolean DEFAULT false
 user_settings.biological_sex character varying

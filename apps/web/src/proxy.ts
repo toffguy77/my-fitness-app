@@ -22,6 +22,7 @@ const SESSION_MARKER = 'session_present'
 const PROTECTED = [
     '/dashboard',
     '/food-tracker',
+    '/menu',
     '/chat',
     '/profile',
     '/settings',

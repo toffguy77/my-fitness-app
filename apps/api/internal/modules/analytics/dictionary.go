@@ -55,6 +55,14 @@ const (
 	// не смешиваться с воронкой мастера.
 	EventCalculatorResult  = "calculator_result"
 	EventArticleCtaClicked = "article_cta_clicked"
+
+	// Раздел «Меню» и каталог рецептов. Данных о спросе на планирование
+	// питания до запуска нет — без этих событий эффект раздела не измерить.
+	EventMenuOpened      = "menu_opened"
+	EventRecipeOpened    = "recipe_opened"
+	EventRecipeRejected  = "recipe_rejected"
+	EventRecipeSubmitted = "recipe_submitted"
+	EventRecipeApproved  = "recipe_approved"
 )
 
 // Definition declares one event.
@@ -169,6 +177,15 @@ var Dictionary = map[string]Definition{
 		Required: []string{"target"},
 		Values:   map[string][]string{"target": {"calculator", "pricing"}},
 	},
+
+	// Без свойств: идентификатор рецепта — не то, по чему группируют отчёт, а
+	// название — текст команды. Отправляет браузер, в том числе отправку на
+	// проверку и одобрение: это действия команды и куратора в интерфейсе.
+	EventMenuOpened:      {},
+	EventRecipeOpened:    {},
+	EventRecipeRejected:  {},
+	EventRecipeSubmitted: {},
+	EventRecipeApproved:  {},
 }
 
 // AllEventNames returns every event name in the dictionary, sorted so the

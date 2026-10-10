@@ -12,6 +12,7 @@ import NotificationsError from '../notifications/error'
 import ContentError from '../content/error'
 import ProfileError from '../profile/error'
 import OnboardingError from '../onboarding/error'
+import MenuError from '../menu/error'
 import { reportError } from '@/shared/errors/reportError'
 
 jest.mock('@/shared/errors/reportError', () => ({
@@ -30,6 +31,7 @@ const segments: Array<[string, React.ComponentType<{ error: Error & { digest?: s
     ['content', ContentError],
     ['profile', ProfileError],
     ['onboarding', OnboardingError],
+    ['menu', MenuError],
 ]
 
 describe('route error components', () => {

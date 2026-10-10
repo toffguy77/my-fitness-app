@@ -18,12 +18,19 @@ describe('ClientDetailTabs', () => {
         mockSearchParams = new URLSearchParams()
     })
 
-    it('renders all four tabs', () => {
+    it('renders all five tabs', () => {
         render(<ClientDetailTabs />)
         expect(screen.getByText('Обзор')).toBeInTheDocument()
         expect(screen.getByText('План')).toBeInTheDocument()
         expect(screen.getByText('Задачи')).toBeInTheDocument()
         expect(screen.getByText('Отчёты')).toBeInTheDocument()
+        expect(screen.getByText('Питание')).toBeInTheDocument()
+    })
+
+    it('the Nutrition tab carries its own address', () => {
+        render(<ClientDetailTabs />)
+        fireEvent.click(screen.getByText('Питание'))
+        expect(mockPush).toHaveBeenCalledWith(`${mockPathname}?tab=nutrition`)
     })
 
     it('highlights overview tab by default', () => {

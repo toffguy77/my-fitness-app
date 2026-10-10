@@ -102,6 +102,7 @@ test.describe('Нижняя навигация следует адресу', () 
     const cases = {
         client: [
             ['/food-tracker', 'nav-item-food-tracker'],
+            ['/menu', 'nav-item-menu'],
             ['/chat', 'nav-item-chat'],
             ['/content', 'nav-item-content'],
         ],
@@ -109,6 +110,7 @@ test.describe('Нижняя навигация следует адресу', () 
             ['/curator', 'nav-item-hub'],
             ['/curator/chat', 'nav-item-chats'],
             ['/curator/content', 'nav-item-content'],
+            ['/curator/recipes', 'nav-item-recipes'],
             ['/curator/leads', 'nav-item-leads'],
             ['/curator/support', 'nav-item-support'],
         ],
@@ -116,6 +118,7 @@ test.describe('Нижняя навигация следует адресу', () 
             ['/admin', 'nav-item-dashboard'],
             ['/admin/users', 'nav-item-users'],
             ['/admin/content', 'nav-item-content'],
+            ['/admin/recipes', 'nav-item-recipes'],
             ['/admin/chats', 'nav-item-chats'],
         ],
     } as const
@@ -144,9 +147,19 @@ test.describe('Загрузка страниц под входом', () => {
     // Ошибка проявлялась со второй страницы: первая наполняла кэш профиля, а
     // следующие рисовали его ещё до гидратации.
     const routes = {
-        client: ['/dashboard', '/food-tracker', '/chat', '/notifications', '/content', '/profile', '/settings/profile'],
-        curator: ['/curator', '/curator/chat', '/curator/content', '/curator/leads', '/curator/support'],
-        admin: ['/admin', '/admin/users', '/admin/chats', '/admin/content', '/admin/jobs'],
+        client: [
+            '/dashboard',
+            '/food-tracker',
+            '/menu',
+            '/chat',
+            '/notifications',
+            '/content',
+            '/profile',
+            '/settings/profile',
+            '/settings/food-restrictions',
+        ],
+        curator: ['/curator', '/curator/chat', '/curator/content', '/curator/recipes', '/curator/leads', '/curator/support'],
+        admin: ['/admin', '/admin/users', '/admin/chats', '/admin/content', '/admin/recipes', '/admin/recipes/new', '/admin/jobs'],
     } as const
 
     for (const [role, paths] of Object.entries(routes) as [keyof typeof routes, readonly string[]][]) {
