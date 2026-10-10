@@ -10,7 +10,8 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Search, Clock, Star, Plus, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { Search, Clock, Star, Plus, ChevronRight, BookOpen } from 'lucide-react';
 import type { FoodItem, MealType } from '../types';
 import { t } from '@/shared/i18n'
 import { Button } from '@/shared/components/ui/Button';
@@ -420,8 +421,29 @@ function FoodListItem({ food, onSelect, favoriteIds, onToggleFavorite, pendingFa
         >
             <div className="flex-1 min-w-0">
                 <p className="truncate font-medium text-fg">{food.name}</p>
-                <p className="type-caption text-fg-muted tabular-nums">{servingInfo}</p>
+                <p className="flex items-center gap-2 type-caption text-fg-muted tabular-nums">
+                    {/* Блюдо из каталога рецептов: пометка — чтобы его не путали
+                        с продуктом, ссылка — к составу и фото. */}
+                    {food.source === 'recipe' && (
+                        <span className="rounded-full bg-subtle px-2 py-0.5 text-xs font-medium text-fg-muted">
+                            {t('foodTracker.search.recipeBadge')}
+                        </span>
+                    )}
+                    {servingInfo}
+                </p>
             </div>
+            {food.source === 'recipe' && food.recipeId && (
+                <Link
+                    href={`/menu/recipes/${food.recipeId}`}
+                    // Переход к карточке не должен записывать блюдо.
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    className="ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-subtle transition-colors hover:bg-subtle hover:text-fg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    aria-label={t('foodTracker.search.openRecipeAria', { name: food.name })}
+                >
+                    <BookOpen className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                </Link>
+            )}
             <div className="ml-4 text-right">
                 <p className="font-semibold text-fg tabular-nums">
                     {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}

@@ -74,6 +74,7 @@ export function FooterNavigation({
                     href={item.href}
                     isActive={currentActive === item.id}
                     isDisabled={item.isDisabled}
+                    tag={item.tag}
                     badge={item.id === 'chat' ? unreadCount : undefined}
                     onClick={handleNavigationClick}
                 />

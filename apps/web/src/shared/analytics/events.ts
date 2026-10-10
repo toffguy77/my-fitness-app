@@ -29,6 +29,31 @@ export const EVENTS = {
     curatorOfferClicked: 'curator_offer_clicked',
     calculatorResult: 'calculator_result',
     articleCtaClicked: 'article_cta_clicked',
+    // Каталог рецептов. Без свойств: id рецепта — не то, по чему группируют
+    // отчёт, а необъявленное свойство отвергает событие вместе со всем пакетом.
+    menuOpened: 'menu_opened',
+    recipeOpened: 'recipe_opened',
+    recipeRejected: 'recipe_rejected',
+    recipeSubmitted: 'recipe_submitted',
+    recipeApproved: 'recipe_approved',
+    // План питания на день. Тоже без свойств: plan_generated — первое открытие
+    // даты за сессию (в ответе нет признака свежей сборки), plan_off_target —
+    // собранный сервером день вне допуска.
+    planGenerated: 'plan_generated',
+    planRegenerated: 'plan_regenerated',
+    planItemReplaced: 'plan_item_replaced',
+    planItemLocked: 'plan_item_locked',
+    planGramsSet: 'plan_grams_set',
+    planOffTarget: 'plan_off_target',
+    // Связь плана с дневником. source у plan_item_eaten — где нажали:
+    // `plan` — «Съел» в плане, `diary` — «+» в блоке «По плану» дневника.
+    planItemEaten: 'plan_item_eaten',
+    planRefit: 'plan_refit',
+    recipeLoggedFromSearch: 'recipe_logged_from_search',
+    // Список покупок. days — длина диапазона (1–14), method — copy | share:
+    // оба свойства объявлены в dictionary.go с перечнем значений.
+    shoppingListOpened: 'shopping_list_opened',
+    shoppingListShared: 'shopping_list_shared',
 } as const
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS]

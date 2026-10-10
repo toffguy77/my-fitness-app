@@ -14,7 +14,7 @@ test.describe('Client Navigation', () => {
 
     await expect(page.getByTestId('nav-item-dashboard')).toBeVisible()
     await expect(page.getByTestId('nav-item-food-tracker')).toBeVisible()
-    await expect(page.getByTestId('nav-item-workout')).toBeVisible()
+    await expect(page.getByTestId('nav-item-menu')).toBeVisible()
     await expect(page.getByTestId('nav-item-chat')).toBeVisible()
     await expect(page.getByTestId('nav-item-content')).toBeVisible()
   })
@@ -39,9 +39,23 @@ test.describe('Client Navigation', () => {
     await expect(page).toHaveURL(/\/content/, { timeout: 10000 })
   })
 
-  test('workout button is disabled', async ({ page }) => {
-    const workoutItem = page.getByTestId('nav-item-workout')
-    await expect(workoutItem).toBeDisabled()
+  // Клиент открывает «Меню»: пункт активен и ведёт на /menu.
+  test('navigate to menu', async ({ page }) => {
+    const menuItem = page.getByTestId('nav-item-menu')
+    await expect(menuItem).toBeEnabled()
+    await expect(menuItem).toHaveAccessibleName('Меню')
+    // Раздел в бета-версии: плашка видна, но имени пункта не меняет.
+    await expect(page.getByTestId('nav-tag-menu')).toHaveText('бета')
+    await menuItem.click()
+    await expect(page).toHaveURL(/\/menu/, { timeout: 10000 })
+    await expect(page.getByTestId('nav-item-menu')).toHaveAttribute('aria-current', 'page')
+  })
+
+  // Заглушки «Тренировка» больше нет.
+  test('workout stub is gone', async ({ page }) => {
+    await expect(page.getByTestId('footer-navigation')).toBeVisible()
+    await expect(page.getByTestId('nav-item-workout')).toHaveCount(0)
+    await expect(page.getByTestId('footer-navigation').getByText('Тренировка')).toHaveCount(0)
   })
 
   test('navigate to food tracker and back to dashboard', async ({ page }) => {

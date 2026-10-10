@@ -81,12 +81,16 @@ const (
 	SourceOpenFoodFacts FoodSource = "openfoodfacts"
 	SourceUser          FoodSource = "user"
 	SourceAI            FoodSource = "ai"
+	// SourceRecipe is the product of an approved recipe version (migration
+	// 094). Diary search shows it only for recipes the client may see, at the
+	// current version; RecipeID names the recipe.
+	SourceRecipe FoodSource = "recipe"
 )
 
 // IsValid checks if the food source is valid
 func (s FoodSource) IsValid() bool {
 	switch s {
-	case SourceDatabase, SourceUSDA, SourceOpenFoodFacts, SourceUser, SourceAI:
+	case SourceDatabase, SourceUSDA, SourceOpenFoodFacts, SourceUser, SourceAI, SourceRecipe:
 		return true
 	}
 	return false
@@ -204,8 +208,11 @@ type FoodItem struct {
 	Barcode         *string    `json:"barcode,omitempty" db:"barcode"`
 	Source          FoodSource `json:"source" db:"source"`
 	Verified        bool       `json:"verified" db:"verified"`
-	CreatedAt       time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at" db:"updated_at"`
+	// RecipeID is set only for source "recipe": the recipe whose card the
+	// diary links to.
+	RecipeID  *string   `json:"recipeId,omitempty" db:"-"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // Validate validates the food item fields

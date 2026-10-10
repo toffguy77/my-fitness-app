@@ -15,6 +15,7 @@ import (
 	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/openfoodfacts"
+	"github.com/burcev/api/internal/shared/recipeaccess"
 	"github.com/google/uuid"
 )
 
@@ -150,8 +151,30 @@ func (s *Service) GetEntriesByDate(ctx context.Context, userID int64, date time.
 	}, nil
 }
 
+// Execer is a connection or a transaction: where an entry is written.
+type Execer interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
 // CreateEntry creates a new food entry with КБЖУ calculation
 func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntryRequest) (*FoodEntry, error) {
+	entry, err := s.CreateEntryIn(ctx, s.db, userID, req)
+	if err != nil {
+		return nil, err
+	}
+	s.EntryCreated(ctx, userID, entry)
+	return entry, nil
+}
+
+// CreateEntryIn writes an entry through q — the caller's transaction — by the
+// very path CreateEntry takes: the same product lookup, the same КБЖУ, the
+// same columns. The plan's "eaten" (modules/mealplan) uses it so that an entry
+// logged from the plan is indistinguishable from one typed in the diary.
+//
+// Product lookups read committed data, so the product must exist before the
+// transaction began. After the caller commits it must call EntryCreated.
+func (s *Service) CreateEntryIn(ctx context.Context, q Execer, userID int64, req *CreateEntryRequest) (*FoodEntry, error) {
 	startTime := time.Now()
 
 	// Validate request
@@ -173,7 +196,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 
 		// Insert into food_items first (food_entries.food_id FK references this table)
 		newFoodItemID := uuid.New().String()
-		_, err := s.db.ExecContext(ctx, `
+		_, err := q.ExecContext(ctx, `
 			INSERT INTO food_items (id, name, category, serving_size, serving_unit, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, source, verified, created_at, updated_at)
 			VALUES ($1, $2, 'ai', $3, 'g', $4, $5, $6, $7, 'user', false, NOW(), NOW())
 		`, newFoodItemID, *req.FoodName, req.PortionAmount, calPer100, protPer100, fatPer100, carbsPer100)
@@ -182,7 +205,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		}
 
 		// Also create user_food linked to the food_item
-		_, err = s.db.ExecContext(ctx, `
+		_, err = q.ExecContext(ctx, `
 			INSERT INTO user_foods (id, user_id, name, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit, source_food_id)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'g', $1)
 		`, newFoodItemID, userID, *req.FoodName, calPer100, protPer100, fatPer100, carbsPer100, req.PortionAmount)
@@ -249,7 +272,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 	`
 
 	var entry FoodEntry
-	insertErr := s.db.QueryRowContext(
+	insertErr := q.QueryRowContext(
 		ctx,
 		query,
 		entryID,
@@ -300,12 +323,18 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		"food_id":  req.FoodID,
 	})
 
+	return &entry, nil
+}
+
+// EntryCreated does what follows a committed entry: the business log, the
+// dashboard totals and the first-entry fact.
+func (s *Service) EntryCreated(ctx context.Context, userID int64, entry *FoodEntry) {
 	s.log.LogBusinessEvent("food_entry_created", map[string]interface{}{
 		"entry_id":  entry.ID,
 		"user_id":   userID,
-		"food_id":   req.FoodID,
-		"meal_type": req.MealType,
-		"calories":  nutrition.Calories,
+		"food_id":   entry.FoodID,
+		"meal_type": entry.MealType,
+		"calories":  entry.Calories,
 	})
 
 	// Sync nutrition totals to daily_metrics for dashboard
@@ -318,8 +347,6 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 	if s.events != nil {
 		s.events.RecordFirstTimeEvent(ctx, analytics.EventFirstFoodEntry, userID)
 	}
-
-	return &entry, nil
 }
 
 // UpdateEntry updates an existing food entry with validation and ownership check
@@ -998,7 +1025,8 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 			       updated_at,
 			       ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
 			              plainto_tsquery('russian', $1)) AS rank,
-			       -1 AS source_priority
+			       -1 AS source_priority,
+			       NULL::text AS recipe_id
 			FROM user_foods
 			WHERE user_id = $4
 			  AND to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
@@ -1025,7 +1053,8 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 			       COALESCE(created_at, NOW()) AS updated_at,
 			       ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
 			              plainto_tsquery('russian', $1)) AS rank,
-			       CASE WHEN source = 'database' THEN 1 ELSE 2 END AS source_priority
+			       CASE WHEN source = 'database' THEN 1 ELSE 2 END AS source_priority,
+			       NULL::text AS recipe_id
 			FROM products
 			WHERE to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
 			   OR name ILIKE '%' || $1 || '%'
@@ -1056,14 +1085,43 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 			       ts_rank(search_vector, plainto_tsquery('russian', $1)) AS rank,
 			       CASE WHEN verified = true THEN 0
 			            WHEN source = 'database' THEN 1
-			            ELSE 2 END AS source_priority
+			            ELSE 2 END AS source_priority,
+			       NULL::text AS recipe_id
 			FROM food_items
 			-- search_vector — хранимая колонка с тем же выражением. Выражение
 			-- вычислялось дважды на каждую отобранную строку, и на широком
 			-- слове это и было всей стоимостью запроса (миграция 087).
 			WHERE search_vector @@ plainto_tsquery('russian', $1)
+			  -- Продукты рецептов — только веткой ниже: здесь они прошли бы
+			  -- мимо правила доступности, и с ними все устаревшие версии.
+			  AND COALESCE(source, 'database') <> 'recipe'
 			ORDER BY ts_rank(search_vector, plainto_tsquery('russian', $1)) DESC
 			LIMIT 200)
+
+			UNION ALL
+
+			-- Рецепты: продукт текущей одобренной версии рецептов, доступных
+			-- клиенту, — по правилу recipeaccess, тому же, что у каталога и плана.
+			(SELECT f.id::text AS id, f.name, NULL::text AS brand,
+			       f.category,
+			       f.serving_size,
+			       f.serving_unit,
+			       f.calories_per_100, f.protein_per_100, f.fat_per_100, f.carbs_per_100,
+			       f.fiber_per_100, f.sugar_per_100, f.sodium_per_100,
+			       NULL::text AS barcode,
+			       'recipe' AS source,
+			       true AS verified,
+			       COALESCE(f.created_at, NOW()) AS created_at,
+			       COALESCE(f.updated_at, NOW()) AS updated_at,
+			       ts_rank(f.search_vector, plainto_tsquery('russian', $1)) AS rank,
+			       0 AS source_priority,
+			       r.id::text AS recipe_id
+			FROM ` + recipeaccess.Join("r", "v") + `
+			JOIN food_items f ON f.id = recipe_product_id(v.id)
+			WHERE ` + recipeaccess.Available("r", "v", "$4") + `
+			  AND (f.search_vector @@ plainto_tsquery('russian', $1) OR f.name ILIKE '%' || $1 || '%')
+			ORDER BY rank DESC
+			LIMIT 50)
 		)
 		SELECT *
 		FROM matched
@@ -1095,6 +1153,7 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 		var item FoodItem
 		var rank float64
 		var sourcePriority int
+		var recipeID sql.NullString
 		err := rows.Scan(
 			&item.ID,
 			&item.Name,
@@ -1116,10 +1175,14 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 			&item.UpdatedAt,
 			&rank,
 			&sourcePriority,
+			&recipeID,
 		)
 		if err != nil {
 			s.log.Error("Failed to scan food item", "error", err)
 			continue
+		}
+		if recipeID.Valid {
+			item.RecipeID = &recipeID.String
 		}
 		item.PopulateNutrition()
 		foods = append(foods, item)

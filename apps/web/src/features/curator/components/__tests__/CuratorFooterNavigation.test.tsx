@@ -17,12 +17,14 @@ describe('CuratorFooterNavigation', () => {
         jest.clearAllMocks()
     })
 
-    it('renders 5 navigation items', () => {
+    it('renders 6 navigation items', () => {
         render(<CuratorFooterNavigation />)
 
         expect(screen.getByText('Клиенты')).toBeInTheDocument()
         expect(screen.getByText('Чаты')).toBeInTheDocument()
         expect(screen.getByText('Контент')).toBeInTheDocument()
+        expect(screen.getByText('Рецепты')).toBeInTheDocument()
+        expect(screen.getByTestId('nav-item-recipes')).toHaveAttribute('data-href', '/curator/recipes')
         expect(screen.getByText('Заявки')).toBeInTheDocument()
         expect(screen.getByText('Обращения')).toBeInTheDocument()
     })

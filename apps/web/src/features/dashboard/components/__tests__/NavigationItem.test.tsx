@@ -6,7 +6,7 @@ import type { NavigationItemId } from '../../types'
 
 // Test icons for property-based testing
 const testIcons = [Home, Utensils, Dumbbell, MessageCircle, FileText]
-const testIds: NavigationItemId[] = ['dashboard', 'food-tracker', 'workout', 'chat', 'content']
+const testIds: NavigationItemId[] = ['dashboard', 'food-tracker', 'menu', 'chat', 'content']
 
 describe('NavigationItem', () => {
     describe('Property 15: Active Item Visual Distinction', () => {
@@ -246,15 +246,15 @@ describe('NavigationItem', () => {
         it('should render disabled state correctly', () => {
             const { container } = render(
                 <NavigationItem
-                    id="workout"
-                    label="Workout"
+                    id="menu"
+                    label="Menu"
                     icon={Dumbbell}
-                    href="/workout"
+                    href="/menu"
                     isDisabled={true}
                 />
             )
 
-            const navItem = container.querySelector('[data-testid="nav-item-workout"]')
+            const navItem = container.querySelector('[data-testid="nav-item-menu"]')
             expect(navItem).toHaveClass('opacity-40')
             expect(navItem).toHaveClass('text-fg-subtle')
             expect(navItem).toHaveClass('cursor-not-allowed')
@@ -285,16 +285,16 @@ describe('NavigationItem', () => {
             const mockOnClick = jest.fn()
             const { container } = render(
                 <NavigationItem
-                    id="workout"
-                    label="Workout"
+                    id="menu"
+                    label="Menu"
                     icon={Dumbbell}
-                    href="/workout"
+                    href="/menu"
                     isDisabled={true}
                     onClick={mockOnClick}
                 />
             )
 
-            const navItem = container.querySelector('[data-testid="nav-item-workout"]')
+            const navItem = container.querySelector('[data-testid="nav-item-menu"]')
             fireEvent.click(navItem!)
 
             expect(mockOnClick).not.toHaveBeenCalled()
@@ -342,16 +342,16 @@ describe('NavigationItem', () => {
             const mockOnClick = jest.fn()
             const { container } = render(
                 <NavigationItem
-                    id="workout"
-                    label="Workout"
+                    id="menu"
+                    label="Menu"
                     icon={Dumbbell}
-                    href="/workout"
+                    href="/menu"
                     isDisabled={true}
                     onClick={mockOnClick}
                 />
             )
 
-            const navItem = container.querySelector('[data-testid="nav-item-workout"]')
+            const navItem = container.querySelector('[data-testid="nav-item-menu"]')
             fireEvent.keyDown(navItem!, { key: 'Enter' })
             fireEvent.keyDown(navItem!, { key: ' ' })
 
@@ -424,16 +424,16 @@ describe('NavigationItem', () => {
         it('should handle both active and disabled states (disabled takes precedence)', () => {
             const { container } = render(
                 <NavigationItem
-                    id="workout"
-                    label="Workout"
+                    id="menu"
+                    label="Menu"
                     icon={Dumbbell}
-                    href="/workout"
+                    href="/menu"
                     isActive={true}
                     isDisabled={true}
                 />
             )
 
-            const navItem = container.querySelector('[data-testid="nav-item-workout"]')
+            const navItem = container.querySelector('[data-testid="nav-item-menu"]')
 
             // Disabled styling should be present
             expect(navItem).toHaveClass('opacity-40')

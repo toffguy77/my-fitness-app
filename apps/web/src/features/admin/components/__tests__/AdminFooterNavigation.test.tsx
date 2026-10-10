@@ -13,13 +13,20 @@ describe('AdminFooterNavigation', () => {
         jest.clearAllMocks()
     })
 
-    it('renders 4 navigation items', () => {
+    it('renders 5 navigation items', () => {
         render(<AdminFooterNavigation />)
 
         expect(screen.getByText('Обзор')).toBeInTheDocument()
         expect(screen.getByText('Пользователи')).toBeInTheDocument()
         expect(screen.getByText('Контент')).toBeInTheDocument()
+        expect(screen.getByText('Рецепты')).toBeInTheDocument()
         expect(screen.getByText('Чаты')).toBeInTheDocument()
+    })
+
+    it('Recipes leads to the recipe catalogue', () => {
+        render(<AdminFooterNavigation />)
+
+        expect(screen.getByTestId('nav-item-recipes')).toHaveAttribute('data-href', '/admin/recipes')
     })
 
     // Leads and support moved to the curator workspace and no longer exist

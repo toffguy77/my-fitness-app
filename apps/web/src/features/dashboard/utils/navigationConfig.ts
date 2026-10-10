@@ -10,7 +10,7 @@
 import {
     LayoutDashboard,
     Utensils,
-    Dumbbell,
+    ChefHat,
     MessageCircle,
     FileText,
 } from 'lucide-react'
@@ -22,7 +22,7 @@ import { t } from '@/shared/i18n'
  *
  * - Dashboard: Main dashboard view (active by default)
  * - Food Tracker: Nutrition logging and tracking
- * - Workout: Exercise tracking (disabled - future feature)
+ * - Menu: Recipe catalogue approved by curators
  * - Chat: Communication with trainers
  * - Content: Educational content and resources
  */
@@ -40,11 +40,12 @@ export const NAVIGATION_ITEMS: NavigationItemConfig[] = [
         href: '/food-tracker',
     },
     {
-        id: 'workout',
-        label: t('dashboard.navigation.workout'),
-        icon: Dumbbell,
-        href: '/workout',
-        isDisabled: true,
+        id: 'menu',
+        label: t('dashboard.navigation.menu'),
+        icon: ChefHat,
+        href: '/menu',
+        // Раздел в бета-версии: пока бесплатный для всех, позже — за подпиской.
+        tag: t('dashboard.navigation.betaTag'),
     },
     {
         id: 'chat',

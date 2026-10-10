@@ -16,6 +16,10 @@ import { render, screen } from '@testing-library/react'
 import { DietTab } from '../DietTab'
 import type { FoodEntry, MealType } from '../../types'
 
+// План дня в дневнике: этот тест не о нём. Плана нет — блока «По плану» нет.
+jest.mock('@/features/meal-plan/api/mealPlanApi', () => ({
+    mealPlanApi: { getExisting: jest.fn().mockResolvedValue(undefined), eat: jest.fn() },
+}))
 jest.mock('react-hot-toast', () => ({ success: jest.fn(), error: jest.fn() }))
 
 const noEntries: Record<MealType, FoodEntry[]> = {

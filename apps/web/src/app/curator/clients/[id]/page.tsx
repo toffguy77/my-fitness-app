@@ -25,6 +25,7 @@ import { ClientNoticesSection } from '@/features/curator/components/ClientNotice
 import { PlanTab } from '@/features/curator/components/PlanTab'
 import { TasksTab } from '@/features/curator/components/TasksTab'
 import { ReportsTab } from '@/features/curator/components/ReportsTab'
+import { CuratorClientNutrition } from '@/features/recipes/components/CuratorClientNutrition'
 import type { ClientDetail, WeightHistoryPoint } from '@/features/curator/types'
 import type { TabId } from '@/features/curator/components/ClientDetailTabs'
 
@@ -643,6 +644,12 @@ export default function ClientDetailPage() {
                     {activeTab === 'reports' && (
                         <div className="mt-5">
                             <ReportsTab clientId={clientId} />
+                        </div>
+                    )}
+
+                    {activeTab === 'nutrition' && (
+                        <div className="mt-5">
+                            <CuratorClientNutrition clientId={clientId} />
                         </div>
                     )}
                 </>

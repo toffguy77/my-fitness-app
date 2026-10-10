@@ -55,6 +55,35 @@ const (
 	// не смешиваться с воронкой мастера.
 	EventCalculatorResult  = "calculator_result"
 	EventArticleCtaClicked = "article_cta_clicked"
+
+	// Раздел «Меню» и каталог рецептов. Данных о спросе на планирование
+	// питания до запуска нет — без этих событий эффект раздела не измерить.
+	EventMenuOpened      = "menu_opened"
+	EventRecipeOpened    = "recipe_opened"
+	EventRecipeRejected  = "recipe_rejected"
+	EventRecipeSubmitted = "recipe_submitted"
+	EventRecipeApproved  = "recipe_approved"
+
+	// План питания на день. plan_generated — первая сборка даты,
+	// plan_off_target — показан план вне допуска: хватает ли каталога, видно
+	// только по нему.
+	EventPlanGenerated    = "plan_generated"
+	EventPlanRegenerated  = "plan_regenerated"
+	EventPlanItemReplaced = "plan_item_replaced"
+	EventPlanItemLocked   = "plan_item_locked"
+	EventPlanGramsSet     = "plan_grams_set"
+	EventPlanOffTarget    = "plan_off_target"
+
+	// План и дневник. plan_item_eaten — блюдо плана записано в дневник:
+	// source говорит, откуда нажали — из плана или из блока «По плану» в
+	// дневнике. Главная метрика раздела — доля дней с записями у клиентов с
+	// планом против клиентов без него.
+	EventPlanItemEaten          = "plan_item_eaten"
+	EventPlanRefit              = "plan_refit"
+	EventRecipeLoggedFromSearch = "recipe_logged_from_search"
+	// Список покупок по планам: открывают ли его и уносят ли текст.
+	EventShoppingListOpened = "shopping_list_opened"
+	EventShoppingListShared = "shopping_list_shared"
 )
 
 // Definition declares one event.
@@ -168,6 +197,48 @@ var Dictionary = map[string]Definition{
 	EventArticleCtaClicked: {
 		Required: []string{"target"},
 		Values:   map[string][]string{"target": {"calculator", "pricing"}},
+	},
+
+	// Без свойств: идентификатор рецепта — не то, по чему группируют отчёт, а
+	// название — текст команды. Отправляет браузер, в том числе отправку на
+	// проверку и одобрение: это действия команды и куратора в интерфейсе.
+	EventMenuOpened:      {},
+	EventRecipeOpened:    {},
+	EventRecipeRejected:  {},
+	EventRecipeSubmitted: {},
+	EventRecipeApproved:  {},
+
+	// Без свойств: какое блюдо и какой показатель — не то, по чему
+	// группируется отчёт, а граммы и КБЖУ — данные о питании человека.
+	// Отправляет браузер: это действия клиента в интерфейсе.
+	EventPlanGenerated:    {},
+	EventPlanRegenerated:  {},
+	EventPlanItemReplaced: {},
+	EventPlanItemLocked:   {},
+	EventPlanGramsSet:     {},
+	EventPlanOffTarget:    {},
+
+	// source — где нажали «Съел» или «+»; значения перечислены, чтобы опечатка
+	// не стала строкой, которой не соответствует ни один отчёт. Какое блюдо и
+	// сколько граммов — не свойства события, по той же причине, что выше.
+	EventPlanItemEaten: {
+		Required: []string{"source"},
+		Values:   map[string][]string{"source": {"plan", "diary"}},
+	},
+	EventPlanRefit:              {},
+	EventRecipeLoggedFromSearch: {},
+	// days — длина диапазона: от 1 до 14 дней, больше маршрут не отдаёт, так что
+	// значения перечислены. method — скопирован текст или отдан системному
+	// «Поделиться». Продуктов и граммов нет: это данные о питании человека.
+	EventShoppingListOpened: {
+		Required: []string{"days"},
+		Values: map[string][]string{"days": {
+			"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
+		}},
+	},
+	EventShoppingListShared: {
+		Required: []string{"method"},
+		Values:   map[string][]string{"method": {"copy", "share"}},
 	},
 }
 

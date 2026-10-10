@@ -17,6 +17,7 @@ import { FoodEntryItem } from './FoodEntryItem';
 import { t } from '@/shared/i18n';
 import { IconButton } from '@/shared/components/ui/Button';
 import { MACRO_COLORS } from '@/shared/constants/macros';
+import type { PlanItem } from '@/features/meal-plan';
 
 // ============================================================================
 // Types
@@ -35,6 +36,15 @@ export interface MealSlotProps {
     onEditEntry?: (entry: FoodEntry) => void;
     /** Callback when delete is requested */
     onDeleteEntry?: (entry: FoodEntry) => void;
+    /**
+     * Несъеденные блюда плана этого приёма. Съеденное здесь не показывается:
+     * оно уже есть среди записей, и второй строкой было бы дублем.
+     */
+    planned?: PlanItem[];
+    /** «+» у блюда плана. */
+    onLogPlanned?: (item: PlanItem) => void;
+    /** Блюдо плана этого приёма записывается. */
+    loggingPlanned?: boolean;
     /** Additional CSS classes */
     className?: string;
 }
@@ -129,6 +139,9 @@ export function MealSlot({
     onEntryClick,
     onEditEntry,
     onDeleteEntry,
+    planned = [],
+    onLogPlanned,
+    loggingPlanned = false,
     className = '',
 }: MealSlotProps) {
     // Calculate subtotals
@@ -203,8 +216,68 @@ export function MealSlot({
                         <span className="text-sm font-semibold text-primary">{t('foodTracker.mealSlot.addFood')}</span>
                     </button>
                 )}
+
+                {planned.length > 0 && onLogPlanned && (
+                    <PlannedBlock
+                        items={planned}
+                        mealLabel={label}
+                        onLog={onLogPlanned}
+                        logging={loggingPlanned}
+                    />
+                )}
             </div>
         </section>
+    );
+}
+
+// ============================================================================
+// Planned dishes
+// ============================================================================
+
+interface PlannedBlockProps {
+    items: PlanItem[];
+    mealLabel: string;
+    onLog: (item: PlanItem) => void;
+    logging: boolean;
+}
+
+/**
+ * «По плану»: блюда плана, которые ещё не записаны. «+» записывает блюдо весом
+ * из плана — без окна записи и поиска.
+ */
+function PlannedBlock({ items, mealLabel, onLog, logging }: PlannedBlockProps) {
+    return (
+        <div className="mt-2 rounded-card border border-dashed border-line px-4 py-2" data-testid="planned-block">
+            <p className="type-overline text-fg-subtle">{t('foodTracker.mealSlot.planned')}</p>
+            <ul className="divide-y divide-line">
+                {items.map((item) => (
+                    <li key={item.meal_type + item.recipe_id} className="flex min-h-12 items-center gap-3 py-1.5">
+                        <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-fg">{item.name}</p>
+                            <p className="type-caption text-fg-muted tabular-nums">
+                                {t('foodTracker.mealSlot.plannedItem', {
+                                    grams: item.grams,
+                                    kcal: Math.round(item.nutrition.kcal),
+                                })}
+                            </p>
+                        </div>
+                        <IconButton
+                            variant="secondary"
+                            onClick={() => onLog(item)}
+                            disabled={logging}
+                            aria-busy={logging}
+                            aria-label={t('foodTracker.mealSlot.logPlannedAria', {
+                                name: item.name,
+                                grams: item.grams,
+                                label: mealLabel,
+                            })}
+                        >
+                            <Plus className="h-4 w-4" strokeWidth={2.2} />
+                        </IconButton>
+                    </li>
+                ))}
+            </ul>
+        </div>
     );
 }
 

@@ -15,6 +15,7 @@ jest.mock('react-hot-toast', () => ({
 }))
 
 // Mock next/navigation
+let mockSearch = ''
 jest.mock('next/navigation', () => ({
     useRouter: () => ({
         push: jest.fn(),
@@ -22,7 +23,7 @@ jest.mock('next/navigation', () => ({
         back: jest.fn(),
     }),
     useParams: () => ({ id: '7', clientId: '7' }),
-    useSearchParams: () => new URLSearchParams(),
+    useSearchParams: () => new URLSearchParams(mockSearch),
     usePathname: () => '/curator/clients/7',
 }))
 
@@ -205,6 +206,11 @@ jest.mock('@/features/chat/components/FoodEntryForm', () => ({
 }))
 
 // Mock content feature components
+jest.mock('@/features/recipes/components/CuratorClientNutrition', () => ({
+    CuratorClientNutrition: ({ clientId }: { clientId: number }) => (
+        <div data-testid="curator-client-nutrition">{clientId}</div>
+    ),
+}))
 jest.mock('@/features/content/components/ArticleList', () => ({
     ArticleList: () => (
         <div data-testid="article-list">ArticleList</div>
@@ -316,6 +322,28 @@ describe('Curator Pages', () => {
     })
 
     describe('ClientDetailPage', () => {
+        afterEach(() => {
+            mockSearch = ''
+        })
+
+        it('the Nutrition tab shows the client food restrictions', async () => {
+            const { curatorApi } = jest.requireMock('@/features/curator/api/curatorApi')
+            curatorApi.getClientDetail.mockResolvedValueOnce({
+                name: 'Test Client',
+                days: [],
+                alerts: [],
+                photos: [],
+                weight_history: [],
+                last_weight: 80,
+                target_weight: null,
+            })
+            mockSearch = 'tab=nutrition'
+
+            render(<ClientDetailPage />)
+
+            expect(await screen.findByTestId('curator-client-nutrition', {}, { timeout: 2000 })).toHaveTextContent('7')
+        })
+
         it('renders without crashing and shows the spinner initially', () => {
             render(<ClientDetailPage />)
             expect(screen.getByRole('status', { name: 'Загрузка...' })).toBeInTheDocument()

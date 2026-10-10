@@ -40,7 +40,7 @@ export function AdminFooterNavigation({
 
     return (
         <nav
-            className="fixed bottom-0 left-0 right-0 z-50 grid h-auto min-h-16 grid-cols-4 items-stretch border-t border-line bg-nav px-2 pt-1.5 backdrop-blur-md"
+            className="fixed bottom-0 left-0 right-0 z-50 grid h-auto min-h-16 grid-cols-5 items-stretch border-t border-line bg-nav px-2 pt-1.5 backdrop-blur-md"
             style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
             data-testid="admin-footer-navigation"
             aria-label={t('admin.navigation.aria')}

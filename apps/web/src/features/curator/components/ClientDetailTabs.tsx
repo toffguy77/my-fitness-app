@@ -9,6 +9,7 @@ const TABS = [
     { id: 'plan', label: t('curator.tabs.plan') },
     { id: 'tasks', label: t('curator.tabs.tasks') },
     { id: 'reports', label: t('curator.tabs.reports') },
+    { id: 'nutrition', label: t('curator.tabs.nutrition') },
 ] as const
 
 export type TabId = (typeof TABS)[number]['id']

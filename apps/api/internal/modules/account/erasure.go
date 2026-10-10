@@ -133,6 +133,28 @@ var strategies = []TableStrategy{
 	// того, кто удалил аккаунт, рекламному кабинету сообщать нечего.
 	{Table: "user_attribution", Column: "user_id", Strategy: StrategyDelete, Reason: "the browser identifier is the whole content of the row"},
 	{Table: "conversion_uploads", Column: "user_id", Strategy: StrategyDelete, Reason: "nothing is reported to the ad account about somebody who asked to be erased"},
+
+	// Пищевые ограничения клиента: аллергены — данные о здоровье, и уходят они
+	// вместе с отказами и скрытиями, адресованными ему. hidden_by у скрытия —
+	// куратор; строка удаляется по клиенту, а удаление куратора её не трогает:
+	// скрытие продолжает действовать для клиента.
+	{Table: "user_food_restrictions", Column: "user_id", Strategy: StrategyDelete, Reason: "their allergens — health data"},
+	{Table: "user_excluded_foods", Column: "user_id", Strategy: StrategyDelete, Reason: "foods they said they do not eat"},
+	{Table: "user_rejected_recipes", Column: "user_id", Strategy: StrategyDelete, Reason: "recipes they declined"},
+	{Table: "client_hidden_recipes", Column: "client_id", Strategy: StrategyDelete, Reason: "recipes hidden from them; hidden_by (the curator) stays on other clients' rows"},
+	// Каталог рецептов общий: удаление сотрудника, создавшего или одобрившего
+	// рецепт, не должно снимать его с клиентов. Ссылки остаются на
+	// обезличенную строку users — имени в ней больше нет.
+	{Table: "recipes", Column: "", Strategy: StrategyKeep, Reason: "a shared catalogue entry; created_by points at the stripped account row"},
+	{Table: "recipe_versions", Column: "", Strategy: StrategyKeep, Reason: "an approved version outlives its editor and approver; edited_by/approved_by point at the stripped account row"},
+
+	// План питания — что человек собирался есть, под его цель. Строка users
+	// при стирании обезличивается, а не удаляется, поэтому ON DELETE CASCADE
+	// сам не сработает: удаление здесь явное. Блюда плана уходят каскадом от
+	// meal_plans — на users они не ссылаются.
+	{Table: "meal_plans", Column: "user_id", Strategy: StrategyDelete, Reason: "their day plans and the targets they were built for; items cascade"},
+	{Table: "meal_plan_settings", Column: "user_id", Strategy: StrategyDelete, Reason: "which meals they plan"},
+	{Table: "meal_plan_items", Column: "", Strategy: StrategyKeep, Reason: "reached through meal_plans, deleted with them by ON DELETE CASCADE"},
 }
 
 // Strategies exposes the table for tests and documentation.

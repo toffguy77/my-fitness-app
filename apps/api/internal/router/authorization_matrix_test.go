@@ -63,6 +63,13 @@ var protectedRoutes = map[string]protection{
 	"PUT /api/v1/curator/clients/:id/weekly-reports/:reportId/feedback": protRelationship,
 	"DELETE /api/v1/curator/clients/:id/tasks/:taskId":                  protRelationship,
 	"DELETE /api/v1/curator/clients/:id/weekly-plan/:planId":            protRelationship,
+	// Ограничения клиента и скрытые от него рецепты: обработчики в recipes,
+	// маршруты — в этой же группе.
+	"GET /api/v1/curator/clients/:id/food-restrictions":           protRelationship,
+	"PUT /api/v1/curator/clients/:id/food-restrictions":           protRelationship,
+	"GET /api/v1/curator/clients/:id/hidden-recipes":              protRelationship,
+	"PUT /api/v1/curator/clients/:id/hidden-recipes/:recipeId":    protRelationship,
+	"DELETE /api/v1/curator/clients/:id/hidden-recipes/:recipeId": protRelationship,
 
 	// Chat — both participants share the endpoints, so membership is checked
 	// per conversation inside each handler.
@@ -89,6 +96,20 @@ var protectedRoutes = map[string]protection{
 	"POST /api/v1/dashboard/tasks/:id/complete":               protOwner,
 	"GET /api/v1/dashboard/weekly-reports/:reportId/feedback": protOwner,
 	"GET /api/v1/content/feed/:id":                            protOwner,
+	// Карточка рецепта: рецепт общий, а выдача отфильтрована правилом
+	// доступности для вызывающего (recipeaccess) — чужой рецепт отвечает 404.
+	// Отклонение — запись только о самом вызывающем.
+	"GET /api/v1/recipes/:id":           protOwner,
+	"POST /api/v1/recipes/:id/reject":   protOwner,
+	"DELETE /api/v1/recipes/:id/reject": protOwner,
+	// План питания на день: :date — дата, :mealType — приём пищи, а не чья-то
+	// запись; владелец — из сессии, каждый запрос сервиса ограничен им.
+	"GET /api/v1/meal-plans/:date":                              protOwner,
+	"POST /api/v1/meal-plans/:date/regenerate":                  protOwner,
+	"GET /api/v1/meal-plans/:date/items/:mealType/alternatives": protOwner,
+	"PUT /api/v1/meal-plans/:date/items/:mealType":              protOwner,
+	"POST /api/v1/meal-plans/:date/items/:mealType/eat":         protOwner,
+	"POST /api/v1/meal-plans/:date/refit":                       protOwner,
 
 	// Privileged roles that are meant to see other users' data.
 	"GET /api/v1/admin/conversations/:id/messages": protRole,
@@ -108,6 +129,19 @@ var protectedRoutes = map[string]protection{
 	"POST /api/v1/content/articles/:id/schedule":  protRole,
 	"POST /api/v1/content/articles/:id/unpublish": protRole,
 	"POST /api/v1/content/articles/:id/media":     protRole,
+
+	// Каталог рецептов общий, а не чей-то ресурс: защита — роль. Команда
+	// (super_admin) пишет, куратор (coordinator) проверяет.
+	"GET /api/v1/admin/recipes/:id":            protRole,
+	"PUT /api/v1/admin/recipes/:id/draft":      protRole,
+	"POST /api/v1/admin/recipes/:id/submit":    protRole,
+	"POST /api/v1/admin/recipes/:id/unpublish": protRole,
+	"POST /api/v1/admin/recipes/:id/publish":   protRole,
+	// :sourceRef — номер рецепта у ВкусВилла, не чья-то запись.
+	"POST /api/v1/admin/recipes/import/vkusvill/:sourceRef": protRole,
+	"GET /api/v1/curator/recipes/:id":                       protRole,
+	"POST /api/v1/curator/recipes/:id/approve":              protRole,
+	"POST /api/v1/curator/recipes/:id/return":               protRole,
 
 	// A user's own export: the id is theirs, and ownership is checked in the
 	// handler before the archive is released.

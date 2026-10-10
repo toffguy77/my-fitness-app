@@ -35,6 +35,9 @@ const TRANSLATED = [
     'apps/web/src/app/curator',
     'apps/web/src/features/admin',
     'apps/web/src/app/admin',
+    'apps/web/src/features/recipes',
+    'apps/web/src/features/meal-plan',
+    'apps/web/src/app/menu',
     // Посадочная страница: тексты переехали в словарь задачей 9, значит с этого
     // момента её можно стеречь. Соседи по каталогу ещё не переехали, поэтому
     // назван файл, а не каталог.

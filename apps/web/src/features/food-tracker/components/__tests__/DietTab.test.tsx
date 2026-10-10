@@ -17,6 +17,10 @@ import { FoodEntry, EntriesByMealType } from '../../types';
 // Mocks
 // ============================================================================
 
+// План дня в дневнике: этот тест не о нём. Плана нет — блока «По плану» нет.
+jest.mock('@/features/meal-plan/api/mealPlanApi', () => ({
+    mealPlanApi: { getExisting: jest.fn().mockResolvedValue(undefined), eat: jest.fn() },
+}))
 // Mock the store
 jest.mock('../../store/foodTrackerStore', () => ({
     useFoodTrackerStore: jest.fn(),
