@@ -15,6 +15,7 @@ import {
     compareWithVkusvill,
     deriveYield,
     eligible,
+    ingredientGrams,
     ingredientLines,
     keyword,
     mealTypesFor,
@@ -215,4 +216,10 @@ test('надёжные штуки из сухого прогона; ломтик
 test('экранированный заголовок группы — тоже не ингредиент', () => {
     const recipe = { ingredients: [{ name: '&lt;b&gt;Для подачи:&lt;/b&gt;', quantity: '1 шт.' }, { name: 'Соль &amp; перец', quantity: 'по вкусу' }] }
     assert.deepEqual(ingredientLines(recipe).map((i) => i.name), ['Соль & перец'])
+})
+
+test('вес ингредиента: до десятых и не ноль (лавровый лист 0,2 г)', () => {
+    assert.equal(ingredientGrams(0.2), 0.2)
+    assert.equal(ingredientGrams(0.04), 0.1)
+    assert.equal(ingredientGrams(332.46), 332.5)
 })

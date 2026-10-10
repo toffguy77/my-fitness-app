@@ -248,6 +248,7 @@ func TestCleanTextDecodesEscapedMarkup(t *testing.T) {
 		{"<b>Жирный</b> текст", "Жирный текст"},
 		{"Обычный текст без разметки", "Обычный текст без разметки"},
 		{"Соль &amp; перец", "Соль & перец"},
+		{"так и &nbsp;хочется съесть", "так и хочется съесть"},
 	} {
 		assert.Equal(t, c.want, cleanText(c.in), c.in)
 	}
