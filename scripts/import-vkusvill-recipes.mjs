@@ -28,6 +28,7 @@ import {
     compareWithVkusvill,
     deriveYield,
     eligible,
+    ingredientLines,
     mealTypesFor,
     parseQuantity,
     parseVkusvillNutrition,
@@ -147,7 +148,7 @@ async function vkusvillNutrition(ids) {
 /** Полный разбор без записи: продукты, граммы, вес блюда, сверка. */
 async function analyse(recipe) {
     const lines = []
-    for (const ing of recipe.ingredients) {
+    for (const ing of ingredientLines(recipe)) {
         const reference = await vkusvillNutrition(ing.ids)
         const pick = chooseCandidate(ing.name, await catalogue(ing.name), reference)
         if (pick.error) return { error: pick.error }

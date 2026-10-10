@@ -15,6 +15,7 @@ import {
     compareWithVkusvill,
     deriveYield,
     eligible,
+    ingredientLines,
     keyword,
     mealTypesFor,
     parseNumber,
@@ -183,4 +184,21 @@ test('без данных ВкусВилла и без продукта с те�
     const other = { food_id: 'o', name: 'Курица тикка с лепёшкой', kcal_100: 192, protein_100: 12, fat_100: 8, carbs_100: 18 }
     assert.ok(chooseCandidate('Тыква', [other], null).error)
     assert.equal(chooseCandidate('Тыква', [{ ...other, name: 'Тыква мускатная', kcal_100: 26, protein_100: 1, fat_100: 0.1, carbs_100: 6.5 }], null).verified, false)
+})
+
+test('заголовки групп не ингредиенты — то же правило, что у серверного импорта', () => {
+    const recipe = {
+        ingredients: [
+            { name: 'Мука', quantity: '200 г' },
+            { name: '<b>Для начинки:</b>', quantity: null },
+            { name: '<b>Для подачи:</b>', quantity: '' },
+            { name: ' Творог ', quantity: '300 г' },
+        ],
+    }
+    assert.deepEqual(ingredientLines(recipe).map((i) => i.name), ['Мука', 'Творог'])
+})
+
+test('веточки и лепёшки', () => {
+    assert.deepEqual(parseQuantity('2 вет.', 'Укроп'), { grams: 4 })
+    assert.deepEqual(parseQuantity('2 шт.', 'Лепёшка роти'), { grams: 120 })
 })
