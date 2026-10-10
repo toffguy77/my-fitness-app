@@ -234,3 +234,27 @@ func TestImageClientRefusesRedirectOffVkusvill(t *testing.T) {
 	assert.Error(t, check(req("https://vkusvill.ru.evil.example/x.webp"), first))
 	assert.Error(t, check(req("https://vkusvill.ru/x.webp"), append(first, first[0], first[0])))
 }
+
+// Тексты шагов ВкусВилла приходят с экранированной разметкой; до исправления
+// клиент видел в карточке рецепта «&lt;p&gt;Подавайте…&lt;/p&gt;».
+func TestCleanTextDecodesEscapedMarkup(t *testing.T) {
+	for _, c := range []struct{ in, want string }{
+		{"&lt;p&gt; Подавайте с ложкой страчателлы.&lt;/p&gt;\r\n\r\n&lt;p&gt; Совет: остудите вафли.&lt;/p&gt;",
+			"Подавайте с ложкой страчателлы.\n\nСовет: остудите вафли."},
+		{"&lt;p&gt;Шаг один.&lt;/p&gt;&lt;p&gt;Шаг два.&lt;/p&gt;", "Шаг один.\n\nШаг два."},
+		{"Творог 9%, 400&nbsp;г", "Творог 9%, 400 г"},
+		{"&amp;lt;b&amp;gt;Для начинки:&amp;lt;/b&amp;gt;", "Для начинки:"},
+		{"Строка<br>ещё строка", "Строка\n\nещё строка"},
+		{"<b>Жирный</b> текст", "Жирный текст"},
+		{"Обычный текст без разметки", "Обычный текст без разметки"},
+		{"Соль &amp; перец", "Соль & перец"},
+	} {
+		assert.Equal(t, c.want, cleanText(c.in), c.in)
+	}
+}
+
+func TestEscapedSectionHeadingIsNotAnIngredient(t *testing.T) {
+	q := "1 шт."
+	assert.True(t, isSectionHeading(VkusvillIngr{Name: "&lt;b&gt;Для подачи:&lt;/b&gt;", Quantity: &q}))
+	assert.False(t, isSectionHeading(VkusvillIngr{Name: "Соль &amp; перец", Quantity: &q}))
+}
