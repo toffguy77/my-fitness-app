@@ -45,4 +45,12 @@ describe('mealPlanApi — пути и тела по контракту', () => {
         await mealPlanApi.refit('2026-10-10')
         expect(apiClient.post).toHaveBeenLastCalledWith('/api/v1/meal-plans/2026-10-10/refit', {})
     })
+
+    it('список покупок: без диапазона и с ним', async () => {
+        await mealPlanApi.shoppingList()
+        expect(apiClient.get).toHaveBeenLastCalledWith('/api/v1/shopping-list')
+
+        await mealPlanApi.shoppingList({ from: '2026-10-13', to: '2026-10-15' })
+        expect(apiClient.get).toHaveBeenLastCalledWith('/api/v1/shopping-list?from=2026-10-13&to=2026-10-15')
+    })
 })

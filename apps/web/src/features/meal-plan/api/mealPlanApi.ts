@@ -7,6 +7,7 @@ import type {
     MealPlanSettings,
     MealType,
     PlanItemUpdate,
+    ShoppingList,
 } from '../types'
 
 // Пути — полными литералами: check-api-contract.mjs сверяет их с
@@ -45,4 +46,15 @@ export const mealPlanApi = {
     getSettings: () => apiClient.get<MealPlanSettings>(SETTINGS_PATH),
 
     saveSettings: (settings: MealPlanSettings) => apiClient.put<MealPlanSettings>(SETTINGS_PATH, settings),
+
+    /**
+     * Список покупок за диапазон дат включительно; без диапазона сервер берёт
+     * сегодня и последний день с планом в пределах недели. Планы не собирает.
+     */
+    shoppingList: (range?: { from: string; to: string }) =>
+        apiClient.get<ShoppingList>(
+            range
+                ? `/api/v1/shopping-list?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`
+                : '/api/v1/shopping-list'
+        ),
 }

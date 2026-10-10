@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronLeft, ChevronRight, RefreshCw, ShoppingBasket } from 'lucide-react'
 import { ErrorState } from '@/shared/components/ErrorState'
-import { Button, IconButton } from '@/shared/components/ui/Button'
+import { Button, IconButton, buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { t } from '@/shared/i18n'
+import { cn } from '@/shared/utils/cn'
 import { useMealPlan } from '../hooks/useMealPlan'
 import { MEAL_TYPES, type MealType } from '../types'
 import { addDays, dayLabel, isWithinWindow, todayString } from '../utils/planDates'
@@ -146,6 +148,13 @@ export function DayPlanView({ initialDate }: DayPlanViewProps) {
                         </Button>
                         <p className="text-xs text-fg-subtle">{t('mealPlan.regenerateHint')}</p>
                     </div>
+                    <Link
+                        href="/menu/shopping"
+                        className={cn(buttonBase, buttonVariants.ghost, buttonSizes.md, 'w-full')}
+                    >
+                        <ShoppingBasket className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                        {t('mealPlan.shopping.entry')}
+                    </Link>
                 </>
             ) : null}
 

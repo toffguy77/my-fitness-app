@@ -23,6 +23,7 @@ type ServiceInterface interface {
 	Alternatives(ctx context.Context, userID int64, date, mealType string) ([]Alternative, error)
 	GetSettings(ctx context.Context, userID int64) (*Settings, error)
 	SetSettings(ctx context.Context, userID int64, in Settings) (*Settings, error)
+	ShoppingList(ctx context.Context, userID int64, from, to string) (*ShoppingList, error)
 }
 
 // Handler serves the client's day plan. Every route is the caller's own: the
@@ -210,6 +211,21 @@ func (h *Handler) SetSettings(c *gin.Context) {
 	out, err := h.service.SetSettings(c.Request.Context(), userID, in)
 	if err != nil {
 		h.fail(c, err, "set settings")
+		return
+	}
+	response.Success(c, http.StatusOK, out)
+}
+
+// ShoppingList handles GET /shopping-list?from=&to=: what to buy for the
+// caller's plans in the range. Reading it never builds a plan.
+func (h *Handler) ShoppingList(c *gin.Context) {
+	userID, ok := h.userID(c)
+	if !ok {
+		return
+	}
+	out, err := h.service.ShoppingList(c.Request.Context(), userID, c.Query("from"), c.Query("to"))
+	if err != nil {
+		h.fail(c, err, "shopping list")
 		return
 	}
 	response.Success(c, http.StatusOK, out)

@@ -9,7 +9,7 @@ import { EVENTS } from '../events'
 
 const GO_DICTIONARY = readFileSync(join(__dirname, '../../../../../api/internal/modules/analytics/dictionary.go'), 'utf8')
 
-describe('события плана питания', () => {
+describe('события плана питания и списка покупок', () => {
     it.each([
         ['planGenerated', 'plan_generated'],
         ['planRegenerated', 'plan_regenerated'],
@@ -20,6 +20,8 @@ describe('события плана питания', () => {
         ['planItemEaten', 'plan_item_eaten'],
         ['planRefit', 'plan_refit'],
         ['recipeLoggedFromSearch', 'recipe_logged_from_search'],
+        ['shoppingListOpened', 'shopping_list_opened'],
+        ['shoppingListShared', 'shopping_list_shared'],
     ])('%s → %s', (key, name) => {
         expect(EVENTS[key as keyof typeof EVENTS]).toBe(name)
         expect(GO_DICTIONARY).toContain(`"${name}"`)

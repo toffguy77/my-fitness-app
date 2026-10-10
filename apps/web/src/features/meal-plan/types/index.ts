@@ -121,3 +121,41 @@ export interface MealPlanSettings {
 
 /** Что сервер назвал недостающим в `409 target_missing`. */
 export type MissingInput = 'profile' | 'weight'
+
+/**
+ * Список покупок (`openspec/changes/shopping-list/api.md`). Сервер его не
+ * хранит: каждый запрос складывает ингредиенты планов за диапазон заново.
+ */
+export interface ShoppingItem {
+    food_id: string
+    name: string
+    /** Округлено вверх: до 10 г, свыше 500 г — до 50 г. */
+    grams: number
+    /** Штуки, если продукт в рецептах указан «шт» и известен вес штуки. */
+    pieces: number | null
+    /** `pieces` × вес штуки. */
+    piece_grams: number | null
+    /** Готовая подпись: «130 г» или «4 шт. (≈220 г)». */
+    quantity_text: string
+}
+
+export interface ShoppingDepartment {
+    name: string
+    items: ShoppingItem[]
+}
+
+export interface ShoppingList {
+    from: string
+    to: string
+    has_plans: boolean
+    /** Только непустые, в фиксированном порядке, «Прочее» последним. */
+    departments: ShoppingDepartment[]
+    /** «По вкусу»: названия по алфавиту, без дублей. */
+    at_home: string[]
+}
+
+/** Отметка строки на устройстве: «уже есть» или «купил». */
+export type ShoppingMark = 'have' | 'bought'
+
+/** Отметки по `food_id`. */
+export type ShoppingMarks = Record<string, ShoppingMark>
