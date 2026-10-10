@@ -196,36 +196,36 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
                                 </span>
                             </div>
 
-                            {article.is_own && (
-                                <div className="-mx-2 flex flex-wrap items-center gap-1 pt-1">
-                                    <Link
-                                        href={`${basePath}/${article.id}/edit`}
-                                        className={cn(buttonBase, buttonVariants.ghost, buttonSizes.md, 'px-3')}
-                                    >
-                                        Редактировать
-                                    </Link>
+                            {/* Статьи — общее пространство редакции: правит, публикует и
+                                удаляет любой куратор и администратор, не только автор. */}
+                            <div className="-mx-2 flex flex-wrap items-center gap-1 pt-1">
+                                <Link
+                                    href={`${basePath}/${article.id}/edit`}
+                                    className={cn(buttonBase, buttonVariants.ghost, buttonSizes.md, 'px-3')}
+                                >
+                                    Редактировать
+                                </Link>
 
-                                    {article.status === 'draft' && (
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            onClick={() => handlePublish(article.id)}
-                                            className="px-3"
-                                        >
-                                            Опубликовать
-                                        </Button>
-                                    )}
-
+                                {article.status === 'draft' && (
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        onClick={() => handleDelete(article.id)}
-                                        className="px-3 text-danger-fg hover:bg-danger-soft"
+                                        onClick={() => handlePublish(article.id)}
+                                        className="px-3"
                                     >
-                                        Удалить
+                                        Опубликовать
                                     </Button>
-                                </div>
-                            )}
+                                )}
+
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => handleDelete(article.id)}
+                                    className="px-3 text-danger-fg hover:bg-danger-soft"
+                                >
+                                    Удалить
+                                </Button>
+                            </div>
                         </div>
                     ))}
                 </div>

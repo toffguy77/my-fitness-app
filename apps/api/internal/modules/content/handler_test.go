@@ -23,14 +23,14 @@ import (
 // mockContentService implements ServiceInterface for testing
 type mockContentService struct {
 	createArticleFunc      func(ctx context.Context, authorID int64, req CreateArticleRequest) (*Article, error)
-	getArticleFunc         func(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error)
-	listArticlesFunc       func(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error)
-	updateArticleFunc      func(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest, isAdmin bool) (*Article, error)
-	deleteArticleFunc      func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
-	publishArticleFunc     func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
-	scheduleArticleFunc    func(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest, isAdmin bool) error
-	unpublishArticleFunc   func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
-	uploadMediaFunc        func(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error)
+	getArticleFunc         func(ctx context.Context, authorID int64, articleID string) (*Article, error)
+	listArticlesFunc       func(ctx context.Context, authorID int64, status string, category string) (*ArticlesListResponse, error)
+	updateArticleFunc      func(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest) (*Article, error)
+	deleteArticleFunc      func(ctx context.Context, authorID int64, articleID string) error
+	publishArticleFunc     func(ctx context.Context, authorID int64, articleID string) error
+	scheduleArticleFunc    func(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest) error
+	unpublishArticleFunc   func(ctx context.Context, authorID int64, articleID string) error
+	uploadMediaFunc        func(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader) (string, error)
 	uploadMarkdownFileFunc func(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error)
 	getFeedFunc            func(ctx context.Context, clientID int64, category string, limit int, offset int) (*FeedResponse, error)
 	getFeedArticleFunc     func(ctx context.Context, clientID int64, articleID string) (*Article, error)
@@ -46,58 +46,58 @@ func (m *mockContentService) CreateArticle(ctx context.Context, authorID int64, 
 	return &Article{}, nil
 }
 
-func (m *mockContentService) GetArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error) {
+func (m *mockContentService) GetArticle(ctx context.Context, authorID int64, articleID string) (*Article, error) {
 	if m.getArticleFunc != nil {
-		return m.getArticleFunc(ctx, authorID, articleID, isAdmin)
+		return m.getArticleFunc(ctx, authorID, articleID)
 	}
 	return &Article{}, nil
 }
 
-func (m *mockContentService) ListArticles(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error) {
+func (m *mockContentService) ListArticles(ctx context.Context, authorID int64, status string, category string) (*ArticlesListResponse, error) {
 	if m.listArticlesFunc != nil {
-		return m.listArticlesFunc(ctx, authorID, status, category, isAdmin)
+		return m.listArticlesFunc(ctx, authorID, status, category)
 	}
 	return &ArticlesListResponse{Articles: []Article{}}, nil
 }
 
-func (m *mockContentService) UpdateArticle(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest, isAdmin bool) (*Article, error) {
+func (m *mockContentService) UpdateArticle(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest) (*Article, error) {
 	if m.updateArticleFunc != nil {
-		return m.updateArticleFunc(ctx, authorID, articleID, req, isAdmin)
+		return m.updateArticleFunc(ctx, authorID, articleID, req)
 	}
 	return &Article{}, nil
 }
 
-func (m *mockContentService) DeleteArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
+func (m *mockContentService) DeleteArticle(ctx context.Context, authorID int64, articleID string) error {
 	if m.deleteArticleFunc != nil {
-		return m.deleteArticleFunc(ctx, authorID, articleID, isAdmin)
+		return m.deleteArticleFunc(ctx, authorID, articleID)
 	}
 	return nil
 }
 
-func (m *mockContentService) PublishArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
+func (m *mockContentService) PublishArticle(ctx context.Context, authorID int64, articleID string) error {
 	if m.publishArticleFunc != nil {
-		return m.publishArticleFunc(ctx, authorID, articleID, isAdmin)
+		return m.publishArticleFunc(ctx, authorID, articleID)
 	}
 	return nil
 }
 
-func (m *mockContentService) ScheduleArticle(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest, isAdmin bool) error {
+func (m *mockContentService) ScheduleArticle(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest) error {
 	if m.scheduleArticleFunc != nil {
-		return m.scheduleArticleFunc(ctx, authorID, articleID, req, isAdmin)
+		return m.scheduleArticleFunc(ctx, authorID, articleID, req)
 	}
 	return nil
 }
 
-func (m *mockContentService) UnpublishArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
+func (m *mockContentService) UnpublishArticle(ctx context.Context, authorID int64, articleID string) error {
 	if m.unpublishArticleFunc != nil {
-		return m.unpublishArticleFunc(ctx, authorID, articleID, isAdmin)
+		return m.unpublishArticleFunc(ctx, authorID, articleID)
 	}
 	return nil
 }
 
-func (m *mockContentService) UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error) {
+func (m *mockContentService) UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader) (string, error) {
 	if m.uploadMediaFunc != nil {
-		return m.uploadMediaFunc(ctx, authorID, articleID, file, isAdmin)
+		return m.uploadMediaFunc(ctx, authorID, articleID, file)
 	}
 	return "https://example.com/media.jpg", nil
 }
@@ -233,7 +233,7 @@ func TestHandler_CreateArticle(t *testing.T) {
 func TestHandler_GetArticle(t *testing.T) {
 	t.Run("success returns article", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.getArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error) {
+		mock.getArticleFunc = func(ctx context.Context, authorID int64, articleID string) (*Article, error) {
 			return &Article{ID: articleID, Title: "Test"}, nil
 		}
 
@@ -250,7 +250,7 @@ func TestHandler_GetArticle(t *testing.T) {
 
 	t.Run("not found returns 404", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.getArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error) {
+		mock.getArticleFunc = func(ctx context.Context, authorID int64, articleID string) (*Article, error) {
 			return nil, fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 
@@ -267,7 +267,7 @@ func TestHandler_GetArticle(t *testing.T) {
 
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.getArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error) {
+		mock.getArticleFunc = func(ctx context.Context, authorID int64, articleID string) (*Article, error) {
 			return nil, fmt.Errorf("не принадлежит этому автору: %w", apperrors.ErrForbidden)
 		}
 
@@ -314,7 +314,7 @@ func TestHandler_GetArticle(t *testing.T) {
 func TestHandler_ListArticles(t *testing.T) {
 	t.Run("success returns articles", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.listArticlesFunc = func(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error) {
+		mock.listArticlesFunc = func(ctx context.Context, authorID int64, status string, category string) (*ArticlesListResponse, error) {
 			return &ArticlesListResponse{
 				Articles: []Article{{ID: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", Title: "Test"}},
 				Total:    1,
@@ -333,7 +333,7 @@ func TestHandler_ListArticles(t *testing.T) {
 
 	t.Run("service error returns 500", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.listArticlesFunc = func(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error) {
+		mock.listArticlesFunc = func(ctx context.Context, authorID int64, status string, category string) (*ArticlesListResponse, error) {
 			return nil, errors.New("db error")
 		}
 
@@ -363,7 +363,7 @@ func TestHandler_ListArticles(t *testing.T) {
 func TestHandler_DeleteArticle(t *testing.T) {
 	t.Run("success deletes article", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.deleteArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
+		mock.deleteArticleFunc = func(ctx context.Context, authorID int64, articleID string) error {
 			return nil
 		}
 
@@ -380,7 +380,7 @@ func TestHandler_DeleteArticle(t *testing.T) {
 
 	t.Run("not found returns 404", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.deleteArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
+		mock.deleteArticleFunc = func(ctx context.Context, authorID int64, articleID string) error {
 			return fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 
@@ -397,7 +397,7 @@ func TestHandler_DeleteArticle(t *testing.T) {
 
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.deleteArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
+		mock.deleteArticleFunc = func(ctx context.Context, authorID int64, articleID string) error {
 			return fmt.Errorf("не принадлежит: %w", apperrors.ErrForbidden)
 		}
 
@@ -430,7 +430,7 @@ func TestHandler_DeleteArticle(t *testing.T) {
 func TestHandler_PublishArticle(t *testing.T) {
 	t.Run("success publishes article", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.publishArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
+		mock.publishArticleFunc = func(ctx context.Context, authorID int64, articleID string) error {
 			return nil
 		}
 
@@ -447,7 +447,7 @@ func TestHandler_PublishArticle(t *testing.T) {
 
 	t.Run("not found returns 404", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.publishArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
+		mock.publishArticleFunc = func(ctx context.Context, authorID int64, articleID string) error {
 			return fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 
@@ -464,7 +464,7 @@ func TestHandler_PublishArticle(t *testing.T) {
 
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
-		mock.publishArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
+		mock.publishArticleFunc = func(ctx context.Context, authorID int64, articleID string) error {
 			return fmt.Errorf("не принадлежит: %w", apperrors.ErrForbidden)
 		}
 
@@ -579,7 +579,7 @@ func TestHandler_UpdateArticle_SlugOutcomes(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			handler, mock := setupContentTestHandler()
-			mock.updateArticleFunc = func(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest, isAdmin bool) (*Article, error) {
+			mock.updateArticleFunc = func(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest) (*Article, error) {
 				return nil, tc.err
 			}
 
