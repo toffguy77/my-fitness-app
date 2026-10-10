@@ -1,10 +1,12 @@
 import type { ComponentProps, ReactNode } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ArrowLeft } from 'lucide-react'
 import { CATEGORY_LABELS } from '@/features/content/types'
 import type { Article } from '@/features/content/types'
+import { isTrustedImageUrl } from '@/features/content/utils/coverImage'
 
 /**
  * The layout of an article, wherever it is rendered.
@@ -15,9 +17,16 @@ import type { Article } from '@/features/content/types'
  * cannot drift apart.
  */
 export interface ArticleContentProps {
-    article: Pick<Article, 'title' | 'category' | 'published_at' | 'body'>
+    article: Pick<Article, 'title' | 'category' | 'published_at' | 'body' | 'cover_image_url'>
     /** Who wrote it — the expert on public pages, the curator's name otherwise. */
     byline: ReactNode
+    /** Controls beside the category, such as «Редактировать» for the editors. */
+    actions?: ReactNode
+    /**
+     * «Назад» to the feed. Off in the editor's preview: following it would
+     * leave the editor and lose what has not been saved.
+     */
+    backLink?: boolean
     /** What follows the body, such as the call to action. */
     children?: ReactNode
 }
@@ -52,7 +61,7 @@ function BodyHeading({ children }: ComponentProps<'h1'>) {
     return <h2>{children}</h2>
 }
 
-export function ArticleContent({ article, byline, children }: ArticleContentProps) {
+export function ArticleContent({ article, byline, actions, backLink = true, children }: ArticleContentProps) {
     const publishedDate = article.published_at
         ? new Date(article.published_at).toLocaleDateString('ru-RU', {
               day: 'numeric',
@@ -68,17 +77,20 @@ export function ArticleContent({ article, byline, children }: ArticleContentProp
         <article className="mx-auto w-full max-w-content px-screen-x py-5">
             {/* Back button + Category badge */}
             <div className="mb-4 flex items-center justify-between gap-3">
-                <Link
+                {backLink ? <Link
                     href="/content"
                     className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-[15px] font-semibold text-fg-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
                     <ArrowLeft className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
                     Назад
-                </Link>
+                </Link> : <span />}
 
-                <span className="rounded-full bg-subtle px-3 py-1 text-xs font-medium text-fg-muted">
-                    {CATEGORY_LABELS[article.category] ?? article.category}
-                </span>
+                <div className="flex items-center gap-2">
+                    {actions}
+                    <span className="rounded-full bg-subtle px-3 py-1 text-xs font-medium text-fg-muted">
+                        {CATEGORY_LABELS[article.category] ?? article.category}
+                    </span>
+                </div>
             </div>
 
             <h1 className="mb-4 type-title-1 text-fg">
@@ -89,6 +101,20 @@ export function ArticleContent({ article, byline, children }: ArticleContentProp
                 {byline}
                 {publishedDate && <p className="tabular-nums">{publishedDate}</p>}
             </div>
+
+            {isTrustedImageUrl(article.cover_image_url) && (
+                <div className="relative mb-6 aspect-[16/9] w-full overflow-hidden rounded-tile">
+                    <Image
+                        src={article.cover_image_url}
+                        alt={article.title}
+                        fill
+                        priority
+                        unoptimized
+                        sizes="(min-width: 768px) 720px, 100vw"
+                        className="object-cover"
+                    />
+                </div>
+            )}
 
             <hr className="mb-6 border-line" />
 

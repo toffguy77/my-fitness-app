@@ -32,14 +32,27 @@ import { contentApi } from '@/features/content/api/contentApi'
 
 const mockContentApi = contentApi as jest.Mocked<typeof contentApi>
 
+const DRAFT_COVER = 'https://storage.yandexcloud.net/curator-content/cover-images/draft.jpg'
+
 jest.mock('../ArticleForm', () => ({
-    ArticleForm: ({ onSave, onPublish, onSchedule, loading }: {
+    ArticleForm: ({ onSave, onPublish, onSchedule, onDraftChange, loading }: {
         onSave: (data: Record<string, unknown>) => void
         onPublish?: () => void
         onSchedule?: (date: string) => void
+        onDraftChange?: (draft: Record<string, unknown>) => void
         loading?: boolean
     }) => (
         <div data-testid="article-form">
+            <button
+                onClick={() => onDraftChange?.({
+                    title: 'Заголовок из формы',
+                    category: 'nutrition',
+                    cover_image_url: DRAFT_COVER,
+                    audience_scope: 'my_clients',
+                })}
+            >
+                Draft
+            </button>
             <button onClick={() => onSave({ title: 'Test Title', category: 'general', audience_scope: 'all' })}>
                 Save
             </button>
@@ -48,6 +61,25 @@ jest.mock('../ArticleForm', () => ({
             {loading && <span data-testid="form-loading">Loading</span>}
         </div>
     ),
+}))
+
+jest.mock('next/image', () => ({
+    __esModule: true,
+    default: (props: React.ComponentProps<'img'> & { fill?: boolean; unoptimized?: boolean; priority?: boolean }) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { fill, unoptimized, priority, ...imgProps } = props
+        // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+        return <img {...imgProps} />
+    },
+}))
+
+jest.mock('next/link', () => ({
+    __esModule: true,
+    default: ({ href, children, ...props }: React.ComponentProps<'a'>) => <a href={href} {...props}>{children}</a>,
+}))
+
+jest.mock('../ArticleAuthor', () => ({
+    ArticleAuthor: () => <span>Эксперт BURCEV</span>,
 }))
 
 jest.mock('../FileUploader', () => ({
@@ -135,19 +167,49 @@ describe('ArticleEditor', () => {
         expect(textarea).toHaveValue('Hello world')
     })
 
-    it('shows markdown preview when content is entered', async () => {
-        const user = userEvent.setup()
-        render(<ArticleEditor />)
+    // Текст и превью стояли двумя узкими колонками: поле в 24 строки со своей
+    // прокруткой рядом с превью другого размера. Теперь — вкладки на всю
+    // ширину, и превью — та же страница статьи, что увидит читатель.
+    describe('text and preview tabs', () => {
+        it('opens on the text, with the preview hidden', () => {
+            render(<ArticleEditor />)
 
-        const textarea = screen.getByPlaceholderText('Напишите статью в формате Markdown...')
-        await user.type(textarea, '# Test')
+            expect(screen.getByRole('tab', { name: 'Текст' })).toHaveAttribute('aria-selected', 'true')
+            expect(screen.getByPlaceholderText('Напишите статью в формате Markdown...')).toBeVisible()
+            expect(screen.queryByTestId('markdown-preview')).not.toBeInTheDocument()
+        })
 
-        expect(screen.getByTestId('markdown-preview')).toHaveTextContent('# Test')
-    })
+        it('shows the article as the reader will see it', async () => {
+            const user = userEvent.setup()
+            render(<ArticleEditor />)
 
-    it('shows empty preview message when no content', () => {
-        render(<ArticleEditor />)
-        expect(screen.getByText('Начните писать, чтобы увидеть превью')).toBeInTheDocument()
+            await user.type(screen.getByPlaceholderText('Напишите статью в формате Markdown...'), 'Текст статьи')
+            fireEvent.click(screen.getByText('Draft'))
+            fireEvent.click(screen.getByRole('tab', { name: 'Превью' }))
+
+            expect(screen.getByRole('tab', { name: 'Превью' })).toHaveAttribute('aria-selected', 'true')
+            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Заголовок из формы')
+            expect(screen.getByRole('img', { name: 'Заголовок из формы' })).toHaveAttribute('src', DRAFT_COVER)
+            expect(screen.getByTestId('markdown-preview')).toHaveTextContent('Текст статьи')
+            expect(screen.queryByPlaceholderText('Напишите статью в формате Markdown...')).not.toBeVisible()
+        })
+
+        // «Назад» в превью увёл бы со страницы и унёс несохранённый текст.
+        it('has no way out of the editor inside the preview', () => {
+            render(<ArticleEditor />)
+
+            fireEvent.click(screen.getByRole('tab', { name: 'Превью' }))
+
+            expect(screen.queryByRole('link', { name: /Назад/ })).not.toBeInTheDocument()
+        })
+
+        it('signs an article for everyone with the expert, as the public page does', () => {
+            render(<ArticleEditor />)
+
+            fireEvent.click(screen.getByRole('tab', { name: 'Превью' }))
+
+            expect(screen.getByText('Эксперт BURCEV')).toBeInTheDocument()
+        })
     })
 
     it('creates new article on save', async () => {
@@ -257,19 +319,6 @@ describe('ArticleEditor', () => {
 
         const textarea = screen.getByPlaceholderText('Напишите статью в формате Markdown...')
         expect(textarea.getAttribute('value') || (textarea as HTMLTextAreaElement).value).toContain('https://example.com/image.jpg')
-    })
-
-    it('toggles between editor and preview tabs on mobile', () => {
-        render(<ArticleEditor />)
-
-        const editorTab = screen.getByText('Редактор')
-        const previewTabs = screen.getAllByText('Превью')
-
-        expect(editorTab).toBeInTheDocument()
-        expect(previewTabs.length).toBeGreaterThanOrEqual(1)
-
-        fireEvent.click(previewTabs[0])
-        fireEvent.click(editorTab)
     })
 
     it('applies toolbar actions', () => {

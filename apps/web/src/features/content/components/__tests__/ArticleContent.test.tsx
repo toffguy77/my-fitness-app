@@ -19,6 +19,15 @@ jest.mock('react-markdown', () => ({
     },
 }))
 jest.mock('remark-gfm', () => ({ __esModule: true, default: jest.fn() }))
+jest.mock('next/image', () => ({
+    __esModule: true,
+    default: (props: React.ComponentProps<'img'> & { fill?: boolean; unoptimized?: boolean; priority?: boolean }) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { fill, unoptimized, priority, ...imgProps } = props
+        // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+        return <img {...imgProps} />
+    },
+}))
 
 const article = {
     title: 'Что такое КБЖУ и зачем его считать?',
@@ -72,6 +81,39 @@ describe('ArticleContent', () => {
         )
 
         expect(screen.getByTestId('markdown').textContent).toBe(`\n${article.body}`)
+    })
+
+    // Обложку загружали, а страница статьи её не рисовала: её видела только
+    // карточка в ленте, и превью в редакторе показывало то же, то есть ничего.
+    describe('cover', () => {
+        const cover = 'https://storage.yandexcloud.net/curator-content/cover-images/c.jpg'
+
+        it('is shown between the byline and the body', () => {
+            render(<ArticleContent article={{ ...article, cover_image_url: cover }} byline={<span>Подпись</span>} />)
+
+            const img = screen.getByRole('img', { name: article.title })
+            expect(img).toHaveAttribute('src', cover)
+            expect(screen.getByText('Подпись').compareDocumentPosition(img) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+            expect(img.compareDocumentPosition(screen.getByTestId('markdown')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+        })
+
+        it('is left out when there is none', () => {
+            render(<ArticleContent article={{ ...article, cover_image_url: '' }} byline={null} />)
+
+            expect(screen.queryByRole('img')).not.toBeInTheDocument()
+        })
+
+        it('is left out when it lives on someone else’s host', () => {
+            render(<ArticleContent article={{ ...article, cover_image_url: 'https://evil.example/c.jpg' }} byline={null} />)
+
+            expect(screen.queryByRole('img')).not.toBeInTheDocument()
+        })
+    })
+
+    it('puts the actions next to the category', () => {
+        render(<ArticleContent article={article} byline={null} actions={<a href="/edit">Редактировать</a>} />)
+
+        expect(screen.getByRole('link', { name: 'Редактировать' })).toBeInTheDocument()
     })
 
     it('renders any other first-level heading in the body as h2', () => {

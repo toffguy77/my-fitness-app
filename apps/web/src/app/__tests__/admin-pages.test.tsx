@@ -4,7 +4,7 @@
  */
 
 import React, { Suspense } from 'react'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -61,7 +61,7 @@ jest.mock('@/features/content/components/ArticleList', () => ({
 
 jest.mock('@/features/content/components/ArticleEditor', () => ({
     ArticleEditor: (props: { articleId?: string; returnPath?: string }) => (
-        <div data-testid="article-editor" data-article-id={props.articleId}>ArticleEditor</div>
+        <div data-testid="article-editor" data-article-id={props.articleId} data-return-path={props.returnPath}>ArticleEditor</div>
     ),
 }))
 
@@ -134,13 +134,44 @@ describe('Admin Pages', () => {
     describe('AdminEditArticlePage', () => {
         it('renders without crashing with Promise params', () => {
             const params = Promise.resolve({ id: '99' })
+            const searchParams = Promise.resolve({})
             // use(params) triggers Suspense; verify the page mounts without throwing
             const { container } = render(
                 <Suspense fallback={<div data-testid="suspense-fallback">Loading...</div>}>
-                    <AdminEditArticlePage params={params} />
+                    <AdminEditArticlePage params={params} searchParams={searchParams} />
                 </Suspense>
             )
             expect(container).toBeTruthy()
+        })
+
+        // Открытый кнопкой «Редактировать» со страницы статьи редактор
+        // возвращает на неё же после сохранения.
+        it('returns to the article it was opened from', async () => {
+            await act(async () => {
+                render(
+                    <Suspense fallback={null}>
+                        <AdminEditArticlePage
+                            params={Promise.resolve({ id: '99' })}
+                            searchParams={Promise.resolve({ from: '/content/ves-stoit' })}
+                        />
+                    </Suspense>
+                )
+            })
+            expect(await screen.findByTestId('article-editor')).toHaveAttribute('data-return-path', '/content/ves-stoit')
+        })
+
+        it('ignores a return address that is not an article page', async () => {
+            await act(async () => {
+                render(
+                    <Suspense fallback={null}>
+                        <AdminEditArticlePage
+                            params={Promise.resolve({ id: '99' })}
+                            searchParams={Promise.resolve({ from: 'https://evil.example' })}
+                        />
+                    </Suspense>
+                )
+            })
+            expect(await screen.findByTestId('article-editor')).toHaveAttribute('data-return-path', '/admin/content')
         })
     })
 })

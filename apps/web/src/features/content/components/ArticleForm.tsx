@@ -21,9 +21,19 @@ import { messageForOr } from '@/shared/errors/apiErrors'
 // Types
 // ============================================================================
 
+/** What the preview needs from the form, before anything is saved. */
+export interface ArticleDraft {
+    title: string
+    category: ContentCategory
+    cover_image_url: string
+    audience_scope: AudienceScope
+}
+
 interface ArticleFormProps {
     article?: Article
     importedData?: ParsedArticle
+    /** Called whenever a field the preview shows changes. */
+    onDraftChange?: (draft: ArticleDraft) => void
     onSave: (data: CreateArticleRequest | UpdateArticleRequest, body?: string) => void
     onPublish?: () => void
     onSchedule?: (scheduledAt: string) => void
@@ -54,6 +64,7 @@ const LABEL = 'mb-1.5 block text-sm font-medium text-fg-muted'
 export function ArticleForm({
     article,
     importedData,
+    onDraftChange,
     onSave,
     onPublish,
     onSchedule,
@@ -136,6 +147,11 @@ export function ArticleForm({
     }, [importedData])
     /* eslint-enable react-hooks/set-state-in-effect */
 
+    // The preview lives in the editor, the fields here: tell it what they hold.
+    useEffect(() => {
+        onDraftChange?.({ title, category, cover_image_url: coverImageUrl, audience_scope: audienceScope })
+    }, [title, category, coverImageUrl, audienceScope, onDraftChange])
+
     function handleSave() {
         if (!title.trim()) return
 
@@ -151,10 +167,13 @@ export function ArticleForm({
             const data: UpdateArticleRequest = {
                 ...(chosenSlug && chosenSlug !== article.slug && { slug: chosenSlug }),
                 title: title.trim(),
-                excerpt: excerpt.trim() || undefined,
+                // Пустая строка, а не undefined: так сервер узнаёт, что поле
+                // очищено. Пропущенное поле он оставляет как было — и удалить
+                // обложку или описание было нельзя.
+                excerpt: excerpt.trim(),
                 category,
                 audience_scope: audienceScope,
-                cover_image_url: coverImageUrl.trim() || undefined,
+                cover_image_url: trimmedCover,
                 client_ids: audienceScope === 'selected' ? clientIds : undefined,
             }
             onSave(data)
@@ -166,7 +185,7 @@ export function ArticleForm({
                 category,
                 audience_scope: audienceScope,
                 client_ids: audienceScope === 'selected' ? clientIds : undefined,
-                cover_image_url: coverImageUrl.trim() || undefined,
+                ...(trimmedCover && { cover_image_url: trimmedCover }),
             }
             onSave(data)
         }
