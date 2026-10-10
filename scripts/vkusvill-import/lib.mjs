@@ -54,9 +54,23 @@ const TO_TASTE = /(?:^|[\s\d])кап\S*$|по вкусу|для подачи|д�
  */
 export function ingredientLines(recipe) {
     return (recipe.ingredients ?? [])
-        .filter((ing) => ing.quantity != null && !String(ing.name ?? '').includes('<'))
-        .map((ing) => ({ ...ing, name: String(ing.name).replace(/<[^>]*>/g, '').trim() }))
+        .filter((ing) => ing.quantity != null && !decodeEntities(String(ing.name ?? '')).includes('<'))
+        .map((ing) => ({ ...ing, name: decodeEntities(String(ing.name)).replace(/<[^>]*>/g, '').replace(/\u00a0/g, ' ').trim() }))
         .filter((ing) => ing.name !== '')
+}
+
+/** HTML-сущности → символы (до двух раз), как `decodeEntities` в recipes/vkusvill.go. */
+export function decodeEntities(s) {
+    const once = (t) =>
+        t
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;|&apos;/g, "'")
+            .replace(/&nbsp;/g, '\u00a0')
+            .replace(/&amp;/g, '&')
+    const first = once(s)
+    return first === s ? s : once(first)
 }
 
 /** Число из «2», «1,5», «1/4», «½», «2-3» (среднее). `null`, если числа нет. */

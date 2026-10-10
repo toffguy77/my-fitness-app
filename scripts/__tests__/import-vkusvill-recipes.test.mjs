@@ -211,3 +211,8 @@ test('надёжные штуки из сухого прогона; ломтик
     assert.ok(parseQuantity('3 шт.', 'Ветчина').error, 'ломтик ветчины — неизвестный вес')
     assert.ok(parseQuantity('1 уп.', 'Творог').error, 'упаковка — неизвестный вес')
 })
+
+test('экранированный заголовок группы — тоже не ингредиент', () => {
+    const recipe = { ingredients: [{ name: '&lt;b&gt;Для подачи:&lt;/b&gt;', quantity: '1 шт.' }, { name: 'Соль &amp; перец', quantity: 'по вкусу' }] }
+    assert.deepEqual(ingredientLines(recipe).map((i) => i.name), ['Соль & перец'])
+})
