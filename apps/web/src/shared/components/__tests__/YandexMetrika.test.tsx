@@ -35,6 +35,18 @@ describe('Состав сбора счётчика', () => {
         expect(counterScript()?.textContent).not.toMatch(/webvisor:\s*true/)
     })
 
+    // Цели, пришедшие раньше сниппета, ждут этого сигнала. Он должен идти
+    // после init: тогда отложенные вызовы встают в очередь счётчика за ним.
+    it('после init объявляет, что счётчик поднят', () => {
+        render(<YandexMetrika />)
+        const script = counterScript()?.textContent ?? ''
+
+        const init = script.indexOf('"init"')
+        const ready = script.indexOf('window.dispatchEvent(new Event("burcev:metrika-ready"))')
+        expect(init).toBeGreaterThan(-1)
+        expect(ready).toBeGreaterThan(init)
+    })
+
     it('оставляет опции, которые ввод не записывают', () => {
         render(<YandexMetrika />)
         const script = counterScript()?.textContent ?? ''

@@ -3,6 +3,9 @@
 import Script from 'next/script'
 import { useSyncExternalStore } from 'react'
 import { analyticsChoice, subscribeToAnalyticsChoice } from './CookieConsent'
+// Цели, пришедшие раньше счётчика, ждут этого события после init — см.
+// reachGoal в shared/analytics/counter.ts.
+import { METRIKA_READY_EVENT } from '@/shared/analytics/counter'
 
 
 /**
@@ -65,6 +68,7 @@ export function YandexMetrika({ nonce }: { nonce?: string }) {
                         accurateTrackBounce: true,
                         webvisor: false
                     });
+                    window.dispatchEvent(new Event("${METRIKA_READY_EVENT}"));
                 `}
         </Script>
     )
