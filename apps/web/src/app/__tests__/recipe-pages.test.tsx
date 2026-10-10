@@ -33,6 +33,7 @@ jest.mock('@/features/recipes', () => ({
 }))
 
 jest.mock('@/features/meal-plan', () => ({
+    BetaNotice: jest.requireActual('@/features/meal-plan/components/BetaNotice').BetaNotice,
     DayPlanView: () => <div data-testid="day-plan" />,
     MealPlanSettingsForm: () => <div data-testid="meal-plan-settings" />,
 }))
@@ -79,6 +80,7 @@ describe('страницы каталога рецептов', () => {
         )
         expect(screen.getByTestId('role-shell')).toHaveAttribute('data-active', 'menu')
         expect(screen.getByRole('heading', { level: 1, name: 'Меню' })).toBeInTheDocument()
+        expect(screen.getByRole('complementary', { name: /Бета-версия/ })).toBeInTheDocument()
         expect(screen.getByRole('tab', { name: 'План' })).toHaveAttribute('aria-selected', 'true')
         expect(screen.getByRole('tabpanel')).toContainElement(screen.getByTestId('day-plan'))
         expect(screen.queryByTestId('catalogue')).not.toBeInTheDocument()

@@ -227,6 +227,11 @@ test('план дня: проценты, закрепление, ручной в
     await page.goto('/menu')
     await expect(page.getByRole('heading', { level: 1, name: 'Меню' })).toBeVisible({ timeout: 15000 })
     await dismissCookieBanner(page)
+    // Бета: заметка о бесплатном доступе и будущей подписке, ссылка в чат.
+    const beta = page.getByRole('complementary', { name: /Бета-версия/ })
+    await expect(beta).toContainText('пока он бесплатный для всех')
+    await expect(beta).toContainText('платную подписку')
+    await expect(beta.getByRole('link', { name: 'Написать в чат' })).toHaveAttribute('href', '/chat')
     await expect(page.getByRole('tab', { name: 'План' })).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByTestId('plan-date')).toContainText('Сегодня', { timeout: 15000 })
 

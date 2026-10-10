@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, type KeyboardEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { DayPlanView } from '@/features/meal-plan'
+import { BetaNotice, DayPlanView } from '@/features/meal-plan'
 import { RecipeCatalogue } from '@/features/recipes'
 import { EVENTS, track } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
@@ -48,6 +48,8 @@ function MenuContent() {
                 <h1 className="type-title-1 text-fg">{t('recipes.menu.title')}</h1>
                 <p className="text-sm text-fg-muted">{t('mealPlan.menu.subtitle')}</p>
             </header>
+
+            <BetaNotice />
 
             <div role="tablist" aria-label={t('mealPlan.menu.tabsAria')} className="flex gap-6 border-b border-line">
                 {TABS.map((tab, index) => {

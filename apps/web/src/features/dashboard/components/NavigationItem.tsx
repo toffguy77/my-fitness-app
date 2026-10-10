@@ -11,11 +11,13 @@ export interface NavigationItemProps {
     isActive?: boolean
     isDisabled?: boolean
     badge?: number
+    /** Плашка у иконки («бета»). Видна, но в доступное имя не входит: имя пункта — подпись. */
+    tag?: string
     onClick?: (id: NavigationItemId) => void
 }
 
 export const NavigationItem = forwardRef<HTMLButtonElement, NavigationItemProps>(
-    ({ id, label, icon: Icon, href, isActive = false, isDisabled = false, badge, onClick }, ref) => {
+    ({ id, label, icon: Icon, href, isActive = false, isDisabled = false, badge, tag, onClick }, ref) => {
         const handleClick = () => {
             if (!isDisabled && onClick) {
                 onClick(id)
@@ -70,6 +72,15 @@ export const NavigationItem = forwardRef<HTMLButtonElement, NavigationItemProps>
                     {badge != null && badge > 0 && (
                         <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-on-primary ring-2 ring-canvas">
                             {badge > 99 ? '99+' : badge}
+                        </span>
+                    )}
+                    {tag && !(badge != null && badge > 0) && (
+                        <span
+                            aria-hidden="true"
+                            data-testid={`nav-tag-${id}`}
+                            className="absolute -top-1.5 left-1/2 ml-1.5 rounded-full bg-primary px-1 text-[9px] font-semibold leading-[14px] text-on-primary ring-2 ring-canvas"
+                        >
+                            {tag}
                         </span>
                     )}
                 </span>
