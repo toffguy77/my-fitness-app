@@ -202,3 +202,12 @@ test('веточки и лепёшки', () => {
     assert.deepEqual(parseQuantity('2 вет.', 'Укроп'), { grams: 4 })
     assert.deepEqual(parseQuantity('2 шт.', 'Лепёшка роти'), { grams: 120 })
 })
+
+test('надёжные штуки из сухого прогона; ломтики и упаковки — по-прежнему отказ', () => {
+    assert.deepEqual(parseQuantity('2 шт.', 'Сельдерей стебель'), { grams: 80 })
+    assert.deepEqual(parseQuantity('1 шт.', 'Манго'), { grams: 300 })
+    assert.deepEqual(parseQuantity('3 шт.', 'Белок яичный'), { grams: 90 })
+    assert.deepEqual(parseQuantity('2 кап.', 'Ваниль экстракт'), { toTaste: true })
+    assert.ok(parseQuantity('3 шт.', 'Ветчина').error, 'ломтик ветчины — неизвестный вес')
+    assert.ok(parseQuantity('1 уп.', 'Творог').error, 'упаковка — неизвестный вес')
+})
