@@ -73,6 +73,9 @@ GET /api/v1/food-tracker/search
 GET /api/v1/food-tracker/user-foods
 GET /api/v1/food-tracker/water
 GET /api/v1/logs/stats
+GET /api/v1/meal-plan-settings
+GET /api/v1/meal-plans/:date
+GET /api/v1/meal-plans/:date/items/:mealType/alternatives
 GET /api/v1/notifications
 GET /api/v1/notifications/delivery-preferences
 GET /api/v1/notifications/preferences
@@ -152,6 +155,7 @@ POST /api/v1/food-tracker/user-foods/clone
 POST /api/v1/food-tracker/water
 POST /api/v1/leads/curator-request
 POST /api/v1/logs
+POST /api/v1/meal-plans/:date/regenerate
 POST /api/v1/notifications/:id/read
 POST /api/v1/notifications/mark-all-read
 POST /api/v1/notifications/push
@@ -188,6 +192,8 @@ PUT /api/v1/food-restrictions
 PUT /api/v1/food-tracker/entries/:id
 PUT /api/v1/food-tracker/recommendations/preferences
 PUT /api/v1/food-tracker/user-foods/:id
+PUT /api/v1/meal-plan-settings
+PUT /api/v1/meal-plans/:date/items/:mealType
 PUT /api/v1/notifications/delivery-preferences
 PUT /api/v1/notifications/preferences
 PUT /api/v1/users/onboarding/complete

@@ -85,6 +85,12 @@ INDEX magic_links idx_magic_links_expires btree (expires_at)
 INDEX magic_links idx_magic_links_user_id btree (user_id)
 INDEX magic_links magic_links_pkey btree (id)
 INDEX magic_links magic_links_token_hash_key btree (token_hash)
+INDEX meal_plan_items idx_meal_plan_items_recipe btree (recipe_id)
+INDEX meal_plan_items idx_meal_plan_items_recipe_version btree (recipe_version_id)
+INDEX meal_plan_items meal_plan_items_pkey btree (plan_id, meal_type)
+INDEX meal_plan_settings meal_plan_settings_pkey btree (user_id)
+INDEX meal_plans meal_plans_pkey btree (id)
+INDEX meal_plans meal_plans_user_id_date_key btree (user_id, date)
 INDEX meal_templates idx_meal_templates_meal_type btree (user_id, meal_type)
 INDEX meal_templates meal_templates_pkey btree (id)
 INDEX message_attachments idx_message_attachments_message btree (message_id)
@@ -500,6 +506,27 @@ magic_links.ip_address text
 magic_links.token_hash text NOT NULL
 magic_links.user_agent text
 magic_links.user_id bigint
+meal_plan_items.grams integer NOT NULL
+meal_plan_items.locked boolean NOT NULL DEFAULT false
+meal_plan_items.manual_grams boolean NOT NULL DEFAULT false
+meal_plan_items.meal_type text NOT NULL
+meal_plan_items.plan_id uuid NOT NULL
+meal_plan_items.recipe_id uuid NOT NULL
+meal_plan_items.recipe_version_id uuid NOT NULL
+meal_plan_settings.meal_types ARRAY NOT NULL
+meal_plan_settings.updated_at timestamp with time zone NOT NULL DEFAULT now()
+meal_plan_settings.user_id bigint NOT NULL
+meal_plans.created_at timestamp with time zone NOT NULL DEFAULT now()
+meal_plans.date date NOT NULL
+meal_plans.id uuid NOT NULL DEFAULT gen_random_uuid()
+meal_plans.meal_types ARRAY NOT NULL
+meal_plans.seed bigint NOT NULL
+meal_plans.target_carbs integer NOT NULL
+meal_plans.target_fat integer NOT NULL
+meal_plans.target_kcal integer NOT NULL
+meal_plans.target_protein integer NOT NULL
+meal_plans.updated_at timestamp with time zone NOT NULL DEFAULT now()
+meal_plans.user_id bigint NOT NULL
 meal_templates.created_at timestamp with time zone DEFAULT now()
 meal_templates.entries jsonb NOT NULL
 meal_templates.id uuid NOT NULL DEFAULT gen_random_uuid()

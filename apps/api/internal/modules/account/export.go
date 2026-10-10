@@ -221,6 +221,20 @@ var sections = []exportSection{
 		JOIN conversations c ON c.id = m.conversation_id
 		WHERE c.client_id = $1 ORDER BY m.created_at`},
 	{"consents", `SELECT * FROM user_consents WHERE user_id = $1 ORDER BY granted_at`},
+	{"meal_plans", `SELECT p.date, p.target_kcal, p.target_protein, p.target_fat, p.target_carbs,
+		i.meal_type, v.name AS dish, i.grams, i.locked, i.manual_grams
+		FROM meal_plans p
+		LEFT JOIN meal_plan_items i ON i.plan_id = p.id
+		LEFT JOIN recipe_versions v ON v.id = i.recipe_version_id
+		WHERE p.user_id = $1 ORDER BY p.date, i.meal_type`},
+	{"food_restrictions", `SELECT
+		(SELECT allergens FROM user_food_restrictions WHERE user_id = $1) AS allergens,
+		(SELECT meal_types FROM meal_plan_settings WHERE user_id = $1) AS planned_meals,
+		ARRAY(SELECT f.name FROM user_excluded_foods e JOIN food_items f ON f.id = e.food_id
+		      WHERE e.user_id = $1 ORDER BY f.name) AS excluded_foods,
+		ARRAY(SELECT v.name FROM user_rejected_recipes r
+		      JOIN recipe_versions v ON v.recipe_id = r.recipe_id AND v.state = 'approved'
+		      WHERE r.user_id = $1 ORDER BY v.name) AS rejected_recipes`},
 }
 
 func (s *Service) buildExport(ctx context.Context, exportID string, userID int64) error {
@@ -346,6 +360,8 @@ const readmeText = `Выгрузка ваших данных из BURCEV
   notifications.json    — уведомления
   messages.json         — переписка с куратором
   consents.json         — данные о выданных согласиях
+  meal_plans.json       — планы питания по дням
+  food_restrictions.json — аллергены, исключённые продукты и блюда, приёмы пищи в плане
 
 Файлы можно открыть любым текстовым редактором.
 

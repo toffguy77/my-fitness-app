@@ -147,6 +147,14 @@ var strategies = []TableStrategy{
 	// обезличенную строку users — имени в ней больше нет.
 	{Table: "recipes", Column: "", Strategy: StrategyKeep, Reason: "a shared catalogue entry; created_by points at the stripped account row"},
 	{Table: "recipe_versions", Column: "", Strategy: StrategyKeep, Reason: "an approved version outlives its editor and approver; edited_by/approved_by point at the stripped account row"},
+
+	// План питания — что человек собирался есть, под его цель. Строка users
+	// при стирании обезличивается, а не удаляется, поэтому ON DELETE CASCADE
+	// сам не сработает: удаление здесь явное. Блюда плана уходят каскадом от
+	// meal_plans — на users они не ссылаются.
+	{Table: "meal_plans", Column: "user_id", Strategy: StrategyDelete, Reason: "their day plans and the targets they were built for; items cascade"},
+	{Table: "meal_plan_settings", Column: "user_id", Strategy: StrategyDelete, Reason: "which meals they plan"},
+	{Table: "meal_plan_items", Column: "", Strategy: StrategyKeep, Reason: "reached through meal_plans, deleted with them by ON DELETE CASCADE"},
 }
 
 // Strategies exposes the table for tests and documentation.

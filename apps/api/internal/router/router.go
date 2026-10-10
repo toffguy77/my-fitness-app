@@ -25,6 +25,7 @@ import (
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
 	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/modules/logs"
+	"github.com/burcev/api/internal/modules/mealplan"
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/modules/recipes"
@@ -77,6 +78,8 @@ type Deps struct {
 	Metrics *telemetry.Metrics
 	Content *content.Handler
 	Recipes *recipes.Handler
+	// MealPlan — план питания клиента на день.
+	MealPlan *mealplan.Handler
 }
 
 // New builds the engine with global middleware and every route registered.
@@ -140,6 +143,7 @@ func New(d Deps) *gin.Engine {
 	registerAdminRoutes(v1, d)
 	registerContentRoutes(v1, d)
 	registerRecipeRoutes(v1, d)
+	registerMealPlanRoutes(v1, d)
 	registerLeadRoutes(v1, d)
 	registerCuratorRequestRoute(v1, d)
 	registerCuratorLeadRoutes(v1, d)

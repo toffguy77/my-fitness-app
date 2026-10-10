@@ -170,6 +170,9 @@ export default defineConfig<SessionOptions>({
         'tests/design-system.spec.ts',
         // Три роли, у каждой свой вход — роль проекта не нужна.
         'tests/recipe-catalogue.spec.ts',
+        // Команда и куратор готовят рецепты своими входами, клиент — свежая
+        // учётка с посчитанной нормой: роль проекта не нужна.
+        'tests/meal-day-plan.spec.ts',
       ],
     },
   ],
