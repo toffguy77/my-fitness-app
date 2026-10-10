@@ -32,8 +32,11 @@ recipe_versions    id UUID, recipe_id, version INT (UNIQUE с recipe_id), state 
                    kcal_100, protein_100, fat_100, carbs_100, total_grams, portion_grams, approximate BOOL,
                    review_comment, edited_by, approved_by → users ON DELETE SET NULL, approved_at, created_at
 recipe_steps       version_id, position, text, photo_key NULL
-recipe_ingredients version_id, position, food_id UUID → food_items, grams NULL, display_quantity NULL, to_taste BOOL
+recipe_ingredients version_id, position, food_id UUID NULL → food_items, source_name TEXT NULL,
+                   grams NULL, display_quantity NULL, to_taste BOOL
 ```
+
+`food_id` пуст только у черновика из импорта, пока человек не подтвердил продукт (решение 6); отправка на проверку требует, чтобы он был заполнен у всех ингредиентов.
 
 Частичный уникальный индекс: не больше одной версии в `draft`/`review` и не больше одной в `approved` на рецепт. Сохранённые КБЖУ — кэш вычисления, пересчитываемый при каждом сохранении черновика; после одобрения версия неизменна, поэтому кэш не устаревает.
 
@@ -41,7 +44,9 @@ recipe_ingredients version_id, position, food_id UUID → food_items, grams NULL
 
 ### 2. Ингредиент хранит UUID `food_items`
 
-API принимает идентификатор в той форме, которую отдаёт `SearchFoods` (число для `products`, UUID для `food_items`), и нормализует через `ensureFoodItemExists`. Тот же путь, что у записей дневника, — второго способа сопоставления не появляется.
+API принимает идентификатор в той форме, которую отдаёт поиск (число для `products`, UUID для `food_items`), и нормализует через `ensureFoodItemExists`. Тот же путь, что у записей дневника, — второго способа сопоставления не появляется. Функция сейчас неэкспортируемая — `food-tracker` получает экспортируемую обёртку `EnsureCatalogueFood`.
+
+Кандидаты для ингредиентов ищутся **только по общему каталогу** (`products` и `food_items` с источником не `user`): `SearchFoods` подмешивает личные продукты вызывающего (`user_foods`), а личный продукт сотрудника не должен становиться ингредиентом рецепта для всех. Для этого в `food-tracker` добавляется `SearchCatalogue(query, limit)` без пользовательской ветки.
 
 *Отвергнуто:* полиморфная ссылка (`product_id` или `food_item_id`) — два вида идентификаторов в одной таблице и есть известный источник дефектов.
 
@@ -58,11 +63,13 @@ API принимает идентификатор в той форме, кото
 | Ограничения и скрытия клиента | `coordinator` + связь | `/api/v1/curator/clients/:id/food-restrictions`, `/api/v1/curator/clients/:id/hidden-recipes/:recipeId` |
 | Каталог, карточка, отклонение, свои ограничения | `client` | `/api/v1/recipes...`, `/api/v1/food-restrictions` |
 
-`super_admin` не одобряет: по решению пользователя рецепт добавляет команда, а проверяет куратор. *Отвергнуто:* одобрение любой из двух ролей — проверка превращается в формальность.
+`super_admin` не одобряет: по решению пользователя рецепт добавляет команда, а проверяет куратор. *Отвергнуто:* одобрение любой из двух ролей — проверка превращается в формальность. `RequireRole` сравнивает роль точно (`apps/api/internal/shared/middleware/auth.go:109`), `super_admin` не считается надмножеством — `403` для него получается без дополнительного кода.
 
-### 5. Правило доступности — одна SQL-функция фильтра в сервисе
+### 5. Правило доступности — один пакет без зависимостей от модулей
 
-`recipes.Service.AvailableFilter(userID)` строит условие `WHERE` (опубликован, есть `approved`, нет в `client_hidden_recipes`, нет в `user_rejected_recipes`, `NOT allergens && user_allergens`, нет ингредиента из `user_excluded_foods`). Каталог, карточка и сборка плана (`meal-day-plan`) зовут его, а не повторяют условие.
+Пакет `apps/api/internal/shared/recipeaccess` строит условие `WHERE` (опубликован, есть `approved`, нет в `client_hidden_recipes`, нет в `user_rejected_recipes`, `NOT allergens && user_allergens`, нет ингредиента из `user_excluded_foods`). Каталог, карточка, сборка плана (`meal-day-plan`) и поиск дневника (`plan-diary-logging`) зовут его, а не повторяют условие.
+
+Пакет отдельный, потому что иначе получается цикл импорта: `recipes` зовёт `food-tracker` (нормализация продукта, поиск по каталогу), а `food-tracker` в `plan-diary-logging` должен фильтровать рецепты в поиске. `recipeaccess` — только SQL над шестью таблицами, без импортов модулей. *Отвергнуто:* хук, который `recipes` регистрирует в `food-tracker` при сборке в `main.go`, — зависимость, невидимая из кода модуля.
 
 Таблицы: `user_food_restrictions(user_id PK, allergens TEXT[])`, `user_excluded_foods(user_id, food_id)`, `user_rejected_recipes(user_id, recipe_id)`, `client_hidden_recipes(client_id, recipe_id, hidden_by ON DELETE SET NULL)`.
 
@@ -72,7 +79,7 @@ API принимает идентификатор в той форме, кото
 1. Создаёт рецепт с `source='vkusvill'`, `source_ref` = id рецепта ВкусВилла; уникальность `source_ref` даёт идемпотентность.
 2. Копирует фото блюда и шагов в хранилище под префиксом `recipes/`.
 3. Для ингредиента: подпись количества сохраняется как `display_quantity`; граммы выводятся для «N г», «N кг», «N мл»; для «N шт.» — `N × default_weight`, если он есть у первого кандидата; иначе пусто.
-4. Кандидаты — первые 5 результатов `SearchFoods` по названию ингредиента. Выбор подтверждает человек; до подтверждения у ингредиента нет `food_id`, и отправка на проверку отвечает `422`. Для этого черновой ингредиент хранит `food_id NULL` и `source_name`.
+4. Кандидаты — первые 5 результатов `SearchCatalogue` по названию ингредиента. Выбор подтверждает человек; до подтверждения у ингредиента нет `food_id`, и отправка на проверку отвечает `422`. Для этого черновой ингредиент хранит `food_id NULL` и `source_name`.
 
 Способность включена, если задан `VKUSVILL_MCP_URL` (значение по умолчанию задано), и попадает в список `config.Features` как `recipe_import`.
 
@@ -87,6 +94,15 @@ API принимает идентификатор в той форме, кото
 - `features/recipes/`: API-клиент, типы, `RecipeCard`, `RecipeDetail`, `RecipeEditor` (общий для команды и правки куратором), `IngredientPicker` (поверх существующего поиска продуктов), `ReviewQueue`, `VkusvillImport`, `FoodRestrictionsForm`.
 - Страницы: `/menu` (каталог; в `meal-day-plan` станет вкладкой рядом с планом), `/menu/recipes/[id]`, `/admin/recipes`, `/admin/recipes/[id]`, `/curator/recipes`, `/curator/recipes/[id]`, раздел «Ограничения в питании» в `/settings`.
 - Навигация: `workout` → `menu` (иконка `ChefHat`).
+- `/menu` добавляется в `PROTECTED` (`apps/web/src/proxy.ts:22`) — экран требует аккаунта.
+
+### 9. Маршрут и его вызов — в одном PR
+
+`scripts/check-dead-handlers.mjs` не пропускает маршрут без вызова с фронтенда, `scripts/check-api-contract.mjs` — вызов без маршрута. Поэтому каждое из четырёх изменений сливается одним PR: бэкенд и фронтенд вместе, без промежуточного «сначала API».
+
+### 10. События аналитики
+
+`menu_opened`, `recipe_opened`, `recipe_rejected`, `recipe_submitted`, `recipe_approved` — через существующий `apps/web/src/shared/analytics/events.ts` и серверные факты для одобрения. Без них эффект раздела не измерить: данных о спросе до запуска нет (см. исследование).
 
 ## Risks / Trade-offs
 

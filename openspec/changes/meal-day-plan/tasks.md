@@ -24,7 +24,8 @@
 - [ ] 4.1 `features/meal-plan/`: API-клиент, типы, `DayPlanView`, `MealSlotCard`, `AlternativesSheet`, `PlanWarnings`. Проверка: Jest + RTL, включая состояние «нет цели» и «нет рецептов».
 - [ ] 4.2 `/menu` открывается на плане сегодня, вкладка «Рецепты», переключение даты. Проверка: Jest + RTL.
 - [ ] 4.3 Выбор приёмов пищи для плана в настройках. Проверка: Jest + RTL.
-- [ ] 4.4 Lint, type-check, все статические проверки из корня. Проверка: зелёные.
+- [ ] 4.4 События `plan_generated`, `plan_regenerated`, `plan_item_replaced`, `plan_item_locked`, `plan_grams_set`, `plan_off_target`. Проверка: Jest на отправку; события видны на dev в `analytics_events`.
+- [ ] 4.5 Lint, type-check, все статические проверки из корня. Проверка: зелёные.
 
 ## 5. E2E и документация
 
