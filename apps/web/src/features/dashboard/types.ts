@@ -20,6 +20,8 @@ export interface NavigationItemConfig {
     icon: LucideIcon
     href: string
     isDisabled?: boolean
+    /** Короткая плашка у иконки, например «бета». В доступное имя не входит. */
+    tag?: string
 }
 
 /**

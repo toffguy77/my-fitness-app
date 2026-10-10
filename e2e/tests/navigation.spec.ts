@@ -44,6 +44,8 @@ test.describe('Client Navigation', () => {
     const menuItem = page.getByTestId('nav-item-menu')
     await expect(menuItem).toBeEnabled()
     await expect(menuItem).toHaveAccessibleName('Меню')
+    // Раздел в бета-версии: плашка видна, но имени пункта не меняет.
+    await expect(page.getByTestId('nav-tag-menu')).toHaveText('бета')
     await menuItem.click()
     await expect(page).toHaveURL(/\/menu/, { timeout: 10000 })
     await expect(page.getByTestId('nav-item-menu')).toHaveAttribute('aria-current', 'page')

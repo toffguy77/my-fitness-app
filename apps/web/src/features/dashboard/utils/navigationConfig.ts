@@ -44,6 +44,8 @@ export const NAVIGATION_ITEMS: NavigationItemConfig[] = [
         label: t('dashboard.navigation.menu'),
         icon: ChefHat,
         href: '/menu',
+        // Раздел в бета-версии: пока бесплатный для всех, позже — за подпиской.
+        tag: t('dashboard.navigation.betaTag'),
     },
     {
         id: 'chat',
