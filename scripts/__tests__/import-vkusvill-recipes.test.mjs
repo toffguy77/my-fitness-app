@@ -10,6 +10,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+    catalogueQueries,
     chooseCandidate,
     compareWithVkusvill,
     deriveYield,
@@ -93,9 +94,11 @@ test('выбор продукта: ближайший по КБЖУ среди �
     assert.equal(pick.verified, true)
 })
 
-test('выбор продукта: калории далеко от ВкусВилла — отказ', () => {
-    const candidates = [{ food_id: 'x', name: 'Масло сливочное лёгкое', kcal_100: 360, protein_100: 1, fat_100: 39, carbs_100: 1 }]
-    assert.ok(chooseCandidate('Масло сливочное', candidates, butterRef).error)
+test('выбор продукта: калории далеко от ВкусВилла — без сверки, судит итоговая сверка блюда', () => {
+    const light = { food_id: 'x', name: 'Масло сливочное лёгкое', kcal_100: 360, protein_100: 1, fat_100: 39, carbs_100: 1 }
+    assert.deepEqual(chooseCandidate('Масло сливочное', [light], butterRef), { candidate: light, verified: false })
+    const other = { food_id: 'z', name: 'Спред растительный', kcal_100: 360, protein_100: 1, fat_100: 39, carbs_100: 1 }
+    assert.ok(chooseCandidate('Масло сливочное', [other], butterRef).error, 'назван иначе — отказ')
 })
 
 test('выбор продукта: без данных ВкусВилла — непроверенный, только правдоподобный', () => {
@@ -153,4 +156,31 @@ test('приёмы пищи: перекус для лёгких закусок �
     assert.deepEqual(mealTypesFor(['lunch'], salad, 600), ['lunch'])
     assert.deepEqual(mealTypesFor(['breakfast'], {}, 280), ['breakfast', 'snack'])
     assert.deepEqual(mealTypesFor([], {}, 500), ['lunch', 'dinner'])
+})
+
+// Случаи из сухого прогона на проде 2026-10-10: всё это отклонялось зря.
+test('сокращения единиц ВкусВилла: щеп., кус., стак.', () => {
+    assert.deepEqual(parseQuantity('1 щеп.', 'Соль'), { grams: 1 })
+    assert.deepEqual(parseQuantity('2 кус.', 'Хлеб белый'), { grams: 60 })
+    assert.deepEqual(parseQuantity('1 стак.', 'Крупа пшённая'), { grams: 200 })
+})
+
+test('запросы к каталогу: без сокращений, затем шире', () => {
+    assert.deepEqual(catalogueQueries('Масло подсолнечное раф.'), ['Масло подсолнечное', 'Масло'])
+    assert.deepEqual(catalogueQueries('Тесто слоёное бездрож.'), ['Тесто слоёное', 'Тесто'])
+    assert.deepEqual(catalogueQueries('Шпинат зам.'), ['Шпинат'])
+    assert.deepEqual(catalogueQueries('Сыр «Моцарелла» (для пиццы)'), ['Сыр Моцарелла', 'Сыр'])
+})
+
+test('карточка ВкусВилла не того товара: берётся продукт с тем же названием', () => {
+    const yolk = { food_id: 'y', name: 'Яичный желток куриный', kcal_100: 352, protein_100: 16.2, fat_100: 31.2, carbs_100: 1 }
+    const pick = chooseCandidate('Желток яичный', [yolk], { kcal: 157, protein: 12.7, fat: 11.5, carbs: 0.7 })
+    assert.equal(pick.candidate.food_id, 'y')
+    assert.equal(pick.verified, false)
+})
+
+test('без данных ВкусВилла и без продукта с тем же названием — отказ', () => {
+    const other = { food_id: 'o', name: 'Курица тикка с лепёшкой', kcal_100: 192, protein_100: 12, fat_100: 8, carbs_100: 18 }
+    assert.ok(chooseCandidate('Тыква', [other], null).error)
+    assert.equal(chooseCandidate('Тыква', [{ ...other, name: 'Тыква мускатная', kcal_100: 26, protein_100: 1, fat_100: 0.1, carbs_100: 6.5 }], null).verified, false)
 })

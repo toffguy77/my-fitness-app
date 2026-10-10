@@ -23,6 +23,7 @@
  */
 import { writeFileSync } from 'node:fs'
 import {
+    catalogueQueries,
     chooseCandidate,
     compareWithVkusvill,
     deriveYield,
@@ -114,8 +115,13 @@ async function api(role, method, path, body) {
 const catalogueCache = new Map()
 async function catalogue(name) {
     if (!catalogueCache.has(name)) {
-        const r = await api('admin', 'GET', `/api/v1/admin/recipes/catalogue-search?q=${encodeURIComponent(name)}`)
-        catalogueCache.set(name, r.data?.items ?? [])
+        const merged = new Map()
+        for (const q of catalogueQueries(name)) {
+            const r = await api('admin', 'GET', `/api/v1/admin/recipes/catalogue-search?q=${encodeURIComponent(q)}`)
+            for (const item of r.data?.items ?? []) if (!merged.has(item.food_id)) merged.set(item.food_id, item)
+            if (merged.size >= 10) break
+        }
+        catalogueCache.set(name, [...merged.values()])
     }
     return catalogueCache.get(name)
 }
@@ -147,9 +153,6 @@ async function analyse(recipe) {
         if (pick.error) return { error: pick.error }
         const q = parseQuantity(ing.quantity, ing.name, pick.candidate.default_weight ?? 0)
         if (q.error) return { error: `«${ing.name}»: ${q.error}` }
-        if (!q.toTaste && !pick.verified && q.grams > 30) {
-            return { error: `«${ing.name}» ${Math.round(q.grams)} г: нет КБЖУ товара ВкусВилла для сверки` }
-        }
         lines.push({ name: ing.name, quantity: ing.quantity, candidate: pick.candidate, toTaste: !!q.toTaste, grams: q.grams ?? null })
     }
     const sum = totals(lines)

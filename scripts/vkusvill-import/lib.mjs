@@ -31,8 +31,8 @@ export const PIECE_WEIGHTS = [
 const MEASURES = [
     [/^(ст\.?\s*л\.?|столов\S*\s+ложк\S*)$/, 15],
     [/^(ч\.?\s*л\.?|чайн\S*\s+ложк\S*)$/, 5],
-    [/^стакан\S*$/, 200],
-    [/^щепот\S*$/, 1],
+    [/^стак\S*$/, 200],
+    [/^щеп\S*$/, 1],
     [/^пуч\S*$/, 30],
     [/^веточ\S*$/, 2],
     [/^лист\S*$/, 1],
@@ -78,7 +78,7 @@ export function parseQuantity(quantity, ingredientName, productDefaultWeight = 0
     if (/^кг\.?$/.test(unit)) return { grams: amount * 1000 }
     if (/^мл\.?$/.test(unit)) return { grams: amount }
     if (/^л\.?$/.test(unit)) return { grams: amount * 1000 }
-    if (/^(шт\S*|штук\S*|зуб\S*|зубчик\S*|головк\S*|)$/.test(unit)) {
+    if (/^(шт\S*|штук\S*|зуб\S*|зубчик\S*|головк\S*|кус\S*|ломт\S*|)$/.test(unit)) {
         const isClove = /^зуб/.test(unit) || /зубч/.test(ingredientName.toLowerCase())
         const weight = isClove ? 5 : /^головк/.test(unit) ? 40 : pieceWeight(ingredientName, productDefaultWeight)
         return weight ? { grams: amount * weight } : { error: `вес штуки «${ingredientName}» неизвестен` }
@@ -114,6 +114,23 @@ export function plausible(c) {
     return Math.abs(atwater - c.kcal_100) <= 0.3 * c.kcal_100 + 25
 }
 
+/**
+ * Запросы к каталогу от точного к широкому: очищенное название (без
+ * сокращений вида «раф.», «зам.», «бездрож.» и скобок), первые два слова,
+ * первое слово. «Масло подсолнечное раф.» целиком не находит ничего.
+ */
+export function catalogueQueries(name) {
+    const clean = name
+        .replace(/\([^)]*\)/g, ' ')
+        .replace(/[«»"]/g, ' ')
+        .split(/\s+/)
+        .filter((w) => w && !/\.$/.test(w))
+        .join(' ')
+        .trim()
+    const words = clean.split(/\s+/).filter(Boolean)
+    return [...new Set([clean, words.slice(0, 2).join(' '), words[0]].filter(Boolean))]
+}
+
 /** Главное слово названия ингредиента — для проверки, что продукт про то же. */
 export function keyword(name) {
     const words = name.toLowerCase().replace(/[«»"().,]/g, ' ').split(/\s+/).filter((w) => w.length >= 3)
@@ -130,7 +147,13 @@ export function chooseCandidate(ingredientName, candidates, reference) {
     const named = candidates.filter((c) => c.name.toLowerCase().includes(key))
     const pool = (named.length ? named : candidates).filter(plausible)
     if (!pool.length) return { error: `нет правдоподобного продукта для «${ingredientName}»` }
-    if (!reference) return { candidate: pool[0], verified: false }
+    // Без сверки по карточке — только продукт, названный так же: проверкой ему
+    // служит итоговая сверка БЖУ всего блюда с ВкусВиллом.
+    if (!reference) {
+        return named.length
+            ? { candidate: pool[0], verified: false }
+            : { error: `«${ingredientName}»: нет ни данных ВкусВилла, ни продукта с тем же названием` }
+    }
     const dist = (c) =>
         Math.abs(c.kcal_100 - reference.kcal) / Math.max(reference.kcal, 50) +
         (0.5 *
@@ -141,6 +164,11 @@ export function chooseCandidate(ingredientName, candidates, reference) {
     const best = [...pool].sort((a, b) => dist(a) - dist(b))[0]
     const kcalOff = Math.abs(best.kcal_100 - reference.kcal)
     if (kcalOff > Math.max(25, 0.35 * reference.kcal)) {
+        // Карточка ВкусВилла в ссылке бывает не тем товаром (желток → яйцо
+        // целиком). Названный так же продукт берётся без сверки — блюдо целиком
+        // всё равно проверяется; иначе отказ.
+        const sameName = named.filter(plausible)
+        if (sameName.length) return { candidate: sameName[0], verified: false }
         return { error: `«${ingredientName}»: ближайший продукт «${best.name}» ${best.kcal_100} ккал против ${reference.kcal} у ВкусВилла` }
     }
     return { candidate: best, verified: true }
