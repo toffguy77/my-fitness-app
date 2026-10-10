@@ -488,6 +488,13 @@ func TestRestrictions(t *testing.T) {
 
 	assert.True(t, errors.Is(f.svc.Hide(f.ctx, f.curator, f.clientA, "00000000-0000-0000-0000-000000000009"),
 		apperrors.ErrNotFound))
+
+	// Черновик по id нельзя ни отклонить, ни скрыть: ответ не должен выдавать,
+	// что такой рецепт существует.
+	draft, _, err := f.svc.Create(f.ctx, f.team, f.input("Неизданный", []string{"lunch"}, f.rice, 100))
+	require.NoError(t, err)
+	assert.True(t, errors.Is(f.svc.Reject(f.ctx, f.clientA, draft.ID), apperrors.ErrNotFound))
+	assert.True(t, errors.Is(f.svc.Hide(f.ctx, f.curator, f.clientA, draft.ID), apperrors.ErrNotFound))
 }
 
 // Сценарии «Удаление клиента» и «Удаление куратора» через настоящее стирание.

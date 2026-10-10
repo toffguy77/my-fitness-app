@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -214,4 +215,22 @@ func TestFetchVkusvillImageRefusesOtherHosts(t *testing.T) {
 		_, err := fetchVkusvillImage(context.Background(), url)
 		assert.True(t, errors.Is(err, ErrUpstream), url)
 	}
+}
+
+// Сторож SSRF: редирект с vkusvill.ru не должен уводить сервер на другой хост.
+func TestImageClientRefusesRedirectOffVkusvill(t *testing.T) {
+	check := imageClient.CheckRedirect
+	req := func(raw string) *http.Request {
+		u, err := url.Parse(raw)
+		require.NoError(t, err)
+		return &http.Request{URL: u}
+	}
+	first := []*http.Request{req("https://img.vkusvill.ru/a.webp")}
+
+	assert.NoError(t, check(req("https://vkusvill.ru/upload/b.webp"), first))
+	assert.Error(t, check(req("http://169.254.169.254/latest/meta-data"), first))
+	assert.Error(t, check(req("https://burcev-dev-api/internal"), first))
+	assert.Error(t, check(req("http://vkusvill.ru/plain-http.webp"), first))
+	assert.Error(t, check(req("https://vkusvill.ru.evil.example/x.webp"), first))
+	assert.Error(t, check(req("https://vkusvill.ru/x.webp"), append(first, first[0], first[0])))
 }

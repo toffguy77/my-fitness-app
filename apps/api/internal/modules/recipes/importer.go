@@ -71,16 +71,34 @@ func acceptBytes(data []byte) (upload.File, error) {
 	return upload.File{Data: clean, Kind: kind, StoredKind: upload.StoredKind(kind), Size: len(clean)}, nil
 }
 
-var imageClient = httpx.NewClient(15 * time.Second)
+// imageClient re-checks the host on every redirect: checking only the first
+// address would let a redirect from vkusvill.ru point our server anywhere.
+var imageClient = func() *http.Client {
+	c := httpx.NewClient(15 * time.Second)
+	c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 3 {
+			return fmt.Errorf("%w: too many photo redirects", ErrUpstream)
+		}
+		if !isVkusvillURL(req.URL) {
+			return fmt.Errorf("%w: photo redirect leaves vkusvill.ru", ErrUpstream)
+		}
+		return nil
+	}
+	return c
+}()
+
+func isVkusvillURL(u *url.URL) bool {
+	host := u.Hostname()
+	return u.Scheme == "https" && (host == "vkusvill.ru" || strings.HasSuffix(host, ".vkusvill.ru"))
+}
 
 // fetchVkusvillImage downloads a photo from VkusVill — and only from there: the
 // address comes from a third party's answer, and following it anywhere would
 // let that answer point our server at our own network.
 func fetchVkusvillImage(ctx context.Context, raw string) ([]byte, error) {
 	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" ||
-		(u.Hostname() != "vkusvill.ru" && !strings.HasSuffix(u.Hostname(), ".vkusvill.ru")) {
-		return nil, fmt.Errorf("%w: photo address %q is not vkusvill.ru", ErrUpstream, raw)
+	if err != nil || !isVkusvillURL(u) {
+		return nil, fmt.Errorf("%w: photo address is not vkusvill.ru", ErrUpstream)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {

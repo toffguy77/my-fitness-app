@@ -941,13 +941,20 @@ func (s *Service) GetAvailable(ctx context.Context, userID int64, recipeID strin
 	return v, nil
 }
 
+// recipeExists answers whether a recipe is one a client could ever be shown:
+// published, with an approved version. Drafts and unpublished recipes answer
+// "not found" — otherwise rejecting or hiding by id would tell a client which
+// unreleased recipes exist.
 func (s *Service) recipeExists(ctx context.Context, recipeID string) error {
 	if !validRecipeID(recipeID) {
 		return errRecipeNotFound
 	}
 	var exists bool
 	if err := s.db.QueryRowContext(ctx,
-		`SELECT EXISTS (SELECT 1 FROM recipes WHERE id = $1)`, recipeID).Scan(&exists); err != nil {
+		`SELECT EXISTS (
+		     SELECT 1 FROM recipes r
+		     JOIN recipe_versions v ON v.recipe_id = r.id AND v.state = 'approved'
+		     WHERE r.id = $1 AND r.status = 'published')`, recipeID).Scan(&exists); err != nil {
 		return err
 	}
 	if !exists {
