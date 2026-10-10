@@ -5,6 +5,7 @@ import Image from 'next/image'
 import type { ArticleCard } from '@/features/content/types'
 import { CATEGORY_LABELS } from '@/features/content/types'
 import { articlePath } from '@/features/content/utils/articlePath'
+import { isTrustedImageUrl } from '@/features/content/utils/coverImage'
 
 export interface FeedCardProps {
     article: ArticleCard
@@ -18,16 +19,6 @@ function formatDate(dateStr?: string): string {
         month: 'short',
         year: 'numeric',
     })
-}
-
-const ALLOWED_IMAGE_HOSTS = ['storage.yandexcloud.net']
-
-function isTrustedImageUrl(url: string): boolean {
-    try {
-        return ALLOWED_IMAGE_HOSTS.includes(new URL(url).hostname)
-    } catch {
-        return false
-    }
 }
 
 export function FeedCard({ article }: FeedCardProps) {

@@ -104,6 +104,37 @@ describe('ArticleForm', () => {
         )
     })
 
+    // Крестик очищал поле, но пустое значение превращалось в «не передавать»,
+    // и сервер оставлял прежнюю обложку: удалить её было нельзя.
+    it('sends an empty cover when the cover of an existing article is removed', () => {
+        render(<ArticleForm article={baseArticle} onSave={onSave} />)
+
+        fireEvent.click(screen.getByLabelText('Удалить обложку'))
+        fireEvent.click(screen.getByText('Сохранить черновик'))
+
+        expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ cover_image_url: '' }))
+    })
+
+    it('sends an empty excerpt when the excerpt of an existing article is cleared', async () => {
+        const user = userEvent.setup()
+        render(<ArticleForm article={baseArticle} onSave={onSave} />)
+
+        await user.clear(screen.getByLabelText('Краткое описание'))
+        fireEvent.click(screen.getByText('Сохранить черновик'))
+
+        expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ excerpt: '' }))
+    })
+
+    it('does not send a cover for a new article that has none', async () => {
+        const user = userEvent.setup()
+        render(<ArticleForm onSave={onSave} />)
+
+        await user.type(screen.getByLabelText(/Заголовок/), 'New Article')
+        fireEvent.click(screen.getByText('Сохранить черновик'))
+
+        expect(onSave.mock.calls[0][0]).not.toHaveProperty('cover_image_url')
+    })
+
     describe('the article address', () => {
         it('is made from the title when left empty', async () => {
             const user = userEvent.setup()
