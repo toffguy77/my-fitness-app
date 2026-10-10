@@ -95,7 +95,7 @@ async function login(role) {
     tokens[role] = (await res.json()).data.token
 }
 async function api(role, method, path, body) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 4; attempt++) {
         if (!tokens[role]) await login(role)
         const res = await fetch(`${BASE}${path}`, {
             method,
@@ -106,11 +106,21 @@ async function api(role, method, path, body) {
             tokens[role] = null // токен живёт 15 минут
             continue
         }
+        if (res.status === 502 || res.status === 503 || res.status === 504) {
+            // Стенд перезапускается (выкатка): ответ — страница прокси, не JSON.
+            await sleep(20000 * (attempt + 1))
+            continue
+        }
         const text = await res.text()
-        const json = text ? JSON.parse(text) : {}
+        let json = {}
+        try {
+            json = text ? JSON.parse(text) : {}
+        } catch {
+            return { status: res.status, error: `не JSON: ${text.slice(0, 60)}` }
+        }
         return { status: res.status, data: json.data, error: json.message }
     }
-    throw new Error(`${method} ${path}: 401 после повторного входа`)
+    return { status: 0, error: `${method} ${path}: не ответил после повторов` }
 }
 
 const catalogueCache = new Map()
