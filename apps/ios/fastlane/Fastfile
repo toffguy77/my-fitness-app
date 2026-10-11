@@ -289,7 +289,7 @@ platform :ios do
           relationships: { app: { data: { type: "apps", id: app.id } } },
         },
       }
-      group = Spaceship::ConnectAPI.client.test_flight_request_client.post("betaGroups", body).to_models.first
+      group = Spaceship::ConnectAPI.client.test_flight_request_client.post("v1/betaGroups", body).to_models.first
       Spaceship::ConnectAPI::User.all.each do |user|
         next if user.email.to_s.empty?
         Spaceship::ConnectAPI::BetaTester.create(
