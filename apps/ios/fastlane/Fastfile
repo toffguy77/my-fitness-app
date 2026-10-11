@@ -39,6 +39,7 @@ def ensure_app_exists
   [
     Spaceship::ConnectAPI::BundleIdCapability::Type::HEALTHKIT,
     Spaceship::ConnectAPI::BundleIdCapability::Type::ASSOCIATED_DOMAINS,
+    Spaceship::ConnectAPI::BundleIdCapability::Type::PUSH_NOTIFICATIONS,
   ].each do |capability|
     next if enabled.include?(capability)
     UI.message("Включаю #{capability} у #{BUNDLE_ID}")

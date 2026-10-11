@@ -28,6 +28,11 @@ struct Endpoint<Response: Decodable & Sendable>: Sendable {
         Endpoint(method: .delete, path: path)
     }
 
+    /// DELETE с телом — так снимаются подписки на уведомления.
+    static func delete<Body: Encodable>(_ path: String, body: Body) -> Endpoint {
+        Endpoint(method: .delete, path: path, body: try? JSONEncoder.api.encode(body))
+    }
+
     /// Загрузка одного файла `multipart/form-data`.
     static func upload(_ path: String, field: String, filename: String, mimeType: String, data: Data) -> Endpoint {
         let boundary = "burcev-\(UUID().uuidString)"

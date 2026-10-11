@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct BurcevApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var session = SessionStore()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -9,7 +10,17 @@ struct BurcevApp: App {
         WindowGroup {
             RootView()
                 .environment(session)
-                .task { await session.restore() }
+                .task {
+                    PushRegistrar.shared.session = session
+                    PushRegistrar.shared.onOpen = { url in
+                        // Ссылки уведомлений — пути сайта. Статью открываем
+                        // в приложении; прочее — приложение уже открыто.
+                        if url.hasPrefix("/content/") {
+                            session.openArticleID = String(url.dropFirst("/content/".count))
+                        }
+                    }
+                    await session.restore()
+                }
                 .onOpenURL { url in Task { await session.handle(url) } }
                 .onChange(of: scenePhase) { _, phase in
                     // В фоне соединение держать незачем — iOS всё равно его
@@ -32,6 +43,10 @@ struct RootView: View {
             .sheet(item: Binding(get: { session.resetToken.map(ResetToken.init) },
                                  set: { if $0 == nil { session.resetToken = nil } })) { token in
                 ResetPasswordView(token: token.id)
+            }
+            .sheet(item: Binding(get: { session.openArticleID.map(ResetToken.init) },
+                                 set: { if $0 == nil { session.openArticleID = nil } })) { article in
+                NavigationStack { ArticleView(articleID: article.id) }
             }
             .alert("Не получилось войти по ссылке", isPresented: Binding(
                 get: { session.linkError != nil }, set: { if !$0 { session.linkError = nil } })) {

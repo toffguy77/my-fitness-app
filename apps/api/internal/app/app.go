@@ -110,6 +110,19 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		PrivateKey: cfg.VAPIDPrivateKey,
 		Subject:    cfg.VAPIDSubject,
 	})
+	// Уведомления на iPhone. Ключ, который не разбирается, — ошибка
+	// настройки: говорим громко, а не делаем вид, что канал работает.
+	if cfg.Features.IOSPush {
+		if err := notificationsSvc.WithAPNS(notifications.APNSConfig{
+			KeyID:      cfg.APNSKeyID,
+			TeamID:     cfg.APNSTeamID,
+			PrivateKey: cfg.APNSPrivateKey,
+			Topic:      cfg.APNSTopic,
+		}); err != nil {
+			log.Error("iOS push is configured but the key is unusable", "error", err)
+			cfg.Features.IOSPush = false
+		}
+	}
 	// The digest needs a way to send and a secret to sign unsubscribe links
 	// with. Without SMTP it is simply not wired, and the job says so.
 	if emailService != nil {

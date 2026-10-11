@@ -40,6 +40,9 @@ type Features struct {
 	SupportBot      bool
 	SupportBridge   bool
 	WebPush         bool
+	// IOSPush — уведомления на iPhone через APNs: ключ .p8 с правом APNs,
+	// его идентификатор и команда Apple.
+	IOSPush bool
 	// Observability, reported for the same reason as the rest: "is it on?" has
 	// to be answerable from outside, or the only way to find out is to break
 	// something and see whether anybody hears.
@@ -73,6 +76,7 @@ func (f Features) Disabled() []string {
 		{"support_bot", f.SupportBot},
 		{"support_bridge", f.SupportBridge},
 		{"web_push", f.WebPush},
+		{"ios_push", f.IOSPush},
 		{"error_reporting", f.ErrorReporting},
 		{"tracing", f.Tracing},
 		{"ads_attribution", f.AdsAttribution},
@@ -98,6 +102,7 @@ func (f Features) Map() map[string]bool {
 		"support_bot":      f.SupportBot,
 		"support_bridge":   f.SupportBridge,
 		"web_push":         f.WebPush,
+		"ios_push":         f.IOSPush,
 		"error_reporting":  f.ErrorReporting,
 		"tracing":          f.Tracing,
 		"ads_attribution":  f.AdsAttribution,
@@ -208,6 +213,14 @@ type Config struct {
 	VAPIDPublicKey  string
 	VAPIDPrivateKey string
 	VAPIDSubject    string
+
+	// APNs подписывает запросы ключом .p8 (ES256). Ключ создаётся в
+	// developer.apple.com → Keys с правом «Apple Push Notifications service».
+	// APNSTopic — bundle id приложения: Apple доставляет только ему.
+	APNSKeyID      string
+	APNSTeamID     string
+	APNSPrivateKey string
+	APNSTopic      string
 
 	TelegramBotToken      string
 	TelegramWebhookSecret string
@@ -409,6 +422,10 @@ func Load() (*Config, error) {
 		VAPIDPublicKey:            getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey:           getEnv("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:              getEnv("VAPID_SUBJECT", ""),
+		APNSKeyID:                 getEnv("APNS_KEY_ID", ""),
+		APNSTeamID:                getEnv("APNS_TEAM_ID", ""),
+		APNSPrivateKey:            getEnv("APNS_PRIVATE_KEY", ""),
+		APNSTopic:                 getEnv("APNS_TOPIC", "team.burcev.app"),
 		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
 		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
@@ -517,6 +534,8 @@ func deriveFeatures(c *Config) Features {
 		// Both halves of the key pair and a contact address: a push service
 		// refuses a request signed without any of them.
 		WebPush: c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != "",
+		// Ключ без идентификатора или команды Apple не принимает.
+		IOSPush: c.APNSKeyID != "" && c.APNSTeamID != "" && c.APNSPrivateKey != "",
 
 		// Обе разом: токен без счётчика некуда загружать, счётчик без токена
 		// не пишется.

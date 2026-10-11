@@ -17,7 +17,12 @@ final class SessionStore {
 
     private(set) var state: State = .restoring {
         didSet {
-            if case .signedIn = state { socket.start() } else { socket.stop() }
+            if case .signedIn = state {
+                socket.start()
+                if case .signedIn = oldValue {} else { Task { await PushRegistrar.shared.enable() } }
+            } else {
+                socket.stop()
+            }
         }
     }
     /// Живое соединение для чата — пока есть сессия и приложение на экране.
@@ -26,6 +31,8 @@ final class SessionStore {
     var resetToken: String?
     /// Ссылка из письма не сработала — показать почему.
     var linkError: String?
+    /// Статья, открытая тапом по уведомлению.
+    var openArticleID: String?
     let api: APIClient
 
     private let keychain: Keychain
@@ -195,6 +202,7 @@ final class SessionStore {
     }
 
     func signOut() async {
+        await PushRegistrar.shared.disable(using: api)
         if let token = keychain.read(Self.refreshKey) {
             // Отзыв на сервере — по возможности; выход на устройстве — всегда.
             _ = try? await api.send(Endpoint<Empty>.post(

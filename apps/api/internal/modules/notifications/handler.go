@@ -26,6 +26,8 @@ type ServiceInterface interface {
 	UpdateDeliveryPreferences(ctx context.Context, userID int64, req UpdateDeliveryPreferencesRequest) error
 	Unsubscribe(ctx context.Context, token string) error
 	Subscribe(ctx context.Context, userID int64, sub PushSubscription) error
+	RegisterDevice(ctx context.Context, userID int64, device APNSDevice) error
+	UnregisterDevice(ctx context.Context, userID int64, token string) error
 	UnsubscribePush(ctx context.Context, userID int64, endpoint string) error
 	PushReady() bool
 	PushPublicKey() string
@@ -402,6 +404,57 @@ func (h *Handler) SubscribePush(c *gin.Context) {
 		return
 	}
 
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// RegisterDevice handles POST /api/v1/notifications/devices — iPhone app.
+func (h *Handler) RegisterDevice(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+	var device APNSDevice
+	if err := c.ShouldBindJSON(&device); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные устройства")
+		return
+	}
+	if err := h.service.RegisterDevice(c.Request.Context(), userID, device); err != nil {
+		switch {
+		case errors.Is(err, apperrors.ErrValidation):
+			response.Fail(c, http.StatusBadRequest, err, "Неверный токен устройства")
+		case errors.Is(err, apperrors.ErrEmailUnavailable):
+			response.Fail(c, http.StatusServiceUnavailable, err, "Уведомления на iPhone в этой среде выключены")
+		default:
+			h.log.Errorw("Failed to store APNs device", "error", err, "user_id", userID)
+			response.InternalError(c, "Не удалось сохранить устройство")
+		}
+		return
+	}
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// UnregisterDevice handles DELETE /api/v1/notifications/devices — on sign-out.
+func (h *Handler) UnregisterDevice(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные устройства")
+		return
+	}
+	if err := h.service.UnregisterDevice(c.Request.Context(), userID, body.Token); err != nil {
+		if errors.Is(err, apperrors.ErrValidation) {
+			response.Fail(c, http.StatusBadRequest, err, "Не указан токен устройства")
+			return
+		}
+		h.log.Errorw("Failed to delete APNs device", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось удалить устройство")
+		return
+	}
 	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
 }
 
