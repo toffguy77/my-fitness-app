@@ -119,6 +119,77 @@ struct CreateEntryRequest: Encodable {
     let portionAmount: Double
     let time: String
     let date: String
+    /// Переопределения — итоги на порцию. Нужны для распознанного по фото
+    /// (`foodId` с приставкой `ai-`: сервер заводит продукт, только если
+    /// пришли все пять) и для правки КБЖУ вручную.
+    var foodName: String?
+    var calories: Double?
+    var protein: Double?
+    var fat: Double?
+    var carbs: Double?
+}
+
+struct UpdateEntryRequest: Encodable {
+    let mealType: MealType
+    let portionType: String
+    let portionAmount: Double
+    let time: String
+    let foodName: String
+    let calories: Double
+    let protein: Double
+    let fat: Double
+    let carbs: Double
+}
+
+struct BarcodeResult: Decodable, Sendable {
+    let found: Bool
+    let food: FoodItem?
+    let message: String?
+}
+
+struct FoodsList: Decodable, Sendable {
+    let foods: [FoodItem]?
+}
+
+struct RecognizedFood: Decodable, Sendable, Identifiable, Equatable {
+    let name: String
+    let confidence: Double
+    let estimated_weight: Double?
+    /// На 100 г.
+    let nutrition: Macros
+
+    var id: String { name }
+}
+
+struct Recognition: Decodable, Sendable {
+    let foods: [RecognizedFood]
+    let composition: [RecognizedFood]?
+    let remaining_recognitions: Int?
+}
+
+struct CreateUserFoodRequest: Encodable {
+    let name: String
+    let brand: String?
+    let calories_per_100: Double
+    let protein_per_100: Double
+    let fat_per_100: Double
+    let carbs_per_100: Double
+}
+
+struct UserFood: Decodable, Sendable {
+    let id: String
+    let name: String
+    let brand: String?
+    let calories_per_100: Double
+    let protein_per_100: Double
+    let fat_per_100: Double
+    let carbs_per_100: Double
+
+    var asFoodItem: FoodItem {
+        FoodItem(id: id, name: name, brand: brand, servingSize: 100, servingUnit: "g",
+                 nutritionPer100: Macros(calories: calories_per_100, protein: protein_per_100,
+                                         fat: fat_per_100, carbs: carbs_per_100))
+    }
 }
 
 struct DeleteResult: Decodable, Sendable {}

@@ -8,6 +8,7 @@ struct Endpoint<Response: Decodable & Sendable>: Sendable {
     var path: String
     var query: [URLQueryItem] = []
     var body: Data?
+    var contentType = "application/json"
     /// Нужен ли `Authorization`. Вход, обновление токена и публичные маршруты — без него.
     var requiresAuth = true
 
@@ -25,6 +26,19 @@ struct Endpoint<Response: Decodable & Sendable>: Sendable {
 
     static func delete(_ path: String) -> Endpoint {
         Endpoint(method: .delete, path: path)
+    }
+
+    /// Загрузка одного файла `multipart/form-data`.
+    static func upload(_ path: String, field: String, filename: String, mimeType: String, data: Data) -> Endpoint {
+        let boundary = "burcev-\(UUID().uuidString)"
+        var body = Data()
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"\(field)\"; filename=\"\(filename)\"\r\n".utf8))
+        body.append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
+        body.append(data)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        return Endpoint(method: .post, path: path, body: body,
+                        contentType: "multipart/form-data; boundary=\(boundary)")
     }
 }
 
@@ -157,7 +171,7 @@ actor APIClient {
         request.setValue(AppConfig.clientHeader, forHTTPHeaderField: "X-Client")
         if let body = endpoint.body {
             request.httpBody = body
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(endpoint.contentType, forHTTPHeaderField: "Content-Type")
         }
         if endpoint.requiresAuth, let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

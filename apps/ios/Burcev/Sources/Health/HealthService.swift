@@ -86,7 +86,7 @@ final class HealthService: @unchecked Sendable { // HKHealthStore потокоб
             predicate: .quantitySample(type: HKQuantityType(id), predicate: dayPredicate(day)),
             options: .cumulativeSum)
         guard let stats = try? await descriptor.result(for: store) else { return nil }
-        return stats?.sumQuantity()?.doubleValue(for: unit)
+        return stats.sumQuantity()?.doubleValue(for: unit)
     }
 
     private func dayPredicate(_ day: Date) -> NSPredicate {
