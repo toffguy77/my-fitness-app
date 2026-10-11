@@ -4,7 +4,7 @@ name: iOS build status
 # сборка в TestFlight не появилась. Запуск тегом ios-status-*.
 on:
   push:
-    tags: ['ios-status-*']
+    tags: ['ios-status-*', 'ios-distribute-*']
   workflow_dispatch: {}
 
 permissions:
@@ -32,7 +32,9 @@ jobs:
         env:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-        run: fastlane status
+        run: |
+          if [[ "$GITHUB_REF_NAME" == ios-distribute-* ]]; then fastlane distribute_internal; fi
+          fastlane status
       - name: Clean up secrets
         if: always()
         run: rm -f fastlane/asc_key.p8

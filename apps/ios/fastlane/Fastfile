@@ -267,4 +267,17 @@ platform :ios do
     end
     UI.message("Сборок не найдено") if builds.empty?
   end
+
+  desc "Выдать последнюю обработанную сборку всем внутренним группам TestFlight"
+  lane :distribute_internal do
+    asc_api_key
+    app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
+    build = Spaceship::ConnectAPI::Build.all(app_id: app.id, sort: "-uploadedDate", limit: 5)
+                                       .find { |b| b.processing_state == "VALID" }
+    UI.user_error!("Нет обработанных сборок") unless build
+    groups = app.get_beta_groups.select(&:is_internal_group)
+    UI.user_error!("Нет внутренних групп TestFlight") if groups.empty?
+    build.add_beta_groups(beta_groups: groups)
+    UI.success("#{build.app_version} (#{build.version}) выдана группам: #{groups.map(&:name).join(', ')}")
+  end
 end
