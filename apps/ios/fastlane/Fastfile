@@ -159,6 +159,19 @@ platform :ios do
     entitlements
     validate
     upload_direct
+    upload_symbols
+  end
+
+  desc "dSYM в Sentry — без них стеки падений в отчётах нечитаемы"
+  lane :upload_symbols do
+    if ENV["SENTRY_AUTH_TOKEN"].to_s.empty?
+      UI.important("SENTRY_AUTH_TOKEN не задан — dSYM в Sentry не загружены")
+      next
+    end
+    Dir.chdir("..") do
+      sh("sentry-cli", "debug-files", "upload", "--org", "burcev-team", "--project", "apple-ios",
+         "--include-sources", "build/ipa/Burcev.app.dSYM.zip")
+    end
   end
 
   desc "Загрузка altool с отслеживанием доставки: что Apple делает со сборкой"
