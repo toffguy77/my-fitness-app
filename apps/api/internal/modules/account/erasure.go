@@ -83,6 +83,8 @@ var strategies = []TableStrategy{
 	// сама привязка позволила бы войти обратно в удалённый аккаунт.
 	{Table: "external_identities", Column: "user_id", Strategy: StrategyDelete, Reason: "the link that would sign them back in, plus their name and address at the provider"},
 	{Table: "push_subscriptions", Column: "user_id", Strategy: StrategyDelete, Reason: "browser endpoints and keys belonging to them"},
+	{Table: "oauth_app_handoffs", Column: "user_id", Strategy: StrategyDelete, Reason: "two-minute sign-in codes for the iOS app"},
+	{Table: "apns_devices", Column: "user_id", Strategy: StrategyDelete, Reason: "iPhone push tokens belonging to them"},
 	{Table: "notification_preferences", Column: "user_id", Strategy: StrategyDelete, Reason: "their channel choices"},
 	{Table: "notification_deliveries", Column: "user_id", Strategy: StrategyDelete, Reason: "what was sent to them and when"},
 	{Table: "ws_tickets", Column: "user_id", Strategy: StrategyDelete, Reason: "short-lived socket tickets — sessions by another name"},

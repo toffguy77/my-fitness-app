@@ -1,0 +1,61 @@
+name: iOS App Store page
+
+# Снимает скриншоты в демо-режиме и загружает тексты и скриншоты на страницу
+# приложения в App Store Connect. На ревью не отправляет.
+#
+# Запуск — тегом `ios-meta-*` на любом коммите или вручную (ручной запуск
+# GitHub показывает, только когда файл уже есть в main).
+on:
+  push:
+    tags: ['ios-meta-*']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  metadata:
+    name: App Store page
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+
+      - name: Install fastlane and XcodeGen
+        run: brew install fastlane xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Take screenshots
+        run: scripts/screenshots.sh
+
+      - name: Upload screenshots for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-store-screenshots
+          path: apps/ios/fastlane/screenshots
+
+      - name: Decode App Store Connect API key
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          printf '%s' "$APP_STORE_CONNECT_API_KEY" | base64 --decode > fastlane/asc_key.p8
+          echo "ASC_KEY_PATH=$PWD/fastlane/asc_key.p8" >> "$GITHUB_ENV"
+
+      - name: Upload metadata and screenshots
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: fastlane metadata
+
+      - name: Clean up secrets
+        if: always()
+        run: rm -f fastlane/asc_key.p8

@@ -202,6 +202,10 @@ services:
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
       - VAPID_SUBJECT=${VAPID_SUBJECT:-}
+      - APNS_KEY_ID=${APNS_KEY_ID:-}
+      - APNS_TEAM_ID=${APNS_TEAM_ID:-}
+      - APNS_PRIVATE_KEY=${APNS_PRIVATE_KEY:-}
+      - APNS_TOPIC=${APNS_TOPIC:-team.burcev.app}
       - APP_VERSION=${APP_VERSION:-dev}
       # Наблюдаемость. Обе выключаются отсутствием значения — см. .env.example.
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}

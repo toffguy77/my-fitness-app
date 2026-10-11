@@ -237,7 +237,7 @@ func (s *Service) planDelivery(ctx context.Context, tx *sql.Tx, notification *No
 			continue
 		}
 		if channel == ChannelPush {
-			if !s.PushReady() {
+			if !s.anyPushReady() {
 				// No key pair in this environment. Recorded as skipped rather
 				// than left pending, so the sender's queue does not fill with
 				// work nothing can do.

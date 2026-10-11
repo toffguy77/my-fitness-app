@@ -1,0 +1,66 @@
+name: iOS TestFlight
+
+# Собирает подписанную сборку и загружает её в TestFlight без отправки на
+# ревью. Номер сборки — номер прогона.
+#
+# Запуск — тегом `ios-v*` на любом коммите или вручную. Ручной запуск GitHub
+# показывает, только когда файл уже есть в main; тег работает с любой ветки,
+# потому что workflow берётся из самого коммита.
+on:
+  push:
+    tags: ['ios-v*']
+  workflow_dispatch:
+    inputs:
+      changelog:
+        description: 'Что нового для тестировщиков'
+        required: false
+        default: 'Новая сборка'
+
+permissions:
+  contents: read
+
+jobs:
+  beta:
+    name: TestFlight
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+
+      - name: Install fastlane and XcodeGen
+        run: brew install fastlane xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Decode App Store Connect API key
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          printf '%s' "$APP_STORE_CONNECT_API_KEY" | base64 --decode > fastlane/asc_key.p8
+          echo "ASC_KEY_PATH=$PWD/fastlane/asc_key.p8" >> "$GITHUB_ENV"
+
+      - name: Decode distribution certificate
+        env:
+          DISTRIBUTION_CERTIFICATE_P12: ${{ secrets.DISTRIBUTION_CERTIFICATE_P12 }}
+        run: printf '%s' "$DISTRIBUTION_CERTIFICATE_P12" | base64 --decode > fastlane/certificate.p12
+
+      - name: Build and upload to TestFlight
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          CHANGELOG: ${{ inputs.changelog || 'Новая сборка' }}
+        run: fastlane ci_beta
+
+      - name: Clean up secrets
+        if: always()
+        run: rm -f fastlane/asc_key.p8 fastlane/certificate.p12

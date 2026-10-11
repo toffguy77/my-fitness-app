@@ -5,6 +5,9 @@ INDEX analytics_events idx_analytics_events_user btree (user_id, occurred_at) WH
 INDEX analytics_events idx_analytics_events_visitor btree (visitor_id, occurred_at)
 INDEX analytics_identities analytics_identities_pkey btree (visitor_id)
 INDEX analytics_identities idx_analytics_identities_user btree (user_id)
+INDEX apns_devices apns_devices_pkey btree (id)
+INDEX apns_devices apns_devices_token_key btree (token)
+INDEX apns_devices idx_apns_devices_user_id btree (user_id)
 INDEX article_audience article_audience_pkey btree (article_id, client_id)
 INDEX article_audience idx_article_audience_client btree (client_id)
 INDEX articles articles_pkey btree (id)
@@ -117,6 +120,8 @@ INDEX nutrient_recommendations nutrient_recommendations_pkey btree (id)
 INDEX nutrients idx_nutrients_group btree (nutrient_group)
 INDEX nutrients idx_nutrients_product btree (product_id)
 INDEX nutrients nutrients_pkey btree (id)
+INDEX oauth_app_handoffs idx_oauth_app_handoffs_user_id btree (user_id)
+INDEX oauth_app_handoffs oauth_app_handoffs_pkey btree (code_hash)
 INDEX oauth_pending_links idx_oauth_pending_links_expires_at btree (expires_at)
 INDEX oauth_pending_links oauth_pending_links_pkey btree (id)
 INDEX password_reset_attempts idx_reset_attempts_email_time btree (email, attempted_at DESC)
@@ -239,6 +244,15 @@ analytics_events.visitor_id uuid NOT NULL
 analytics_identities.linked_at timestamp with time zone NOT NULL DEFAULT now()
 analytics_identities.user_id bigint NOT NULL
 analytics_identities.visitor_id uuid NOT NULL
+apns_devices.app_version text
+apns_devices.created_at timestamp with time zone NOT NULL DEFAULT now()
+apns_devices.environment text NOT NULL
+apns_devices.failures integer NOT NULL DEFAULT 0
+apns_devices.id bigint NOT NULL DEFAULT nextval('apns_devices_id_seq')
+apns_devices.installation_id text NOT NULL
+apns_devices.last_used_at timestamp with time zone
+apns_devices.token text NOT NULL
+apns_devices.user_id bigint NOT NULL
 article_audience.article_id uuid NOT NULL
 article_audience.client_id bigint NOT NULL
 articles.audience_scope USER-DEFINED NOT NULL DEFAULT 'my_clients'_type
@@ -612,6 +626,11 @@ nutrients.nutrient_group text NOT NULL
 nutrients.nutrient_name text NOT NULL
 nutrients.product_id bigint NOT NULL
 nutrients.unit text NOT NULL
+oauth_app_handoffs.challenge text NOT NULL
+oauth_app_handoffs.code_hash text NOT NULL
+oauth_app_handoffs.created_at timestamp with time zone NOT NULL DEFAULT now()
+oauth_app_handoffs.expires_at timestamp with time zone NOT NULL
+oauth_app_handoffs.user_id bigint NOT NULL
 oauth_pending_links.avatar_url text
 oauth_pending_links.created_at timestamp with time zone NOT NULL DEFAULT now()
 oauth_pending_links.email text

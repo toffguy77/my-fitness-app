@@ -71,6 +71,7 @@ Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
 Follows a **handler/service pattern** organized by domain module.
 
 - `cmd/server/main.go` — Application entry point
+- `internal/app/` — Wires every service, handler and job (`app.Build`) and the external clients (`app.NewExternal`). `main()` only loads config, connects, migrates and runs; tests build the production router through `app.Build`.
 - `internal/modules/` — Domain modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **logs**, **notifications**, **nutrition-calc**, **users**
   - Each module has: `handler.go` (HTTP handlers), `service.go` (business logic), `*_test.go`
 - `internal/router/` — HTTP route registration, one file per domain. **All routes are registered here, not in `main.go`.**
@@ -277,7 +278,8 @@ canonical на себя, полный Open Graph, бренд в заголовк
 - **Переобход — шаг выкатки, а не просьба к владельцу.** Кто ведёт релиз, тот
   после `/ready` с новой версией прогоняет `docs/seo/check-prod.sh` и отправляет
   адреса из раздела «Поиск» на переобход (`webmaster_recrawl`, квота 150 в
-  сутки). Приватное и служебное не отправлять. Валидатор микроразметки API не
+  сутки) — вместе со статьями, изменёнными в админке после предыдущей выкатки
+  (`docs/seo/changed-since.sh`). Приватное и служебное не отправлять. Валидатор микроразметки API не
   имеет — его просят прогнать владельца Вебмастера.
 
 ## Служебные учётки

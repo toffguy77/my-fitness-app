@@ -123,8 +123,8 @@ type pushPayload struct {
 // is gone is deleted on the spot: keeping it would mean retrying an address
 // that will never work again.
 func (s *Service) SendDuePushes(ctx context.Context) (int, error) {
-	if !s.PushReady() {
-		return 0, fmt.Errorf("web push: %w", apperrors.ErrEmailUnavailable)
+	if !s.anyPushReady() {
+		return 0, fmt.Errorf("push: %w", apperrors.ErrEmailUnavailable)
 	}
 
 	due, err := s.duePushes(ctx)
@@ -134,11 +134,21 @@ func (s *Service) SendDuePushes(ctx context.Context) (int, error) {
 
 	delivered := 0
 	for _, item := range due {
-		subscriptions, err := s.subscriptionsFor(ctx, item.userID)
-		if err != nil {
-			return delivered, err
+		// Browsers and iPhones are one channel to the person: a notification is
+		// delivered when any of their devices accepted it.
+		subscriptions := []PushSubscription{}
+		if s.PushReady() {
+			if subscriptions, err = s.subscriptionsFor(ctx, item.userID); err != nil {
+				return delivered, err
+			}
 		}
-		if len(subscriptions) == 0 {
+		devices := []APNSDevice{}
+		if s.APNSReady() {
+			if devices, err = s.devicesFor(ctx, item.userID); err != nil {
+				return delivered, err
+			}
+		}
+		if len(subscriptions) == 0 && len(devices) == 0 {
 			// Nobody to reach. Not a failure: the person turned push on once
 			// and has since cleared their browser.
 			if err := s.markDeliveries(ctx, []int64{item.deliveryID}, StatusSkipped, ""); err != nil {
@@ -167,6 +177,13 @@ func (s *Service) SendDuePushes(ctx context.Context) (int, error) {
 				continue
 			}
 			reached = true
+		}
+		if len(devices) > 0 {
+			ok, err := s.sendToDevices(ctx, devices, item)
+			reached = reached || ok
+			if err != nil {
+				lastErr = err
+			}
 		}
 
 		if reached {
@@ -322,7 +339,19 @@ func (s *Service) PurgeDeadSubscriptions(ctx context.Context, unusedFor time.Dur
 	if err != nil {
 		return 0, fmt.Errorf("purge push subscriptions: %w", err)
 	}
-	return result.RowsAffected()
+	browsers, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	// iPhones the same way. Not by age, though: a phone that simply had
+	// nothing to receive for months is still a phone that wants pushes, and
+	// Apple says plainly when a token is dead.
+	result, err = s.db.ExecContext(ctx, `DELETE FROM apns_devices WHERE failures >= $1`, maxPushFailures)
+	if err != nil {
+		return browsers, fmt.Errorf("purge APNs devices: %w", err)
+	}
+	phones, err := result.RowsAffected()
+	return browsers + phones, err
 }
 
 func nullIfEmpty(value string) interface{} {

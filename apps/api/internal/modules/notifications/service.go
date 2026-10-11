@@ -35,6 +35,8 @@ type Service struct {
 	// pushClient refuses to connect to anything inside the network, whatever
 	// the endpoint resolves to at the moment of connection.
 	pushClient *http.Client
+	// apns sends to iPhones; nil when no key is configured.
+	apns *apnsSender
 	// telegram может быть nil: без привязок доставлять некуда.
 	telegram TelegramDelivery
 }
