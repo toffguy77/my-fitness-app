@@ -5,6 +5,8 @@ struct ClientsView: View {
     @State private var content: Loadable<[ClientCard]> = .loading
     @State private var search = ""
     @State private var path: [Int64] = []
+    @State private var analytics: CuratorAnalytics?
+    @State private var attention: [AttentionItem] = []
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -18,9 +20,16 @@ struct ClientsView: View {
                     ContentUnavailableView("Клиентов пока нет", systemImage: "person.2",
                                            description: Text("Клиенты появятся, когда их за вами закрепят."))
                 case let .loaded(clients):
-                    List(filtered(clients)) { client in
-                        NavigationLink(value: client.id) {
-                            ClientRow(client: client)
+                    List {
+                        if search.isEmpty {
+                            CuratorHubSection(analytics: analytics, attention: attention) { path.append($0) }
+                        }
+                        Section("Все клиенты") {
+                            ForEach(filtered(clients)) { client in
+                                NavigationLink(value: client.id) {
+                                    ClientRow(client: client)
+                                }
+                            }
                         }
                     }
                     .searchable(text: $search, prompt: "Имя или почта")
@@ -45,7 +54,11 @@ struct ClientsView: View {
 
     private func load() async {
         do {
+            async let hub = try? session.api.send(Endpoint<CuratorAnalytics>.get("/api/v1/curator/analytics"))
+            async let attention = try? session.api.send(Endpoint<[AttentionItem]>.get("/api/v1/curator/attention"))
             let clients = try await session.api.send(Endpoint<[ClientCard]>.get("/api/v1/curator/clients"))
+            self.analytics = await hub
+            self.attention = await attention ?? []
             content = .loaded(clients)
             if Demo.screen == .client, path.isEmpty, let first = clients.first {
                 path = [first.id]
@@ -107,38 +120,74 @@ struct ClientDetailView: View {
     @Environment(SessionStore.self) private var session
     let clientID: Int64
 
+    enum Tab: String, CaseIterable, Identifiable {
+        case overview = "Обзор", plan = "План", tasks = "Задачи", reports = "Отчёты"
+        var id: String { rawValue }
+    }
+
+    @State private var tab: Tab = .overview
     @State private var content: Loadable<ClientDetail> = .loading
+    @State private var editingWeight = false
+    @State private var editingWater = false
 
     var body: some View {
-        Group {
-            switch content {
-            case .loading:
-                ProgressView()
-            case let .failed(message):
-                ErrorRetryView(message: message) { Task { await load() } }
-            case let .loaded(detail):
-                List {
-                    Section {
-                        if let email = detail.email {
-                            LabeledContent("Почта", value: email)
-                        }
-                        if let weight = detail.last_weight {
-                            LabeledContent("Вес", value: "\(weight.formatted(.number.precision(.fractionLength(1)))) кг")
-                        }
-                        if let target = detail.target_weight {
-                            LabeledContent("Цель", value: "\(target.formatted(.number.precision(.fractionLength(1)))) кг")
-                        }
-                    }
-                    ForEach(detail.days) { day in
-                        DaySection(day: day)
-                    }
-                }
-                .navigationTitle(detail.name.isEmpty ? "Клиент" : detail.name)
+        VStack(spacing: 0) {
+            Picker("Раздел", selection: $tab) { ForEach(Tab.allCases) { Text($0.rawValue).tag($0) } }
+                .pickerStyle(.segmented)
+                .padding([.horizontal, .top])
+            switch tab {
+            case .overview: overview
+            case .plan: ClientPlanView(clientID: clientID)
+            case .tasks: ClientTasksView(clientID: clientID)
+            case .reports: ClientReportsView(clientID: clientID)
             }
         }
+        .navigationTitle(content.value.map { $0.name.isEmpty ? "Клиент" : $0.name } ?? "Клиент")
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await load() }
         .task { await load() }
+    }
+
+    @ViewBuilder
+    private var overview: some View {
+        switch content {
+        case .loading:
+            ProgressView().frame(maxHeight: .infinity)
+        case let .failed(message):
+            ErrorRetryView(message: message) { Task { await load() } }
+        case let .loaded(detail):
+            List {
+                Section {
+                    if let email = detail.email {
+                        LabeledContent("Почта", value: email)
+                    }
+                    if let weight = detail.last_weight {
+                        LabeledContent("Вес", value: "\(weight.formatted(.number.precision(.fractionLength(1)))) кг")
+                    }
+                    Button { editingWeight = true } label: {
+                        LabeledContent("Целевой вес", value: detail.target_weight.map { "\($0.formatted(.number.precision(.fractionLength(1)))) кг" } ?? "Задать")
+                    }
+                    .foregroundStyle(.primary)
+                    Button { editingWater = true } label: {
+                        LabeledContent("Норма воды", value: detail.water_goal.map { "\($0) стаканов" } ?? "Задать")
+                    }
+                    .foregroundStyle(.primary)
+                }
+                ForEach(detail.days) { day in
+                    DaySection(day: day)
+                }
+            }
+            .refreshable { await load() }
+            .alert("Целевой вес, кг", isPresented: $editingWeight) {
+                NumberPrompt(initial: detail.target_weight) { value in
+                    Task { await put("target-weight", TargetWeightRequest(target_weight: value)) }
+                }
+            }
+            .alert("Норма воды, стаканов", isPresented: $editingWater) {
+                NumberPrompt(initial: detail.water_goal.map(Double.init)) { value in
+                    Task { await put("water-goal", WaterGoalRequest(water_goal: value.map { Int($0) })) }
+                }
+            }
+        }
     }
 
     private func load() async {
@@ -150,6 +199,28 @@ struct ClientDetailView: View {
         } catch {
             if content.value == nil { content = .failed(error.userMessage) }
         }
+    }
+
+    private func put<Body: Encodable>(_ path: String, _ body: Body) async {
+        _ = try? await session.api.send(Endpoint<Empty>.put("/api/v1/curator/clients/\(clientID)/\(path)", body: body))
+        await load()
+    }
+}
+
+/// Поле числа в системном алерте: пусто — убрать значение.
+private struct NumberPrompt: View {
+    let initial: Double?
+    let onSave: (Double?) -> Void
+    @State private var text = ""
+
+    var body: some View {
+        TextField("Пусто — убрать", text: $text)
+            .keyboardType(.decimalPad)
+            .onAppear { text = initial.map { $0.formatted(.number.precision(.fractionLength(0...1))) } ?? "" }
+        Button("Сохранить") {
+            onSave(Double(text.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)))
+        }
+        Button("Отмена", role: .cancel) {}
     }
 }
 

@@ -193,3 +193,26 @@ actor Counter {
     private(set) var value = 0
     func increment() { value += 1 }
 }
+
+final class TrustedMediaTests: XCTestCase {
+    func testChatImageFromStorageIsLoaded() {
+        let message = try! JSONDecoder.api.decode(Message.self, from: Data(#"{"id":"m","sender_id":1,"type":"image","content":"https://storage.yandexcloud.net/burcev-chat/a.jpg","created_at":"2026-10-11T08:00:00Z"}"#.utf8))
+        XCTAssertEqual(message.imageURL?.host, "storage.yandexcloud.net")
+    }
+
+    /// Собеседник может вписать в сообщение любой адрес — приложение по нему не ходит.
+    func testChatImageFromForeignHostIsNotLoaded() {
+        for raw in ["https://tracker.example.com/pixel.png", "http://storage.yandexcloud.net/a.jpg",
+                    "https://storage.yandexcloud.net.evil.com/a.jpg", "file:///etc/passwd"] {
+            let json = #"{"id":"m","sender_id":1,"type":"image","content":"\#(raw)","created_at":"2026-10-11T08:00:00Z"}"#
+            let message = try! JSONDecoder.api.decode(Message.self, from: Data(json.utf8))
+            XCTAssertNil(message.imageURL, raw)
+        }
+    }
+
+    func testMarkdownSkipsForeignImages() {
+        let blocks = MarkdownView.parse("![a](https://tracker.example.com/p.png)\n\n![b](https://storage.yandexcloud.net/c/x.png)")
+        let images = blocks.compactMap { if case let .image(url, _, _) = $0 { return url } else { return nil } }
+        XCTAssertEqual(images.map(\.host), ["storage.yandexcloud.net"])
+    }
+}

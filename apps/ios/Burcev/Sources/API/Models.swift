@@ -301,10 +301,12 @@ struct Message: Decodable, Sendable, Identifiable, Equatable {
     var attachments: [Attachment]? = nil
 
     /// Картинка сообщения: вложение или, как отправляет сайт, ссылка в тексте.
+    /// Ссылку пишет собеседник — поэтому только из нашего хранилища, иначе
+    /// приложение само сходило бы по любому присланному адресу.
     var imageURL: URL? {
         guard type == "image" else { return nil }
-        if let first = attachments?.first, let url = URL(string: first.file_url) { return url }
-        return content.flatMap(URL.init(string:))
+        if let first = attachments?.first, let url = TrustedMedia.url(first.file_url) { return url }
+        return content.flatMap(TrustedMedia.url)
     }
 
     var createdAt: Date? { APIDates.timestamp(created_at) }
@@ -371,6 +373,7 @@ struct ClientDetail: Decodable, Sendable, Equatable {
     let email: String?
     let last_weight: Double?
     let target_weight: Double?
+    let water_goal: Int?
     let days: [ClientDay]
 }
 
@@ -509,3 +512,23 @@ struct DeletionRequest: Encodable {
 }
 
 struct CodeSent: Decodable, Sendable {}
+
+/// Откуда приложение само, без действия человека, загружает картинки.
+///
+/// Сервер кладёт файлы в Object Storage и отдаёт публичные ссылки вида
+/// `https://storage.yandexcloud.net/<бакет>/…`. Ссылку с другого адреса не
+/// грузим: её мог вписать собеседник или автор статьи, и тогда запрос уходил
+/// бы на чужой сервер с адресом и временем открытия.
+enum TrustedMedia {
+    static let hosts: Set<String> = ["storage.yandexcloud.net"]
+
+    static func url(_ raw: String) -> URL? {
+        guard let url = URL(string: raw), isTrusted(url) else { return nil }
+        return url
+    }
+
+    static func isTrusted(_ url: URL) -> Bool {
+        guard url.scheme == "https", let host = url.host?.lowercased() else { return false }
+        return hosts.contains(host) || host == AppConfig.apiBaseURL.host?.lowercased()
+    }
+}

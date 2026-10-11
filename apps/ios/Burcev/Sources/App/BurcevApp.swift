@@ -99,6 +99,7 @@ struct CuratorTabs: View {
             ClientsView().tabItem { Label("Клиенты", systemImage: "person.2") }.tag(Demo.Screen.clients)
             ConversationsView().tabItem { Label("Чат", systemImage: "bubble.left.and.bubble.right") }
                 .badge(session.socket.unreadTotal).tag(Demo.Screen.chat)
+            LeadsAndSupportView().tabItem { Label("Заявки", systemImage: "tray") }.tag(Demo.Screen.leads)
             ProfileView().tabItem { Label("Ещё", systemImage: "ellipsis.circle") }.tag(Demo.Screen.profile)
         }
     }

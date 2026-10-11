@@ -349,8 +349,13 @@ struct MarkdownView: View {
         for raw in markdown.components(separatedBy: .newlines) {
             let line = raw.trimmingCharacters(in: .whitespaces)
             if line.isEmpty { flush(); continue }
-            if let match = line.firstMatch(of: /^!\[(.*?)\]\((\S+?)\)$/), let url = URL(string: String(match.2)) {
-                flush(); blocks.append(.image(url, String(match.1), blocks.count)); continue
+            if let match = line.firstMatch(of: /^!\[(.*?)\]\((\S+?)\)$/) {
+                flush()
+                // Картинку с чужого адреса не грузим и разметку не показываем.
+                if let url = TrustedMedia.url(String(match.2)) {
+                    blocks.append(.image(url, String(match.1), blocks.count))
+                }
+                continue
             }
             if line.hasPrefix("#") {
                 flush()
