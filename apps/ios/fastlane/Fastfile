@@ -280,8 +280,12 @@ platform :ios do
       # Внутренняя группа с доступом ко всем сборкам: новые сборки приходят
       # в неё сами. Внутренние тестировщики — пользователи App Store Connect.
       UI.message("Создаю внутреннюю группу «Команда»")
-      group = app.create_beta_group(group_name: "Команда", is_internal_group: true,
-                                    has_access_to_all_builds: true)
+      # Обёртка spaceship шлёт и publicLinkLimitEnabled, который Apple для
+      # внутренней группы отвергает, — поэтому запрос напрямую.
+      group = Spaceship::ConnectAPI.create_beta_group(
+        app_id: app.id,
+        attributes: { name: "Команда", isInternalGroup: true, hasAccessToAllBuilds: true },
+      ).first
       Spaceship::ConnectAPI::User.all.each do |user|
         next if user.email.to_s.empty?
         Spaceship::ConnectAPI::BetaTester.create(
