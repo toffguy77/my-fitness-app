@@ -3,9 +3,10 @@ import SwiftUI
 struct ConversationsView: View {
     @Environment(SessionStore.self) private var session
     @State private var content: Loadable<[Conversation]> = .loading
+    @State private var path: [Conversation] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 switch content {
                 case .loading:
@@ -36,7 +37,11 @@ struct ConversationsView: View {
 
     private func load() async {
         do {
-            content = .loaded(try await session.api.send(Endpoint<[Conversation]>.get("/api/v1/conversations")))
+            let conversations = try await session.api.send(Endpoint<[Conversation]>.get("/api/v1/conversations"))
+            content = .loaded(conversations)
+            if Demo.screen == .chat, path.isEmpty, let first = conversations.first {
+                path = [first]
+            }
         } catch is CancellationError {
             return
         } catch {

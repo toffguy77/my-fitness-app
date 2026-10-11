@@ -8,3 +8,6 @@ fastlane/*.p8
 fastlane/*.p12
 fastlane/*.mobileprovision
 *.xcuserstate
+
+# Скриншоты снимает scripts/screenshots.sh в CI.
+fastlane/screenshots/

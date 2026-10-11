@@ -4,9 +4,10 @@ struct ClientsView: View {
     @Environment(SessionStore.self) private var session
     @State private var content: Loadable<[ClientCard]> = .loading
     @State private var search = ""
+    @State private var path: [Int64] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 switch content {
                 case .loading:
@@ -44,7 +45,11 @@ struct ClientsView: View {
 
     private func load() async {
         do {
-            content = .loaded(try await session.api.send(Endpoint<[ClientCard]>.get("/api/v1/curator/clients")))
+            let clients = try await session.api.send(Endpoint<[ClientCard]>.get("/api/v1/curator/clients"))
+            content = .loaded(clients)
+            if Demo.screen == .client, path.isEmpty, let first = clients.first {
+                path = [first.id]
+            }
         } catch is CancellationError {
             return
         } catch {

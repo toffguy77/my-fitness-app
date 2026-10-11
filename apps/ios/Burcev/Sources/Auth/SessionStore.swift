@@ -21,9 +21,16 @@ final class SessionStore {
     private let keychain: Keychain
     private static let refreshKey = "refresh_token"
 
-    init(api: APIClient = APIClient(), keychain: Keychain = Keychain()) {
+    init(api: APIClient = SessionStore.defaultClient(), keychain: Keychain = Keychain()) {
         self.api = api
         self.keychain = keychain
+    }
+
+    nonisolated static func defaultClient() -> APIClient {
+        #if DEBUG
+        if Demo.isActive { return APIClient(transport: DemoTransport()) }
+        #endif
+        return APIClient()
     }
 
     var user: SessionUser? {
@@ -33,6 +40,12 @@ final class SessionStore {
 
     /// При запуске: есть сохранённая сессия — обменять её на токен.
     func restore() async {
+        if let role = Demo.role {
+            let id: Int64 = role == .coordinator ? 2 : 1
+            state = .signedIn(SessionUser(id: id, email: "demo@burcev.team",
+                                          name: role == .coordinator ? "Мария" : "Анна", role: role))
+            return
+        }
         await installRefresher()
         guard keychain.read(Self.refreshKey) != nil else {
             state = .signedOut

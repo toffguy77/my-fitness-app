@@ -96,4 +96,19 @@ platform :ios do
       changelog: ENV["CHANGELOG"] || "Новая сборка",
     )
   end
+
+  desc "Тексты и скриншоты страницы в App Store без отправки на ревью"
+  lane :metadata do
+    deliver(
+      api_key: asc_api_key,
+      app_identifier: BUNDLE_ID,
+      app_version: ENV["APP_VERSION"] || "0.1.0",
+      skip_binary_upload: true,
+      overwrite_screenshots: true,
+      submit_for_review: false,
+      run_precheck_before_submit: false,
+      precheck_include_in_app_purchases: false,
+      force: true,
+    )
+  end
 end
