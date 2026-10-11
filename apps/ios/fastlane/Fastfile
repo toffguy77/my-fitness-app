@@ -134,16 +134,27 @@ platform :ios do
     build
     entitlements
     validate
-    upload_to_testflight(
-      api_key: asc_api_key,
-      ipa: "build/ipa/Burcev.ipa",
-      skip_waiting_for_build_processing: true,
-      # Сборку, отвергнутую при приёме, Apple не показывает вовсе — без
-      # предела fastlane ждал её до лимита задачи.
-      wait_processing_timeout_duration: 600,
-      distribute_external: false,
-      changelog: ENV["CHANGELOG"] || "Новая сборка",
-    )
+    upload_direct
+  end
+
+  desc "Загрузка altool с отслеживанием доставки: что Apple делает со сборкой"
+  lane :upload_direct do
+    # upload_to_testflight сообщал «загружено», а сборка не появлялась, и
+    # причины не было видно. altool печатает номер доставки, а по нему
+    # --build-status показывает состояние обработки и её ошибки.
+    auth = ["--apiKey", ENV["APP_STORE_CONNECT_KEY_ID"], "--apiIssuer", ENV["APP_STORE_CONNECT_ISSUER_ID"]]
+    output = Dir.chdir("..") do
+      sh("xcrun", "altool", "--upload-app", "-f", "build/ipa/Burcev.ipa", "-t", "ios", *auth, "--output-format", "normal")
+    end
+    delivery = output[/Delivery UUID:\s*([0-9a-fA-F-]{36})/, 1] || output[/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/, 1]
+    UI.user_error!("altool не вернул номер доставки") unless delivery
+    UI.message("Доставка #{delivery}")
+    20.times do
+      status = sh("xcrun", "altool", "--build-status", "--delivery-id", delivery, *auth, "--output-format", "normal",
+                  error_callback: ->(_) {})
+      break if status =~ /VALID|INVALID|PROCESSING_EXCEPTION|ERROR/ && status !~ /PROCESSING\b(?!_)/
+      sleep(30)
+    end
   end
 
   desc "Тексты и скриншоты страницы в App Store без отправки на ревью"
