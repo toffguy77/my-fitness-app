@@ -83,7 +83,7 @@ platform :ios do
     setup_ci
     import_certificate(
       certificate_path: "fastlane/certificate.p12",
-      certificate_password: ENV["DISTRIBUTION_CERTIFICATE_PASSWORD"],
+      certificate_password: ENV["DISTRIBUTION_CERTIFICATE_PASSWORD"] || "",
       keychain_name: "fastlane_tmp_keychain",
       keychain_password: "",
     )
