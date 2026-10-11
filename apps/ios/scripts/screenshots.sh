@@ -39,7 +39,9 @@ rm -rf "$out" && mkdir -p "$out"
 shot() {
   local name="$1" role="$2" screen="$3"
   xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
-  xcrun simctl launch "$udid" "$bundle" -demo "$role" -demoScreen "$screen" >/dev/null
+  # Русская локаль: иначе раннер в en_US показал бы «1,173 ккал» и «8:20 AM».
+  xcrun simctl launch "$udid" "$bundle" -demo "$role" -demoScreen "$screen" \
+    -AppleLanguages "(ru)" -AppleLocale ru_RU >/dev/null
   sleep 5
   xcrun simctl io "$udid" screenshot "$out/$name.png" >/dev/null
   echo "снят $name"
