@@ -329,8 +329,120 @@ struct ProfileResponse: Decodable, Sendable {
         let email: String
         let name: String?
         let role: Role
+        let avatar_url: String?
+        let settings: ProfileSettings?
     }
     let profile: Profile
+}
+
+struct ProfileSettings: Decodable, Sendable, Equatable {
+    let timezone: String?
+    let apple_health_enabled: Bool?
+    let target_weight: Double?
+    let height: Double?
+    let birth_date: String?
+    let biological_sex: String?
+    let activity_level: String?
+    let fitness_goal: String?
+}
+
+/// Тело и цели. Сервер обновляет только присланные ключи, а `null` очищает —
+/// поэтому кодируем все поля явно.
+struct BodySettingsRequest: Encodable {
+    var height: Double?
+    var birth_date: String?
+    var biological_sex: String?
+    var activity_level: String?
+    var fitness_goal: String?
+    var target_weight: Double?
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(height, forKey: .height)
+        try c.encode(birth_date, forKey: .birth_date)
+        try c.encode(biological_sex, forKey: .biological_sex)
+        try c.encode(activity_level, forKey: .activity_level)
+        try c.encode(fitness_goal, forKey: .fitness_goal)
+        try c.encode(target_weight, forKey: .target_weight)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case height, birth_date, biological_sex, activity_level, fitness_goal, target_weight
+    }
+}
+
+struct HealthFlagRequest: Encodable {
+    let apple_health_enabled: Bool
+}
+
+struct NameRequest: Encodable {
+    let name: String
+}
+
+struct FoodRestrictions: Decodable, Sendable {
+    struct Excluded: Decodable, Sendable, Identifiable {
+        let food_id: String
+        let name: String
+        var id: String { food_id }
+    }
+    struct Named: Decodable, Sendable, Identifiable {
+        let id: String
+        let name: String
+    }
+    let allergens: [String]
+    let excluded_foods: [Excluded]?
+    let rejected_recipes: [Named]?
+}
+
+struct RestrictionsRequest: Encodable {
+    let allergens: [String]
+    let excluded_food_ids: [String]
+}
+
+enum Allergen: String, CaseIterable, Identifiable {
+    case nuts, peanuts, gluten, lactose, eggs, fish, seafood, soy, sesame, mustard, celery
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .nuts: return "Орехи"
+        case .peanuts: return "Арахис"
+        case .gluten: return "Глютен"
+        case .lactose: return "Лактоза"
+        case .eggs: return "Яйца"
+        case .fish: return "Рыба"
+        case .seafood: return "Морепродукты"
+        case .soy: return "Соя"
+        case .sesame: return "Кунжут"
+        case .mustard: return "Горчица"
+        case .celery: return "Сельдерей"
+        }
+    }
+}
+
+struct TelegramStatus: Decodable, Sendable {
+    let linked: Bool
+    let username: String?
+}
+
+struct TelegramLink: Decodable, Sendable {
+    let url: String
+}
+
+struct DataExport: Decodable, Sendable, Identifiable {
+    let id: String
+    let status: String
+    let requested_at: String
+    let expires_at: String?
+    let downloaded: Bool?
+}
+
+struct ExportsList: Decodable, Sendable {
+    let exports: [DataExport]?
+}
+
+struct ChangePasswordRequest: Encodable {
+    let current_password: String
+    let new_password: String
 }
 
 struct DeletionStatus: Decodable, Sendable, Equatable {

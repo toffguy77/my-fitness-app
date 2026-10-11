@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// «Ещё»: всё, что на сайте живёт в меню пользователя и в настройках.
 struct ProfileView: View {
     @Environment(SessionStore.self) private var session
 
@@ -9,24 +10,47 @@ struct ProfileView: View {
     @State private var confirmSignOut = false
     @State private var healthEnabled = HealthService.isEnabled
 
+    private var isClient: Bool { session.user?.role != .coordinator }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    LabeledContent("Имя", value: profile?.name ?? session.user?.name ?? "—")
-                    LabeledContent("Почта", value: profile?.email ?? session.user?.email ?? "—")
-                    LabeledContent("Роль", value: roleTitle)
+                    NavigationLink {
+                        AccountView(profile: profile) { Task { await load() } }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.fill").font(.largeTitle).foregroundStyle(Color.accentColor)
+                            VStack(alignment: .leading) {
+                                Text(profile?.name ?? session.user?.name ?? "Профиль").font(.headline)
+                                Text(profile?.email ?? session.user?.email ?? "").font(.subheadline).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
 
-                if HealthService.isAvailable {
-                    Section {
-                        Toggle("Apple Здоровье", isOn: Binding(
-                            get: { healthEnabled },
-                            set: { on in Task { await setHealth(on) } }))
-                        .accessibilityIdentifier("profile.health")
-                    } footer: {
-                        Text("Шаги, вес и тренировки подтягиваются из Здоровья, а съеденное и вода записываются туда. Что именно разрешить, iOS спросит отдельно.")
+                Section {
+                    NavigationLink { NotificationsView() } label: { Label("Уведомления", systemImage: "bell") }
+                    NavigationLink { FeedView() } label: { Label("Статьи", systemImage: "doc.richtext") }
+                }
+
+                if isClient {
+                    Section("Питание и тело") {
+                        NavigationLink { BodySettingsView() } label: { Label("Тело и цели", systemImage: "figure") }
+                        NavigationLink { RestrictionsView() } label: { Label("Ограничения в питании", systemImage: "leaf") }
                     }
+                }
+
+                Section("Настройки") {
+                    if HealthService.isAvailable {
+                        Toggle(isOn: Binding(get: { healthEnabled }, set: { on in Task { await setHealth(on) } })) {
+                            Label("Apple Здоровье", systemImage: "heart.text.square")
+                        }
+                        .accessibilityIdentifier("profile.health")
+                    }
+                    NavigationLink { NotificationSettingsView() } label: { Label("Доставка уведомлений", systemImage: "bell.badge") }
+                    NavigationLink { TelegramView() } label: { Label("Telegram", systemImage: "paperplane") }
+                    NavigationLink { ExportView() } label: { Label("Выгрузка данных", systemImage: "square.and.arrow.down") }
                 }
 
                 if let deletion, deletion.requested {
@@ -46,16 +70,10 @@ struct ProfileView: View {
                         .disabled(deletion?.requested == true)
                         .accessibilityIdentifier("profile.delete")
                 } footer: {
-                    Text("Данные удаляются через 30 дней после запроса. До этого удаление можно отменить.")
-                }
-
-                Section {
-                    LabeledContent("Версия", value: AppConfig.clientHeader)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    Text("Данные удаляются через 30 дней после запроса. До этого удаление можно отменить.\nВерсия \(AppConfig.clientHeader)")
                 }
             }
-            .navigationTitle("Профиль")
+            .navigationTitle("Ещё")
             .task { await load() }
             .refreshable { await load() }
             .confirmationDialog("Выйти из аккаунта?", isPresented: $confirmSignOut, titleVisibility: .visible) {
@@ -75,14 +93,8 @@ struct ProfileView: View {
         }
         HealthService.isEnabled = on
         healthEnabled = on
-    }
-
-    private var roleTitle: String {
-        switch session.user?.role {
-        case .coordinator: return "Куратор"
-        case .superAdmin: return "Администратор"
-        default: return "Клиент"
-        }
+        // Сайт показывает этот флаг в настройках — держим его в согласии.
+        _ = try? await session.api.send(Endpoint<Empty>.put("/api/v1/users/settings", body: HealthFlagRequest(apple_health_enabled: on)))
     }
 
     private func scheduled(_ status: DeletionStatus) -> String {

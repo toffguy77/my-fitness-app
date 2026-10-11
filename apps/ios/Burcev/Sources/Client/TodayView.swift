@@ -61,6 +61,7 @@ struct TodayView: View {
                 }
             }
             .navigationTitle("Сегодня")
+            .toolbar { ToolbarItem(placement: .primaryAction) { NotificationsBell() } }
             .refreshable { await load() }
             .task(id: APIDates.day(date)) { await load() }
             .sheet(isPresented: $editingWeight) {

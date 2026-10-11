@@ -81,6 +81,22 @@ final class SessionStore {
         state = .signedIn(result.user)
     }
 
+    /// Смена пароля завершает все остальные сессии, а этой выдаёт новую пару
+    /// токенов — единственный ответ сервера, где refresh-токен есть в теле.
+    func changePassword(current: String, new: String) async throws {
+        struct Tokens: Decodable, Sendable {
+            let token: String
+            let refresh_token: String?
+        }
+        let tokens = try await api.send(Endpoint<Tokens>.post(
+            "/api/v1/auth/change-password",
+            body: ChangePasswordRequest(current_password: current, new_password: new)))
+        if let refresh = tokens.refresh_token {
+            keychain.write(refresh, for: Self.refreshKey)
+        }
+        await api.setAccessToken(tokens.token)
+    }
+
     func signOut() async {
         if let token = keychain.read(Self.refreshKey) {
             // Отзыв на сервере — по возможности; выход на устройстве — всегда.

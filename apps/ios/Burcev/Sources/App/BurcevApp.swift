@@ -44,7 +44,7 @@ struct ClientTabs: View {
             TodayView().tabItem { Label("Сегодня", systemImage: "sun.max") }.tag(Demo.Screen.today)
             DiaryView().tabItem { Label("Дневник", systemImage: "fork.knife") }.tag(Demo.Screen.diary)
             ConversationsView().tabItem { Label("Чат", systemImage: "bubble.left.and.bubble.right") }.tag(Demo.Screen.chat)
-            ProfileView().tabItem { Label("Профиль", systemImage: "person.crop.circle") }.tag(Demo.Screen.profile)
+            ProfileView().tabItem { Label("Ещё", systemImage: "ellipsis.circle") }.tag(Demo.Screen.profile)
         }
     }
 }
@@ -62,7 +62,7 @@ struct CuratorTabs: View {
         TabView(selection: $selection) {
             ClientsView().tabItem { Label("Клиенты", systemImage: "person.2") }.tag(Demo.Screen.clients)
             ConversationsView().tabItem { Label("Чат", systemImage: "bubble.left.and.bubble.right") }.tag(Demo.Screen.chat)
-            ProfileView().tabItem { Label("Профиль", systemImage: "person.crop.circle") }.tag(Demo.Screen.profile)
+            ProfileView().tabItem { Label("Ещё", systemImage: "ellipsis.circle") }.tag(Demo.Screen.profile)
         }
     }
 }
