@@ -298,6 +298,9 @@ struct TodayView: View {
     private func load() async {
         let day = APIDates.day(date)
         let api = session.api
+        // Чей день грузим: к концу загрузки в приложении может быть уже другой
+        // человек, и его виджет не должен получить этот день.
+        let loadingFor = session.user?.id
         if content.value == nil { content = .loading }
         actionError = nil
         do {
@@ -326,7 +329,9 @@ struct TodayView: View {
                 onboarding: await onboarding)
             snapshot.health = await readHealth()
             content = .loaded(snapshot)
-            if isToday { publishToWidget(snapshot) }
+            if isToday, let owner = loadingFor, session.user?.id == owner {
+                publishToWidget(snapshot, owner: owner)
+            }
             if await syncHealth(snapshot),
                let fresh = try? await api.send(Endpoint<FullDailyMetrics>.get("/api/v1/dashboard/daily/\(day)")) {
                 snapshot.metrics = fresh
@@ -340,8 +345,9 @@ struct TodayView: View {
     }
 
     /// Сводка дня — виджету на домашнем экране.
-    private func publishToWidget(_ snapshot: Snapshot) {
+    private func publishToWidget(_ snapshot: Snapshot, owner: Int64) {
         TodaySnapshot(
+            userID: owner,
             day: TodaySnapshot.dayString(date),
             calories: snapshot.totals.calories,
             caloriesTarget: snapshot.targets?.macros?.calories,

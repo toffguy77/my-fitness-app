@@ -8,6 +8,9 @@ import Security
 /// App Store Connect создать не позволяет, а общие группы Keychain команды
 /// профиль подписи уже разрешает. В сеть виджет не ходит и токенов не видит.
 struct TodaySnapshot: Codable, Sendable, Equatable {
+    /// Чей это день. Сводку другого аккаунта, вошедшего на этом телефоне,
+    /// ни виджет, ни приложение не показывают.
+    var userID: Int64
     var day: String
     var calories: Double
     var caloriesTarget: Double?

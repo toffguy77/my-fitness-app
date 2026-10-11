@@ -9,7 +9,7 @@ struct TodayEntry: TimelineEntry {
 struct TodayProvider: TimelineProvider {
     func placeholder(in context: Context) -> TodayEntry {
         TodayEntry(date: Date(), snapshot: TodaySnapshot(
-            day: TodaySnapshot.dayString(Date()), calories: 1240, caloriesTarget: 1850,
+            userID: 0, day: TodaySnapshot.dayString(Date()), calories: 1240, caloriesTarget: 1850,
             protein: 82, fat: 41, carbs: 130, waterGlasses: 5, waterGoal: 8, updatedAt: Date()))
     }
 

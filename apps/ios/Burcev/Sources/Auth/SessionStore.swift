@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import WidgetKit
 
 /// Сессия пользователя: кто вошёл и как обновлять его токен.
 ///
@@ -17,6 +18,11 @@ final class SessionStore {
 
     private(set) var state: State = .restoring {
         didSet {
+            // Вошёл другой человек — сводка прежнего с виджета уходит сразу,
+            // а не когда «Сегодня» загрузится.
+            if case let .signedIn(user) = state, let shown = TodaySnapshot.load(), shown.userID != user.id {
+                Self.clearWidget()
+            }
             // Команда Siri поднимает сессию в фоне: ни соединения, ни
             // запроса разрешений там не нужно.
             guard interactive else { return }
@@ -234,10 +240,16 @@ final class SessionStore {
     /// Сессию закрыл сервер (refresh отвергнут) или удалён аккаунт.
     func endSession() {
         keychain.delete(Self.refreshKey)
-        // Виджет не должен показывать день прежнего аккаунта.
-        TodaySnapshot.clear()
+        // Виджет не должен показывать день прежнего аккаунта — ни минуты:
+        // без перерисовки он держал бы его до следующего обновления.
+        Self.clearWidget()
         Task { await api.setAccessToken(nil) }
         state = .signedOut
+    }
+
+    static func clearWidget() {
+        TodaySnapshot.clear()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func installRefresher() async {
