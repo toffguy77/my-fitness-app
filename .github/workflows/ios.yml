@@ -1,0 +1,61 @@
+name: iOS
+
+# Сборка и тесты iOS-клиента на симуляторе. Подпись не нужна — она только при
+# выкладке (ios-testflight.yml). Своего Mac у разработки нет, поэтому этот
+# прогон — единственное место, где Swift компилируется.
+on:
+  push:
+    branches: [dev, main, 'feat/ios-**']
+    paths: ['apps/ios/**', '.github/workflows/ios.yml']
+  pull_request:
+    branches: [dev, main]
+    paths: ['apps/ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: iOS Build
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Pick a simulator
+        run: |
+          # Имя симулятора меняется с версиями Xcode: берём первый доступный iPhone.
+          udid=$(xcrun simctl list devices available -j \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r,v in d.items() if "iOS" in r for x in v if x["name"].startswith("iPhone")))')
+          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
+
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Burcev.xcodeproj \
+            -scheme Burcev \
+            -destination "id=$SIM_UDID" \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build.log | grep -E "error:|warning: .*Burcev/|Test Case .* (passed|failed)|\*\* (BUILD|TEST)" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" build.log
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log
+          path: apps/ios/build.log

@@ -1,0 +1,10 @@
+# Проект генерируется XcodeGen из project.yml.
+Burcev.xcodeproj/
+build/
+DerivedData/
+fastlane/report.xml
+fastlane/README.md
+fastlane/*.p8
+fastlane/*.p12
+fastlane/*.mobileprovision
+*.xcuserstate
