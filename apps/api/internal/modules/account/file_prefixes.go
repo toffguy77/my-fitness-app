@@ -8,7 +8,7 @@ import (
 )
 
 // Bucket names as they are registered in NewService. They are the keys of the
-// prefix map, so they have to agree with cmd/server/main.go.
+// prefix map, so they have to agree with internal/app/app.go.
 const (
 	BucketWeeklyPhotos  = "weekly-photos"
 	BucketProfilePhotos = "profile-photos"
