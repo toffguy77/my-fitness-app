@@ -301,7 +301,10 @@ platform :ios do
       end
       groups = [group]
     end
-    build.add_beta_groups(beta_groups: groups)
-    UI.success("#{build.app_version} (#{build.version}) выдана группам: #{groups.map(&:name).join(', ')}")
+    # Группе с доступом ко всем сборкам сборку не выдают — она в ней и так.
+    manual = groups.reject(&:has_access_to_all_builds)
+    build.add_beta_groups(beta_groups: manual) unless manual.empty?
+    UI.success("#{build.app_version} (#{build.version}) доступна группам: #{groups.map(&:name).join(', ')}")
+    UI.important("Тестировщиков в группу добавляет человек: у ключа API нет доступа к списку пользователей команды.")
   end
 end
