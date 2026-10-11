@@ -149,10 +149,13 @@ platform :ios do
     delivery = output[/Delivery UUID:\s*([0-9a-fA-F-]{36})/, 1] || output[/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/, 1]
     UI.user_error!("altool не вернул номер доставки") unless delivery
     UI.message("Доставка #{delivery}")
-    20.times do
+    40.times do
       status = sh("xcrun", "altool", "--build-status", "--delivery-id", delivery, *auth, "--output-format", "normal",
                   error_callback: ->(_) {})
-      break if status =~ /VALID|INVALID|PROCESSING_EXCEPTION|ERROR/ && status !~ /PROCESSING\b(?!_)/
+      state = status[/BUILD-STATUS:\s*(\S+)/, 1]
+      UI.message("Состояние доставки: #{state || 'нет'}")
+      UI.user_error!("Apple отверг сборку при обработке — ошибки выше (PROCESSING-ERRORS)") if state == "FAILED"
+      break if %w[VALID COMPLETE].include?(state)
       sleep(30)
     end
   end

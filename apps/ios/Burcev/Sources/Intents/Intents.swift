@@ -1,9 +1,11 @@
 import AppIntents
 
-/// «Привет, Siri, добавь стакан воды в BURCEV» — без открытия приложения.
+/// «Добавь стакан воды в BURCEV» голосом или из «Быстрых команд» — без открытия
+/// приложения. В текстах команды нельзя упоминать Apple: сборку с таким
+/// описанием App Store Connect отвергает при обработке (ITMS-90626) молча.
 struct AddWaterIntent: AppIntent {
     static let title: LocalizedStringResource = "Добавить стакан воды"
-    static let description = IntentDescription("Отмечает выпитый стакан воды в дневнике BURCEV и в Apple Здоровье.")
+    static let description = IntentDescription("Отмечает выпитый стакан воды в дневнике BURCEV и в приложении «Здоровье».")
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
