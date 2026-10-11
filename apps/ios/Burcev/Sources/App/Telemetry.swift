@@ -24,6 +24,10 @@ enum Telemetry {
             options.sendDefaultPii = false
             options.enableAppHangTracking = true
             options.tracesSampleRate = 0.1
+            // Сетевые запросы Sentry собирает сам с полным адресом — вместе
+            // с параметрами: поисковой строкой с едой, датами. Не нужно.
+            options.enableNetworkTracking = false
+            options.enableCaptureFailedRequests = false
             options.attachScreenshot = false
             options.attachViewHierarchy = false
             options.beforeSend = { event in
@@ -59,9 +63,39 @@ enum Telemetry {
     /// которое в выпущенной сборке иначе видно только по жалобам.
     static func contractMismatch(path: String, detail: String) {
         guard SentrySDK.isEnabled else { return }
-        SentrySDK.capture(message: "API contract mismatch: \(path)") { scope in
-            scope.setTag(value: path, key: "api.path")
-            scope.setExtra(value: String(detail.prefix(500)), key: "decoding")
+        let route = route(path)
+        SentrySDK.capture(message: "API contract mismatch: \(route)") { scope in
+            scope.setTag(value: route, key: "api.route")
+            scope.setExtra(value: String(detail.prefix(300)), key: "decoding")
+        }
+    }
+
+    /// Путь без идентификаторов: ID клиентов и переписок, даты, штрихкоды —
+    /// это данные человека, а не адрес эндпоинта.
+    static func route(_ path: String) -> String {
+        path.split(separator: "/", omittingEmptySubsequences: false).map { segment -> String in
+            let s = String(segment)
+            if s.wholeMatch(of: /\d{4}-\d{2}-\d{2}/) != nil { return "{date}" }
+            if s.wholeMatch(of: /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/) != nil { return "{id}" }
+            if s.wholeMatch(of: /\d+/) != nil { return s.count >= 8 ? "{code}" : "{id}" }
+            if s.hasPrefix("ai-") { return "{id}" }
+            return s
+        }.joined(separator: "/")
+    }
+
+    /// Ошибка декодирования без значений из ответа: только вид и путь ключей.
+    /// Описание DecodingError может содержать сами данные («invalid value …»).
+    static func describe(_ error: Error) -> String {
+        guard let error = error as? DecodingError else { return "\(type(of: error))" }
+        func keys(_ context: DecodingError.Context) -> String {
+            context.codingPath.map { $0.intValue.map { "[\($0)]" } ?? $0.stringValue }.joined(separator: ".")
+        }
+        switch error {
+        case let .keyNotFound(key, context): return "keyNotFound \(key.stringValue) at \(keys(context))"
+        case let .typeMismatch(type, context): return "typeMismatch \(type) at \(keys(context))"
+        case let .valueNotFound(type, context): return "valueNotFound \(type) at \(keys(context))"
+        case let .dataCorrupted(context): return "dataCorrupted at \(keys(context))"
+        @unknown default: return "unknown"
         }
     }
 }

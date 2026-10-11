@@ -221,7 +221,8 @@ actor APIClient {
         } catch let error as APIError {
             throw error
         } catch {
-            throw APIError.decoding(String(describing: error))
+            // Без значений из ответа: это описание уходит в отчёт о сбое.
+            throw APIError.decoding(Telemetry.describe(error))
         }
     }
 }
