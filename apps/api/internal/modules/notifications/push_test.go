@@ -143,10 +143,15 @@ func TestPurgeDeadSubscriptions(t *testing.T) {
 
 	mock.ExpectExec(`DELETE FROM push_subscriptions`).
 		WillReturnResult(sqlmock.NewResult(0, 3))
+	// iPhones are purged by failures only, not by age.
+	mock.ExpectExec(`DELETE FROM apns_devices WHERE failures >= \$1`).
+		WithArgs(maxPushFailures).
+		WillReturnResult(sqlmock.NewResult(0, 2))
 
 	purged, err := service.PurgeDeadSubscriptions(context.Background(), 180*24*time.Hour)
 	require.NoError(t, err)
-	assert.Equal(t, int64(3), purged)
+	assert.Equal(t, int64(5), purged)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 // dueWithin matches a timestamp argument that falls inside a window from now.

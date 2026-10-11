@@ -1,0 +1,40 @@
+name: iOS build status
+
+# Что App Store Connect знает о последних сборках — когда загрузка прошла, а
+# сборка в TestFlight не появилась. Запуск тегом ios-status-*.
+on:
+  push:
+    tags: ['ios-status-*', 'ios-distribute-*']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    name: Build status
+    runs-on: macos-15
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install fastlane
+        run: brew install fastlane
+      - name: Decode App Store Connect API key
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          printf '%s' "$APP_STORE_CONNECT_API_KEY" | base64 --decode > fastlane/asc_key.p8
+          echo "ASC_KEY_PATH=$PWD/fastlane/asc_key.p8" >> "$GITHUB_ENV"
+      - name: Status
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          if [[ "$GITHUB_REF_NAME" == ios-distribute-* ]]; then fastlane distribute_internal; fi
+          fastlane status
+      - name: Clean up secrets
+        if: always()
+        run: rm -f fastlane/asc_key.p8

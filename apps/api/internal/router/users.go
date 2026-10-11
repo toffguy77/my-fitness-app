@@ -58,6 +58,8 @@ func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("/push-key", d.Notifications.GetPushKey)
 	g.POST("/push", d.Notifications.SubscribePush)
 	g.DELETE("/push", d.Notifications.UnsubscribePush)
+	g.POST("/devices", d.Notifications.RegisterDevice)
+	g.DELETE("/devices", d.Notifications.UnregisterDevice)
 }
 
 // registerUnsubscribeRoute exposes the link at the bottom of a digest.

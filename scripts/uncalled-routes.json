@@ -26,5 +26,17 @@
   {
     "route": "GET /api/v1/logs/stats",
     "reason": "Сводка журналов для super_admin. Экрана у неё нет намеренно — её смотрят при разборе происшествия, руками."
+  },
+  {
+    "route": "POST /api/v1/notifications/devices",
+    "reason": "Регистрация iPhone для push через APNs. Зовёт iOS-приложение (apps/ios/Burcev/Sources/Push/PushRegistrar.swift), у браузера свой канал — Web Push через /notifications/push."
+  },
+  {
+    "route": "DELETE /api/v1/notifications/devices",
+    "reason": "Снятие iPhone с рассылки при выходе из аккаунта. Зовёт iOS-приложение, браузер снимает подписку через /notifications/push."
+  },
+  {
+    "route": "POST /api/v1/auth/oauth/app-exchange",
+    "reason": "Обмен одноразового кода входа через Яндекс/VK на сессию. Зовёт iOS-приложение (apps/ios/Burcev/Sources/Auth/ProviderSignIn.swift), браузер получает сессию cookie прямо в обратном вызове."
   }
 ]

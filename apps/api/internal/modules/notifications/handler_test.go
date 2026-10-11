@@ -95,6 +95,16 @@ func (m *MockService) Subscribe(ctx context.Context, userID int64, sub PushSubsc
 	return args.Error(0)
 }
 
+func (m *MockService) RegisterDevice(ctx context.Context, userID int64, device APNSDevice) error {
+	args := m.Called(ctx, userID, device)
+	return args.Error(0)
+}
+
+func (m *MockService) UnregisterDevice(ctx context.Context, userID int64, token string) error {
+	args := m.Called(ctx, userID, token)
+	return args.Error(0)
+}
+
 func (m *MockService) UnsubscribePush(ctx context.Context, userID int64, endpoint string) error {
 	args := m.Called(ctx, userID, endpoint)
 	return args.Error(0)
