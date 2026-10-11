@@ -134,6 +134,13 @@ func (h *OAuthHandler) Start(c *gin.Context) {
 	h.setFlowCookie(c, stateCookie, pkce.State)
 	h.setFlowCookie(c, verifierCookie, pkce.Verifier)
 	h.setFlowCookie(c, providerCookie, name)
+	// Вход из iOS-приложения: хэш его секрета, см. oauth_app.go. Без него —
+	// обычный вход сайта; чужая строка вместо хэша просто не принимается.
+	if challenge := c.Query("app_challenge"); appChallengePattern.MatchString(challenge) {
+		h.setFlowCookie(c, appChallengeCookie, challenge)
+	} else {
+		c.SetCookie(appChallengeCookie, "", -1, "/api/v1/auth", "", true, true)
+	}
 
 	c.Redirect(http.StatusFound,
 		provider.AuthorizationURL(pkce.State, pkce.Challenge, h.redirectURI(name)))
@@ -311,11 +318,20 @@ func (h *OAuthHandler) appOrigin() string {
 }
 
 func (h *OAuthHandler) redirectToApp(c *gin.Context, path string) {
+	// Вход, начатый из iOS-приложения, возвращается туда же, а не на сайт.
+	if appChallenge(c) != "" {
+		redirectToAppClient(c, path)
+		return
+	}
 	c.Redirect(http.StatusFound, h.appOrigin()+path)
 }
 
 // redirectWithSession hands the session to the app.
 func (h *OAuthHandler) redirectWithSession(c *gin.Context, outcome *OAuthOutcome) {
+	if challenge := appChallenge(c); challenge != "" {
+		h.handoffToApp(c, outcome, challenge)
+		return
+	}
 	// The refresh token goes in an HttpOnly cookie so it never reaches
 	// JavaScript, the URL, or anything that logs URLs.
 	c.SetSameSite(http.SameSiteLaxMode)
@@ -357,7 +373,7 @@ func (h *OAuthHandler) setFlowCookie(c *gin.Context, name, value string) {
 }
 
 func (h *OAuthHandler) clearFlowCookies(c *gin.Context) {
-	for _, name := range []string{stateCookie, verifierCookie, providerCookie} {
+	for _, name := range []string{stateCookie, verifierCookie, providerCookie, appChallengeCookie} {
 		c.SetCookie(name, "", -1, "/api/v1/auth", "", true, true)
 	}
 }

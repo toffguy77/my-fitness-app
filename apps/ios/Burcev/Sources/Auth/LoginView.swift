@@ -96,6 +96,10 @@ struct LoginView: View {
                     }
                 }
 
+                if mode != .register {
+                    ProviderButtons()
+                }
+
                 if linkSentTo == nil || mode != .link {
                     Section {
                         Button(action: submit) {

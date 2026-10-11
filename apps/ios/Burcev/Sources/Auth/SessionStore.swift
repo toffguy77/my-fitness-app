@@ -158,6 +158,20 @@ final class SessionStore {
         state = .signedIn(result.user)
     }
 
+    /// Код из входа через Яндекс/VK и секрет приложения — на сессию.
+    func exchangeProviderCode(_ code: String, verifier: String) async throws {
+        await installRefresher()
+        struct Body: Encodable { let code: String; let verifier: String }
+        let (result, refreshToken) = try await api.sendIssuingSession(
+            Endpoint<LoginResult>.post("/api/v1/auth/oauth/app-exchange", body: Body(code: code, verifier: verifier),
+                                       requiresAuth: false))
+        if let refreshToken {
+            keychain.write(refreshToken, for: Self.refreshKey)
+        }
+        await api.setAccessToken(result.token)
+        state = .signedIn(result.user)
+    }
+
     func forgotPassword(email: String) async throws {
         _ = try await api.send(Endpoint<Empty>.post("/api/v1/auth/forgot-password", body: EmailRequest(email: email), requiresAuth: false))
     }

@@ -120,6 +120,8 @@ INDEX nutrient_recommendations nutrient_recommendations_pkey btree (id)
 INDEX nutrients idx_nutrients_group btree (nutrient_group)
 INDEX nutrients idx_nutrients_product btree (product_id)
 INDEX nutrients nutrients_pkey btree (id)
+INDEX oauth_app_handoffs idx_oauth_app_handoffs_user_id btree (user_id)
+INDEX oauth_app_handoffs oauth_app_handoffs_pkey btree (code_hash)
 INDEX oauth_pending_links idx_oauth_pending_links_expires_at btree (expires_at)
 INDEX oauth_pending_links oauth_pending_links_pkey btree (id)
 INDEX password_reset_attempts idx_reset_attempts_email_time btree (email, attempted_at DESC)
@@ -624,6 +626,11 @@ nutrients.nutrient_group text NOT NULL
 nutrients.nutrient_name text NOT NULL
 nutrients.product_id bigint NOT NULL
 nutrients.unit text NOT NULL
+oauth_app_handoffs.challenge text NOT NULL
+oauth_app_handoffs.code_hash text NOT NULL
+oauth_app_handoffs.created_at timestamp with time zone NOT NULL DEFAULT now()
+oauth_app_handoffs.expires_at timestamp with time zone NOT NULL
+oauth_app_handoffs.user_id bigint NOT NULL
 oauth_pending_links.avatar_url text
 oauth_pending_links.created_at timestamp with time zone NOT NULL DEFAULT now()
 oauth_pending_links.email text

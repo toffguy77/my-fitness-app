@@ -230,3 +230,19 @@ final class TrustedMediaCanonicalTests: XCTestCase {
         XCTAssertEqual(url?.absoluteString, "https://storage.yandexcloud.net/bucket/a%20b.jpg?x=1")
     }
 }
+
+final class ProviderSignInTests: XCTestCase {
+    /// Хэш секрета считается так же, как на сервере: SHA-256, base64url без
+    /// дополнения, 43 символа.
+    func testChallengeMatchesServerFormat() {
+        let challenge = ProviderButtons.challenge(for: "секрет-приложения-достаточно-длинный-0123456789")
+        XCTAssertEqual(challenge.count, 43)
+        XCTAssertNil(challenge.rangeOfCharacter(from: CharacterSet(charactersIn: "+/=")))
+        XCTAssertEqual(ProviderButtons.challenge(for: "abc"), "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0")
+    }
+
+    func testVerifiersAreRandom() {
+        XCTAssertNotEqual(ProviderButtons.randomVerifier(), ProviderButtons.randomVerifier())
+        XCTAssertEqual(ProviderButtons.randomVerifier().count, 43)
+    }
+}
