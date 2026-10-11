@@ -4,6 +4,8 @@ import SwiftUI
 /// смотреть и некуда записывать.
 struct DayPicker: View {
     @Binding var date: Date
+    /// Меню планируется вперёд, дневник — нет.
+    var allowFuture = false
 
     var body: some View {
         HStack {
@@ -24,7 +26,7 @@ struct DayPicker: View {
             } label: {
                 Image(systemName: "chevron.right")
             }
-            .disabled(Calendar.current.isDateInToday(date))
+            .disabled(!allowFuture && Calendar.current.isDateInToday(date))
             .accessibilityLabel("Следующий день")
         }
         .padding(.vertical, 4)
@@ -34,6 +36,7 @@ struct DayPicker: View {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) { return "Сегодня" }
         if calendar.isDateInYesterday(date) { return "Вчера" }
+        if calendar.isDateInTomorrow(date) { return "Завтра" }
         return date.formatted(.dateTime.day().month(.wide).weekday(.abbreviated).locale(Locale(identifier: "ru_RU")))
     }
 

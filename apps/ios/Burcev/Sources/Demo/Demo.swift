@@ -7,7 +7,7 @@ import Foundation
 /// Запуск: `-demo client|curator -demoScreen today|diary|chat|profile|clients|client`.
 enum Demo {
     enum Screen: String {
-        case today, diary, chat, profile, clients, client
+        case today, diary, menu, chat, profile, clients, client
     }
 
     #if DEBUG

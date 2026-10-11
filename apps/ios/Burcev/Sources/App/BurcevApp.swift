@@ -43,6 +43,7 @@ struct ClientTabs: View {
         TabView(selection: $selection) {
             TodayView().tabItem { Label("Сегодня", systemImage: "sun.max") }.tag(Demo.Screen.today)
             DiaryView().tabItem { Label("Дневник", systemImage: "fork.knife") }.tag(Demo.Screen.diary)
+            MenuView().tabItem { Label("Меню", systemImage: "menucard") }.tag(Demo.Screen.menu)
             ConversationsView().tabItem { Label("Чат", systemImage: "bubble.left.and.bubble.right") }.tag(Demo.Screen.chat)
             ProfileView().tabItem { Label("Ещё", systemImage: "ellipsis.circle") }.tag(Demo.Screen.profile)
         }
