@@ -64,7 +64,8 @@ type App struct {
 }
 
 // Build wires every service and handler. It writes to the database once —
-// EnsureConversationsExist — and starts nothing.
+// EnsureConversationsExist — and starts neither the HTTP server nor the
+// scheduler: that is the caller's decision.
 func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External) *App {
 	emailService := ext.Email
 	s3Client := ext.WeeklyPhotos
@@ -118,7 +119,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 					UserEmail:      to,
 					Name:           name,
 					Language:       language,
-					AppURL:         AppOrigin(cfg.AppDomain),
+					AppURL:         appOrigin(cfg.AppDomain),
 					UnsubscribeURL: unsubscribeURL,
 				}
 				for _, item := range items {
@@ -132,7 +133,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 				return emailService.SendNotificationDigest(ctx, data)
 			},
 			cfg.JWTSecret,
-			AppOrigin(cfg.AppDomain),
+			appOrigin(cfg.AppDomain),
 		)
 	}
 	verificationService := auth.NewVerificationService(db.DB, log, emailService)
@@ -251,7 +252,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		// Оповещения бота идут в свою тему: в общей ленте группы разговаривают
 		// участники проекта, и сообщение бота там теряется.
 		bridge = supportbridge.NewService(db.DB, telegram.NewClient(cfg.TelegramBotToken),
-			log, cfg.TelegramSupportGroupID, AppOrigin(cfg.AppDomain)).
+			log, cfg.TelegramSupportGroupID, appOrigin(cfg.AppDomain)).
 			WithAlertsTopic(cfg.TelegramAlertsThreadID)
 		accountService.WithTopics(bridge)
 		// Ответы куратора из темы: мост говорит, кому и куда, а доставка
@@ -296,7 +297,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 	if bridge != nil && bridge.Enabled() {
 		curatorsGroup = bridge
 	}
-	leadsService.WithOperatorAlerts(notificationsSvc, curatorsGroup, AppOrigin(cfg.AppDomain))
+	leadsService.WithOperatorAlerts(notificationsSvc, curatorsGroup, appOrigin(cfg.AppDomain))
 
 	// Periodic work. Every job takes a PostgreSQL advisory lock, so running
 	// more than one instance does not run the work twice, and every execution
@@ -335,7 +336,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 	// этом не будет ни строчки — потому что сюда ничего не дойдёт.
 	if cfg.TelegramBotToken != "" {
 		bot := telegram.NewClient(cfg.TelegramBotToken)
-		webhookURL := AppOrigin(cfg.AppDomain) + "/api/v1/public/support/telegram"
+		webhookURL := appOrigin(cfg.AppDomain) + "/api/v1/public/support/telegram"
 		checks = append(checks, capabilities.Check{
 			Name: "support_bot",
 			Verify: func(ctx context.Context) error {
@@ -469,10 +470,10 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 	return &App{Deps: deps, Scheduler: scheduler, Metrics: metrics}
 }
 
-// AppOrigin turns the configured domain into the origin links in email point
+// appOrigin turns the configured domain into the origin links in email point
 // at. Local development has no domain, and a link to nowhere is worse than a
 // link to localhost.
-func AppOrigin(domain string) string {
+func appOrigin(domain string) string {
 	if domain == "" {
 		return "http://localhost:3069"
 	}
