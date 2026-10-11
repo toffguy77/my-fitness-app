@@ -276,7 +276,23 @@ platform :ios do
                                        .find { |b| b.processing_state == "VALID" }
     UI.user_error!("Нет обработанных сборок") unless build
     groups = app.get_beta_groups.select(&:is_internal_group)
-    UI.user_error!("Нет внутренних групп TestFlight") if groups.empty?
+    if groups.empty?
+      # Внутренняя группа с доступом ко всем сборкам: новые сборки приходят
+      # в неё сами. Внутренние тестировщики — пользователи App Store Connect.
+      UI.message("Создаю внутреннюю группу «Команда»")
+      group = app.create_beta_group(group_name: "Команда", is_internal_group: true,
+                                    has_access_to_all_builds: true)
+      Spaceship::ConnectAPI::User.all.each do |user|
+        next if user.email.to_s.empty?
+        Spaceship::ConnectAPI::BetaTester.create(
+          email: user.email, first_name: user.first_name, last_name: user.last_name,
+          beta_group_ids: [group.id])
+        UI.message("Тестировщик: #{user.email}")
+      rescue StandardError => e
+        UI.important("#{user.email}: #{e.message}")
+      end
+      groups = [group]
+    end
     build.add_beta_groups(beta_groups: groups)
     UI.success("#{build.app_version} (#{build.version}) выдана группам: #{groups.map(&:name).join(', ')}")
   end
