@@ -32,6 +32,14 @@ def ensure_app_exists
     UI.message("Регистрирую идентификатор #{BUNDLE_ID}")
     Spaceship::ConnectAPI::BundleId.create(name: "BURCEV", identifier: BUNDLE_ID, platform: "IOS")
   end
+  # Возможности App ID должны совпадать с entitlements сборки, иначе профиль
+  # их не содержит и подпись отказывает.
+  bundle ||= Spaceship::ConnectAPI::BundleId.find(BUNDLE_ID)
+  healthkit = Spaceship::ConnectAPI::BundleIdCapability::Type::HEALTHKIT
+  unless bundle.get_capabilities.any? { |c| c.capability_type == healthkit }
+    UI.message("Включаю HealthKit у #{BUNDLE_ID}")
+    bundle.create_capability(healthkit)
+  end
   unless Spaceship::ConnectAPI::App.find(BUNDLE_ID)
     UI.user_error!("Приложения #{BUNDLE_ID} нет в App Store Connect. " \
                    "Создайте его: My Apps → + → New App, Bundle ID #{BUNDLE_ID}.")
@@ -48,6 +56,9 @@ platform :ios do
       app_identifier: BUNDLE_ID,
       output_path: "build",
       filename: "burcev_appstore.mobileprovision",
+      # Перевыпуск: профиль, выпущенный до включения возможности (HealthKit),
+      # её не содержит.
+      force: true,
     )
     profile_name = lane_context[SharedValues::SIGH_NAME]
     UI.message("Профиль: #{profile_name}")

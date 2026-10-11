@@ -37,6 +37,10 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         CFBundleDevelopmentRegion: ru
+        NSHealthShareUsageDescription: "BURCEV читает шаги, вес и тренировки, чтобы вам не вводить их вручную, а куратор видел активность."
+        NSHealthUpdateUsageDescription: "BURCEV записывает в Здоровье съеденные калории, белки, жиры, углеводы и выпитую воду."
+        NSCameraUsageDescription: "Камера нужна, чтобы сканировать штрихкод продукта и фотографировать блюдо для распознавания."
+        NSPhotoLibraryUsageDescription: "Доступ к фото нужен, чтобы выбрать снимок блюда или фотографию прогресса."
         CFBundleLocalizations:
           - ru
     settings:
@@ -48,6 +52,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: Burcev/Burcev.entitlements
         SWIFT_STRICT_CONCURRENCY: complete
 
   BurcevTests:

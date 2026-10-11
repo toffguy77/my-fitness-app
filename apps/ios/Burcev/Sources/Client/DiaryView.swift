@@ -109,6 +109,7 @@ struct DiaryView: View {
         for entry in entries {
             do {
                 _ = try await session.api.send(Endpoint<DeleteResult>.delete("/api/v1/food-tracker/entries/\(entry.id)"))
+                await HealthService.shared.deleteNutrition(entryID: entry.id)
             } catch {
                 deleteError = error.userMessage
             }
@@ -286,7 +287,7 @@ struct PortionView: View {
         defer { saving = false }
         let now = APIDates.time(Date())
         do {
-            _ = try await session.api.send(Endpoint<FoodEntry>.post(
+            let entry = try await session.api.send(Endpoint<FoodEntry>.post(
                 "/api/v1/food-tracker/entries",
                 body: CreateEntryRequest(
                     // Идентификатор из поиска — как есть: числовой из каталога
@@ -297,6 +298,8 @@ struct PortionView: View {
                     portionAmount: grams,
                     time: now,
                     date: APIDates.day(date))))
+            await HealthService.shared.saveNutrition(entryID: entry.id, day: date, time: entry.time,
+                                                     macros: entry.nutrition, name: entry.foodName)
             onAdded()
         } catch {
             errorText = error.userMessage

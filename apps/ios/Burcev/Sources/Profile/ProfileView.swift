@@ -7,6 +7,7 @@ struct ProfileView: View {
     @State private var deletion: DeletionStatus?
     @State private var showDeletion = false
     @State private var confirmSignOut = false
+    @State private var healthEnabled = HealthService.isEnabled
 
     var body: some View {
         NavigationStack {
@@ -15,6 +16,17 @@ struct ProfileView: View {
                     LabeledContent("Имя", value: profile?.name ?? session.user?.name ?? "—")
                     LabeledContent("Почта", value: profile?.email ?? session.user?.email ?? "—")
                     LabeledContent("Роль", value: roleTitle)
+                }
+
+                if HealthService.isAvailable {
+                    Section {
+                        Toggle("Apple Здоровье", isOn: Binding(
+                            get: { healthEnabled },
+                            set: { on in Task { await setHealth(on) } }))
+                        .accessibilityIdentifier("profile.health")
+                    } footer: {
+                        Text("Шаги, вес и тренировки подтягиваются из Здоровья, а съеденное и вода записываются туда. Что именно разрешить, iOS спросит отдельно.")
+                    }
                 }
 
                 if let deletion, deletion.requested {
@@ -53,6 +65,16 @@ struct ProfileView: View {
                 DeleteAccountView()
             }
         }
+    }
+
+    private func setHealth(_ on: Bool) async {
+        if on {
+            // Отказ в разрешениях iOS приложению не сообщает — включаем
+            // в любом случае: без разрешений чтение просто пустое.
+            try? await HealthService.shared.requestAuthorization()
+        }
+        HealthService.isEnabled = on
+        healthEnabled = on
     }
 
     private var roleTitle: String {

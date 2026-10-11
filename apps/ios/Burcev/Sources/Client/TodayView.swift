@@ -13,6 +13,14 @@ struct TodayView: View {
         var targets: DailyTargets?
         var water: Water?
         var metrics: DailyMetrics?
+        var health: HealthDay?
+    }
+
+    /// Что Здоровье знает о дне — показываем, когда в дневнике этого нет.
+    struct HealthDay: Sendable {
+        var steps: Int?
+        var activeEnergy: Double?
+        var weight: Double?
     }
 
     var body: some View {
@@ -29,7 +37,7 @@ struct TodayView: View {
                 case let .loaded(snapshot):
                     nutrition(snapshot)
                     water(snapshot.water)
-                    activity(snapshot.metrics)
+                    activity(snapshot.metrics, health: snapshot.health)
                 }
             }
             .navigationTitle("Сегодня")
@@ -93,14 +101,23 @@ struct TodayView: View {
     }
 
     @ViewBuilder
-    private func activity(_ metrics: DailyMetrics?) -> some View {
-        if let metrics {
-            Section("Активность") {
-                LabeledContent("Шаги", value: metrics.steps.formatted())
-                if let weight = metrics.weight {
-                    LabeledContent("Вес", value: "\(weight.formatted(.number.precision(.fractionLength(1)))) кг")
-                }
-                LabeledContent("Тренировка", value: metrics.workout_completed ? "Выполнена" : "—")
+    private func activity(_ metrics: DailyMetrics?, health: HealthDay?) -> some View {
+        let steps = max(metrics?.steps ?? 0, health?.steps ?? 0)
+        let weight = metrics?.weight ?? health?.weight
+        Section {
+            LabeledContent("Шаги", value: steps.formatted())
+            if let energy = health?.activeEnergy, energy > 0 {
+                LabeledContent("Активная энергия", value: "\(energy.formatted(.number.precision(.fractionLength(0)))) ккал")
+            }
+            if let weight {
+                LabeledContent("Вес", value: "\(weight.formatted(.number.precision(.fractionLength(1)))) кг")
+            }
+            LabeledContent("Тренировка", value: metrics?.workout_completed == true ? "Выполнена" : "—")
+        } header: {
+            Text("Активность")
+        } footer: {
+            if health != nil {
+                Text("С учётом данных Apple Здоровья.")
             }
         }
     }
@@ -120,11 +137,19 @@ struct TodayView: View {
                 "/api/v1/food-tracker/water", query: [URLQueryItem(name: "date", value: day)]))
             async let metrics = api.send(Endpoint<DailyMetrics>.get("/api/v1/dashboard/daily/\(day)"))
 
+            var health: HealthDay?
+            if HealthService.isEnabled {
+                async let steps = HealthService.shared.steps(on: date)
+                async let energy = HealthService.shared.activeEnergy(on: date)
+                async let weight = HealthService.shared.latestWeight(onOrBefore: date)
+                health = HealthDay(steps: await steps, activeEnergy: await energy, weight: await weight)
+            }
             let snapshot = Snapshot(
                 totals: try await entries.dailyTotals,
                 targets: try? await targets,
                 water: try? await water,
-                metrics: try? await metrics)
+                metrics: try? await metrics,
+                health: health)
             content = .loaded(snapshot)
         } catch is CancellationError {
             return
@@ -140,6 +165,7 @@ struct TodayView: View {
         do {
             let water = try await session.api.send(Endpoint<Water>.post(
                 "/api/v1/food-tracker/water", body: AddWaterRequest(date: APIDates.day(date), glasses: 1)))
+            await HealthService.shared.saveWater(milliliters: Double(water.glass_size), at: Date())
             if case var .loaded(snapshot) = content {
                 snapshot.water = water
                 content = .loaded(snapshot)
