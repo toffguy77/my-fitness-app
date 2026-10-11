@@ -99,6 +99,20 @@ platform :ios do
     )
   end
 
+  desc "Проверка сборки теми же правилами, что приём в App Store Connect"
+  lane :validate do
+    # Отказ при приёме приходит только письмом, а сборка просто не появляется.
+    # altool проверяет те же правила сразу и печатает ITMS-ошибки в лог.
+    keys = File.expand_path("~/.appstoreconnect/private_keys")
+    FileUtils.mkdir_p(keys)
+    FileUtils.cp(ENV["ASC_KEY_PATH"], File.join(keys, "AuthKey_#{ENV['APP_STORE_CONNECT_KEY_ID']}.p8"))
+    Dir.chdir("..") do
+      sh("xcrun", "altool", "--validate-app", "-f", "build/ipa/Burcev.ipa", "-t", "ios",
+         "--apiKey", ENV["APP_STORE_CONNECT_KEY_ID"], "--apiIssuer", ENV["APP_STORE_CONNECT_ISSUER_ID"],
+         "--output-format", "normal")
+    end
+  end
+
   desc "Entitlements подписанного приложения и профиля — что сверяет Apple при приёме"
   lane :entitlements do
     Dir.chdir("..") do
@@ -119,6 +133,7 @@ platform :ios do
     )
     build
     entitlements
+    validate
     upload_to_testflight(
       api_key: asc_api_key,
       ipa: "build/ipa/Burcev.ipa",
