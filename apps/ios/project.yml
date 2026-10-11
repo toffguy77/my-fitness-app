@@ -23,6 +23,10 @@ targets:
     sources:
       - path: Burcev/Sources
       - path: Burcev/Assets.xcassets
+      # Манифест конфиденциальности: без объявления UserDefaults Apple
+      # отвергает загрузку (ITMS-91053) письмом, а сборка не появляется.
+      - path: Burcev/PrivacyInfo.xcprivacy
+        buildPhase: resources
     info:
       path: Burcev/Info.plist
       properties:
