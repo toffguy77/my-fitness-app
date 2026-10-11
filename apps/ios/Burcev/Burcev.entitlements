@@ -9,6 +9,14 @@
 		<string>applinks:burcev.team</string>
 		<string>applinks:new.burcev.team</string>
 		<string>webcredentials:burcev.team</string>
+		<string>webcredentials:new.burcev.team</string>
+	</array>
+	<key>keychain-access-groups</key>
+	<array>
+		<!-- Своя группа первой: она — группа записи по умолчанию, и сессия
+		     остаётся в ней. Общая — только для сводки дня виджету. -->
+		<string>$(AppIdentifierPrefix)team.burcev.app</string>
+		<string>$(AppIdentifierPrefix)team.burcev.shared</string>
 	</array>
 	<key>com.apple.developer.healthkit</key>
 	<true/>

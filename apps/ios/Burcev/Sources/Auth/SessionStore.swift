@@ -234,6 +234,8 @@ final class SessionStore {
     /// Сессию закрыл сервер (refresh отвергнут) или удалён аккаунт.
     func endSession() {
         keychain.delete(Self.refreshKey)
+        // Виджет не должен показывать день прежнего аккаунта.
+        TodaySnapshot.clear()
         Task { await api.setAccessToken(nil) }
         state = .signedOut
     }

@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import WidgetKit
 
 /// Главный экран клиента — то же, что дашборд на сайте: куратор и первая
 /// неделя, питание к цели, вода, активность, задачи, неделя и прогресс.
@@ -325,6 +326,7 @@ struct TodayView: View {
                 onboarding: await onboarding)
             snapshot.health = await readHealth()
             content = .loaded(snapshot)
+            if isToday { publishToWidget(snapshot) }
             if await syncHealth(snapshot),
                let fresh = try? await api.send(Endpoint<FullDailyMetrics>.get("/api/v1/dashboard/daily/\(day)")) {
                 snapshot.metrics = fresh
@@ -335,6 +337,19 @@ struct TodayView: View {
         } catch {
             content = .failed(error.userMessage)
         }
+    }
+
+    /// Сводка дня — виджету на домашнем экране.
+    private func publishToWidget(_ snapshot: Snapshot) {
+        TodaySnapshot(
+            day: TodaySnapshot.dayString(date),
+            calories: snapshot.totals.calories,
+            caloriesTarget: snapshot.targets?.macros?.calories,
+            protein: snapshot.totals.protein, fat: snapshot.totals.fat, carbs: snapshot.totals.carbs,
+            waterGlasses: snapshot.water?.glasses, waterGoal: snapshot.water?.goal,
+            updatedAt: Date()
+        ).save()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func readHealth() async -> HealthDay? {

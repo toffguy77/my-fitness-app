@@ -1,6 +1,7 @@
 default_platform(:ios)
 
 BUNDLE_ID = "team.burcev.app"
+WIDGET_ID = "team.burcev.app.widget"
 TEAM_ID = "3GWRDGA8B7"
 
 # Ключ App Store Connect. Предпочитаем файл .p8 на диске (ASC_KEY_PATH): часть
@@ -45,6 +46,10 @@ def ensure_app_exists
     UI.message("Включаю #{capability} у #{BUNDLE_ID}")
     bundle.create_capability(capability)
   end
+  unless Spaceship::ConnectAPI::BundleId.find(WIDGET_ID)
+    UI.message("Регистрирую идентификатор виджета #{WIDGET_ID}")
+    Spaceship::ConnectAPI::BundleId.create(name: "BURCEV Widget", identifier: WIDGET_ID, platform: "IOS")
+  end
   unless Spaceship::ConnectAPI::App.find(BUNDLE_ID)
     UI.user_error!("Приложения #{BUNDLE_ID} нет в App Store Connect. " \
                    "Создайте его: My Apps → + → New App, Bundle ID #{BUNDLE_ID}.")
@@ -67,6 +72,25 @@ platform :ios do
     )
     profile_name = lane_context[SharedValues::SIGH_NAME]
     UI.message("Профиль: #{profile_name}")
+    # У расширения-виджета свой идентификатор и свой профиль.
+    get_provisioning_profile(
+      api_key: key,
+      app_identifier: WIDGET_ID,
+      output_path: "build",
+      filename: "burcev_widget_appstore.mobileprovision",
+      force: true,
+    )
+    widget_profile = lane_context[SharedValues::SIGH_NAME]
+    UI.message("Профиль виджета: #{widget_profile}")
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Burcev.xcodeproj",
+      targets: ["BurcevWidget"],
+      team_id: TEAM_ID,
+      code_sign_identity: "Apple Distribution",
+      profile_name: widget_profile,
+      bundle_identifier: WIDGET_ID,
+    )
     # Архив для App Store подписывается сертификатом дистрибуции и профилем
     # App Store. С автоматической подписью Xcode на каждом прогоне выпускал
     # новый сертификат разработчика — на чистом раннере их нет — и на второй
@@ -94,7 +118,7 @@ platform :ios do
       export_options: {
         signingStyle: "manual",
         teamID: TEAM_ID,
-        provisioningProfiles: { BUNDLE_ID => profile_name },
+        provisioningProfiles: { BUNDLE_ID => profile_name, WIDGET_ID => widget_profile },
       },
     )
   end

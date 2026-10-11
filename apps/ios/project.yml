@@ -27,6 +27,9 @@ targets:
       # отвергает загрузку (ITMS-91053) письмом, а сборка не появляется.
       - path: Burcev/PrivacyInfo.xcprivacy
         buildPhase: resources
+    dependencies:
+      - target: BurcevWidget
+        embed: true
     info:
       path: Burcev/Info.plist
       properties:
@@ -57,6 +60,31 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: Burcev/Burcev.entitlements
+        SWIFT_STRICT_CONCURRENCY: complete
+
+  BurcevWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: BurcevWidget
+      - path: Burcev/Sources/Shared/TodaySnapshot.swift
+    info:
+      path: BurcevWidget/Info.plist
+      properties:
+        CFBundleDisplayName: BURCEV
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: team.burcev.app.widget
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: BurcevWidget/BurcevWidget.entitlements
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_STRICT_CONCURRENCY: complete
 
   BurcevTests:
