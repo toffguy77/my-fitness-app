@@ -320,7 +320,7 @@ func (h *OAuthHandler) appOrigin() string {
 func (h *OAuthHandler) redirectToApp(c *gin.Context, path string) {
 	// Вход, начатый из iOS-приложения, возвращается туда же, а не на сайт.
 	if appChallenge(c) != "" {
-		redirectToAppClient(c, path)
+		redirectToAppClient(c, h.appOrigin(), path)
 		return
 	}
 	c.Redirect(http.StatusFound, h.appOrigin()+path)

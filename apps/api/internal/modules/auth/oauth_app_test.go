@@ -26,10 +26,12 @@ func TestRedirectToAppClient(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/vk/callback", nil)
-		redirectToAppClient(c, path)
+		redirectToAppClient(c, "https://burcev.team", path)
 		assert.Equal(t, http.StatusFound, w.Code)
 		location := w.Header().Get("Location")
-		assert.True(t, strings.HasPrefix(location, AppCallbackURL+"?"), location)
+		// Только https нашего домена: собственную схему вправе перехватить
+		// любое приложение на телефоне.
+		assert.True(t, strings.HasPrefix(location, "https://burcev.team"+AppCallbackPath+"?"), location)
 		parsed, _ := url.Parse(location)
 		assert.Equal(t, reason, parsed.Query().Get("error"), path)
 	}

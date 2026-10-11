@@ -3,7 +3,8 @@ import CryptoKit
 import SwiftUI
 
 /// Вход через Яндекс или VK — как на сайте, но сессия возвращается в
-/// приложение одноразовым кодом (см. apps/api/internal/modules/auth/oauth_app.go).
+/// приложение одноразовым кодом на https://<домен>/auth/app-complete
+/// (см. apps/api/internal/modules/auth/oauth_app.go).
 ///
 /// Секрет создаётся на каждый вход и не покидает телефон до обмена; серверу в
 /// начале уходит только его хэш. Код, перехваченный по дороге из браузера,
@@ -17,7 +18,11 @@ struct ProviderButtons: View {
     @State private var errorText: String?
 
     var body: some View {
-        if !providers.isEmpty {
+        // Возврат входа — на https нашего домена: его система отдаёт только
+        // приложению с подтверждённым доменом, а собственную схему вправе
+        // перехватить любое приложение (см. oauth_app.go). Такой возврат —
+        // с iOS 17.4; на более ранних кнопок нет, вход по ссылке и паролю есть.
+        if #available(iOS 17.4, *), !providers.isEmpty {
             Section {
                 ForEach(providers, id: \.self) { provider in
                     Button {
@@ -65,9 +70,13 @@ struct ProviderButtons: View {
         var components = URLComponents(url: AppConfig.apiBaseURL.appendingPathComponent("api/v1/auth/oauth/\(provider)"),
                                        resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "app_challenge", value: Self.challenge(for: verifier))]
+        guard #available(iOS 17.4, *), let host = AppConfig.apiBaseURL.host else { return }
         do {
             let callback = try await webAuthenticationSession.authenticate(
-                using: components.url!, callbackURLScheme: "burcev", preferredBrowserSession: .ephemeral)
+                using: components.url!,
+                callback: .https(host: host, path: "/auth/app-complete"),
+                preferredBrowserSession: .ephemeral,
+                additionalHeaderFields: [:])
             let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
             if let code = items.first(where: { $0.name == "code" })?.value {
                 try await session.exchangeProviderCode(code, verifier: verifier)

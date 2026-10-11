@@ -25,17 +25,24 @@ import (
 // Сайт получает сессию HttpOnly-cookie в браузере. Приложение открывает вход в
 // ASWebAuthenticationSession, и cookie остаётся в её хранилище, недоступном
 // приложению. Поэтому для приложения обратный вызов отдаёт не cookie, а
-// одноразовый код на две минуты — переходом на burcev://auth/complete?code=…,
-// который система возвращает приложению. Код обменивается на сессию вместе с
-// секретом, хэш которого приложение прислало в начале (как PKCE): код,
-// перехваченный по дороге, без секрета бесполезен.
+// одноразовый код на две минуты переходом на https://<домен>/auth/app-complete.
+// Код обменивается на сессию вместе с секретом, хэш которого приложение
+// прислало в начале (как PKCE).
+//
+// Возврат — на https нашего домена, а не на собственную схему burcev://.
+// Начать поток со своим хэшем может кто угодно: прислать жертве ссылку, и после
+// её входа код ушёл бы на burcev://, а эту схему вправе зарегистрировать любое
+// приложение на телефоне — и злоумышленник с его секретом получил бы сессию
+// жертвы. https-адрес система отдаёт только приложению, чей домен подтверждён
+// (associated-domains), а в браузере код остаётся на нашей пустой странице.
 
 const (
 	// appChallengeCookie несёт хэш секрета приложения через поток входа.
 	appChallengeCookie = "oauth_app"
-	// AppCallbackURL — куда возвращается вход, начатый из приложения.
-	AppCallbackURL = "burcev://auth/complete"
-	appHandoffTTL  = 2 * time.Minute
+	// AppCallbackPath — куда на нашем домене возвращается вход, начатый из
+	// приложения. Страница пустая, без скриптов и счётчиков.
+	AppCallbackPath = "/auth/app-complete"
+	appHandoffTTL   = 2 * time.Minute
 )
 
 // base64url без дополнения от SHA-256 — 43 символа.
@@ -53,7 +60,7 @@ func appChallenge(c *gin.Context) string {
 // redirectToAppClient возвращает вход в приложение с причиной отказа.
 // Привязка к существующему аккаунту и ввод почты живут в браузерной сессии,
 // приложению их не довести — оно предлагает войти по ссылке или паролю.
-func redirectToAppClient(c *gin.Context, path string) {
+func redirectToAppClient(c *gin.Context, origin, path string) {
 	reason := "failed"
 	switch {
 	case strings.HasPrefix(path, "/auth/link"):
@@ -65,7 +72,7 @@ func redirectToAppClient(c *gin.Context, path string) {
 			reason = parsed.Query().Get("oauth")
 		}
 	}
-	c.Redirect(http.StatusFound, AppCallbackURL+"?"+url.Values{"error": {reason}}.Encode())
+	c.Redirect(http.StatusFound, origin+AppCallbackPath+"?"+url.Values{"error": {reason}}.Encode())
 }
 
 // handoffToApp отдаёт приложению одноразовый код вместо cookie.
@@ -78,10 +85,10 @@ func (h *OAuthHandler) handoffToApp(c *gin.Context, outcome *OAuthOutcome, chall
 	code, err := h.service.CreateAppHandoff(c.Request.Context(), outcome.User.User.ID, challenge)
 	if err != nil {
 		h.log.Error("Failed to create app sign-in handoff", "error", err)
-		redirectToAppClient(c, "/auth?oauth=failed")
+		redirectToAppClient(c, h.appOrigin(), "/auth?oauth=failed")
 		return
 	}
-	c.Redirect(http.StatusFound, AppCallbackURL+"?"+url.Values{
+	c.Redirect(http.StatusFound, h.appOrigin()+AppCallbackPath+"?"+url.Values{
 		"code":   {code},
 		"result": {string(outcome.Result)},
 	}.Encode())
