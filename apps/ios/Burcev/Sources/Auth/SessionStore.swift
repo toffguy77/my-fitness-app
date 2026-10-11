@@ -16,6 +16,10 @@ final class SessionStore {
     }
 
     private(set) var state: State = .restoring
+    /// Открыта ссылка сброса пароля из письма.
+    var resetToken: String?
+    /// Ссылка из письма не сработала — показать почему.
+    var linkError: String?
     let api: APIClient
 
     private let keychain: Keychain
@@ -79,6 +83,92 @@ final class SessionStore {
         }
         await api.setAccessToken(result.token)
         state = .signedIn(result.user)
+    }
+
+    /// Ссылки из писем (Universal Links): вход и сброс пароля.
+    func handle(_ url: URL) async {
+        let token = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?.first { $0.name == "token" }?.value
+        guard let token, !token.isEmpty else { return }
+        switch url.path {
+        case "/auth/link/consume":
+            do {
+                try await consumeMagicLink(token: token)
+            } catch {
+                linkError = "Ссылка устарела или уже использована. Запросите новую на экране входа."
+            }
+        case "/reset-password":
+            resetToken = token
+        default:
+            break
+        }
+    }
+
+    func register(email: String, password: String, marketing: Bool) async throws {
+        await installRefresher()
+        let (result, refreshToken) = try await api.sendIssuingSession(
+            Endpoint<LoginResult>.post("/api/v1/auth/register",
+                                       body: RegisterRequest(email: email, password: password, consents: Self.consents(marketing)),
+                                       requiresAuth: false))
+        if let refreshToken {
+            keychain.write(refreshToken, for: Self.refreshKey)
+        }
+        await api.setAccessToken(result.token)
+        state = .signedIn(result.user)
+    }
+
+    /// Письмо со ссылкой на вход. Сервер отвечает одинаково, есть аккаунт или
+    /// нет, — по ответу нельзя узнать, зарегистрирован ли адрес.
+    func requestMagicLink(email: String, marketing: Bool) async throws {
+        _ = try await api.send(Endpoint<Empty>.post("/api/v1/auth/magic-link/request",
+                                                    body: MagicLinkRequest(email: email, consents: Self.consents(marketing)),
+                                                    requiresAuth: false))
+    }
+
+    /// Ссылка из письма открыла приложение. Сервер выдаёт сессию только
+    /// в `Set-Cookie`, без access-токена, — его даёт следующий обмен.
+    func consumeMagicLink(token: String) async throws {
+        await installRefresher()
+        struct Consumed: Decodable, Sendable { let user: SessionUser }
+        let (_, refreshToken) = try await api.sendIssuingSession(
+            Endpoint<Consumed>.post("/api/v1/auth/magic-link/consume", body: TokenRequest(token: token), requiresAuth: false))
+        guard let refreshToken else { throw APIError.unauthorized }
+        keychain.write(refreshToken, for: Self.refreshKey)
+        guard let result = try await refresh() else { throw APIError.unauthorized }
+        state = .signedIn(result.user)
+    }
+
+    func forgotPassword(email: String) async throws {
+        _ = try await api.send(Endpoint<Empty>.post("/api/v1/auth/forgot-password", body: EmailRequest(email: email), requiresAuth: false))
+    }
+
+    func resetPassword(token: String, password: String) async throws {
+        _ = try await api.send(Endpoint<Empty>.post("/api/v1/auth/reset-password",
+                                                    body: ResetPasswordRequest(token: token, password: password), requiresAuth: false))
+    }
+
+    func verifyEmail(code: String) async throws {
+        _ = try await api.send(Endpoint<Empty>.post("/api/v1/auth/verify-email", body: CodeRequest(code: code)))
+        update { $0.email_verified = true }
+    }
+
+    func resendVerification() async throws {
+        _ = try await api.send(Endpoint<Empty>.post("/api/v1/auth/resend-verification", body: [String: String]()))
+    }
+
+    func completeOnboarding() async throws {
+        _ = try await api.send(Endpoint<Empty>.put("/api/v1/users/onboarding/complete", body: [String: String]()))
+        update { $0.onboarding_completed = true }
+    }
+
+    private func update(_ change: (inout SessionUser) -> Void) {
+        guard case var .signedIn(user) = state else { return }
+        change(&user)
+        state = .signedIn(user)
+    }
+
+    private static func consents(_ marketing: Bool) -> Consents {
+        Consents(terms_of_service: true, privacy_policy: true, data_processing: true, marketing: marketing)
     }
 
     /// Смена пароля завершает все остальные сессии, а этой выдаёт новую пару

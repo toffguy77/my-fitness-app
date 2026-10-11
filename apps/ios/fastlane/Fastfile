@@ -35,10 +35,14 @@ def ensure_app_exists
   # Возможности App ID должны совпадать с entitlements сборки, иначе профиль
   # их не содержит и подпись отказывает.
   bundle ||= Spaceship::ConnectAPI::BundleId.find(BUNDLE_ID)
-  healthkit = Spaceship::ConnectAPI::BundleIdCapability::Type::HEALTHKIT
-  unless bundle.get_capabilities.any? { |c| c.capability_type == healthkit }
-    UI.message("Включаю HealthKit у #{BUNDLE_ID}")
-    bundle.create_capability(healthkit)
+  enabled = bundle.get_capabilities.map(&:capability_type)
+  [
+    Spaceship::ConnectAPI::BundleIdCapability::Type::HEALTHKIT,
+    Spaceship::ConnectAPI::BundleIdCapability::Type::ASSOCIATED_DOMAINS,
+  ].each do |capability|
+    next if enabled.include?(capability)
+    UI.message("Включаю #{capability} у #{BUNDLE_ID}")
+    bundle.create_capability(capability)
   end
   unless Spaceship::ConnectAPI::App.find(BUNDLE_ID)
     UI.user_error!("Приложения #{BUNDLE_ID} нет в App Store Connect. " \

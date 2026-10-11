@@ -26,6 +26,45 @@ struct SessionUser: Decodable, Sendable, Equatable {
     let email: String
     let name: String?
     let role: Role
+    var email_verified: Bool? = nil
+    var onboarding_completed: Bool? = nil
+}
+
+/// Согласия при регистрации и входе по ссылке — четыре флага, как на сайте.
+/// Первые три обязательны: сервер без них ссылку не отправит.
+struct Consents: Encodable {
+    let terms_of_service: Bool
+    let privacy_policy: Bool
+    let data_processing: Bool
+    let marketing: Bool
+}
+
+struct RegisterRequest: Encodable {
+    let email: String
+    let password: String
+    let consents: Consents
+}
+
+struct MagicLinkRequest: Encodable {
+    let email: String
+    let consents: Consents
+}
+
+struct TokenRequest: Encodable {
+    let token: String
+}
+
+struct EmailRequest: Encodable {
+    let email: String
+}
+
+struct ResetPasswordRequest: Encodable {
+    let token: String
+    let password: String
+}
+
+struct CodeRequest: Encodable {
+    let code: String
 }
 
 struct LoginResult: Decodable, Sendable {

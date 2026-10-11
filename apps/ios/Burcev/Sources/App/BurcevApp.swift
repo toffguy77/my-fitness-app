@@ -9,6 +9,10 @@ struct BurcevApp: App {
             RootView()
                 .environment(session)
                 .task { await session.restore() }
+                .onOpenURL { url in Task { await session.handle(url) } }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL { Task { await session.handle(url) } }
+                }
         }
     }
 }
@@ -17,12 +21,33 @@ struct RootView: View {
     @Environment(SessionStore.self) private var session
 
     var body: some View {
+        content
+            .sheet(item: Binding(get: { session.resetToken.map(ResetToken.init) },
+                                 set: { if $0 == nil { session.resetToken = nil } })) { token in
+                ResetPasswordView(token: token.id)
+            }
+            .alert("Не получилось войти по ссылке", isPresented: Binding(
+                get: { session.linkError != nil }, set: { if !$0 { session.linkError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(session.linkError ?? "")
+            }
+    }
+
+    private struct ResetToken: Identifiable { let id: String }
+
+    @ViewBuilder
+    private var content: some View {
         switch session.state {
         case .restoring:
             ProgressView()
                 .controlSize(.large)
         case .signedOut:
             LoginView()
+        case let .signedIn(user) where user.role == .client && user.email_verified == false:
+            VerifyEmailView()
+        case let .signedIn(user) where user.role == .client && user.onboarding_completed == false:
+            OnboardingView()
         case let .signedIn(user):
             switch user.role {
             case .coordinator:
