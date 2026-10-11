@@ -522,13 +522,27 @@ struct CodeSent: Decodable, Sendable {}
 enum TrustedMedia {
     static let hosts: Set<String> = ["storage.yandexcloud.net"]
 
+    /// Проверенная ссылка, собранная заново только из проверенных частей:
+    /// загружается ровно то, что прошло проверку, а не исходная строка, которую
+    /// другой разборщик мог бы прочитать иначе.
     static func url(_ raw: String) -> URL? {
-        guard let url = URL(string: raw), isTrusted(url) else { return nil }
-        return url
+        guard let parts = URLComponents(string: raw),
+              parts.scheme?.lowercased() == "https",
+              parts.user == nil, parts.password == nil,
+              parts.port == nil || parts.port == 443,
+              let host = parts.host?.lowercased(), isTrusted(host: host),
+              parts.fragment == nil else {
+            return nil
+        }
+        var clean = URLComponents()
+        clean.scheme = "https"
+        clean.host = host
+        clean.percentEncodedPath = parts.percentEncodedPath
+        clean.percentEncodedQuery = parts.percentEncodedQuery
+        return clean.url
     }
 
-    static func isTrusted(_ url: URL) -> Bool {
-        guard url.scheme == "https", let host = url.host?.lowercased() else { return false }
-        return hosts.contains(host) || host == AppConfig.apiBaseURL.host?.lowercased()
+    static func isTrusted(host: String) -> Bool {
+        hosts.contains(host) || host == AppConfig.apiBaseURL.host?.lowercased()
     }
 }

@@ -555,7 +555,7 @@ struct LeadsView: View {
                     }
                     if let days = lead.age_days { Text("ждёт \(days) дн.").font(.caption2).foregroundStyle(.secondary) }
                     HStack {
-                        if lead.contact_allowed == true, let url = URL(string: "mailto:\(lead.email)") {
+                        if lead.contact_allowed == true, let url = mailto(lead.email) {
                             Button("Написать") { openURL(url) }.buttonStyle(.bordered)
                         }
                         if lead.handled_at == nil {
@@ -569,6 +569,17 @@ struct LeadsView: View {
         }
         .task(id: includeHandled) { await load() }
         .refreshable { await load() }
+    }
+
+    /// Адрес в заявке вводит посетитель сайта. Строка вида `a@b.c?body=…`
+    /// подставила бы в письмо куратора чужой текст или получателей — поэтому
+    /// только один простой адрес, и ссылка собирается из частей.
+    private func mailto(_ email: String) -> URL? {
+        guard email.wholeMatch(of: /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/) != nil else { return nil }
+        var parts = URLComponents()
+        parts.scheme = "mailto"
+        parts.path = email
+        return parts.url
     }
 
     private func load() async {

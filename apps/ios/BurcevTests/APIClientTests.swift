@@ -203,7 +203,9 @@ final class TrustedMediaTests: XCTestCase {
     /// Собеседник может вписать в сообщение любой адрес — приложение по нему не ходит.
     func testChatImageFromForeignHostIsNotLoaded() {
         for raw in ["https://tracker.example.com/pixel.png", "http://storage.yandexcloud.net/a.jpg",
-                    "https://storage.yandexcloud.net.evil.com/a.jpg", "file:///etc/passwd"] {
+                    "https://storage.yandexcloud.net.evil.com/a.jpg", "file:///etc/passwd",
+                    "https://storage.yandexcloud.net@evil.com/a.jpg", "https://user:pw@storage.yandexcloud.net/a.jpg",
+                    "https://storage.yandexcloud.net:8443/a.jpg"] {
             let json = #"{"id":"m","sender_id":1,"type":"image","content":"\#(raw)","created_at":"2026-10-11T08:00:00Z"}"#
             let message = try! JSONDecoder.api.decode(Message.self, from: Data(json.utf8))
             XCTAssertNil(message.imageURL, raw)
@@ -214,5 +216,17 @@ final class TrustedMediaTests: XCTestCase {
         let blocks = MarkdownView.parse("![a](https://tracker.example.com/p.png)\n\n![b](https://storage.yandexcloud.net/c/x.png)")
         let images = blocks.compactMap { if case let .image(url, _, _) = $0 { return url } else { return nil } }
         XCTAssertEqual(images.map(\.host), ["storage.yandexcloud.net"])
+    }
+}
+
+final class TrustedMediaCanonicalTests: XCTestCase {
+    /// Загружается собранная заново ссылка, а не исходная строка.
+    func testBackslashTrickIsRejected() {
+        XCTAssertNil(TrustedMedia.url("https://evil.com\\@storage.yandexcloud.net/a.jpg"))
+    }
+
+    func testURLIsRebuiltFromCheckedParts() {
+        let url = TrustedMedia.url("HTTPS://Storage.YandexCloud.net:443/bucket/a%20b.jpg?x=1")
+        XCTAssertEqual(url?.absoluteString, "https://storage.yandexcloud.net/bucket/a%20b.jpg?x=1")
     }
 }
