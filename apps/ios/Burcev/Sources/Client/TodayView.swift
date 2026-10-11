@@ -13,6 +13,8 @@ struct TodayView: View {
     @State private var actionError: String?
     @State private var editingWeight = false
     @State private var editingWorkout = false
+    @State private var editingSteps = false
+    @State private var articles: [Article] = []
     @State private var curatorRequested = false
 
     struct Snapshot: Sendable {
@@ -56,6 +58,7 @@ struct TodayView: View {
                     if snapshot.onboarding?.active != true, let progress = snapshot.progress {
                         progressSection(progress)
                     }
+                    reading
                 }
                 if let actionError {
                     Section { Text(actionError).foregroundStyle(.red).font(.footnote) }
@@ -69,6 +72,12 @@ struct TodayView: View {
                 WeightSheet(current: content.value?.metrics?.weight ?? content.value?.health?.weight) { kg in
                     await saveMetric(.weight(kg, date: date))
                     await HealthService.shared.saveWeight(kilograms: kg, at: isToday ? Date() : date)
+                }
+                .presentationDetents([.medium])
+            }
+            .sheet(isPresented: $editingSteps) {
+                StepsSheet(current: content.value.map { max($0.metrics?.steps ?? 0, $0.health?.steps ?? 0) }) { steps in
+                    await saveMetric(.steps(steps, date: date))
                 }
                 .presentationDetents([.medium])
             }
@@ -88,7 +97,9 @@ struct TodayView: View {
     @ViewBuilder
     private func curatorSection(_ state: OnboardingState) -> some View {
         Section {
-            if let curator = state.curator {
+            // Куратор показывается только при активном сопровождении: без него
+            // назначенный куратор не отвечает, и карточка вводила бы в заблуждение.
+            if let curator = state.curator, state.curator_access?.allowed != false {
                 VStack(alignment: .leading, spacing: 4) {
                     Label("Ваш куратор — \(curator.name)", systemImage: "person.crop.circle.badge.checkmark")
                         .font(.headline)
@@ -178,7 +189,10 @@ struct TodayView: View {
         let steps = max(metrics?.steps ?? 0, health?.steps ?? 0)
         let weight = metrics?.weight ?? health?.weight
         Section {
-            LabeledContent("Шаги", value: steps.formatted())
+            Button { editingSteps = true } label: {
+                LabeledContent("Шаги", value: steps > 0 ? steps.formatted() : "Указать")
+            }
+            .foregroundStyle(.primary)
             if let energy = health?.activeEnergy, energy > 0 {
                 LabeledContent("Активная энергия", value: "\(energy.formatted(.number.precision(.fractionLength(0)))) ккал")
             }
@@ -293,6 +307,27 @@ struct TodayView: View {
         }
     }
 
+    // MARK: - Почитать
+
+    @ViewBuilder
+    private var reading: some View {
+        if !articles.isEmpty {
+            Section("Почитать") {
+                ForEach(articles) { article in
+                    NavigationLink {
+                        ArticleView(articleID: article.id)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(article.title)
+                            Text(article.categoryTitle).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                NavigationLink("Все статьи") { FeedView() }
+            }
+        }
+    }
+
     // MARK: - Загрузка
 
     private func load() async {
@@ -317,6 +352,8 @@ struct TodayView: View {
             async let progress = try? api.send(Endpoint<Progress>.get(
                 "/api/v1/dashboard/progress", query: [URLQueryItem(name: "weeks", value: "4")]))
             async let onboarding = try? api.send(Endpoint<OnboardingState>.get("/api/v1/dashboard/onboarding"))
+            async let feed = try? api.send(Endpoint<FeedPage>.get(
+                "/api/v1/content/feed", query: [URLQueryItem(name: "limit", value: "3")]))
 
             var snapshot = Snapshot(
                 totals: try await entries.dailyTotals,
@@ -327,6 +364,7 @@ struct TodayView: View {
                 week: await week?.days ?? [],
                 progress: await progress,
                 onboarding: await onboarding)
+            articles = await feed?.articles ?? []
             snapshot.health = await readHealth()
             content = .loaded(snapshot)
             if isToday, let owner = loadingFor, session.user?.id == owner {
@@ -538,6 +576,45 @@ struct WorkoutSheet: View {
         Task {
             await onSave(types.sorted(), minutes)
             dismiss()
+        }
+    }
+}
+
+struct StepsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let current: Int?
+    let onSave: (Int) async -> Void
+
+    @State private var steps: Int?
+    @State private var saving = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Шаги", value: $steps, format: .number)
+                        .keyboardType(.numberPad)
+                        .font(.title)
+                } footer: {
+                    Text("Если включено Apple Здоровье, шаги подтягиваются сами — вручную их стоит вводить, когда телефона с собой не было.")
+                }
+            }
+            .navigationTitle("Шаги")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Отмена") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Сохранить") {
+                        saving = true
+                        Task {
+                            if let steps { await onSave(steps) }
+                            dismiss()
+                        }
+                    }
+                    .disabled(saving || (steps ?? -1) < 0 || (steps ?? 0) > 200_000)
+                }
+            }
+            .onAppear { steps = (current ?? 0) > 0 ? current : nil }
         }
     }
 }

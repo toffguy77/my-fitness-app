@@ -174,7 +174,12 @@ struct FeedView: View {
                 Text(errorText).foregroundStyle(.red)
             }
             ForEach(articles) { article in
-                NavigationLink(value: article) {
+                // Прямая ссылка на экран, а не переход по значению: лента
+                // открывается из разных стеков навигации, и переход по
+                // значению в одном из них не находил получателя.
+                NavigationLink {
+                    ArticleView(articleID: article.id)
+                } label: {
                     ArticleCard(article: article)
                 }
             }
@@ -183,7 +188,6 @@ struct FeedView: View {
             }
         }
         .navigationTitle("Статьи")
-        .navigationDestination(for: Article.self) { ArticleView(articleID: $0.id) }
         .refreshable { await load(reset: true) }
         .task(id: category) { await load(reset: true) }
     }
@@ -240,6 +244,20 @@ struct ArticleView: View {
     let articleID: String
 
     @State private var content: Loadable<Article> = .loading
+    @State private var linked: InApp?
+    @Environment(\.openURL) private var openURL
+
+    /// Куда в приложении ведут ссылки статей вместо страниц сайта.
+    private enum InApp: Identifiable {
+        case article(String), pricing, norm
+        var id: String {
+            switch self {
+            case let .article(id): return id
+            case .pricing: return "pricing"
+            case .norm: return "norm"
+            }
+        }
+    }
 
     var body: some View {
         Group {
@@ -274,6 +292,31 @@ struct ArticleView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        // Ссылка на другую статью открывается в приложении, прочие — в браузере.
+        .environment(\.openURL, OpenURLAction { link in
+            let url = link.absoluteURL
+            guard TrustedMedia.isTrusted(host: url.host?.lowercased() ?? "") else { return .systemAction }
+            switch url.path {
+            case let path where path.hasPrefix("/content/") && path.count == "/content/".count + 36:
+                linked = .article(String(path.dropFirst("/content/".count)))
+            case "/pricing":
+                linked = .pricing
+            case "/kalkulyator-kbzhu":
+                linked = .norm
+            default:
+                return .systemAction
+            }
+            return .handled
+        })
+        .sheet(item: $linked) { target in
+            NavigationStack {
+                switch target {
+                case let .article(id): ArticleView(articleID: id)
+                case .pricing: CuratorOfferView(expired: false, source: "pricing").navigationTitle("Куратор")
+                case .norm: BodySettingsView()
+                }
+            }
+        }
     }
 
     private func load() async {
@@ -331,8 +374,11 @@ struct MarkdownView: View {
         .textSelection(.enabled)
     }
 
+    /// Ссылки в статьях бывают относительными («/kalkulyator-kbzhu»): без
+    /// адреса сайта они не открывались ничем.
     private func inline(_ text: String) -> AttributedString {
-        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace),
+                               baseURL: AppConfig.apiBaseURL))
             ?? AttributedString(text)
     }
 
