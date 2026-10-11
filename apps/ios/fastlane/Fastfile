@@ -105,29 +105,73 @@ platform :ios do
   desc "Тексты и скриншоты страницы в App Store без отправки на ревью"
   lane :metadata do
     asc_api_key
-    # Что App Store Connect знает о записи приложения: без этого ошибка
-    # загрузки описания приходит одним словом «No data».
     app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
     UI.user_error!("Приложения #{BUNDLE_ID} нет в App Store Connect") unless app
     UI.message("Основной язык: #{app.primary_locale}")
-    { "редактируемая" => app.fetch_edit_app_info, "последняя" => app.fetch_latest_app_info }.each do |label, info|
-      unless info
-        UI.message("app info (#{label}): нет")
-        next
-      end
-      locales = info.get_app_info_localizations.map { |l| "#{l.locale}: #{l.name.inspect}" }
-      UI.message("app info (#{label}) #{info.id}: #{info.state}, #{locales.join('; ')}")
+
+    # Поля обновляются по одному, а не одним deliver: fastlane 2.239 на
+    # первой версии приложения падает с «No data», не называя поля, и
+    # останавливает всю загрузку. Так видно, какое поле Apple не принял, а
+    # остальные всё равно доходят.
+    failures = []
+    # Код lane fastlane выполняет из каталога fastlane/, действия — из корня
+    # проекта: ищем в обоих местах, чтобы не зависеть от этой тонкости.
+    meta_dir = ["metadata", "fastlane/metadata"].find { |d| File.directory?(d) }
+    UI.user_error!("Не найден каталог metadata из #{Dir.pwd}") unless meta_dir
+    meta = ->(name) { File.read(File.join(meta_dir, name)).strip }
+    apply = lambda do |label, &block|
+      block.call
+      UI.success("#{label}: ок")
+    rescue StandardError => e
+      failures << label
+      UI.error("#{label}: #{e.class}: #{e.message}")
     end
-    deliver(
-      api_key: asc_api_key,
-      app_identifier: BUNDLE_ID,
-      app_version: ENV["APP_VERSION"] || "0.1.0",
-      skip_binary_upload: true,
-      overwrite_screenshots: true,
-      submit_for_review: false,
-      run_precheck_before_submit: false,
-      precheck_include_in_app_purchases: false,
-      force: true,
-    )
+
+    info = app.fetch_edit_app_info || app.fetch_latest_app_info
+    info_loc = info.get_app_info_localizations.find { |l| l.locale == "ru" }
+    UI.user_error!("Нет локализации ru у записи приложения") unless info_loc
+    apply.call("название") { info_loc.update(attributes: { name: meta.("ru/name.txt") }) }
+    apply.call("подзаголовок") { info_loc.update(attributes: { subtitle: meta.("ru/subtitle.txt") }) }
+    apply.call("политика конфиденциальности") { info_loc.update(attributes: { privacy_policy_url: meta.("ru/privacy_url.txt") }) }
+    apply.call("категории") do
+      info.update_categories(category_id_map: {
+        primary_category_id: meta.("primary_category.txt"),
+        secondary_category_id: meta.("secondary_category.txt"),
+      })
+    end
+
+    version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    UI.user_error!("Нет редактируемой версии в App Store Connect") unless version
+    UI.message("Версия #{version.version_string}: #{version.app_store_state}")
+    apply.call("copyright") { version.update(attributes: { copyright: meta.("copyright.txt") }) }
+    version_loc = version.get_app_store_version_localizations.find { |l| l.locale == "ru" }
+    UI.user_error!("Нет локализации ru у версии") unless version_loc
+    {
+      "описание" => { description: meta.("ru/description.txt") },
+      "ключевые слова" => { keywords: meta.("ru/keywords.txt") },
+      "рекламный текст" => { promotional_text: meta.("ru/promotional_text.txt") },
+      "ссылка поддержки" => { support_url: meta.("ru/support_url.txt") },
+      "маркетинговая ссылка" => { marketing_url: meta.("ru/marketing_url.txt") },
+    }.each do |label, attributes|
+      apply.call(label) { version_loc.update(attributes: attributes) }
+    end
+
+    apply.call("скриншоты") do
+      deliver(
+        api_key: asc_api_key,
+        app_identifier: BUNDLE_ID,
+        app_version: version.version_string,
+        skip_binary_upload: true,
+        skip_metadata: true,
+        skip_app_version_update: true,
+        overwrite_screenshots: true,
+        submit_for_review: false,
+        run_precheck_before_submit: false,
+        precheck_include_in_app_purchases: false,
+        force: true,
+      )
+    end
+
+    UI.user_error!("Не загрузилось: #{failures.join(', ')}") unless failures.empty?
   end
 end
