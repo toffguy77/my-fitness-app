@@ -319,6 +319,14 @@ struct Conversation: Decodable, Sendable, Identifiable, Equatable {
     let participant: Participant
 }
 
+/// Доступ клиента к переписке с куратором — оплаченное сопровождение.
+/// Куратор и администратор пишут всегда; клиент — пока доступ активен.
+struct ConversationAccess: Decodable, Sendable, Equatable {
+    let allowed: Bool
+    let expired: Bool
+    let expires_at: String?
+}
+
 struct SendMessageRequest: Encodable {
     let type: String
     let content: String

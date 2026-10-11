@@ -1,35 +1,83 @@
 import SwiftUI
 
-/// Переключатель дня: ‹ сегодня ›. Будущие дни не открываются — в них нечего
-/// смотреть и некуда записывать.
+/// Переключатель дня: ‹ сегодня ›, а по нажатию на дату — календарь.
+///
+/// Стрелки — `.borderless`: в строке списка кнопка без своего стиля отдаёт
+/// нажатие всей строке, и две стрелки в одной строке не работали вовсе.
 struct DayPicker: View {
     @Binding var date: Date
     /// Меню планируется вперёд, дневник — нет.
     var allowFuture = false
+    /// На сколько дней вперёд можно заглянуть.
+    var futureDays = 30
+
+    @State private var choosing = false
 
     var body: some View {
         HStack {
             Button {
                 shift(by: -1)
             } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.left").frame(width: 44, height: 32)
             }
+            .buttonStyle(.borderless)
             .accessibilityLabel("Предыдущий день")
 
             Spacer()
-            Text(title)
-                .font(.headline)
+            Button {
+                choosing = true
+            } label: {
+                HStack(spacing: 4) {
+                    Text(title).font(.headline)
+                    Image(systemName: "calendar").font(.subheadline)
+                }
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.primary)
+            .accessibilityHint("Выбрать день в календаре")
             Spacer()
 
             Button {
                 shift(by: 1)
             } label: {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.right").frame(width: 44, height: 32)
             }
-            .disabled(!allowFuture && Calendar.current.isDateInToday(date))
+            .buttonStyle(.borderless)
+            .disabled(!canGoForward)
             .accessibilityLabel("Следующий день")
         }
         .padding(.vertical, 4)
+        .sheet(isPresented: $choosing) {
+            NavigationStack {
+                DatePicker("День", selection: Binding(get: { date }, set: { date = $0; choosing = false }),
+                           in: range, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .environment(\.locale, Locale(identifier: "ru_RU"))
+                    .padding()
+                    .navigationTitle("Выберите день")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { choosing = false } }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Сегодня") { date = Date(); choosing = false }
+                        }
+                    }
+            }
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    private var range: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let start = calendar.date(byAdding: .year, value: -2, to: Date())!
+        let end = allowFuture ? calendar.date(byAdding: .day, value: futureDays, to: Date())! : Date()
+        return start...end
+    }
+
+    private var canGoForward: Bool {
+        let calendar = Calendar.current
+        let next = calendar.date(byAdding: .day, value: 1, to: date)!
+        return calendar.startOfDay(for: next) <= calendar.startOfDay(for: range.upperBound)
     }
 
     private var title: String {

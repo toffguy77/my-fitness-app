@@ -5,10 +5,18 @@ struct ConversationsView: View {
     @Environment(SessionStore.self) private var session
     @State private var content: Loadable<[Conversation]> = .loading
     @State private var path: [Conversation] = []
+    /// Для клиента — есть ли оплаченное сопровождение. Без него переписки нет,
+    /// как и на сайте: вместо неё предложение подключить куратора.
+    @State private var access: ConversationAccess?
+
+    private var isClient: Bool { session.user?.role == .client }
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
+                if isClient, let access, !access.allowed {
+                    CuratorOfferView(expired: access.expired, source: "curator_offer_chat")
+                } else {
                 switch content {
                 case .loading:
                     ProgressView()
@@ -26,6 +34,7 @@ struct ConversationsView: View {
                         }
                     }
                 }
+                }
             }
             .navigationTitle("Чат")
             .navigationDestination(for: Conversation.self) { conversation in
@@ -37,6 +46,10 @@ struct ConversationsView: View {
     }
 
     private func load() async {
+        if isClient {
+            access = try? await session.api.send(Endpoint<ConversationAccess>.get("/api/v1/conversations/access"))
+            if access?.allowed == false { return }
+        }
         do {
             let conversations = try await session.api.send(Endpoint<[Conversation]>.get("/api/v1/conversations"))
             content = .loaded(conversations)
@@ -393,6 +406,45 @@ struct CuratorFoodEntrySheet: View {
                            protein: protein ?? 0, fat: fat ?? 0, carbs: carbs ?? 0)))
             onLogged(logged)
             dismiss()
+        } catch {
+            errorText = error.userMessage
+        }
+    }
+}
+
+/// Предложение подключить или продлить куратора — как CuratorOffer на сайте.
+struct CuratorOfferView: View {
+    @Environment(SessionStore.self) private var session
+    let expired: Bool
+    let source: String
+
+    @State private var sent = false
+    @State private var errorText: String?
+
+    var body: some View {
+        ContentUnavailableView {
+            Label(expired ? "Сопровождение закончилось" : "Куратор не подключён",
+                  systemImage: "person.crop.circle.badge.questionmark")
+        } description: {
+            Text(expired
+                 ? "Переписка с куратором доступна при активном сопровождении. Оставьте заявку — с вами свяжутся и продлят."
+                 : "Куратор видит ваш дневник, отвечает в чате и ведёт по плану. Оставьте заявку — с вами свяжутся.")
+        } actions: {
+            Button(sent ? "Заявка отправлена" : (expired ? "Продлить сопровождение" : "Хочу куратора")) {
+                Task { await request() }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(sent)
+            if let errorText { Text(errorText).foregroundStyle(.red).font(.footnote) }
+        }
+    }
+
+    private func request() async {
+        do {
+            _ = try await session.api.send(Endpoint<Empty>.post("/api/v1/leads/curator-request",
+                                                                body: CuratorRequest(capture_source: source)))
+            sent = true
+            errorText = nil
         } catch {
             errorText = error.userMessage
         }
