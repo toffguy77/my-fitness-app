@@ -99,6 +99,15 @@ platform :ios do
     )
   end
 
+  desc "Entitlements подписанного приложения и профиля — что сверяет Apple при приёме"
+  lane :entitlements do
+    Dir.chdir("..") do
+      sh("rm -rf build/inspect && mkdir -p build/inspect && cd build/inspect && unzip -q ../ipa/Burcev.ipa")
+      sh("codesign -d --entitlements :- build/inspect/Payload/Burcev.app 2>/dev/null")
+      sh("security cms -D -i build/inspect/Payload/Burcev.app/embedded.mobileprovision | plutil -extract Entitlements xml1 -o - -")
+    end
+  end
+
   desc "CI: сертификат, сборка, загрузка в TestFlight без внешнего тестирования"
   lane :ci_beta do
     setup_ci
@@ -109,6 +118,7 @@ platform :ios do
       keychain_password: "",
     )
     build
+    entitlements
     upload_to_testflight(
       api_key: asc_api_key,
       ipa: "build/ipa/Burcev.ipa",
