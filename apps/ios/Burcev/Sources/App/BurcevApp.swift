@@ -4,6 +4,10 @@ import SwiftUI
 struct BurcevApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var session = SessionStore()
+
+    init() {
+        Telemetry.start()
+    }
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {

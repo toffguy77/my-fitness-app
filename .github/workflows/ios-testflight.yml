@@ -34,7 +34,7 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
 
       - name: Install fastlane and XcodeGen
-        run: brew install fastlane xcodegen
+        run: brew install fastlane xcodegen getsentry/tools/sentry-cli
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -57,6 +57,7 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           BUILD_NUMBER: ${{ github.run_number }}
           CHANGELOG: ${{ inputs.changelog || 'Новая сборка' }}
         run: fastlane ci_beta

@@ -246,3 +246,26 @@ final class ProviderSignInTests: XCTestCase {
         XCTAssertEqual(ProviderButtons.randomVerifier().count, 43)
     }
 }
+
+final class TelemetryPrivacyTests: XCTestCase {
+    func testRouteHasNoPersonalIdentifiers() {
+        XCTAssertEqual(Telemetry.route("/api/v1/dashboard/daily/2026-10-11"), "/api/v1/dashboard/daily/{date}")
+        XCTAssertEqual(Telemetry.route("/api/v1/curator/clients/12345"), "/api/v1/curator/clients/{id}")
+        XCTAssertEqual(Telemetry.route("/api/v1/conversations/0b7e1f2a-3c4d-4e5f-8a9b-0c1d2e3f4a5b/messages"),
+                       "/api/v1/conversations/{id}/messages")
+        XCTAssertEqual(Telemetry.route("/api/v1/food-tracker/barcode/4607001234567"), "/api/v1/food-tracker/barcode/{code}")
+    }
+
+    /// В описание ошибки декодирования не попадают значения из ответа.
+    func testDecodingDescriptionHasNoValues() {
+        struct Probe: Decodable { let meal: MealType }
+        do {
+            _ = try JSONDecoder().decode(Probe.self, from: Data(#"{"meal":"секретный-перекус"}"#.utf8))
+            XCTFail("ожидалась ошибка")
+        } catch {
+            let text = Telemetry.describe(error)
+            XCTAssertFalse(text.contains("секретный"), text)
+            XCTAssertTrue(text.contains("meal"), text)
+        }
+    }
+}

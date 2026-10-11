@@ -23,6 +23,7 @@ final class SessionStore {
             if case let .signedIn(user) = state, let shown = TodaySnapshot.load(), shown.userID != user.id {
                 Self.clearWidget()
             }
+            if case let .signedIn(user) = state { Telemetry.identify(user) } else { Telemetry.identify(nil) }
             // Команда Siri поднимает сессию в фоне: ни соединения, ни
             // запроса разрешений там не нужно.
             guard interactive else { return }

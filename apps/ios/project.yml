@@ -5,16 +5,25 @@ options:
     iOS: "17.0"
   createIntermediateGroups: true
 
+packages:
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa
+    from: "8.40.0"
+
 settings:
   base:
     DEVELOPMENT_TEAM: "3GWRDGA8B7"
+    # Ключ клиента Sentry — не секрет: он и так внутри каждой сборки.
+    SENTRY_DSN: "https://d56ff91d01b9f3dc3471a82ce8c2fa98@o4512056899862528.ingest.de.sentry.io/4512238496186448"
     SWIFT_VERSION: "6.0"
   configs:
     # Отладочная сборка ходит в dev-стенд, сборка для TestFlight — в прод.
     Debug:
       API_BASE_URL: "https://new.burcev.team"
+      SENTRY_ENVIRONMENT: development
     Release:
       API_BASE_URL: "https://burcev.team"
+      SENTRY_ENVIRONMENT: production
 
 targets:
   Burcev:
@@ -30,6 +39,8 @@ targets:
     dependencies:
       - target: BurcevWidget
         embed: true
+      - package: Sentry
+        product: Sentry
     info:
       path: Burcev/Info.plist
       properties:
@@ -38,6 +49,8 @@ targets:
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
         APIBaseURL: "$(API_BASE_URL)"
+        SentryDSN: "$(SENTRY_DSN)"
+        SentryEnvironment: "$(SENTRY_ENVIRONMENT)"
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false

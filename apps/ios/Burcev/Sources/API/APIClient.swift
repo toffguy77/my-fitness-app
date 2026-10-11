@@ -106,6 +106,15 @@ actor APIClient {
     }
 
     func send<T>(_ endpoint: Endpoint<T>) async throws -> T {
+        do {
+            return try await sendUnreported(endpoint)
+        } catch let APIError.decoding(detail) {
+            Telemetry.contractMismatch(path: endpoint.path, detail: detail)
+            throw APIError.decoding(detail)
+        }
+    }
+
+    private func sendUnreported<T>(_ endpoint: Endpoint<T>) async throws -> T {
         let (data, response) = try await perform(endpoint, token: accessToken)
         if response.statusCode == 401, endpoint.requiresAuth, Self.isExpiredSession(data) {
             guard let fresh = try await refreshAccessToken() else {
@@ -212,7 +221,8 @@ actor APIClient {
         } catch let error as APIError {
             throw error
         } catch {
-            throw APIError.decoding(String(describing: error))
+            // Без значений из ответа: это описание уходит в отчёт о сбое.
+            throw APIError.decoding(Telemetry.describe(error))
         }
     }
 }
