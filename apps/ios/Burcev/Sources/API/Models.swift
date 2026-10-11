@@ -287,11 +287,25 @@ struct Participant: Decodable, Sendable, Equatable {
 }
 
 struct Message: Decodable, Sendable, Identifiable, Equatable {
+    struct Attachment: Decodable, Sendable, Equatable {
+        let file_url: String
+        let file_name: String?
+        let mime_type: String?
+    }
     let id: String
+    var conversation_id: String? = nil
     let sender_id: Int64
     let type: String
     let content: String?
     let created_at: String
+    var attachments: [Attachment]? = nil
+
+    /// Картинка сообщения: вложение или, как отправляет сайт, ссылка в тексте.
+    var imageURL: URL? {
+        guard type == "image" else { return nil }
+        if let first = attachments?.first, let url = URL(string: first.file_url) { return url }
+        return content.flatMap(URL.init(string:))
+    }
 
     var createdAt: Date? { APIDates.timestamp(created_at) }
 }

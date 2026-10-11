@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct BurcevApp: App {
     @State private var session = SessionStore()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -10,6 +11,12 @@ struct BurcevApp: App {
                 .environment(session)
                 .task { await session.restore() }
                 .onOpenURL { url in Task { await session.handle(url) } }
+                .onChange(of: scenePhase) { _, phase in
+                    // В фоне соединение держать незачем — iOS всё равно его
+                    // оборвёт; на экране — поднимаем заново.
+                    guard session.user != nil else { return }
+                    if phase == .active { session.socket.start() } else if phase == .background { session.socket.stop() }
+                }
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
                     if let url = activity.webpageURL { Task { await session.handle(url) } }
                 }
@@ -62,6 +69,7 @@ struct RootView: View {
 }
 
 struct ClientTabs: View {
+    @Environment(SessionStore.self) private var session
     @State private var selection: Demo.Screen = Demo.screen ?? .today
 
     var body: some View {
@@ -69,13 +77,15 @@ struct ClientTabs: View {
             TodayView().tabItem { Label("Сегодня", systemImage: "sun.max") }.tag(Demo.Screen.today)
             DiaryView().tabItem { Label("Дневник", systemImage: "fork.knife") }.tag(Demo.Screen.diary)
             MenuView().tabItem { Label("Меню", systemImage: "menucard") }.tag(Demo.Screen.menu)
-            ConversationsView().tabItem { Label("Чат", systemImage: "bubble.left.and.bubble.right") }.tag(Demo.Screen.chat)
+            ConversationsView().tabItem { Label("Чат", systemImage: "bubble.left.and.bubble.right") }
+                .badge(session.socket.unreadTotal).tag(Demo.Screen.chat)
             ProfileView().tabItem { Label("Ещё", systemImage: "ellipsis.circle") }.tag(Demo.Screen.profile)
         }
     }
 }
 
 struct CuratorTabs: View {
+    @Environment(SessionStore.self) private var session
     @State private var selection: Demo.Screen = {
         switch Demo.screen {
         case .chat: return .chat
@@ -87,7 +97,8 @@ struct CuratorTabs: View {
     var body: some View {
         TabView(selection: $selection) {
             ClientsView().tabItem { Label("Клиенты", systemImage: "person.2") }.tag(Demo.Screen.clients)
-            ConversationsView().tabItem { Label("Чат", systemImage: "bubble.left.and.bubble.right") }.tag(Demo.Screen.chat)
+            ConversationsView().tabItem { Label("Чат", systemImage: "bubble.left.and.bubble.right") }
+                .badge(session.socket.unreadTotal).tag(Demo.Screen.chat)
             ProfileView().tabItem { Label("Ещё", systemImage: "ellipsis.circle") }.tag(Demo.Screen.profile)
         }
     }

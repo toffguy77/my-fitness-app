@@ -15,7 +15,13 @@ final class SessionStore {
         case signedIn(SessionUser)
     }
 
-    private(set) var state: State = .restoring
+    private(set) var state: State = .restoring {
+        didSet {
+            if case .signedIn = state { socket.start() } else { socket.stop() }
+        }
+    }
+    /// Живое соединение для чата — пока есть сессия и приложение на экране.
+    let socket: ChatSocket
     /// Открыта ссылка сброса пароля из письма.
     var resetToken: String?
     /// Ссылка из письма не сработала — показать почему.
@@ -28,6 +34,7 @@ final class SessionStore {
     init(api: APIClient = SessionStore.defaultClient(), keychain: Keychain = Keychain()) {
         self.api = api
         self.keychain = keychain
+        self.socket = ChatSocket(api: api)
     }
 
     nonisolated static func defaultClient() -> APIClient {
