@@ -7,6 +7,10 @@ CREATE TABLE IF NOT EXISTS apns_devices (
     id           BIGSERIAL PRIMARY KEY,
     user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token        TEXT NOT NULL UNIQUE,
+    -- Случайный идентификатор установки приложения из Keychain телефона.
+    -- Токен переходит к другому аккаунту, только если пришёл с того же
+    -- телефона: одного знания токена для этого мало.
+    installation_id TEXT NOT NULL,
     environment  TEXT NOT NULL CHECK (environment IN ('production', 'sandbox')),
     app_version  TEXT,
     failures     INT NOT NULL DEFAULT 0,

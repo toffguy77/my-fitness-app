@@ -50,11 +50,25 @@ final class PushRegistrar: NSObject, UNUserNotificationCenterDelegate {
         Task { await upload(token) }
     }
 
+    /// Идентификатор установки — случайный, создаётся один раз и живёт в
+    /// Keychain. По нему сервер отличает «этот же телефон вошёл в другой
+    /// аккаунт» от «кто-то узнал чужой токен».
+    static var installationID: String {
+        let keychain = Keychain(service: "team.burcev.app.installation")
+        if let existing = keychain.read("id") { return existing }
+        let fresh = UUID().uuidString.lowercased()
+        keychain.write(fresh, for: "id")
+        return fresh
+    }
+
     private func upload(_ token: String) async {
-        struct Body: Encodable { let token: String; let environment: String; let app_version: String }
+        struct Body: Encodable {
+            let token: String, environment: String, app_version: String, installation_id: String
+        }
         _ = try? await session?.api.send(Endpoint<Empty>.post(
             "/api/v1/notifications/devices",
-            body: Body(token: token, environment: Self.environment, app_version: AppConfig.clientHeader)))
+            body: Body(token: token, environment: Self.environment, app_version: AppConfig.clientHeader,
+                       installation_id: Self.installationID)))
     }
 
     /// При выходе: телефон перестаёт получать уведомления этого аккаунта —

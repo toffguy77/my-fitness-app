@@ -11,6 +11,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/testsupport"
 	"github.com/stretchr/testify/assert"
@@ -67,8 +68,8 @@ func TestPushReachesIPhoneAndDeadTokenIsDropped(t *testing.T) {
 	ctx := context.Background()
 	id := user("айфон@e.test")
 
-	require.NoError(t, service.RegisterDevice(ctx, id, APNSDevice{Token: live, Environment: APNSProduction}))
-	require.NoError(t, service.RegisterDevice(ctx, id, APNSDevice{Token: dead, Environment: APNSSandbox}))
+	require.NoError(t, service.RegisterDevice(ctx, id, APNSDevice{Token: live, Environment: APNSProduction, InstallationID: phoneA}))
+	require.NoError(t, service.RegisterDevice(ctx, id, APNSDevice{Token: dead, Environment: APNSSandbox, InstallationID: phoneB}))
 	require.NoError(t, service.CreateNotification(ctx, &Notification{
 		UserID: id, Category: CategoryMain, Type: TypeTaskAssigned, Title: "Новая задача", Content: "Выпить воды",
 	}))
@@ -95,6 +96,11 @@ func TestPushReachesIPhoneAndDeadTokenIsDropped(t *testing.T) {
 	assert.Equal(t, StatusSent, status)
 }
 
+const (
+	phoneA = "11111111-1111-4111-8111-111111111111"
+	phoneB = "22222222-2222-4222-8222-222222222222"
+)
+
 // Телефон, на котором вошли в другой аккаунт, уносит токен с собой: прежний
 // владелец больше не получает на него уведомлений.
 func TestDeviceMovesToTheAccountSignedInOnIt(t *testing.T) {
@@ -103,8 +109,8 @@ func TestDeviceMovesToTheAccountSignedInOnIt(t *testing.T) {
 	token := strings.Repeat("c", 64)
 	first, second := user("первый@e.test"), user("второй@e.test")
 
-	require.NoError(t, service.RegisterDevice(ctx, first, APNSDevice{Token: token, Environment: APNSProduction}))
-	require.NoError(t, service.RegisterDevice(ctx, second, APNSDevice{Token: strings.ToUpper(token), Environment: APNSProduction}))
+	require.NoError(t, service.RegisterDevice(ctx, first, APNSDevice{Token: token, Environment: APNSProduction, InstallationID: phoneA}))
+	require.NoError(t, service.RegisterDevice(ctx, second, APNSDevice{Token: strings.ToUpper(token), Environment: APNSProduction, InstallationID: phoneA}))
 
 	devices, err := service.devicesFor(ctx, first)
 	require.NoError(t, err)
@@ -118,9 +124,29 @@ func TestDeviceMovesToTheAccountSignedInOnIt(t *testing.T) {
 	assert.Empty(t, devices)
 }
 
+// Знать чужой токен недостаточно: с другого телефона его не перехватить —
+// иначе свои уведомления можно было бы слать на чужой телефон.
+func TestForeignInstallationCannotTakeOverAToken(t *testing.T) {
+	service, user := apnsService(t, "notif_apns_steal", &fakeAPNs{})
+	ctx := context.Background()
+	token := strings.Repeat("e", 64)
+	owner, attacker := user("владелец@e.test"), user("чужой@e.test")
+
+	require.NoError(t, service.RegisterDevice(ctx, owner, APNSDevice{Token: token, Environment: APNSProduction, InstallationID: phoneA}))
+	err := service.RegisterDevice(ctx, attacker, APNSDevice{Token: token, Environment: APNSProduction, InstallationID: phoneB})
+	require.ErrorIs(t, err, apperrors.ErrForbidden)
+
+	devices, err := service.devicesFor(ctx, owner)
+	require.NoError(t, err)
+	assert.Len(t, devices, 1, "токен ушёл к чужому аккаунту")
+	devices, _ = service.devicesFor(ctx, attacker)
+	assert.Empty(t, devices)
+}
+
 func TestDeviceTokenIsValidated(t *testing.T) {
 	service, user := apnsService(t, "notif_apns_bad", &fakeAPNs{})
 	id := user("плохой@e.test")
-	assert.Error(t, service.RegisterDevice(context.Background(), id, APNSDevice{Token: "https://evil", Environment: APNSProduction}))
-	assert.Error(t, service.RegisterDevice(context.Background(), id, APNSDevice{Token: strings.Repeat("d", 64), Environment: "staging"}))
+	assert.Error(t, service.RegisterDevice(context.Background(), id, APNSDevice{Token: "https://evil", Environment: APNSProduction, InstallationID: phoneA}))
+	assert.Error(t, service.RegisterDevice(context.Background(), id, APNSDevice{Token: strings.Repeat("d", 64), Environment: "staging", InstallationID: phoneA}))
+	assert.Error(t, service.RegisterDevice(context.Background(), id, APNSDevice{Token: strings.Repeat("d", 64), Environment: APNSProduction}))
 }

@@ -201,7 +201,12 @@ type APNSDevice struct {
 	Token       string `json:"token"`
 	Environment string `json:"environment"`
 	AppVersion  string `json:"app_version,omitempty"`
+	// InstallationID is generated once by the app and kept in the phone's
+	// Keychain. It is what proves a re-registration comes from the same phone.
+	InstallationID string `json:"installation_id"`
 }
+
+var apnsInstallationID = regexp.MustCompile(`^[0-9a-fA-F-]{36}$`)
 
 // WithAPNS supplies the key. A key that does not parse is a configuration
 // error worth failing loudly over, not a channel that silently never sends.
@@ -227,7 +232,11 @@ func (s *Service) anyPushReady() bool {
 // RegisterDevice records where an iPhone can be reached.
 //
 // Keyed on the token: a phone that signs into another account moves its token
-// with it, rather than delivering the previous person's notifications.
+// with it, rather than delivering the previous person's notifications. But
+// only the phone itself may move it — the update applies when the installation
+// id matches. Otherwise anybody who learned a token could register it to their
+// own account: their notifications would land on somebody else's phone, and
+// the owner would stop receiving theirs.
 func (s *Service) RegisterDevice(ctx context.Context, userID int64, device APNSDevice) error {
 	if !s.APNSReady() {
 		return fmt.Errorf("ios push: %w", apperrors.ErrEmailUnavailable)
@@ -238,17 +247,29 @@ func (s *Service) RegisterDevice(ctx context.Context, userID int64, device APNSD
 	if _, ok := apnsHosts[device.Environment]; !ok {
 		return fmt.Errorf("environment must be production or sandbox: %w", apperrors.ErrValidation)
 	}
-	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO apns_devices (user_id, token, environment, app_version)
-		 VALUES ($1, $2, $3, $4)
+	if !apnsInstallationID.MatchString(device.InstallationID) {
+		return fmt.Errorf("installation id is required: %w", apperrors.ErrValidation)
+	}
+	result, err := s.db.ExecContext(ctx,
+		`INSERT INTO apns_devices (user_id, token, installation_id, environment, app_version)
+		 VALUES ($1, $2, $3, $4, $5)
 		 ON CONFLICT (token) DO UPDATE
 		 SET user_id = EXCLUDED.user_id,
 		     environment = EXCLUDED.environment,
 		     app_version = EXCLUDED.app_version,
-		     failures = 0`,
-		userID, strings.ToLower(device.Token), device.Environment, nullIfEmpty(device.AppVersion))
+		     failures = 0
+		 WHERE apns_devices.installation_id = EXCLUDED.installation_id`,
+		userID, strings.ToLower(device.Token), strings.ToLower(device.InstallationID),
+		device.Environment, nullIfEmpty(device.AppVersion))
 	if err != nil {
 		return fmt.Errorf("store APNs device: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("store APNs device: %w", err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("device token belongs to another installation: %w", apperrors.ErrForbidden)
 	}
 	return nil
 }

@@ -247,6 +247,7 @@ apns_devices.created_at timestamp with time zone NOT NULL DEFAULT now()
 apns_devices.environment text NOT NULL
 apns_devices.failures integer NOT NULL DEFAULT 0
 apns_devices.id bigint NOT NULL DEFAULT nextval('apns_devices_id_seq')
+apns_devices.installation_id text NOT NULL
 apns_devices.last_used_at timestamp with time zone
 apns_devices.token text NOT NULL
 apns_devices.user_id bigint NOT NULL

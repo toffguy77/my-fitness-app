@@ -85,6 +85,7 @@ struct RootView: View {
 
 struct ClientTabs: View {
     @Environment(SessionStore.self) private var session
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selection: Demo.Screen = Demo.screen ?? .today
 
     var body: some View {
@@ -95,6 +96,14 @@ struct ClientTabs: View {
             ConversationsView().tabItem { Label("Чат", systemImage: "bubble.left.and.bubble.right") }
                 .badge(session.socket.unreadTotal).tag(Demo.Screen.chat)
             ProfileView().tabItem { Label("Ещё", systemImage: "ellipsis.circle") }.tag(Demo.Screen.profile)
+        }
+        // Команда «Открыть дневник» оставляет, какую вкладку показать.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active,
+                  let raw = UserDefaults.standard.string(forKey: "launch.tab"),
+                  let tab = Demo.Screen(rawValue: raw) else { return }
+            UserDefaults.standard.removeObject(forKey: "launch.tab")
+            selection = tab
         }
     }
 }

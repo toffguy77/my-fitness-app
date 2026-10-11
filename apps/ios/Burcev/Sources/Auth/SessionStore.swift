@@ -17,6 +17,9 @@ final class SessionStore {
 
     private(set) var state: State = .restoring {
         didSet {
+            // Команда Siri поднимает сессию в фоне: ни соединения, ни
+            // запроса разрешений там не нужно.
+            guard interactive else { return }
             if case .signedIn = state {
                 socket.start()
                 if case .signedIn = oldValue {} else { Task { await PushRegistrar.shared.enable() } }
@@ -38,9 +41,12 @@ final class SessionStore {
     private let keychain: Keychain
     private static let refreshKey = "refresh_token"
 
-    init(api: APIClient = SessionStore.defaultClient(), keychain: Keychain = Keychain()) {
+    private let interactive: Bool
+
+    init(api: APIClient = SessionStore.defaultClient(), keychain: Keychain = Keychain(), interactive: Bool = true) {
         self.api = api
         self.keychain = keychain
+        self.interactive = interactive
         self.socket = ChatSocket(api: api)
     }
 

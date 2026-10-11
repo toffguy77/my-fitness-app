@@ -422,6 +422,8 @@ func (h *Handler) RegisterDevice(c *gin.Context) {
 		switch {
 		case errors.Is(err, apperrors.ErrValidation):
 			response.Fail(c, http.StatusBadRequest, err, "Неверный токен устройства")
+		case errors.Is(err, apperrors.ErrForbidden):
+			response.Fail(c, http.StatusForbidden, err, "Токен принадлежит другому устройству")
 		case errors.Is(err, apperrors.ErrEmailUnavailable):
 			response.Fail(c, http.StatusServiceUnavailable, err, "Уведомления на iPhone в этой среде выключены")
 		default:
