@@ -11,6 +11,15 @@ enum APIDates {
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 
+    /// Календарный день из ответа: `2026-10-11` или `2026-10-11T00:00:00Z` —
+    /// сервер присылает оба. Берём только дату, без часового пояса: иначе
+    /// полночь UTC в Москве превращается в предыдущий день.
+    static func parseDay(_ raw: String, calendar: Calendar = .current) -> Date? {
+        let parts = raw.prefix(10).split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+    }
+
     /// Время `15:04` — так сервер принимает время записи в дневнике.
     static func time(_ date: Date) -> String {
         let formatter = DateFormatter()

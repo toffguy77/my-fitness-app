@@ -71,6 +71,18 @@ final class HealthService: @unchecked Sendable { // HKHealthStore потокоб
         return samples?.first?.quantity.doubleValue(for: .gramUnit(with: .kilo))
     }
 
+    /// Взвешивание именно в этот день — последнее из сделанных. Вес за
+    /// прошлые дни в дневник дня не переносим: это был бы другой день.
+    func weightMeasured(on day: Date) async -> Double? {
+        guard Self.isAvailable else { return nil }
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.quantitySample(type: HKQuantityType(.bodyMass), predicate: dayPredicate(day))],
+            sortDescriptors: [SortDescriptor(\.endDate, order: .reverse)],
+            limit: 1)
+        let samples = try? await descriptor.result(for: store)
+        return samples?.first?.quantity.doubleValue(for: .gramUnit(with: .kilo))
+    }
+
     /// Была ли за день хотя бы одна тренировка.
     func hasWorkout(on day: Date) async -> Bool {
         guard Self.isAvailable else { return false }
