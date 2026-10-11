@@ -58,7 +58,7 @@ final class SessionStore {
     func signIn(email: String, password: String) async throws {
         await installRefresher()
         let (result, refreshToken) = try await api.sendIssuingSession(
-            .post("/api/v1/auth/login",
+            Endpoint<LoginResult>.post("/api/v1/auth/login",
                   body: LoginRequest(email: email, password: password, remember_me: true),
                   requiresAuth: false))
         if let refreshToken {
