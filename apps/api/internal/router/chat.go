@@ -31,7 +31,10 @@ func registerChatRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.POST("/:id/read", d.Chat.MarkAsRead)
 
 	w := g.Group("/:id", middleware.RequireCuratorAccess(d.DB, d.Log))
-	w.POST("/messages", d.Chat.SendMessage)
+	// Сообщение досылается из очереди приложения: Idempotency-Key не даёт
+	// повтору после потерянного ответа отправить его дважды. Стоит после
+	// проверки права: отказ по праву не запоминается под ключом.
+	w.POST("/messages", middleware.Idempotency(d.DB, d.Log), d.Chat.SendMessage)
 	w.POST("/upload", d.Chat.UploadAttachment)
 	w.POST("/messages/:msgId/food-entry", d.Chat.CreateFoodEntry)
 }

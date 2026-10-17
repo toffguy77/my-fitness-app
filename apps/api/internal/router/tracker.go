@@ -9,11 +9,16 @@ func registerFoodTrackerRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/food-tracker")
 	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 
+	// Изменения, которые приложение досылает из очереди, принимают
+	// Idempotency-Key: повтор после потерянного ответа не создаёт вторую
+	// запись (спека idempotent-mutations). Без заголовка — как прежде.
+	idem := middleware.Idempotency(d.DB, d.Log)
+
 	// Diary entries
 	g.GET("/entries", d.FoodTracker.GetEntries)
-	g.POST("/entries", d.FoodTracker.CreateEntry)
-	g.PUT("/entries/:id", d.FoodTracker.UpdateEntry)
-	g.DELETE("/entries/:id", d.FoodTracker.DeleteEntry)
+	g.POST("/entries", idem, d.FoodTracker.CreateEntry)
+	g.PUT("/entries/:id", idem, d.FoodTracker.UpdateEntry)
+	g.DELETE("/entries/:id", idem, d.FoodTracker.DeleteEntry)
 
 	// AI photo recognition (optional capability; declines with 503 when off)
 	g.POST("/recognize", d.FoodTracker.RecognizeFood)
@@ -35,7 +40,7 @@ func registerFoodTrackerRoutes(v1 *gin.RouterGroup, d Deps) {
 
 	// Water intake
 	g.GET("/water", d.FoodTracker.GetWaterIntake)
-	g.POST("/water", d.FoodTracker.AddWater)
+	g.POST("/water", idem, d.FoodTracker.AddWater)
 
 	// Recommendations
 	g.GET("/recommendations", d.FoodTracker.GetRecommendations)
@@ -57,8 +62,11 @@ func registerDashboardRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/dashboard")
 	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 
+	// Метрики дня и отметка задачи досылаются из очереди приложения.
+	idem := middleware.Idempotency(d.DB, d.Log)
+
 	g.GET("/daily/:date", d.Dashboard.GetDailyMetrics)
-	g.POST("/daily", d.Dashboard.SaveMetric)
+	g.POST("/daily", idem, d.Dashboard.SaveMetric)
 	g.GET("/week", d.Dashboard.GetWeekMetrics)
 	g.GET("/progress", d.Dashboard.GetProgress)
 
@@ -71,7 +79,7 @@ func registerDashboardRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("/tasks", d.Dashboard.GetTasks)
 	g.POST("/tasks", d.Dashboard.CreateTask)
 	g.PUT("/tasks/:id", d.Dashboard.UpdateTaskStatus)
-	g.POST("/tasks/:id/complete", d.Dashboard.CompleteTaskForDate)
+	g.POST("/tasks/:id/complete", idem, d.Dashboard.CompleteTaskForDate)
 	g.GET("/weekly-reports/:reportId/feedback", d.Dashboard.GetReportFeedback)
 	g.POST("/weekly-report", d.Dashboard.SubmitWeeklyReport)
 	g.POST("/photo-upload", d.Dashboard.UploadPhoto)
