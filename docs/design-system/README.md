@@ -217,22 +217,45 @@ CSS-переменных нет (картинка OG, `global-error`) — `value
 `border-red-500 → border-danger`…), затем `npm run lint:web` покажет, что
 механически не переводится.
 
-## 9. iOS и Android
+## 9. iOS
 
-Источник — тот же DTCG JSON, развёрнутые значения обеих тем — в
-`dist/tokens.json`. Когда стек выбран, к сборке добавляется вывод под платформу
-(Style Dictionary читает DTCG напрямую):
+Приложение «Взвешено» (`apps/ios`, SwiftUI) берёт значения из того же
+источника. Сборка токенов выпускает `dist/ios/Tokens.swift` и
+`dist/ios/Colors.xcassets`; модуль `DesignSystem` пакета `VzveshenoKit`
+подключает их ссылкой (`Sources/DesignSystem/Generated → dist/ios`), а не
+копией — `tokens:check` следит, чтобы они не отставали.
 
-| Токены | SwiftUI | Jetpack Compose | React Native |
-|---|---|---|---|
-| роли цвета | Asset Catalog с вариантами Any/Dark; `Color("fg")` | `lightColorScheme`/`darkColorScheme` + свои роли через `CompositionLocal` | объект темы + `useColorScheme()` |
-| шкала текста | `Font.custom("Literata", size:, relativeTo:)` — Dynamic Type | `TextStyle` в `Typography`, размеры в `sp` | `StyleSheet` + `allowFontScaling` |
-| отступы, радиусы | `CGFloat` константы | `Dp` | числа |
-| цель нажатия | 44 pt (HIG) | 48 dp (Material) — берём 48 | 44 |
+| Токены | SwiftUI |
+|---|---|
+| роли цвета | `DS.Color.bgSurface`, `DS.Color.macroProtein`… — colorset на роль с вариантами Any/Dark; тему переключает система, в том числе в виджетах |
+| шкала текста | `.dsText(DS.Typography.title2)` — Literata и Golos Text (переменные, OFL, в ресурсах модуля) через `Font.custom(_:size:relativeTo:)`, растут с Dynamic Type; цифры `monospacedDigit` |
+| отступы, радиусы, размеры | `DS.Space.s4` (шаг шкалы, 16 pt), `DS.Radius.l`, `DS.Size.touch` (44 pt) |
 
-Платформенные условности, которые не переносятся из веба: нижняя навигация —
-системная (`TabView` / `NavigationBar`), шторки — системные (`sheet` /
-`ModalBottomSheet`), тактильная отдача на записи еды и выполнении цели.
+Компоненты — те же роли, что в вебе: `DSCard` (`standard`, `elevated`,
+`coach`, `plain`) и `DSCardTitle`, `CoachCard`, `DSProgressArc`,
+`DSProgressBar`, `MacroRemainingView` (`plain`, `tiles`), `WeekDotsView`,
+`QuickAddActions`, `QuickAddBar`, `DSButtonStyle` (`primary`, `secondary`,
+`ghost`, `danger`, `inverse`) и `DSIconButton`, `OfflineBanner`, `DSSpinner`.
+Смысл чисел (остаток, «сверх нормы», доля полосы, тексты VoiceOver) считают
+модели на Foundation (`MacroRemainingValue`, `WeekDay`, `EnergySummary`) — они
+проверяются тестами и на Linux. Числа со словами — `DS.Plural.format`
+(`Plurals.xcstrings`, формы `one`/`few`/`many`/`other`).
+
+Правила те же, что в §8, плюс:
+- цвет литералом (`Color(red:…)`, `Color(hex:)`, `UIColor(red:…)`,
+  `#colorLiteral`, `"#RRGGBB"`) вне `DesignSystem` валит `swiftlint --strict`
+  (`ds_color_literal`);
+- таббар, навбар и листы — системные, на SF: на iOS 26 они получают Liquid
+  Glass без кода;
+- у дуг, полос и графиков — текстовое описание для VoiceOver; анимации
+  выключаются при «Уменьшении движения»;
+- новый компонент — образец в справочнике (`CatalogueEntry`, Dev-сборка:
+  «Ещё» → «Компоненты») и снапшоты в светлой и тёмной теме
+  (`VzveshenoKit/Tests/DesignSystemTests`).
+
+Android пока нет; развёрнутые значения обеих тем для него — `dist/tokens.json`
+(Compose: `lightColorScheme`/`darkColorScheme`, размеры в `sp`/`dp`, цель
+нажатия 48 dp).
 
 ## 10. Откуда решения
 
