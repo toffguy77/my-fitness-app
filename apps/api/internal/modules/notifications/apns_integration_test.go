@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -814,4 +815,21 @@ func TestUnregisteredDeviceTakesItsJobsWithIt(t *testing.T) {
 	s.send()
 	assert.Empty(t, s.apple.alerts())
 	assert.Empty(t, s.jobs("notification_id = $1", n.ID))
+}
+
+// Задания на адресатов чистятся тем же сроком хранения, что и сводки;
+// ожидающие остаются.
+func TestPurgeDeliveriesRemovesOldPushJobs(t *testing.T) {
+	s := newPushStand(t, "push_purge")
+	id := s.user("purge@e.test", "client", "П")
+	s.phone(id, tokenA, APNSProduction, phoneA)
+	s.notify(id, TypeReminder, CategoryMain, nil)
+	s.send()
+	s.notify(id, TypeReminder, CategoryMain, nil)
+	_, err := s.db.ExecContext(s.ctx, `UPDATE push_deliveries SET updated_at = NOW() - INTERVAL '100 days'`)
+	require.NoError(t, err)
+
+	_, err = s.service.PurgeDeliveries(s.ctx, 90*24*time.Hour)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"apns": StatusPending}, s.jobs("user_id = $1", id))
 }

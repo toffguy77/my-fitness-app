@@ -303,12 +303,25 @@ func signDigest(secret, payload string) string {
 
 // PurgeDeliveries drops delivery history that no longer answers a question.
 func (s *Service) PurgeDeliveries(ctx context.Context, olderThan time.Duration) (int64, error) {
+	cutoff := time.Now().Add(-olderThan)
 	result, err := s.db.ExecContext(ctx,
 		`DELETE FROM notification_deliveries
 		 WHERE status <> $1 AND updated_at < $2`,
-		StatusPending, time.Now().Add(-olderThan))
+		StatusPending, cutoff)
 	if err != nil {
 		return 0, fmt.Errorf("purge deliveries: %w", err)
 	}
-	return result.RowsAffected()
+	summaries, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	// The per-addressee push jobs, under the same retention: one row per
+	// browser and phone per notification adds up faster than the summaries.
+	result, err = s.db.ExecContext(ctx,
+		`DELETE FROM push_deliveries WHERE status <> $1 AND updated_at < $2`, StatusPending, cutoff)
+	if err != nil {
+		return summaries, fmt.Errorf("purge push deliveries: %w", err)
+	}
+	jobs, err := result.RowsAffected()
+	return summaries + jobs, err
 }
