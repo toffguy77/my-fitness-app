@@ -19,7 +19,9 @@ final class TodayModelTests: XCTestCase {
             switch request.path {
             case let path where path.hasPrefix("/api/v1/dashboard/daily/"):
                 let date = String(path.suffix(10))
-                return .success(#"{"id":"x","user_id":7,"date":"\#(date)T00:00:00Z","calories":549,"protein":76,"fat":49,"carbs":18,"steps":6412,"workout_completed":false,"steps_source":"healthkit","weight_source":null,"workout_source":null}"#)
+                return .success(#"{"id":"x","user_id":7,"date":"\#(date)T00:00:00Z","calories":549,"protein":76,"fat":49,"carbs":18,"#
+                                + #""steps":6412,"workout_completed":false,"steps_source":"healthkit","weight_source":null,"#
+                                + #""workout_source":null}"#)
             case "/api/v1/dashboard/week": return .success(#"{"metrics":[],"count":0}"#)
             case "/api/v1/dashboard/weekly-plan": return .success(#"{"plan":null}"#)
             case "/api/v1/nutrition-calc/targets":
