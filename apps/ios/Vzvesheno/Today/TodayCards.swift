@@ -41,7 +41,7 @@ struct SourceCaption: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: DS.Space.s1) {
             Image(systemName: "heart").font(.system(.caption2)).accessibilityHidden(true)
-            Text(text).font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .caption2))
+            Text(text).font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .footnote))
                 .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(DS.Color.fgSubtle)
@@ -74,14 +74,16 @@ struct NutritionTodayCard: View {
                 }
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.nutrition")
     }
 
     private var withNorm: some View {
         VStack(alignment: .leading, spacing: DS.Space.s3) {
             HStack(alignment: .center, spacing: DS.Space.s4) {
+                // На макете дуга 132 × 76 сжимается flex-раскладкой до ~104 × 60.
                 HalfArc(fraction: summary.fraction)
-                    .frame(width: 132, height: 76)
+                    .frame(width: 104, height: 60)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(summary.headline)
@@ -131,13 +133,20 @@ struct NutritionTodayCard: View {
                 .dsText(DS.Typography.callout)
                 .foregroundStyle(DS.Color.fgMuted)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: DS.Space.s2) {
-                Button("Заполнить профиль", action: onFillProfile)
-                    .buttonStyle(DSButtonStyle(.primary, size: .medium))
-                Button("Записать вес", action: onLogWeight)
-                    .buttonStyle(DSButtonStyle(.secondary, size: .medium))
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: DS.Space.s2) { noNormButtons }
+                VStack(alignment: .leading, spacing: DS.Space.s2) { noNormButtons }
             }
         }
+    }
+
+    @ViewBuilder private var noNormButtons: some View {
+        Button("Заполнить профиль", action: onFillProfile)
+            .buttonStyle(DSButtonStyle(.primary, size: .medium))
+            .fixedSize()
+        Button("Записать вес", action: onLogWeight)
+            .buttonStyle(DSButtonStyle(.secondary, size: .medium))
+            .fixedSize()
     }
 
     private func textColor(_ macro: MacroLeft.Macro) -> Color {
@@ -163,10 +172,9 @@ struct HalfArc: View {
 
     var body: some View {
         GeometryReader { proxy in
-            // Как на макете: дуга радиусом 56 в рамке 132 × 76, концы на 6 pt выше низа.
             let line: CGFloat = 12
-            let radius = min(proxy.size.width / 2 - 10, proxy.size.height - 20)
-            let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height - 6)
+            let radius = min(proxy.size.width / 2, proxy.size.height) - line / 2
+            let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height - line / 2)
             ZStack {
                 arc(center: center, radius: radius, progress: 1)
                     .stroke(DS.Color.track, style: StrokeStyle(lineWidth: line, lineCap: .round))
@@ -205,11 +213,12 @@ struct CuratorRow: View {
                     Text(title)
                         .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .subheadline).weight(.semibold))
                         .foregroundStyle(DS.Color.coachFg)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
+                    // Последнее сообщение — одной строкой, как превью в «Сообщениях».
                     Text(subtitle)
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.coachFgMuted)
-                        .lineLimit(1)
+                        .lineLimit(isPreview ? 1 : 2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if case let .curator(_, _, unread) = summary.state, unread > 0 {
@@ -228,6 +237,11 @@ struct CuratorRow: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("today.curator")
+    }
+
+    private var isPreview: Bool {
+        if case .curator = summary.state { return true }
+        return false
     }
 
     private var title: String {
@@ -266,7 +280,7 @@ struct StepsTile: View {
                         SourceCaption(text: "\(source) · цель \(NumberText.grouped(card.goal))")
                     } else {
                         Text("цель \(NumberText.grouped(card.goal))")
-                            .font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .caption2))
+                            .font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .footnote))
                             .foregroundStyle(DS.Color.fgSubtle)
                     }
                 }

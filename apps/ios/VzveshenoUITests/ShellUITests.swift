@@ -117,6 +117,13 @@ final class AccessibilityAuditUITests: XCTestCase {
             if issue.auditType == .contrast, let element = issue.element, !element.isEnabled {
                 return true
             }
+            // Под полупрозрачным таббаром контраст считается по тому, что за
+            // ним, — это не цвет текста экрана.
+            let tabBar = app.tabBars.firstMatch
+            if issue.auditType == .contrast, let element = issue.element, tabBar.exists,
+               element.frame.maxY > tabBar.frame.minY {
+                return true
+            }
             let element = issue.element.map { "\($0.elementType.rawValue) «\($0.label)» [\($0.identifier)] \($0.frame)" } ?? "нет элемента"
             found.append("\(issue.compactDescription): \(element)".replacingOccurrences(of: "\n", with: " "))
             return false

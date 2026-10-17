@@ -48,6 +48,9 @@ struct DSField: View {
             Group {
                 if secure {
                     SecureField(placeholder ?? title, text: $text)
+                        .keyboardType(.asciiCapable)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 } else {
                     TextField(placeholder ?? title, text: $text)
                         .keyboardType(keyboard)
@@ -56,7 +59,8 @@ struct DSField: View {
                 }
             }
             .textContentType(contentType)
-            .dsText(DS.Typography.body)
+            // Шрифт без межстрочной добавки: поле однострочное.
+            .font(DS.Typography.body.font)
             .padding(.horizontal, DS.Space.s4)
             .frame(minHeight: DS.Size.control)
             .background(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous).fill(DS.Color.bgSurface))

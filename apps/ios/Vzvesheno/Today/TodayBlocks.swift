@@ -52,6 +52,7 @@ struct TasksCard: View {
                 }
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.tasks")
     }
 }
@@ -79,6 +80,7 @@ struct FirstWeekCard: View {
                 }
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.firstWeek")
     }
 }
@@ -106,6 +108,7 @@ struct WeekPhotoCard: View {
                 }
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.weekPhoto")
     }
 }
@@ -165,6 +168,7 @@ struct WeekCaloriesCard: View {
                 }
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("today.weekCalories")
     }
 

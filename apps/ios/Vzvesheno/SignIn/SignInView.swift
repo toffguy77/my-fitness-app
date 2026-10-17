@@ -190,14 +190,13 @@ struct SignInContent: View {
                     }
 
                     HStack(spacing: 10) {
-                        Rectangle().fill(DS.Color.lineDefault).frame(height: 1)
+                        Rectangle().fill(DS.Color.lineDefault).frame(height: 1).accessibilityHidden(true)
                         Text("или по почте")
                             .dsText(DS.Typography.caption)
                             .foregroundStyle(DS.Color.fgMuted)
                             .fixedSize()
-                        Rectangle().fill(DS.Color.lineDefault).frame(height: 1)
+                        Rectangle().fill(DS.Color.lineDefault).frame(height: 1).accessibilityHidden(true)
                     }
-                    .accessibilityElement(children: .combine)
 
                     VStack(alignment: .leading, spacing: 14) {
                         DSField(title: "Электронная почта", text: $email, placeholder: "name@example.ru", contentType: .username,
@@ -208,11 +207,15 @@ struct SignInContent: View {
                             .buttonStyle(DSButtonStyle(.primary))
                             .disabled(working || !EmailInput.isPlausible(email))
                             .accessibilityIdentifier("signIn.magicLink")
-                        Button("Войти с паролем", action: onPassword)
-                            .dsText(DS.Typography.headline)
-                            .foregroundStyle(DS.Color.primaryDefault)
-                            .frame(maxWidth: .infinity, minHeight: DS.Size.touch)
-                            .accessibilityIdentifier("signIn.password")
+                        Button(action: onPassword) {
+                            Text("Войти с паролем")
+                                .dsText(DS.Typography.headline)
+                                .foregroundStyle(DS.Color.primaryDefault)
+                                .frame(maxWidth: .infinity, minHeight: DS.Size.touch)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("signIn.password")
                     }
 
                     Spacer(minLength: DS.Space.s8)

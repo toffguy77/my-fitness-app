@@ -10,16 +10,18 @@ SwiftUI, iOS 18+, Swift 6 со строгой проверкой паралле�
 
 | Путь | Что |
 |---|---|
-| `Vzvesheno/` | приложение: запуск, модель (`AppModel`), вход, оболочки по роли |
+| `Vzvesheno/` | приложение: запуск, модель (`AppModel`), вход, онбординг, «Сегодня», профиль, оболочки по роли |
 | `VzveshenoWidgets/` | расширение виджетов (каркас; виджеты — `ios-system-surfaces`) |
-| `VzveshenoKit/` | локальный Swift-пакет: `DesignSystem`, `API`, `Session`, `Outbox`, `Navigation`, `Health` и их тесты |
-| `VzveshenoTests/` | тесты внутри приложения: манифест, Info.plist, Keychain, модель |
+| `VzveshenoKit/` | локальный Swift-пакет: `DesignSystem`, `API`, `Session`, `Outbox`, `Navigation`, `Health`, `Client` и их тесты |
+| `VzveshenoTests/` | тесты внутри приложения: манифест, Info.plist, Keychain, модель, снапшоты экранов с макетами |
 | `VzveshenoUITests/` | UI-тесты: оболочки ролей, «Обновите приложение», справочник, аудит доступности |
 | `_legacy/` | приложение 0.3.x (`Burcev`) — источник для переноса экранов; ни в одну цель не входит |
 | `fastlane/`, `scripts/` | выкладка, скриншоты, проверки сборки |
 
 Ядро модулей `VzveshenoKit` — только Foundation: клиент API, сессия, очередь
-изменений, маршрутизатор, модели компонентов. Keychain, SwiftUI, Network,
+изменений, маршрутизатор, модели компонентов, модели экранов клиента
+(`Client`: «Сегодня», онбординг — числа сверяются с вебом на общих
+фикстурах `docs/ios/fixtures/`). Keychain, SwiftUI, Network,
 BackgroundTasks, WidgetKit и HealthKit — адаптеры под `#if canImport(...)`. Токены
 дизайн-системы подключены ссылкой
 `VzveshenoKit/Sources/DesignSystem/Generated → packages/design-tokens/dist/ios`
@@ -73,7 +75,9 @@ xcodebuild test -scheme Vzvesheno-Dev -destination 'platform=iOS Simulator,name=
 
 ### Снапшоты
 
-Эталоны — `VzveshenoKit/Tests/DesignSystemTests/__Snapshots__/*.png`. Нет
+Эталоны компонентов — `VzveshenoKit/Tests/DesignSystemTests/__Snapshots__/*.png`,
+экранов — `VzveshenoTests/__Snapshots__/*.png` (экран в окне приложения 390 ×
+844 pt, как макеты: так рисуются и поля ввода, и кнопка Apple). Нет
 эталона — тест записывает его и падает; при расхождении рядом кладётся
 `*.actual.png`. CI всегда выкладывает каталог артефактом `ios-snapshots`:
 
