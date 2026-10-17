@@ -31,7 +31,7 @@ const mealTypeGenerator = (): fc.Arbitrary<MealType> =>
  * Generate valid entry method tabs
  */
 const entryMethodTabGenerator = (): fc.Arbitrary<EntryMethodTab> =>
-    fc.constantFrom('search', 'barcode', 'photo', 'chat');
+    fc.constantFrom('search', 'barcode', 'photo');
 
 // ============================================================================
 // Property Tests
@@ -207,7 +207,6 @@ describe('FoodEntryModal Property Tests', () => {
                                 barcode: 'Штрих-код',
                                 manual: 'Ручной ввод',
                                 photo: 'Фото еды',
-                                chat: 'Чат',
                             };
                             const tabButton = screen.getByRole('tab', { name: tabLabels[tab] });
                             await user.click(tabButton);

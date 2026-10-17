@@ -386,7 +386,7 @@ describe('Food Tracker Types', () => {
         it('EntryMethodTab should be one of valid methods', () => {
             fc.assert(
                 fc.property(entryMethodTabGenerator(), (tab: EntryMethodTab) => {
-                    expect(['search', 'barcode', 'photo', 'chat']).toContain(tab);
+                    expect(['search', 'barcode', 'manual', 'photo']).toContain(tab);
                     return true;
                 }),
                 { numRuns: 100 }

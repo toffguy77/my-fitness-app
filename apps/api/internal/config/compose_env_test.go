@@ -83,6 +83,9 @@ func TestComposePassesEveryVariableTheServiceReads(t *testing.T) {
 		"PORT": {}, "NODE_ENV": {},
 		// Test-only knob. Production must never scale its auth limits.
 		"AUTH_RATE_LIMIT_SCALE": {},
+		// The end-to-end sign-in stub and its redirect origin. Refused at
+		// startup in production; a deployment must never forward them.
+		"OAUTH_YANDEX_BASE_URL": {}, "OAUTH_APP_ORIGIN": {},
 		// Falls back to the connection host, which is how every environment
 		// runs; it exists for a certificate whose name differs from the host.
 		"DB_TLS_SERVER_NAME": {},

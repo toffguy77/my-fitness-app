@@ -20,6 +20,8 @@ jest.mock('next/navigation', () => ({
 jest.mock('../../api/auth', () => ({
     loginUser: jest.fn(),
     registerUser: jest.fn(),
+    // Настоящий: выход проверяется по тому, что уходит в транспорт и хранилище.
+    logoutUser: jest.requireActual('../../api/auth').logoutUser,
 }));
 
 jest.mock('react-hot-toast', () => ({
@@ -531,9 +533,8 @@ describe('useAuth', () => {
                 {}
             );
 
-            // Verify local auth was cleared
+            // Verify local auth was cleared (clearAuth forgets the token too)
             expect(tokenStorage.clearAuth).toHaveBeenCalled();
-            expect(apiClient.clearToken).toHaveBeenCalled();
 
             // Verify redirect to auth page
             expect(mockPush).toHaveBeenCalledWith('/auth');
@@ -550,7 +551,6 @@ describe('useAuth', () => {
 
             // Verify local auth was still cleared
             expect(tokenStorage.clearAuth).toHaveBeenCalled();
-            expect(apiClient.clearToken).toHaveBeenCalled();
             expect(mockPush).toHaveBeenCalledWith('/auth');
 
             // Молчание здесь — решение, а не забывчивость: человек попросил

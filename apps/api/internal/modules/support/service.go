@@ -704,11 +704,11 @@ func (s *Service) Thread(ctx context.Context, conversationID string) (*Conversat
 	var chatID sql.NullInt64
 	var escalatedAt sql.NullTime
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, chat_id, lead_id, user_id, status,
+		SELECT id, chat_id, lead_id, user_id, status, channel,
 		       COALESCE(telegram_username, ''), COALESCE(telegram_name, ''),
 		       COALESCE(escalation_reason, ''), escalated_at, last_message_at, created_at
 		FROM support_conversations WHERE id = $1`, conversationID).
-		Scan(&c.ID, &chatID, &c.LeadID, &c.UserID, &c.Status, &c.Username, &c.Name,
+		Scan(&c.ID, &chatID, &c.LeadID, &c.UserID, &c.Status, &c.Channel, &c.Username, &c.Name,
 			&c.EscalationReason, &escalatedAt, &c.LastMessageAt, &c.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil, nil, fmt.Errorf("conversation not found: %w", apperrors.ErrNotFound)
@@ -723,30 +723,8 @@ func (s *Service) Thread(ctx context.Context, conversationID string) (*Conversat
 		c.EscalatedAt = &escalatedAt.Time
 	}
 
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, author, text, created_at, delivered_at FROM support_messages
-		 WHERE conversation_id = $1 ORDER BY created_at ASC`, conversationID)
+	messages, err := s.loadMessages(ctx, conversationID, c.Channel)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("load support messages: %w", err)
-	}
-	defer rows.Close()
-
-	messages := make([]Message, 0)
-	for rows.Next() {
-		var m Message
-		var deliveredAt sql.NullTime
-		if err := rows.Scan(&m.ID, &m.Author, &m.Text, &m.CreatedAt, &deliveredAt); err != nil {
-			return nil, nil, nil, fmt.Errorf("scan support message: %w", err)
-		}
-		// Про входящее говорить о доставке нечего, а про исходящее — говорить
-		// обязательно, в том числе когда ответа нет: именно это и есть новость.
-		if m.Author != "user" {
-			delivered := deliveredAt.Valid
-			m.Delivered = &delivered
-		}
-		messages = append(messages, m)
-	}
-	if err := rows.Err(); err != nil {
 		return nil, nil, nil, err
 	}
 
@@ -768,8 +746,24 @@ func (s *Service) Thread(ctx context.Context, conversationID string) (*Conversat
 // заявке: посетителю с предъявительским токеном они не нужны и не должны быть
 // доступны.
 func (s *Service) MessagesFor(ctx context.Context, conversationID string) ([]Message, error) {
+	// Посетитель с предъявительским токеном — всегда веб-канал: о доставке в
+	// Telegram ему сказать нечего.
+	return s.loadMessages(ctx, conversationID, ChannelWeb)
+}
+
+// loadMessages читает переписку и отмечает доставку там, где о ней есть что
+// сказать.
+//
+// Признак delivered бывает только у исходящего сообщения Telegram-разговора и
+// только если доставку отслеживали. У веб-разговора delivered_at пуст по
+// построению — транспорта, который мог бы отказать, нет, — и «Не доставлено»
+// под каждым ответом было бы неправдой. У сообщений, записанных до миграции
+// 065, delivered_at пуст потому, что его тогда не писали (delivery_unknown):
+// показать их недоставленными значило бы предложить отправить человеку ответ,
+// который он, скорее всего, уже получил.
+func (s *Service) loadMessages(ctx context.Context, conversationID, channel string) ([]Message, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, author, text, created_at, delivered_at FROM support_messages
+		`SELECT id, author, text, created_at, delivered_at, delivery_unknown FROM support_messages
 		 WHERE conversation_id = $1 ORDER BY created_at ASC`, conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("load support messages: %w", err)
@@ -780,12 +774,11 @@ func (s *Service) MessagesFor(ctx context.Context, conversationID string) ([]Mes
 	for rows.Next() {
 		var m Message
 		var deliveredAt sql.NullTime
-		if err := rows.Scan(&m.ID, &m.Author, &m.Text, &m.CreatedAt, &deliveredAt); err != nil {
+		var unknown bool
+		if err := rows.Scan(&m.ID, &m.Author, &m.Text, &m.CreatedAt, &deliveredAt, &unknown); err != nil {
 			return nil, fmt.Errorf("scan support message: %w", err)
 		}
-		// Про входящее говорить о доставке нечего, а про исходящее — говорить
-		// обязательно, в том числе когда ответа нет: именно это и есть новость.
-		if m.Author != "user" {
+		if channel == ChannelTelegram && m.Author != "user" && !unknown {
 			delivered := deliveredAt.Valid
 			m.Delivered = &delivered
 		}

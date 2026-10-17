@@ -177,6 +177,14 @@ func main() {
 	}
 	fmt.Println("set water goal for client")
 
+	// A curator's feedback needs a report to be about, and a report cannot be
+	// submitted through the API here: it requires a weekly photo, and photo
+	// storage is off in the suite.
+	if err := ensureWeeklyReport(ctx, db, ids["curator"], ids["client"]); err != nil {
+		log.Fatalf("seed weekly report: %v", err)
+	}
+	fmt.Println("seeded weekly report for client")
+
 	// Food search has nothing to find in an empty catalogue: `products` is
 	// populated by an importer in real environments, not by migrations.
 	if err := seedProducts(ctx, db); err != nil {
@@ -241,6 +249,15 @@ func emitSQL(out io.Writer) error {
 	write("ON CONFLICT (user_id) DO UPDATE SET water_goal = EXCLUDED.water_goal;")
 	write("")
 
+	write("-- Отзыву куратора нужен отчёт, а отправить его через API в прогоне")
+	write("-- нельзя: отчёт требует недельного фото, хранилища для фото нет.")
+	write("INSERT INTO weekly_reports (user_id, curator_id, week_start, week_end, week_number, summary)")
+	write("SELECT k.id, c.id, %s, %s, %d, %s::jsonb FROM users c, users k",
+		quote(seedReportWeekStart), quote(seedReportWeekEnd), seedReportWeekNumber, quote(seedReportSummary))
+	write("WHERE c.email = %s AND k.email = %s", curator, client)
+	write("ON CONFLICT (user_id, week_start) DO UPDATE SET curator_id = EXCLUDED.curator_id;")
+	write("")
+
 	write("-- Поиску еды нечего искать в пустом каталоге.")
 	write("--")
 	write("-- Только в пустом: на dev и проде каталог залит импортом, и там у")
@@ -294,6 +311,25 @@ func ensureConversation(ctx context.Context, db *sql.DB, curatorID, clientID int
 		WHERE NOT EXISTS (
 			SELECT 1 FROM conversations WHERE curator_id = $1 AND client_id = $2
 		)`, curatorID, clientID)
+	return err
+}
+
+// The weekly report the curator-feedback test reviews
+// (e2e/tests/report-feedback.spec.ts finds it by this week). A fixed week long
+// past, so it is the same row on every run and sits behind anything real.
+const (
+	seedReportWeekStart  = "2026-01-05"
+	seedReportWeekEnd    = "2026-01-11"
+	seedReportWeekNumber = 2
+	seedReportSummary    = `{"days_with_nutrition":5,"days_with_weight":5,"days_with_activity":3,"average_calories":1850,"average_weight":72.4,"total_steps":42000,"workouts_completed":2}`
+)
+
+func ensureWeeklyReport(ctx context.Context, db *sql.DB, curatorID, clientID int64) error {
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO weekly_reports (user_id, curator_id, week_start, week_end, week_number, summary)
+		VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+		ON CONFLICT (user_id, week_start) DO UPDATE SET curator_id = EXCLUDED.curator_id`,
+		clientID, curatorID, seedReportWeekStart, seedReportWeekEnd, seedReportWeekNumber, seedReportSummary)
 	return err
 }
 

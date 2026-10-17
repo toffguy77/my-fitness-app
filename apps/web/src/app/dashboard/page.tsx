@@ -53,6 +53,8 @@ import type { TargetVsActual } from '@/features/nutrition-calc/types'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 import { t } from '@/shared/i18n'
 
+const REPORT_ID = /^[A-Za-z0-9-]{1,64}$/
+
 interface UserData {
     id: string
     email: string
@@ -63,6 +65,10 @@ interface UserData {
 export default function DashboardPage() {
     const searchParams = useSearchParams()
     const highlightTaskId = searchParams.get('task')
+    // Id отчёта уходит в путь запроса, поэтому принимается только похожее на
+    // id: строка из адресной строки не должна дописывать к пути что-то своё.
+    const reportParam = searchParams.get('report')
+    const reportId = reportParam && REPORT_ID.test(reportParam) ? reportParam : null
     // Who is looking at this page. The cache paints the first frame; the
     // server settles it.
     const { user: currentUser, state: userState } = useCurrentUser()
@@ -275,6 +281,20 @@ export default function DashboardPage() {
                     className="w-full"
                 />
 
+                {/* Отзыв куратора на недельный отчёт — только по ссылке из
+                    уведомления (?report=<id>). Без отчёта блоку нечего
+                    показать: раньше он стоял здесь всегда и всегда пустым. */}
+                {reportId && (
+                    <ErrorBoundary variant="inline" label="dashboard-curator-feedback">
+                        <CuratorFeedbackSection
+                            reportId={reportId}
+                            defaultExpanded
+                            scrollIntoViewOnLoad
+                            className="w-full"
+                        />
+                    </ErrorBoundary>
+                )}
+
                 {/* Неделя точками — по той же причине не новичку */}
                 {!onboarding.isLoading && !showsFirstWeek && (
                     <ErrorBoundary variant="inline" label="dashboard-kbju-chart">
@@ -308,10 +328,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Curator feedback on weekly reports */}
-                <ErrorBoundary variant="inline" label="dashboard-curator-feedback">
-                    <CuratorFeedbackSection className="w-full" />
-                </ErrorBoundary>
             </div>
         </DashboardLayout>
     )

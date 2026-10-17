@@ -161,6 +161,15 @@ jest.mock('@/features/curator/components/AnalyticsDynamicsChart', () => ({
 jest.mock('@/features/chat/api/chatApi', () => ({
     chatApi: {
         getConversations: jest.fn().mockResolvedValue([]),
+        getConversationWith: jest.fn().mockResolvedValue({
+            id: 'conv-1',
+            client_id: 1,
+            curator_id: 2,
+            unread_count: 0,
+            participant: { id: 1, name: 'Клиент' },
+            created_at: '2026-09-01T00:00:00Z',
+            updated_at: '2026-09-01T00:00:00Z',
+        }),
         markAsRead: jest.fn(),
     },
 }))

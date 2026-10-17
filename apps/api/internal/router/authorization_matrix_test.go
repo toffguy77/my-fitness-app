@@ -77,6 +77,9 @@ var protectedRoutes = map[string]protection{
 	// Запись в переписку закрыта ещё и RequireCuratorAccess на подгруппе, но это
 	// не способ защиты чужих данных, а платный доступ: участие остаётся тем, что
 	// отделяет одного человека от другого.
+	// by-participant: membership is the query itself — the caller's id is one
+	// side of the pair, so a foreign pair answers 404 like a missing one.
+	"GET /api/v1/conversations/by-participant/:userId":          protParticipant,
 	"GET /api/v1/conversations/:id/messages":                    protParticipant,
 	"POST /api/v1/conversations/:id/messages":                   protParticipant,
 	"POST /api/v1/conversations/:id/read":                       protParticipant,
@@ -171,9 +174,10 @@ var protectedRoutes = map[string]protection{
 
 	// Разговоры поддержки. :id — разговор; собеседник приходит в него из
 	// Telegram или из виджета, но никогда через эти маршруты. Защита — роль.
-	"GET /api/v1/curator/support/conversations/:id":        protRole,
-	"POST /api/v1/curator/support/conversations/:id/reply": protRole,
-	"POST /api/v1/curator/support/conversations/:id/close": protRole,
+	"GET /api/v1/curator/support/conversations/:id":                            protRole,
+	"POST /api/v1/curator/support/conversations/:id/reply":                     protRole,
+	"POST /api/v1/curator/support/conversations/:id/messages/:messageId/retry": protRole,
+	"POST /api/v1/curator/support/conversations/:id/close":                     protRole,
 
 	// Веб-виджет поддержки. Ни один из трёх маршрутов не несёт :id в пути —
 	// routeHasResourceParam их не потребует — но занесены сюда намеренно,

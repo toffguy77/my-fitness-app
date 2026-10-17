@@ -294,3 +294,46 @@ func TestVKExchange_PassesDeviceIDFromTheCallback(t *testing.T) {
 	assert.Equal(t, "устройство-77", got.Get("device_id"))
 	assert.Equal(t, "v", got.Get("code_verifier"), "PKCE обязателен в VK ID")
 }
+
+// OAUTH_YANDEX_BASE_URL: the end-to-end suite signs up through a stub, and the
+// whole exchange — authorize, token, profile — has to go there, not only part
+// of it. One endpoint left pointing at Yandex would send the stub's code to the
+// real provider.
+func TestYandexAt_PointsEveryEndpointAtTheBase(t *testing.T) {
+	var tokenHits, profileHits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/token":
+			tokenHits++
+			_, _ = w.Write([]byte(`{"access_token":"stub-token"}`))
+		case "/info":
+			profileHits++
+			assert.Equal(t, "OAuth stub-token", r.Header.Get("Authorization"))
+			_, _ = w.Write([]byte(`{"id":"42","default_email":"e2e-oauth@burcev.test","display_name":"Stub"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	p := NewYandexAt("client", "secret", srv.URL+"/")
+	require.NotNil(t, p)
+
+	authURL, err := url.Parse(p.AuthorizationURL("s", "c", "http://localhost:3070/cb"))
+	require.NoError(t, err)
+	assert.Equal(t, srv.URL+"/authorize", authURL.Scheme+"://"+authURL.Host+authURL.Path)
+
+	profile, err := p.Exchange(context.Background(), ExchangeRequest{Code: "x", CodeVerifier: "v", RedirectURI: "http://localhost:3070/cb"})
+	require.NoError(t, err)
+	assert.Equal(t, "e2e-oauth@burcev.test", profile.Email)
+	assert.Equal(t, "42", profile.ProviderUserID)
+	assert.Equal(t, 1, tokenHits)
+	assert.Equal(t, 1, profileHits)
+}
+
+func TestYandexAt_EmptyBaseIsTheRealProvider(t *testing.T) {
+	p := NewYandexAt("client", "secret", "").(*yandexProvider)
+	assert.Equal(t, "https://oauth.yandex.ru/authorize", p.authURL)
+	assert.Equal(t, "https://oauth.yandex.ru/token", p.tokenURL)
+	assert.Equal(t, "https://login.yandex.ru/info?format=json", p.profileURL)
+}

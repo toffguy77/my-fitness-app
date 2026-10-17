@@ -79,7 +79,7 @@ describe('CuratorFeedbackSection', () => {
             await waitFor(() => {
                 expect(
                     screen.getByRole('heading', {
-                        name: /обратная связь куратора/i,
+                        name: /отзыв куратора/i,
                     })
                 ).toBeInTheDocument()
             })
@@ -95,7 +95,7 @@ describe('CuratorFeedbackSection', () => {
             await waitFor(() => {
                 expect(
                     screen.getByRole('heading', {
-                        name: /обратная связь куратора/i,
+                        name: /отзыв куратора/i,
                     })
                 ).toBeInTheDocument()
             })
@@ -119,7 +119,7 @@ describe('CuratorFeedbackSection', () => {
             await waitFor(() => {
                 expect(
                     screen.getByRole('heading', {
-                        name: /обратная связь куратора/i,
+                        name: /отзыв куратора/i,
                     })
                 ).toBeInTheDocument()
             })
@@ -147,7 +147,7 @@ describe('CuratorFeedbackSection', () => {
             await waitFor(() => {
                 expect(
                     screen.getByRole('heading', {
-                        name: /обратная связь куратора/i,
+                        name: /отзыв куратора/i,
                     })
                 ).toBeInTheDocument()
             })
@@ -171,7 +171,7 @@ describe('CuratorFeedbackSection', () => {
             await waitFor(() => {
                 expect(
                     screen.getByRole('heading', {
-                        name: /обратная связь куратора/i,
+                        name: /отзыв куратора/i,
                     })
                 ).toBeInTheDocument()
             })
@@ -194,7 +194,7 @@ describe('CuratorFeedbackSection', () => {
             await waitFor(() => {
                 expect(
                     screen.getByRole('heading', {
-                        name: /обратная связь куратора/i,
+                        name: /отзыв куратора/i,
                     })
                 ).toBeInTheDocument()
             })
@@ -218,7 +218,7 @@ describe('CuratorFeedbackSection', () => {
             await waitFor(() => {
                 expect(
                     screen.getByRole('heading', {
-                        name: /обратная связь куратора/i,
+                        name: /отзыв куратора/i,
                     })
                 ).toBeInTheDocument()
             })
@@ -239,7 +239,7 @@ describe('CuratorFeedbackSection', () => {
             await waitFor(() => {
                 expect(
                     screen.getByRole('heading', {
-                        name: /обратная связь куратора/i,
+                        name: /отзыв куратора/i,
                     })
                 ).toBeInTheDocument()
             })

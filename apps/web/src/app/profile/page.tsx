@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { RoleShell } from '@/shared/components/RoleShell'
-import { apiClient } from '@/shared/utils/api-client'
+import { logoutUser } from '@/features/auth/api/auth'
 import { getProfile } from '@/features/settings/api/settings'
 import type { FullProfile } from '@/features/settings/api/settings'
 import { SettingsAppearance } from '@/features/settings/components/SettingsAppearance'
@@ -38,11 +38,11 @@ export default function ProfilePage() {
             .finally(() => setLoading(false))
     }, [router])
 
-    const handleLogout = () => {
-        apiClient.clearToken()
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('user')
-        }
+    // Сначала сервер отзывает refresh-cookie, затем снимается локальная
+    // сессия. Без первого шага следующая загрузка страницы молча выпускала
+    // новую сессию из той же cookie, и «Выйти» никого не выводило.
+    const handleLogout = async () => {
+        await logoutUser()
         router.push('/auth')
     }
 

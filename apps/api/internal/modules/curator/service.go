@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -2448,6 +2449,15 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 	}
 }
 
+// FeedbackActionURL is where the client's feedback notification leads.
+//
+// The dashboard shows the feedback block for ?report=<id>. The previous path,
+// /dashboard/weekly-reports/<id>/feedback, had no page behind it: every
+// feedback notification opened a 404. Migration 097 rewrites the stored ones.
+func FeedbackActionURL(reportID string) string {
+	return "/dashboard?" + url.Values{"report": {reportID}}.Encode()
+}
+
 // sendFeedbackReceivedNotification sends a feedback_received notification to the client
 func (s *Service) sendFeedbackReceivedNotification(ctx context.Context, clientID int64, reportID string) {
 	if s.notificationsSvc == nil {
@@ -2465,7 +2475,7 @@ func (s *Service) sendFeedbackReceivedNotification(ctx context.Context, clientID
 		Content:  content,
 	}
 
-	actionURL := fmt.Sprintf("/dashboard/weekly-reports/%s/feedback", reportID)
+	actionURL := FeedbackActionURL(reportID)
 	notification.ActionURL = &actionURL
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {

@@ -67,6 +67,10 @@ func redirectToAppClient(c *gin.Context, origin, path string) {
 		reason = "link_required"
 	case strings.HasPrefix(path, "/auth/email"):
 		reason = "email_required"
+	case strings.HasPrefix(path, ConsentsPath):
+		// Согласия приложение собирает своим экраном (POST /auth/native/consents);
+		// до тех пор вход через провайдера, создающий аккаунт, ему не завершить.
+		reason = "consents_required"
 	default:
 		if parsed, err := url.Parse(path); err == nil && parsed.Query().Get("oauth") != "" {
 			reason = parsed.Query().Get("oauth")

@@ -43,5 +43,8 @@ func registerSupportRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("/conversations", d.Support.List)
 	g.GET("/conversations/:id", d.Support.Messages)
 	g.POST("/conversations/:id/reply", d.Support.Reply)
+	// Повтор недоставленного ответа: тот же текст тому же человеку, без новой
+	// записи в треде.
+	g.POST("/conversations/:id/messages/:messageId/retry", d.Support.RetryDelivery)
 	g.POST("/conversations/:id/close", d.Support.CloseConversation)
 }

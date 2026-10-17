@@ -27,6 +27,8 @@ jest.mock('@/features/settings/api/settings', () => ({
 
 jest.mock('../../api/onboarding', () => ({
     completeOnboarding: jest.fn(),
+    saveWeightMeasurement: jest.fn().mockResolvedValue(undefined),
+    todayIn: jest.requireActual('../../api/onboarding').todayIn,
 }))
 
 jest.mock('@/shared/components/settings', () => ({
@@ -266,10 +268,11 @@ describe('OnboardingWizard - branch coverage', () => {
                     activity_level: 'active',
                     fitness_goal: 'gain',
                     height: 180,
-                    target_weight: 80,
                 })
             )
         })
+        // Текущий вес — замер, а не цель (onboarding-body-step).
+        expect(mockUpdateSettings.mock.calls[0][0]).not.toHaveProperty('target_weight')
     })
 
     // Branch: buildBodyPayload with no body values (lines 137-143 all false)

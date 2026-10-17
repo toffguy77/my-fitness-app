@@ -5,6 +5,7 @@
 
 import { isApiError, isNetworkError } from '@/shared/errors/apiErrors';
 import { apiClient } from '@/shared/utils/api-client';
+import { clearAuth } from '@/shared/utils/token-storage';
 import { leadToken } from '@/features/onboarding/api/guest';
 import { visitorId } from '@/shared/analytics';
 import type { AuthFormData, ConsentState, AuthResponse, AuthError } from '@/features/auth/types';
@@ -137,4 +138,35 @@ export function mapApiError(error: unknown): AuthError {
         code: 'server_error',
         message: t('auth.serviceUnavailable'),
     };
+}
+
+/**
+ * Ends the session: on the server first, then in this browser.
+ *
+ * The refresh token is in a cookie the browser attaches by itself, so there is
+ * nothing to send and nothing to check first. The server revokes it and clears
+ * the cookie; this is best-effort, and the local cleanup happens either way.
+ *
+ * Shared by every «Выйти»: the profile page used to clear only the local token,
+ * which left the refresh cookie alive — the next page load minted a new session
+ * from it, and signing out did not sign anybody out.
+ */
+export async function logoutUser(): Promise<void> {
+    try {
+        await apiClient.post('/api/v1/auth/logout', {});
+    } catch {
+        // Молчим намеренно: человек попросил выйти, и он выходит — сессия
+        // в этом браузере снимается ниже в любом случае. Причина отказа
+        // сервера ему сейчас не нужна и не про него: показывать её значит
+        // встретить его красной строкой на экране входа за действие,
+        // которое удалось.
+        //
+        // Обратная сторона названа честно: отозвать refresh-токен на
+        // сервере не вышло, и он доживёт свой срок. Это видно в логах
+        // сервера, а не здесь.
+    }
+
+    // Токен в памяти и слепок профиля — оба, иначе следующий экран
+    // нарисовал бы себя по профилю того, кто только что вышел.
+    clearAuth();
 }

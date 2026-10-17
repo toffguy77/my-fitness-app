@@ -455,6 +455,51 @@ func (h *Handler) Reply(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"sent": true})
 }
 
+// RetryDelivery handles
+// POST /api/v1/curator/support/conversations/:id/messages/:messageId/retry.
+//
+// 200 with the message (delivered: true) when Telegram took it this time;
+// 502 delivery_failed when it refused again; 409 conflict where a retry means
+// nothing — see Service.RetryDelivery. No new message is written either way.
+func (h *Handler) RetryDelivery(c *gin.Context) {
+	if h.service == nil {
+		response.FeatureUnavailable(c, "Бот поддержки не настроен")
+		return
+	}
+
+	conversationID, ok := h.conversationID(c)
+	if !ok {
+		return
+	}
+	messageID := c.Param("messageId")
+	if _, err := uuid.Parse(messageID); err != nil {
+		response.NotFound(c, "Сообщение не найдено")
+		return
+	}
+
+	message, err := h.service.RetryDelivery(c.Request.Context(), conversationID, messageID)
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrNotFound):
+		response.NotFound(c, "Сообщение не найдено")
+		return
+	case errors.Is(err, apperrors.ErrConflict):
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+			"Это сообщение повторно отправить нельзя", nil)
+		return
+	case errors.Is(err, ErrDeliveryFailed):
+		response.ErrorCode(c, http.StatusBadGateway, apperrors.CodeDeliveryFailed,
+			"Telegram снова не принял сообщение. Попробуйте позже.", nil)
+		return
+	default:
+		h.log.Error("Failed to retry support message delivery", "error", err)
+		response.InternalError(c, "Не удалось повторить отправку")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": message})
+}
+
 // CloseConversation handles POST /api/v1/curator/support/conversations/:id/close.
 func (h *Handler) CloseConversation(c *gin.Context) {
 	if h.service == nil {

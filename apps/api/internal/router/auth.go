@@ -39,6 +39,9 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	// targets, so both are rate limited.
 	g.POST("/oauth/link", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.ConfirmLink)
 	g.POST("/oauth/email", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.CompleteEmail)
+	// Согласия до создания аккаунта через провайдера: колбэк уводит на экран
+	// согласий, а аккаунт появляется здесь.
+	g.POST("/oauth/consents", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.CompleteConsents)
 	g.POST("/oauth/app-exchange", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.AppExchange)
 	g.GET("/providers/linked", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.OAuth.LinkedProviders)
 	g.DELETE("/providers/:provider", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.OAuth.Unlink)

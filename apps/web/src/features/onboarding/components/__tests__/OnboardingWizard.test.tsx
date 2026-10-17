@@ -26,6 +26,8 @@ jest.mock('@/features/settings/api/settings', () => ({
 
 jest.mock('../../api/onboarding', () => ({
     completeOnboarding: jest.fn(),
+    saveWeightMeasurement: jest.fn().mockResolvedValue(undefined),
+    todayIn: jest.requireActual('../../api/onboarding').todayIn,
 }))
 
 jest.mock('@/shared/components/settings', () => ({

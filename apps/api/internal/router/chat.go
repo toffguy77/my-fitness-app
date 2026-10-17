@@ -23,6 +23,10 @@ func registerChatRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("", d.Chat.GetConversations)
 	g.GET("/unread", d.Chat.GetUnreadCount)
 	g.GET("/access", d.Chat.GetAccess)
+	// Переписка с конкретным человеком: экран куратора открывается по клиенту,
+	// а не по id переписки. Идентификатор вызывающего — часть запроса, поэтому
+	// чужая пара неотличима от несуществующей.
+	g.GET("/by-participant/:userId", d.Chat.GetConversationWith)
 	g.GET("/:id/messages", d.Chat.GetMessages)
 	g.POST("/:id/read", d.Chat.MarkAsRead)
 

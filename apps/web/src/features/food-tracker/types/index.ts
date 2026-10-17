@@ -439,7 +439,7 @@ export type FoodTrackerTab = 'diet' | 'recommendations';
 /**
  * Entry method tab in food entry modal
  */
-export type EntryMethodTab = 'search' | 'barcode' | 'manual' | 'photo' | 'chat';
+export type EntryMethodTab = 'search' | 'barcode' | 'manual' | 'photo';
 
 /**
  * Progress bar color based on percentage

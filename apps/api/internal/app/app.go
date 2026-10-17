@@ -154,9 +154,12 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 	// Only providers with credentials are registered, so an unconfigured one
 	// is absent rather than broken.
 	oauthRegistry := oauth.NewRegistry()
-	if p := oauth.NewYandex(cfg.YandexOAuthClientID, cfg.YandexOAuthClientSecret); p != nil {
+	if p := oauth.NewYandexAt(cfg.YandexOAuthClientID, cfg.YandexOAuthClientSecret, cfg.OAuthYandexBaseURL); p != nil {
 		oauthRegistry.Register(p)
 		log.Info("External sign-in provider registered", "provider", p.Name())
+		if cfg.OAuthYandexBaseURL != "" {
+			log.Warn("Yandex sign-in answered by a stub, not by Yandex", "base_url", cfg.OAuthYandexBaseURL)
+		}
 	}
 	if p := oauth.NewVK(cfg.VKOAuthClientID, cfg.VKOAuthClientSecret); p != nil {
 		oauthRegistry.Register(p)

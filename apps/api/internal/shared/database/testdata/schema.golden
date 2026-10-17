@@ -634,6 +634,7 @@ oauth_app_handoffs.user_id bigint NOT NULL
 oauth_pending_links.avatar_url text
 oauth_pending_links.created_at timestamp with time zone NOT NULL DEFAULT now()
 oauth_pending_links.email text
+oauth_pending_links.email_from_provider boolean NOT NULL DEFAULT false
 oauth_pending_links.expires_at timestamp with time zone NOT NULL
 oauth_pending_links.id uuid NOT NULL DEFAULT gen_random_uuid()
 oauth_pending_links.name text
@@ -766,6 +767,7 @@ support_messages.author text NOT NULL
 support_messages.conversation_id uuid NOT NULL
 support_messages.created_at timestamp with time zone NOT NULL DEFAULT now()
 support_messages.delivered_at timestamp with time zone
+support_messages.delivery_unknown boolean NOT NULL DEFAULT false
 support_messages.id uuid NOT NULL DEFAULT gen_random_uuid()
 support_messages.operator_id bigint
 support_messages.text text NOT NULL

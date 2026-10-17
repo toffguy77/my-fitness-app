@@ -99,13 +99,26 @@ export const curatorApi = {
     replyToSupport: (conversationId: string, text: string) =>
         apiClient.post<{ sent: boolean }>(`${BASE}/support/conversations/${conversationId}/reply`, { text }),
 
+    /**
+     * Sends an undelivered operator reply again: the same text to the same
+     * person, with no new line in the thread. 200 with the message, now
+     * delivered; 502 delivery_failed when Telegram refused again.
+     */
+    retrySupportDelivery: (conversationId: string, messageId: string) =>
+        apiClient.post<{ message: SupportMessage }>(
+            `${BASE}/support/conversations/${conversationId}/messages/${messageId}/retry`,
+            {}
+        ),
+
     closeSupport: (conversationId: string) =>
         apiClient.post<{ closed: boolean }>(`${BASE}/support/conversations/${conversationId}/close`, {}),
 }
 
-/** A Telegram support chat. */
+/** A support chat: from the Telegram bot or from the widget on the site. */
 export interface SupportConversation {
     id: string
+    /** Where the person is, and so where a reply goes. */
+    channel?: 'telegram' | 'web'
     chat_id: number
     lead_id?: string
     user_id?: number
@@ -123,6 +136,12 @@ export interface SupportMessage {
     author: 'user' | 'bot' | 'operator'
     text: string
     created_at: string
+    /**
+     * Whether Telegram accepted an outgoing message. Absent where there is
+     * nothing to deliver — incoming lines, the web widget — and on messages
+     * older than migration 065, whose outcome nobody knows.
+     */
+    delivered?: boolean
 }
 
 export interface SupportThread {
