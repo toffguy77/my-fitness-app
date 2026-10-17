@@ -416,13 +416,17 @@ const readByServer = new Set(
 // Переменные, которые сервер читает не сам: их задаёт платформа или они
 // собираются из других.
 const notFromCompose = new Set(['PORT', 'NODE_ENV', 'DATABASE_URL'])
+// Переменные, которых в выкатке быть не должно вовсе: заглушка входа через
+// провайдера для E2E и её адрес возврата. config.Load отказывается стартовать
+// с ними в проде, так что пробрасывать их составу незачем.
+const neverDeployed = new Set(['OAUTH_YANDEX_BASE_URL', 'OAUTH_APP_ORIGIN'])
 
 const forwarded = new Set(
     [...compose.matchAll(/^\s*-\s*([A-Z0-9_]+)=\$\{/gm)].map((m) => m[1]),
 )
 
 for (const name of [...readByServer].sort()) {
-    if (notFromCompose.has(name) || forwarded.has(name)) continue
+    if (notFromCompose.has(name) || neverDeployed.has(name) || forwarded.has(name)) continue
     problems.push(
         `Сервер читает ${name}, но docker-compose.yml её не пробрасывает.\n` +
             `  Значение будет стоять в панели и в .env.example, а служба увидит пустоту\n` +

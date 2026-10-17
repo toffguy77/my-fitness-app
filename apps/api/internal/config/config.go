@@ -199,6 +199,20 @@ type Config struct {
 	YandexOAuthClientSecret string
 	VKOAuthClientID         string
 	VKOAuthClientSecret     string
+	// OAuthYandexBaseURL replaces the Yandex endpoints with `<base>/authorize`,
+	// `<base>/token` and `<base>/info` — the stub the end-to-end suite signs up
+	// through (scripts/oauth-stub.mjs). Like LLM_BASE_URL, it points the
+	// service at somebody other than the real provider, so production refuses
+	// to start with it set: a sign-in answered by an arbitrary server is an
+	// account handed to whoever runs that server.
+	OAuthYandexBaseURL string
+	// OAuthAppOrigin is the origin the external sign-in flow returns the
+	// browser to, when it is not `https://` + APP_DOMAIN. Locally and under
+	// test the browser has to come back through the routing proxy on 3070:
+	// the default, Next on 3069, drops Set-Cookie on the way to the API, and
+	// the flow cannot finish without its cookies. Refused in production, where
+	// APP_DOMAIN is the origin.
+	OAuthAppOrigin string
 
 	// Модели: текст и зрение
 	LLMAPIKey                 string
@@ -398,6 +412,8 @@ func Load() (*Config, error) {
 		YandexOAuthClientSecret: getEnv("YANDEX_OAUTH_CLIENT_SECRET", ""),
 		VKOAuthClientID:         getEnv("VK_OAUTH_CLIENT_ID", ""),
 		VKOAuthClientSecret:     getEnv("VK_OAUTH_CLIENT_SECRET", ""),
+		OAuthYandexBaseURL:      strings.TrimRight(getEnv("OAUTH_YANDEX_BASE_URL", ""), "/"),
+		OAuthAppOrigin:          strings.TrimRight(getEnv("OAUTH_APP_ORIGIN", ""), "/"),
 
 		// Модель: распознавание еды и бот поддержки.
 		//
@@ -587,6 +603,22 @@ func (c *Config) validate() error {
 		for _, r := range required {
 			if r.value == "" {
 				problems = append(problems, fmt.Errorf("%s is required when NODE_ENV=production", r.name))
+			}
+		}
+
+		// Test-only overrides of the external sign-in. Either one in
+		// production would let a server other than the provider decide who
+		// is signing in, or send the browser somewhere other than the site.
+		forbidden := []struct {
+			name  string
+			value string
+		}{
+			{"OAUTH_YANDEX_BASE_URL", c.OAuthYandexBaseURL},
+			{"OAUTH_APP_ORIGIN", c.OAuthAppOrigin},
+		}
+		for _, f := range forbidden {
+			if f.value != "" {
+				problems = append(problems, fmt.Errorf("%s must not be set when NODE_ENV=production: it is for local runs and the end-to-end suite only", f.name))
 			}
 		}
 	}

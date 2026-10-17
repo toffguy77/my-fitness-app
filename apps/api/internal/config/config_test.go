@@ -26,6 +26,7 @@ func clearConfigEnv(t *testing.T) {
 		"CHAT_S3_ACCESS_KEY_ID", "CHAT_S3_SECRET_ACCESS_KEY",
 		"CHAT_S3_BUCKET", "CHAT_S3_REGION", "CHAT_S3_ENDPOINT",
 		"LOG_LEVEL",
+		"OAUTH_YANDEX_BASE_URL", "OAUTH_APP_ORIGIN",
 	} {
 		t.Setenv(key, "")
 		os.Unsetenv(key)
