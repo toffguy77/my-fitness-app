@@ -519,6 +519,17 @@ func (s *Service) RefreshTokensFor(ctx context.Context, want ClientKind, plainTo
 				"user_id", userID, "revoked_ago_ms", s.clock().Sub(revokedAt.Time).Milliseconds())
 			return s.handleGracefulReuse(ctx, id, userID, ip, ua, spec)
 		}
+		if !rotated {
+			// Revoked for safety — sign-out, a password change, a reset, or
+			// reuse detection itself. Presenting it again says the session is
+			// over and nothing more. Ending the owner's other sessions too
+			// would let anyone holding a signed-out token (an old backup, a
+			// shared computer) sign the owner out everywhere, and it proves no
+			// theft: rotation never handed this token's successor to anybody.
+			return nil, fmt.Errorf("refresh token was revoked: %w", apperrors.ErrSessionEnded)
+		}
+		// Replaced by rotation, outside the grace window: two parties hold
+		// the same session, and one of them is not its owner. Everything ends.
 		s.log.Warnw("Refresh token reuse detected, revoking all tokens for user", "user_id", userID)
 		s.revokeAllUserRefreshTokens(ctx, userID)
 		return nil, fmt.Errorf("refresh token reuse detected: %w", apperrors.ErrSessionEnded)

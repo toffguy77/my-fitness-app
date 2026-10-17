@@ -251,7 +251,30 @@ func TestRefreshTokens(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
-	t.Run("revoked token triggers reuse detection", func(t *testing.T) {
+	// Отозванный ради безопасности (выход, смена пароля) токен просто не
+	// принимается: других сессий его повтор не касается.
+	t.Run("token revoked for safety fails without ending other sessions", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+		ctx := context.Background()
+
+		plainToken := "signed-out-token"
+		tokenHash := service.tokens.HashToken(plainToken)
+		revokedAt := sql.NullTime{Time: time.Now().Add(-1 * time.Hour), Valid: true}
+
+		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
+			WithArgs(tokenHash).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me", "client_kind", "device_name"}).
+				AddRow(1, int64(42), time.Now().Add(24*time.Hour), revokedAt, nil, false, "web", nil))
+
+		result, err := service.RefreshTokens(ctx, plainToken, "", "")
+		assert.ErrorIs(t, err, apperrors.ErrSessionEnded)
+		assert.Nil(t, result)
+		// No UPDATE ... WHERE user_id expected: sqlmock fails on an unexpected one.
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("token replaced by rotation triggers reuse detection", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
@@ -263,7 +286,7 @@ func TestRefreshTokens(t *testing.T) {
 		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 			WithArgs(tokenHash).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me", "client_kind", "device_name"}).
-				AddRow(1, int64(42), time.Now().Add(24*time.Hour), revokedAt, nil, false, "web", nil))
+				AddRow(1, int64(42), time.Now().Add(24*time.Hour), revokedAt, "successor-hash", false, "web", nil))
 
 		// Expect all tokens to be revoked
 		mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").

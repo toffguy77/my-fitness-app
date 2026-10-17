@@ -9,6 +9,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/testsupport"
@@ -202,4 +203,27 @@ func TestRegister_RecordsConsents(t *testing.T) {
 	assert.True(t, granted["privacy_policy"])
 	assert.True(t, granted["data_processing"])
 	assert.False(t, granted["marketing"], "Marketing не задан в register() — должен записаться как отказ, а не пропасть")
+}
+
+// A token revoked for safety — here by signing out — presented again is
+// refused as an ended session, and nothing else happens: the owner's other
+// sessions live on. Only a token replaced by rotation proves two parties share
+// one session; a signed-out token proves nothing, and treating it as theft
+// let anyone holding one (an old backup, a shared computer) sign the owner
+// out everywhere.
+func TestSignedOutWebTokenPresentedAgainEndsNothingElse(t *testing.T) {
+	service, _ := newSessionService(t)
+	ctx := context.Background()
+
+	first := register(t, service, "signed-out@example.test")
+	other, err := service.Login(ctx, "signed-out@example.test", "IntegrationPass1!", "127.0.0.1", "phone", false)
+	require.NoError(t, err)
+
+	require.NoError(t, service.RevokeRefreshToken(ctx, first.RefreshToken))
+
+	_, err = service.RefreshTokens(ctx, first.RefreshToken, "127.0.0.1", "integration")
+	require.ErrorIs(t, err, apperrors.ErrSessionEnded)
+
+	_, err = service.RefreshTokens(ctx, other.RefreshToken, "127.0.0.1", "phone")
+	require.NoError(t, err, "the other session must survive a signed-out token being presented")
 }

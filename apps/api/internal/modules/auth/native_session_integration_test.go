@@ -203,6 +203,28 @@ func TestNativeReuseAfterRotationEndsEverySession(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code, "замена из той же цепочки падает вместе с ней")
 }
 
+// Токен, отозванный выходом, при повторе — 401 session_ended без отзыва
+// остальных сессий: отзыв всего — только для токена, заменённого ротацией.
+func TestNativeSignedOutTokenPresentedAgainEndsNothingElse(t *testing.T) {
+	s := newNativeStand(t)
+	ctx := context.Background()
+
+	first := s.registerNative(t, "native-signed-out@example.test")
+	web, err := s.service.Login(ctx, "native-signed-out@example.test", "IntegrationPass1!", "127.0.0.1", "browser", false)
+	require.NoError(t, err)
+
+	w, _ := s.call(t, http.MethodPost, "/api/v1/auth/native/logout",
+		`{"refresh_token":"`+first.Data.RefreshToken+`"}`, "")
+	require.Equal(t, http.StatusNoContent, w.Code)
+
+	w, body := s.refresh(t, first.Data.RefreshToken)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, apperrors.CodeSessionEnded, body.Code)
+
+	_, err = s.service.RefreshTokens(ctx, web.RefreshToken, "127.0.0.1", "browser")
+	assert.NoError(t, err, "веб-сессия того же человека жива")
+}
+
 // «Выход» и «Выход с отпиской устройства».
 func TestNativeLogoutEndsTheSessionAndForgetsThePhone(t *testing.T) {
 	s := newNativeStand(t)
