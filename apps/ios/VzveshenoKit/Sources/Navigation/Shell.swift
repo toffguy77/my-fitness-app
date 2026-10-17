@@ -39,7 +39,7 @@ public enum Role: Equatable, Sendable, Codable {
 /// Вкладка таббара.
 public enum AppTab: String, CaseIterable, Sendable, Hashable {
     // Клиент.
-    case today, diary, menu, more
+    case today, diary, menu, articles
     // Куратор.
     case clients, chats
     // Куратор и суперадмин.
@@ -51,8 +51,8 @@ public enum AppTab: String, CaseIterable, Sendable, Hashable {
 
 /// Оболочка, выбранная по роли (`ios-role-shell`).
 public enum Shell: Equatable, Sendable {
-    /// Клиент: «Сегодня», «Дневник», «Меню», «Ещё»; переписка с куратором —
-    /// значок в шапке рядом с профилем, а не вкладка.
+    /// Клиент: «Сегодня», «Дневник», «Меню», «Статьи»; переписка с
+    /// куратором, уведомления и профиль — кнопки шапки «Сегодня», а не вкладки.
     case client
     /// Куратор: «Клиенты», «Чаты», «Заявки», «Обращения».
     case curator
@@ -72,7 +72,7 @@ public enum Shell: Equatable, Sendable {
 
     public var tabs: [AppTab] {
         switch self {
-        case .client: return [.today, .diary, .menu, .more]
+        case .client: return [.today, .diary, .menu, .articles]
         case .curator: return [.clients, .chats, .leads, .support]
         case .admin: return [.leads, .support]
         case .webOnly: return []
@@ -90,13 +90,28 @@ public enum LaunchState: Equatable, Sendable {
     case signedOut
     /// Версия ниже минимальной: блокирующий экран «Обновите приложение».
     case updateRequired
+    /// Вход успешен, но удаление аккаунта запрошено: «Аккаунт будет удалён».
+    case pendingDeletion
+    /// Почта не подтверждена: экран кода из письма.
+    case verifyEmail
+    /// Клиент ещё не прошёл онбординг.
+    case onboarding
     case shell(Shell, offline: Bool)
 
-    /// Решение по входным данным запуска.
+    /// Решение по входным данным запуска и маршрут после входа
+    /// (`ios-auth-flows`): удаление → подтверждение почты → онбординг
+    /// клиента → оболочка роли. `nil` у признаков — неизвестно (старая
+    /// сессия), такой человек не задерживается.
     public static func resolve(isSignedIn: Bool, serverRole: Role?, cachedRole: Role?,
-                               serverUnreachable: Bool, updateRequired: Bool) -> LaunchState {
+                               serverUnreachable: Bool, updateRequired: Bool,
+                               pendingDeletion: Bool = false, emailVerified: Bool? = nil,
+                               onboardingCompleted: Bool? = nil) -> LaunchState {
         if updateRequired { return .updateRequired }
         guard isSignedIn else { return .signedOut }
+        if pendingDeletion { return .pendingDeletion }
+        if emailVerified == false { return .verifyEmail }
+        let role = serverRole ?? cachedRole
+        if role == .client, onboardingCompleted == false { return .onboarding }
         if let serverRole { return .shell(Shell(role: serverRole), offline: false) }
         if let cachedRole { return .shell(Shell(role: cachedRole), offline: serverUnreachable) }
         return .loading

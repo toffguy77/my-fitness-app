@@ -15,7 +15,7 @@ final class RouterTests: XCTestCase {
 
     func testClientTable() throws {
         let rows: [(String, NavigationTarget)] = [
-            ("https://burcev.team/content/kak-schitat-kbzhu", NavigationTarget(tab: .more, path: [.article(slug: "kak-schitat-kbzhu")])),
+            ("https://burcev.team/content/kak-schitat-kbzhu", NavigationTarget(tab: .articles, path: [.article(slug: "kak-schitat-kbzhu")])),
             ("https://burcev.team/dashboard?task=17", NavigationTarget(tab: .today, path: [.task(id: "17")])),
             ("https://burcev.team/dashboard", NavigationTarget(tab: .today)),
             ("https://burcev.team/food-tracker?date=2026-10-15&add=barcode",

@@ -291,7 +291,7 @@ type Raw<Backend, Frontend> = Partial<Backend> & Partial<Frontend>;
  * Map flat backend metrics to nested frontend DailyMetrics shape.
  * Also handles already-mapped data gracefully (e.g. from cache or test mocks).
  */
-function mapBackendMetrics(raw: Raw<BackendDailyMetrics, DailyMetrics>): DailyMetrics {
+export function mapBackendMetrics(raw: Raw<BackendDailyMetrics, DailyMetrics>): DailyMetrics {
     // If already in frontend shape (has nested 'nutrition' object), return as-is
     if (raw.nutrition !== undefined && typeof raw.nutrition === 'object') {
         return raw as DailyMetrics;
@@ -374,7 +374,7 @@ type GetWeeklyPlanResponse = RawWeeklyPlan & { plan?: RawWeeklyPlan | null };
  * Map backend weekly plan (snake_case) to frontend WeeklyPlan (camelCase).
  * Handles already-mapped data gracefully.
  */
-function mapBackendWeeklyPlan(raw: RawWeeklyPlan): WeeklyPlan {
+export function mapBackendWeeklyPlan(raw: RawWeeklyPlan): WeeklyPlan {
     // If already in frontend shape (has camelCase keys), return as-is
     if (raw.caloriesGoal !== undefined) {
         return raw as WeeklyPlan;

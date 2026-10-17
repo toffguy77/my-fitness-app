@@ -14,6 +14,10 @@ public enum Destination: Hashable, Sendable {
     case diaryDay(date: String?, add: AddMethod?)
     /// Переписка клиента с куратором (значок в шапке).
     case curatorChat
+    /// Профиль клиента (аватар в шапке «Сегодня»): профиль, настройки, «Здоровье».
+    case profile
+    /// «Профиль → Здоровье» (`healthkit-client`).
+    case health
     case notifications
     case weeklyFeedback(reportID: String)
     case plan
@@ -223,14 +227,14 @@ public enum Router {
 
     private static func clientTarget(_ link: ScreenLink) -> NavigationTarget? {
         switch link {
-        case let .article(slug): return NavigationTarget(tab: .more, path: [.article(slug: slug)])
+        case let .article(slug): return NavigationTarget(tab: .articles, path: [.article(slug: slug)])
         case let .dashboard(task): return NavigationTarget(tab: .today, path: task.map { [.task(id: $0)] } ?? [])
         case let .foodTracker(date, add): return NavigationTarget(tab: .diary, path: [.diaryDay(date: date, add: add)])
         case .chat, .curatorConversation: return NavigationTarget(tab: .today, path: [.curatorChat])
         case .notifications: return NavigationTarget(tab: .today, path: [.notifications])
         case let .weeklyFeedback(report): return NavigationTarget(tab: .today, path: [.weeklyFeedback(reportID: report)])
         case .plan: return NavigationTarget(tab: .today, path: [.plan])
-        case .export: return NavigationTarget(tab: .more, path: [.export])
+        case .export: return NavigationTarget(tab: .today, path: [.profile, .export])
         case .curatorHome, .curatorClient, .curatorChats, .curatorSupport, .curatorLeads, .unknown: return nil
         }
     }

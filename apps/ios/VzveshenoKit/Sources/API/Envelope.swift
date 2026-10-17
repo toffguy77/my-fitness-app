@@ -103,3 +103,11 @@ enum EnvelopeDecoder {
         }
     }
 }
+
+extension RawResponse {
+    /// `data` из конверта этого ответа или ошибка с кодом сервера — для тех,
+    /// кто хранит сырой ответ (кэш экрана) и разбирает его позже.
+    public func decoded<T: Decodable>(_ type: T.Type = T.self) throws -> T {
+        try EnvelopeDecoder.decode(T.self, data: data, status: status)
+    }
+}
