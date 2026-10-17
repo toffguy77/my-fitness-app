@@ -227,7 +227,10 @@ func (s *IdempotencyStore) execute(c *gin.Context, req idempotentRequest, claime
 	defer cancel()
 	status := c.Writer.Status()
 	var err error
-	if status >= http.StatusInternalServerError {
+	// Обработчик, не написавший ответа (оставил его ErrorHandler снаружи),
+	// показывает статус 200 по умолчанию: сохранить его — значит сутки
+	// отвечать пустым успехом на то, что клиент увидел ошибкой.
+	if !c.Writer.Written() || status >= http.StatusInternalServerError {
 		err = s.release(ctx, req, claimedAt)
 	} else {
 		err = s.complete(ctx, req, claimedAt, storedResponse{

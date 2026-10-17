@@ -5,6 +5,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -257,6 +258,26 @@ func TestIdempotencyIntegration(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, w.Code)
 		assert.Empty(t, w.Header().Get(IdempotentReplayedHeader))
 		assert.Equal(t, before+2, f.calls.Load())
+	})
+
+	t.Run("обработчик без ответа не оставляет пустой успех под ключом", func(t *testing.T) {
+		engine := gin.New()
+		silentCalls := 0
+		engine.POST("/silent", func(c *gin.Context) { c.Set("user_id", alice); c.Next() },
+			f.store.Middleware(logger.New()), func(c *gin.Context) {
+				silentCalls++
+				_ = c.Error(errors.New("сбой, ответ напишет ErrorHandler снаружи"))
+				c.Abort()
+			})
+		key := uuid.NewString()
+		for i := 0; i < 2; i++ {
+			req := httptest.NewRequest(http.MethodPost, "/silent", strings.NewReader(`{}`))
+			req.Header.Set(IdempotencyKeyHeader, key)
+			w := httptest.NewRecorder()
+			engine.ServeHTTP(w, req)
+			assert.Empty(t, w.Header().Get(IdempotentReplayedHeader))
+		}
+		assert.Equal(t, 2, silentCalls, "ключ снят — повтор выполняется заново")
 	})
 
 	t.Run("ответ 4xx запоминается: повтор не выполняется", func(t *testing.T) {
