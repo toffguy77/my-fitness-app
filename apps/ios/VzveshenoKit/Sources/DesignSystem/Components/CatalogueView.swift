@@ -41,7 +41,7 @@ public struct CatalogueSample: View {
         switch entry {
         case .card:
             VStack(spacing: DS.Space.s3) {
-                ForEach(DSCard<Text>.Variant.allCases, id: \.self) { variant in
+                ForEach(DSCardVariant.allCases, id: \.self) { variant in
                     DSCard(variant) {
                         VStack(alignment: .leading, spacing: DS.Space.s1) {
                             DSCardTitle("Карточка \(variant.rawValue)")

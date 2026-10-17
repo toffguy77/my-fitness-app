@@ -288,3 +288,26 @@ public actor PendingLinkStore {
 
     public func clear() { pending = nil }
 }
+
+/// Что делать со ссылкой входа (`ios-deep-links`).
+///
+/// Ссылка из письма при уже открытой сессии не заменяет её молча: иначе
+/// чужая ссылка на свой аккаунт (login CSRF) уводила бы записи еды и
+/// здоровья человека в чужой аккаунт.
+public enum AuthLinkDecision: Equatable, Sendable {
+    /// Обработать сразу.
+    case handle
+    /// Спросить: «Войти в другой аккаунт? Текущий сеанс завершится».
+    case confirmSwitchingAccount
+
+    public static func decide(_ link: AuthLink, hasSession: Bool) -> AuthLinkDecision {
+        switch link {
+        case .magicLink, .resetPassword:
+            return hasSession ? .confirmSwitchingAccount : .handle
+        case .providerComplete:
+            // Возврат входа, начатого в этом приложении этим человеком
+            // (код без verifier из памяти приложения ничего не даёт).
+            return .handle
+        }
+    }
+}

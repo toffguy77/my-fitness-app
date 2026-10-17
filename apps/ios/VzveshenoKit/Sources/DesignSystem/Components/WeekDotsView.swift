@@ -17,7 +17,7 @@ public struct WeekDotsView: View {
     public var body: some View {
         let center = plotHeight / 2
         let scale = center / range
-        let bandHalf = max(10, tolerance * scale)
+        let bandHalf = max(10, CGFloat(tolerance) * scale)
         VStack(spacing: DS.Space.s2) {
             ZStack(alignment: .top) {
                 RoundedRectangle(cornerRadius: DS.Radius.xs)
@@ -55,7 +55,7 @@ public struct WeekDotsView: View {
                 .frame(width: 12, height: 12)
                 .offset(y: center - 6)
         } else {
-            let clamped = max(-range, min(range, day.deviation ?? 0))
+            let clamped = CGFloat(max(-range, min(range, day.deviation ?? 0)))
             Circle()
                 .fill(day.isInside(tolerance: tolerance) ? DS.Color.fgDefault : DS.Color.statusWarning)
                 .frame(width: 12, height: 12)

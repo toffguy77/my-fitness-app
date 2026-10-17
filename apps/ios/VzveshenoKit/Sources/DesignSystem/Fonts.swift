@@ -4,6 +4,9 @@ import CoreText
 #endif
 
 extension DS {
+    /// Ресурсы модуля: каталог цветов, шрифты, склонения.
+    public static var bundle: Bundle { .module }
+
     /// Шрифты бренда — переменные Literata и Golos Text (OFL, лицензии рядом в
     /// `Fonts/`). `UIAppFonts` до ресурсов пакета не дотягивается, поэтому
     /// приложение и расширение регистрируют их сами при запуске.

@@ -31,15 +31,15 @@ final class ComponentSnapshotTests: XCTestCase {
     /// Каждая роль цвета находится в каталоге модуля в обеих темах.
     func testEveryColorRoleResolvesInBothThemes() {
         for role in DS.ColorRole.allCases {
-            let color = UIColor(named: role.rawValue, in: .module, compatibleWith: nil)
+            let color = UIColor(named: role.rawValue, in: DS.bundle, compatibleWith: nil)
             XCTAssertNotNil(color, role.rawValue)
             let light = color?.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
             let dark = color?.resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark))
             XCTAssertNotNil(light)
             XCTAssertNotNil(dark)
         }
-        XCTAssertNotEqual(UIColor(named: "BgCanvas", in: .module, compatibleWith: UITraitCollection(userInterfaceStyle: .light)),
-                          UIColor(named: "BgCanvas", in: .module, compatibleWith: UITraitCollection(userInterfaceStyle: .dark))?
+        XCTAssertNotEqual(UIColor(named: "BgCanvas", in: DS.bundle, compatibleWith: UITraitCollection(userInterfaceStyle: .light)),
+                          UIColor(named: "BgCanvas", in: DS.bundle, compatibleWith: UITraitCollection(userInterfaceStyle: .dark))?
                             .resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark)))
     }
 

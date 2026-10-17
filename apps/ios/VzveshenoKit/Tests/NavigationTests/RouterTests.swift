@@ -142,3 +142,20 @@ final class RouterTests: XCTestCase {
         XCTAssertNil(again, "ссылка открывается один раз")
     }
 }
+
+/// Сценарий «Ссылка входа при открытой сессии».
+final class AuthLinkDecisionTests: XCTestCase {
+    func testSignedInLinkNeedsConfirmation() {
+        XCTAssertEqual(AuthLinkDecision.decide(.magicLink(token: "t"), hasSession: true), .confirmSwitchingAccount)
+        XCTAssertEqual(AuthLinkDecision.decide(.resetPassword(token: "t"), hasSession: true), .confirmSwitchingAccount)
+    }
+
+    func testSignedOutLinkIsConsumed() {
+        XCTAssertEqual(AuthLinkDecision.decide(.magicLink(token: "t"), hasSession: false), .handle)
+        XCTAssertEqual(AuthLinkDecision.decide(.resetPassword(token: "t"), hasSession: false), .handle)
+    }
+
+    func testProviderReturnIsHandled() {
+        XCTAssertEqual(AuthLinkDecision.decide(.providerComplete(code: "c", error: nil), hasSession: true), .handle)
+    }
+}

@@ -62,6 +62,25 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.paths[.today], [.curatorChat])
     }
 
+    /// Сценарий «Ссылка входа при открытой сессии»: сессия не заменяется молча.
+    func testMagicLinkWhileSignedInAsksFirst() async throws {
+        let model = await started(.client)
+        await model.open(try XCTUnwrap(URL(string: "https://new.burcev.team/auth/link/consume?token=attacker")))
+        XCTAssertEqual(model.authLinkAwaitingConfirmation, .magicLink(token: "attacker"))
+        XCTAssertEqual(model.launch, .shell(.client, offline: false), "сессия на месте, пока человек не подтвердил")
+        model.cancelSwitchingAccount()
+        XCTAssertNil(model.authLinkAwaitingConfirmation)
+        let user = await model.session.user
+        XCTAssertEqual(user?.id, 7)
+    }
+
+    func testResetLinkWhileSignedOutOpensImmediately() async throws {
+        let model = await started(.signedOut)
+        await model.open(try XCTUnwrap(URL(string: "https://new.burcev.team/reset-password?token=r1")))
+        XCTAssertNil(model.authLinkAwaitingConfirmation)
+        XCTAssertEqual(model.signInStep, .resetPassword(token: "r1"))
+    }
+
     func testSignOutReturnsToSignIn() async {
         let model = await started(.client)
         await model.signOut()

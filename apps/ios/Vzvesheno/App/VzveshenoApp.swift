@@ -15,7 +15,9 @@ struct VzveshenoApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        let model = model
+        let connectivity = connectivity
+        return WindowGroup {
             RootView()
                 .environment(model)
                 .tint(DS.Color.primaryDefault)
@@ -38,7 +40,7 @@ struct VzveshenoApp: App {
         }
         // Досылка очереди в фоне (BGAppRefreshTask): идентификатор — в
         // BGTaskSchedulerPermittedIdentifiers (project.yml).
-        .backgroundTask(.appRefresh(model.environment.outboxTaskID)) {
+        .backgroundTask(.appRefresh(model.environment.outboxTaskID)) { [model] in
             await model.drainOutbox()
         }
     }

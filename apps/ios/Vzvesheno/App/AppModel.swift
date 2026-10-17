@@ -48,6 +48,9 @@ final class AppModel {
     var signInStep: SignInStep = .form
     /// Ссылка из письма не сработала — почему.
     var linkError: String?
+    /// Ссылка входа пришла при открытой сессии — ждёт подтверждения
+    /// «Войти в другой аккаунт? Текущий сеанс завершится».
+    var authLinkAwaitingConfirmation: AuthLink?
     /// Справочник компонентов открыт (только Dev-сборка).
     var showCatalogue = false
 
@@ -71,11 +74,14 @@ final class AppModel {
         self.environment = environment
         let api = APIClient(baseURL: environment.apiBaseURL, clientHeader: environment.clientHeader, transport: transport)
         self.api = api
-        cache = ScreenCache(root: directory.appendingPathComponent("Cache", isDirectory: true))
-        snapshot = DaySnapshotStore(url: directory.appendingPathComponent("today-snapshot.json"))
+        let cache = ScreenCache(root: directory.appendingPathComponent("Cache", isDirectory: true))
+        let snapshot = DaySnapshotStore(url: directory.appendingPathComponent("today-snapshot.json"))
         let outboxStore: OutboxStore = (try? SQLiteOutboxStore(url: directory.appendingPathComponent("outbox.sqlite")))
             ?? InMemoryOutboxStore()
-        outbox = Outbox(store: outboxStore, api: api)
+        let outbox = Outbox(store: outboxStore, api: api)
+        self.cache = cache
+        self.snapshot = snapshot
+        self.outbox = outbox
         session = SessionStore(api: api, secure: secure, installMarker: installMarker,
                                erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot)])
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
@@ -255,15 +261,44 @@ final class AppModel {
     func open(_ url: URL) async {
         guard let link = Router.parse(url) else { return }
         switch link {
-        case let .auth(.magicLink(token)):
+        case let .auth(authLink):
+            switch AuthLinkDecision.decide(authLink, hasSession: user != nil) {
+            case .handle:
+                await handle(authLink)
+            case .confirmSwitchingAccount:
+                authLinkAwaitingConfirmation = authLink
+            }
+        case let .screen(screen):
+            open(screen)
+        }
+    }
+
+    /// Человек подтвердил вход в другой аккаунт: текущий сеанс завершается,
+    /// затем ссылка обрабатывается.
+    func confirmSwitchingAccount() async {
+        guard let link = authLinkAwaitingConfirmation else { return }
+        authLinkAwaitingConfirmation = nil
+        await signOut()
+        user = nil
+        recompute()
+        await handle(link)
+    }
+
+    func cancelSwitchingAccount() {
+        authLinkAwaitingConfirmation = nil
+    }
+
+    private func handle(_ link: AuthLink) async {
+        switch link {
+        case let .magicLink(token):
             do {
                 try await complete(try await auth.consumeMagicLink(token: token))
             } catch {
                 linkError = messages.message(for: error)
             }
-        case let .auth(.resetPassword(token)):
+        case let .resetPassword(token):
             signInStep = .resetPassword(token: token)
-        case let .auth(.providerComplete(code, reason)):
+        case let .providerComplete(code, reason):
             guard let code else {
                 linkError = Self.providerFailureMessage(reason)
                 return
@@ -273,8 +308,6 @@ final class AppModel {
             } catch {
                 linkError = messages.message(for: error)
             }
-        case let .screen(screen):
-            open(screen)
         }
     }
 

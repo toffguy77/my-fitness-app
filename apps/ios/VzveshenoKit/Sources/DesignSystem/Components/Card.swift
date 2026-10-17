@@ -4,10 +4,12 @@ import SwiftUI
 /// Карточка экрана. `standard` — бумага и линия 1 pt без тени; `elevated` —
 /// то, что лежит над экраном; `coach` — голос куратора на тёмной поверхности;
 /// `plain` — без подложки.
+public enum DSCardVariant: String, CaseIterable, Sendable {
+    case standard, elevated, coach, plain
+}
+
 public struct DSCard<Content: View>: View {
-    public enum Variant: String, CaseIterable, Sendable {
-        case standard, elevated, coach, plain
-    }
+    public typealias Variant = DSCardVariant
 
     private let variant: Variant
     private let content: Content

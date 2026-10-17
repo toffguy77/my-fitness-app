@@ -25,6 +25,13 @@ struct RootView: View {
                 }
             }
         }
+        .alert("Войти в другой аккаунт?", isPresented: Binding(
+            get: { model.authLinkAwaitingConfirmation != nil }, set: { if !$0 { model.cancelSwitchingAccount() } })) {
+            Button("Отмена", role: .cancel) { model.cancelSwitchingAccount() }
+            Button("Войти", role: .destructive) { Task { await model.confirmSwitchingAccount() } }
+        } message: {
+            Text("Текущий сеанс завершится.")
+        }
         .alert("Не получилось войти по ссылке", isPresented: Binding(
             get: { model.linkError != nil }, set: { if !$0 { model.linkError = nil } })) {
             Button("OK", role: .cancel) {}
