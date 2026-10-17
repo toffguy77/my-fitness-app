@@ -39,6 +39,7 @@ public struct DSProgressArc<Center: View>: View {
     private let label: String
     private let center: Center
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     public init(fraction: Double, role: DS.ColorRole = .primaryDefault, label: String, @ViewBuilder center: () -> Center) {
         self.fraction = Swift.min(Swift.max(fraction, 0), 1)
@@ -48,27 +49,40 @@ public struct DSProgressArc<Center: View>: View {
     }
 
     public var body: some View {
-        // Дуга держит пропорции 280 × 150, а число внутри может её перерасти
-        // при крупном тексте — тогда растёт вся стопка, а не обрезается число.
-        ZStack(alignment: .bottom) {
-            ZStack {
-                ArcShape(progress: 1)
-                    .stroke(DS.Color.track, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                if fraction > 0 {
-                    ArcShape(progress: fraction)
-                        .stroke(role.color, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+        // Число садится внутрь дуги; на крупном тексте оно её переросло бы —
+        // тогда число под дугой, целиком, а не поверх неё.
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: DS.Space.s2) {
+                    arc
+                    center
+                }
+            } else {
+                ZStack(alignment: .bottom) {
+                    arc
+                    center
+                        .padding(.horizontal, DS.Space.s8)
+                        .padding(.bottom, DS.Space.s1)
                 }
             }
-            .aspectRatio(280.0 / 150.0, contentMode: .fit)
-            .frame(maxWidth: 280)
-            center
-                .padding(.horizontal, DS.Space.s8)
-                .padding(.bottom, DS.Space.s1)
         }
         .frame(maxWidth: .infinity)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.32), value: fraction)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
+    }
+
+    private var arc: some View {
+        ZStack {
+            ArcShape(progress: 1)
+                .stroke(DS.Color.track, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+            if fraction > 0 {
+                ArcShape(progress: fraction)
+                    .stroke(role.color, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+            }
+        }
+        .aspectRatio(280.0 / 150.0, contentMode: .fit)
+        .frame(maxWidth: 280)
     }
 }
 

@@ -37,9 +37,11 @@ public struct DSButtonStyle: ButtonStyle {
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .dsText(DS.Typography.headline)
-            .lineLimit(1)
+            .lineLimit(2)
+            .multilineTextAlignment(.center)
             .minimumScaleFactor(0.8)
             .padding(.horizontal, DS.Space.s5)
+            .padding(.vertical, DS.Space.s2)
             .frame(minHeight: size.height)
             .frame(maxWidth: size == .large ? .infinity : nil)
             .foregroundStyle(isEnabled ? foreground : DS.Color.fgDisabled)
@@ -84,9 +86,9 @@ public struct DSIconButton: View {
     public var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.body.weight(.semibold))
                 .foregroundStyle(DS.Color.fgDefault)
-                .frame(width: DS.Size.touch, height: DS.Size.touch)
+                .frame(minWidth: DS.Size.touch, minHeight: DS.Size.touch)
                 .background(Circle().fill(DS.Color.bgSubtle))
         }
         .buttonStyle(.plain)

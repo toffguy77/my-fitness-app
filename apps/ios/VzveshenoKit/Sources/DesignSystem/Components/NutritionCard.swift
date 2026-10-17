@@ -34,6 +34,8 @@ public struct NutritionCard: View {
                             .accessibilityIdentifier("nutrition.remaining")
                         Text(energy.remaining == nil ? "ккал съедено" : "ккал осталось")
                             .dsText(DS.Typography.caption)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                             .foregroundStyle(DS.Color.fgMuted)
                     }
                     .foregroundStyle(DS.Color.fgDefault)

@@ -96,7 +96,7 @@ final class PluralTests: XCTestCase {
 
     /// Каждая строка с числом в каталоге — с формами one, few, many, other.
     func testCatalogHasAllRussianForms() throws {
-        let catalog = try StringCatalog(relativePath: "apps/ios/VzveshenoKit/Sources/DesignSystem/Plurals.xcstrings")
+        let catalog = try StringCatalog(relativePath: "apps/ios/VzveshenoKit/Sources/DesignSystem/Strings/Plurals.xcstrings")
         let required = ["plural.days %lld", "plural.minutes_ago %lld", "plural.add_items %lld", "plural.glasses %lld",
                         "plural.earlier_days %lld", "plural.waiting_days %lld"]
         for key in required {

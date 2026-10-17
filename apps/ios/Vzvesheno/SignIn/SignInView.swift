@@ -53,14 +53,15 @@ struct SignInView: View {
                     .disabled(working || email.isEmpty || password.isEmpty)
                     .accessibilityIdentifier("signIn.submit")
 
-                    HStack(spacing: DS.Space.s2) {
+                    VStack(alignment: .leading, spacing: 0) {
                         NavigationLink("Войти по ссылке из письма") { MagicLinkView(initialEmail: email) }
-                        Spacer()
+                            .frame(minHeight: DS.Size.touch)
                         NavigationLink("Создать аккаунт") { RegisterView() }
+                            .frame(minHeight: DS.Size.touch)
                     }
                     .dsText(DS.Typography.callout)
                     .fontWeight(.semibold)
-                    .foregroundStyle(DS.Color.primaryDefault)
+                    .foregroundStyle(DS.Color.fgDefault)
 
                     Text("или")
                         .dsText(DS.Typography.caption)

@@ -185,12 +185,7 @@ final class OutboxTests: XCTestCase {
         let store = try SQLiteOutboxStore(url: file)
         try store.append(OutboxItem(userID: 1, kind: "k", method: .post, path: "/x", body: nil))
         let attributes = ProtectedFiles.attributes(of: file)
-        #if os(iOS)
-        XCTAssertEqual(attributes.protection, ProtectedFiles.requiredProtection)
-        XCTAssertEqual(attributes.excludedFromBackup, true)
-        #else
-        XCTAssertNil(attributes.protection, "класса защиты на этой платформе нет")
-        #endif
+        assertProtected(attributes, file.lastPathComponent)
     }
 }
 
@@ -238,15 +233,28 @@ final class ScreenCacheTests: XCTestCase {
         let snapshot = DaySnapshotStore(url: root.appendingPathComponent("snapshot.json"))
         try snapshot.save(Data("{}".utf8))
         for url in [cache.url(for: "today", userID: 7), snapshot.url] {
-            let attributes = ProtectedFiles.attributes(of: url)
-            #if os(iOS)
-            XCTAssertEqual(attributes.protection, ProtectedFiles.requiredProtection, url.lastPathComponent)
-            XCTAssertEqual(attributes.excludedFromBackup, true, url.lastPathComponent)
-            #else
             XCTAssertNotNil(try? Data(contentsOf: url))
-            #endif
+            assertProtected(ProtectedFiles.attributes(of: url), url.lastPathComponent)
         }
         snapshot.erase()
         XCTAssertNil(snapshot.load())
     }
+}
+
+/// Класс защиты `completeUntilFirstUserAuthentication` и исключение из
+/// резервной копии. Симулятор класс защиты не хранит — там проверяется, что
+/// он запрошен при создании файла; на устройстве — что он стоит.
+func assertProtected(_ attributes: ProtectedFiles.Attributes, _ name: String,
+                     file: StaticString = #filePath, line: UInt = #line) {
+    #if os(iOS)
+    if ProtectedFiles.platformKeepsProtectionClass {
+        XCTAssertEqual(attributes.protection, ProtectedFiles.requiredProtection, name, file: file, line: line)
+    } else {
+        let requested = ProtectedFiles.requestedAttributes[.protectionKey] as? FileProtectionType
+        XCTAssertEqual(requested?.rawValue, ProtectedFiles.requiredProtection, name, file: file, line: line)
+    }
+    XCTAssertEqual(attributes.excludedFromBackup, true, name, file: file, line: line)
+    #else
+    XCTAssertNil(attributes.protection, "класса защиты на этой платформе нет", file: file, line: line)
+    #endif
 }

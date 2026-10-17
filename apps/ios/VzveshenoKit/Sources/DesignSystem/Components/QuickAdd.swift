@@ -7,6 +7,7 @@ public struct QuickAddActions: View {
     private let onSearch: () -> Void
     private let onPhoto: () -> Void
     private let onBarcode: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     public init(onSearch: @escaping () -> Void, onPhoto: @escaping () -> Void, onBarcode: @escaping () -> Void) {
         self.onSearch = onSearch
@@ -15,13 +16,19 @@ public struct QuickAddActions: View {
     }
 
     public var body: some View {
-        HStack(spacing: DS.Space.s2) {
+        // На крупном тексте главная кнопка — во всю ширину, иконки под ней.
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.s2))
+            : AnyLayout(HStackLayout(spacing: DS.Space.s2))
+        layout {
             Button(action: onSearch) {
                 Label("Записать еду", systemImage: "plus")
             }
             .buttonStyle(DSButtonStyle(.primary, size: .large))
-            DSIconButton("camera", label: "Распознать еду по фото", action: onPhoto)
-            DSIconButton("barcode.viewfinder", label: "Сканировать штрихкод", action: onBarcode)
+            HStack(spacing: DS.Space.s2) {
+                DSIconButton("camera", label: "Распознать еду по фото", action: onPhoto)
+                DSIconButton("barcode.viewfinder", label: "Сканировать штрихкод", action: onBarcode)
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Быстрая запись еды")

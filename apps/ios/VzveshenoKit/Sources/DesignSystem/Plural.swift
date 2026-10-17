@@ -1,7 +1,7 @@
 import Foundation
 
 extension DS {
-    /// Числа со словами из String Catalog `Plurals.xcstrings` с формами
+    /// Числа со словами из String Catalog `Strings/Plurals.xcstrings` с формами
     /// `one`, `few`, `many`, `other` (`ios-platform-compliance`).
     ///
     /// Каталог читается здесь, а не компилируется Xcode: выбор формы тогда не
@@ -38,7 +38,8 @@ extension DS {
 
         /// Ключ → язык → форма → шаблон.
         static let catalog: [String: [String: [String: String]]] = {
-            guard let url = Bundle.module.url(forResource: "Plurals", withExtension: "xcstrings"),
+            guard let url = Bundle.module.url(forResource: "Plurals", withExtension: "xcstrings", subdirectory: "Strings")
+                    ?? Bundle.module.url(forResource: "Plurals", withExtension: "xcstrings"),
                   let data = try? Data(contentsOf: url),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let strings = json["strings"] as? [String: Any] else {

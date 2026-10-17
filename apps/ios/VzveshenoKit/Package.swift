@@ -23,18 +23,19 @@ let outboxDependencies: [Target.Dependency] = ["API"]
 
 // Каталоги цветов обрабатывает actool, которого на Linux нет: там DesignSystem
 // собирается без ресурсов (SwiftUI там всё равно недоступен).
-// Plurals.xcstrings — String Catalog, который читает DS.Plural сам (а не
-// компилирует Xcode): склонение одинаково на iOS и в тестах на Linux.
+// Strings/Plurals.xcstrings — String Catalog, который читает DS.Plural сам:
+// каталог копируется папкой (Xcode не компилирует его в .strings), и
+// склонение одинаково на iOS и в тестах на Linux.
 #if os(Linux)
 let designSystemResources: [Resource] = [
     .copy("Fonts"),
-    .copy("Plurals.xcstrings"),
+    .copy("Strings"),
 ]
 #else
 let designSystemResources: [Resource] = [
     .process("Generated/Colors.xcassets"),
     .copy("Fonts"),
-    .copy("Plurals.xcstrings"),
+    .copy("Strings"),
 ]
 #endif
 

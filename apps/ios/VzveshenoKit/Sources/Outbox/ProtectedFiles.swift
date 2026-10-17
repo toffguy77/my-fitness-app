@@ -63,6 +63,19 @@ public enum ProtectedFiles {
         try apply(to: url)
     }
 
+    /// Атрибуты, с которыми создаются файлы и каталоги аккаунта.
+    public static var requestedAttributes: [FileAttributeKey: Any] { protectionAttributes }
+
+    /// Хранит ли файловая система класс защиты. Симулятор его не хранит —
+    /// там проверяется, что класс запрошен, а на устройстве — что он стоит.
+    public static var platformKeepsProtectionClass: Bool {
+        #if os(iOS) && !targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+
     public static func attributes(of url: URL) -> Attributes {
         let protection = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.protectionKey]
             .flatMap { ($0 as? FileProtectionType)?.rawValue ?? ($0 as? String) }

@@ -10,6 +10,7 @@ public struct MacroRemainingView: View {
 
     private let values: [MacroRemainingValue]
     private let variant: Variant
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     public init(eaten: [Macro: Double], goal: [Macro: Double], variant: Variant = .plain) {
         values = Macro.allCases.map { MacroRemainingValue(macro: $0, eaten: eaten[$0] ?? 0, goal: goal[$0]) }
@@ -17,7 +18,11 @@ public struct MacroRemainingView: View {
     }
 
     public var body: some View {
-        HStack(alignment: .top, spacing: variant == .tiles ? DS.Space.s2 : DS.Space.s4) {
+        // На крупном тексте три колонки рвут слова — макросы встают друг под другом.
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.s4))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: variant == .tiles ? DS.Space.s2 : DS.Space.s4))
+        layout {
             ForEach(values, id: \.macro) { value in
                 MacroColumn(value: value, variant: variant)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -57,8 +62,7 @@ private struct MacroColumn: View {
                     .dsText(DS.Typography.caption)
                     .monospacedDigit()
                     .foregroundStyle(DS.Color.fgMuted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(variant == .tiles ? DS.Space.s3 : 0)

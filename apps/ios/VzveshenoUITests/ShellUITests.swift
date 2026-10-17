@@ -90,6 +90,16 @@ final class ShellUITests: XCTestCase {
 /// ios-platform-compliance: аудит доступности на экранах, которые уже есть.
 @MainActor
 final class AccessibilityAuditUITests: XCTestCase {
+    /// Аудит с описанием каждой находки в журнале: без него в CI видно лишь
+    /// «Contrast failed», но не какой элемент.
+    private func audit(_ app: XCUIApplication) throws {
+        try app.performAccessibilityAudit { issue in
+            print("ACCESSIBILITY AUDIT: \(issue.compactDescription) | \(issue.detailedDescription) | "
+                  + "\(issue.element?.debugDescription.prefix(300) ?? "нет элемента")")
+            return false
+        }
+    }
+
     private func launch(_ scenario: String) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestScenario", scenario, "-AppleLanguages", "(ru)", "-AppleLocale", "ru_RU"]
@@ -100,19 +110,19 @@ final class AccessibilityAuditUITests: XCTestCase {
     func testSignInScreen() throws {
         let app = launch("signedOut")
         XCTAssertTrue(app.buttons["signIn.submit"].waitForExistence(timeout: 10))
-        try app.performAccessibilityAudit()
+        try audit(app)
     }
 
     func testClientShell() throws {
         let app = launch("client")
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
-        try app.performAccessibilityAudit()
+        try audit(app)
     }
 
     func testCuratorShell() throws {
         let app = launch("coordinator")
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
-        try app.performAccessibilityAudit()
+        try audit(app)
     }
 
     func testComponentCatalogue() throws {
@@ -122,6 +132,6 @@ final class AccessibilityAuditUITests: XCTestCase {
         app.buttons["more.catalogue"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["catalogue.nutritionCard"].waitForExistence(timeout: 5)
                       || app.scrollViews.firstMatch.exists)
-        try app.performAccessibilityAudit()
+        try audit(app)
     }
 }
