@@ -74,6 +74,8 @@ INDEX food_items idx_food_items_search gin (search_vector)
 INDEX food_items idx_food_items_source btree (source)
 INDEX food_recognition_usage food_recognition_usage_pkey btree (id)
 INDEX food_recognition_usage idx_food_recognition_usage_user_date btree (user_id, used_at)
+INDEX idempotency_keys idempotency_keys_pkey btree (user_id, key)
+INDEX idempotency_keys idx_idempotency_keys_created_at btree (created_at)
 INDEX job_runs idx_job_runs_name_started btree (job_name, started_at DESC)
 INDEX job_runs idx_job_runs_started btree (started_at)
 INDEX job_runs job_runs_pkey btree (id)
@@ -450,6 +452,15 @@ food_recognition_usage.id integer NOT NULL DEFAULT nextval('food_recognition_usa
 food_recognition_usage.photo_url text
 food_recognition_usage.used_at timestamp with time zone NOT NULL DEFAULT now()
 food_recognition_usage.user_id bigint NOT NULL
+idempotency_keys.body_hash text NOT NULL
+idempotency_keys.content_type text
+idempotency_keys.created_at timestamp with time zone NOT NULL DEFAULT now()
+idempotency_keys.key uuid NOT NULL
+idempotency_keys.method text NOT NULL
+idempotency_keys.path text NOT NULL
+idempotency_keys.response bytea
+idempotency_keys.status integer
+idempotency_keys.user_id bigint NOT NULL
 job_runs.error text
 job_runs.finished_at timestamp with time zone
 job_runs.id uuid NOT NULL DEFAULT gen_random_uuid()

@@ -1,0 +1,71 @@
+# SwiftLint для приложения «Взвешено»; в CI — `swiftlint --strict`.
+included:
+  - Vzvesheno
+  - VzveshenoWidgets
+  - VzveshenoKit/Sources
+  - VzveshenoKit/Tests
+  - VzveshenoTests
+  - VzveshenoUITests
+excluded:
+  # Код 0.3.x — источник для переноса экранов, не собирается.
+  - _legacy
+  - VzveshenoKit/.build
+  # Сгенерировано packages/design-tokens/scripts/build.mjs.
+  - VzveshenoKit/Sources/DesignSystem/Generated
+  - VzveshenoKit/Package.swift
+
+disabled_rules:
+  - todo
+  # Висячая запятая в многострочных литералах — меньше шума в диффах.
+  - trailing_comma
+
+opt_in_rules:
+  - empty_count
+  - first_where
+  - contains_over_first_not_nil
+  - redundant_nil_coalescing
+
+line_length:
+  warning: 140
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+identifier_name:
+  min_length: 1
+  max_length: 60
+
+type_body_length:
+  warning: 400
+  error: 600
+
+file_length:
+  warning: 600
+  error: 900
+
+function_body_length:
+  warning: 80
+  error: 120
+
+# Таблицы соответствия (маршрутизатор, роли) — это switch, а не ветвистая логика.
+cyclomatic_complexity:
+  ignores_case_statements: true
+
+large_tuple:
+  warning: 4
+
+nesting:
+  type_level: 3
+
+custom_rules:
+  # Цвета — только роли из packages/design-tokens через DesignSystem
+  # (DS.Color.*). Цвет из компонентов, hex-строкой или литералом вне
+  # DesignSystem — то же, что `#3b82f6` в вебе: значение мимо токенов, которое
+  # не переключится с темой и разойдётся с вебом.
+  ds_color_literal:
+    name: "Цвет только из DesignSystem"
+    included: ".*\\.swift$"
+    excluded: "VzveshenoKit/Sources/DesignSystem/.*"
+    regex: '(\b(Color|UIColor|CGColor)\s*\(\s*(red|hue|white|displayP3|hex|srgbRed|.sRGB)\s*:)|(#colorLiteral)|("#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?")|(\bColor\s*\(\s*hex\b)'
+    message: "Цвет литералом запрещён: возьмите роль DS.Color.* из DesignSystem (packages/design-tokens)."
+    severity: error

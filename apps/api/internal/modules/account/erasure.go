@@ -93,6 +93,10 @@ var strategies = []TableStrategy{
 	{Table: "notification_preferences", Column: "user_id", Strategy: StrategyDelete, Reason: "their channel choices"},
 	{Table: "notification_deliveries", Column: "user_id", Strategy: StrategyDelete, Reason: "what was sent to them and when"},
 	{Table: "ws_tickets", Column: "user_id", Strategy: StrategyDelete, Reason: "short-lived socket tickets — sessions by another name"},
+	// Ответы на изменения из очереди приложения: в них лежит то, что человек
+	// записал (еда, вес, текст сообщения). Строка users обезличивается, а не
+	// удаляется, так что ON DELETE CASCADE не сработает — удаление явное.
+	{Table: "idempotency_keys", Column: "user_id", Strategy: StrategyDelete, Reason: "stored responses to their own writes — food, weight, message text"},
 	// Связь посетителя браузера с человеком. Она и есть то, чем обезличенные
 	// события снова становятся личными; после удаления её быть не должно.
 	{Table: "analytics_identities", Column: "user_id", Strategy: StrategyDelete, Reason: "the mapping that re-identifies anonymous events"},

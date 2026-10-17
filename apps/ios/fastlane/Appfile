@@ -1,2 +1,3 @@
-app_identifier("team.burcev.app")
+# Среда — APP_ENV (см. Fastfile): dev → team.burcev.app.dev, иначе прод.
+app_identifier(ENV["APP_ENV"] == "dev" ? "team.burcev.app.dev" : "team.burcev.app")
 team_id("3GWRDGA8B7")

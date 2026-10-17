@@ -1,0 +1,88 @@
+import Foundation
+@testable import Vzvesheno
+import XCTest
+
+/// ios-platform-compliance: манифест, декларации сборки и зависимости.
+final class ComplianceTests: XCTestCase {
+    private var info: [String: Any] { Bundle.main.infoDictionary ?? [:] }
+
+    // Сценарий «Проверка Info.plist».
+    func testBackgroundModesAndOutboxTask() {
+        let modes = info["UIBackgroundModes"] as? [String] ?? []
+        XCTAssertTrue(modes.contains("remote-notification"))
+        XCTAssertTrue(modes.contains("fetch"))
+        let tasks = info["BGTaskSchedulerPermittedIdentifiers"] as? [String] ?? []
+        XCTAssertTrue(tasks.contains(AppEnvironment.current().outboxTaskID), "\(tasks)")
+    }
+
+    func testBuildDeclarations() {
+        XCTAssertEqual(info["ITSAppUsesNonExemptEncryption"] as? Bool, false)
+        XCTAssertNil(info["NSUserTrackingUsageDescription"], "запроса App Tracking Transparency нет")
+        XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String, "Взвешено")
+        XCTAssertEqual(info["CFBundleShortVersionString"] as? String, "1.0.0")
+        XCTAssertEqual(AppEnvironment.current().apiBaseURL.absoluteString, "https://new.burcev.team")
+    }
+
+    // Сценарий «Проверка сборки»: манифест в .app и .appex.
+    func testPrivacyManifestsInAppAndExtension() throws {
+        var bundles = [Bundle.main.bundleURL]
+        let plugins = try FileManager.default.contentsOfDirectory(at: XCTUnwrap(Bundle.main.builtInPlugInsURL),
+                                                                  includingPropertiesForKeys: nil)
+        bundles += plugins.filter { $0.pathExtension == "appex" }
+        XCTAssertEqual(bundles.count, 2, "приложение и расширение виджетов")
+        for bundle in bundles {
+            let url = bundle.appendingPathComponent("PrivacyInfo.xcprivacy")
+            let data = try Data(contentsOf: url)
+            let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
+            XCTAssertNotNil(plist["NSPrivacyAccessedAPITypes"], bundle.lastPathComponent)
+            XCTAssertEqual(plist["NSPrivacyTracking"] as? Bool, false, bundle.lastPathComponent)
+        }
+    }
+
+    /// Ярлыки приватности: здоровье, фитнес, фото, почта, события и сбои — без отслеживания.
+    func testCollectedDataTypes() throws {
+        let url = try XCTUnwrap(Bundle.main.url(forResource: "PrivacyInfo", withExtension: "xcprivacy"))
+        let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: Data(contentsOf: url), format: nil) as? [String: Any])
+        let types = (plist["NSPrivacyCollectedDataTypes"] as? [[String: Any]] ?? [])
+        let names = Set(types.compactMap { $0["NSPrivacyCollectedDataType"] as? String })
+        for required in ["NSPrivacyCollectedDataTypeHealth", "NSPrivacyCollectedDataTypeFitness",
+                         "NSPrivacyCollectedDataTypePhotosorVideos", "NSPrivacyCollectedDataTypeEmailAddress",
+                         "NSPrivacyCollectedDataTypeProductInteraction", "NSPrivacyCollectedDataTypeCrashData"] {
+            XCTAssertTrue(names.contains(required), required)
+        }
+        XCTAssertTrue(types.allSatisfy { $0["NSPrivacyCollectedDataTypeTracking"] as? Bool == false })
+    }
+
+    // Сценарий «Проверка зависимостей»: из сторонних — только Sentry (отчёты о сбоях).
+    func testOnlyAllowedThirdPartyPackages() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let project = try String(contentsOf: root.appendingPathComponent("project.yml"), encoding: .utf8)
+        let manifest = try String(contentsOf: root.appendingPathComponent("VzveshenoKit/Package.swift"), encoding: .utf8)
+
+        let packages = Self.topLevelPackages(project)
+        XCTAssertEqual(Set(packages), ["VzveshenoKit", "Sentry"], "сторонний пакет приложения — только Sentry")
+        XCTAssertFalse(manifest.contains(".package("), "у VzveshenoKit нет внешних зависимостей")
+
+        let forbidden = ["appmetrica", "firebase", "adjust", "appsflyer", "amplitude", "mixpanel", "branch", "facebook",
+                         "yandexmobile", "mytracker"]
+        let lowered = (project + manifest).lowercased()
+        for name in forbidden {
+            XCTAssertFalse(lowered.contains(name), "запрещённый SDK: \(name)")
+        }
+    }
+
+    /// Имена пакетов из раздела `packages:` project.yml.
+    static func topLevelPackages(_ yaml: String) -> [String] {
+        var inside = false
+        var names: [String] = []
+        for line in yaml.components(separatedBy: "\n") {
+            if line.hasPrefix("packages:") { inside = true; continue }
+            if inside, let first = line.first, !first.isWhitespace, first != "#" { break }
+            if inside, line.hasPrefix("  "), !line.hasPrefix("   "), line.hasSuffix(":"),
+               !line.trimmingCharacters(in: .whitespaces).hasPrefix("#") {
+                names.append(line.trimmingCharacters(in: .whitespaces).dropLast().description)
+            }
+        }
+        return names
+    }
+}

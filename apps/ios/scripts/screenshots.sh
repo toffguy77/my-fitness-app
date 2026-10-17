@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Снимает скриншоты для App Store в демо-режиме: отладочная сборка с
-# заготовленными данными, без сети и без настоящих учёток.
+# Снимает скриншоты для App Store: отладочная Dev-сборка в сценариях
+# UI-тестов (-uiTestScenario, Vzvesheno/Support/UITestScenario.swift) —
+# заготовленные ответы, без сети и без настоящих учёток.
 #
 # App Store требует снимки iPhone 6.9″ (1320×2868) — берём симулятор Pro Max.
 # Запуск на Mac из apps/ios после `xcodegen generate`.
 set -euo pipefail
 
 out="fastlane/screenshots/ru"
-bundle="team.burcev.app"
+bundle="team.burcev.app.dev"
 
 udid=$(xcrun simctl list devices available -j | python3 -c '
 import json, sys
@@ -29,30 +30,29 @@ xcrun simctl ui "$udid" appearance light
 xcrun simctl status_bar "$udid" override --time "9:41" --dataNetwork wifi --wifiBars 3 \
   --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
 
-xcodebuild build -project Burcev.xcodeproj -scheme Burcev -configuration Debug \
-  -destination "id=$udid" -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO -quiet
-app=$(find build/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name 'Burcev.app' | head -n1)
+xcodebuild build -project Vzvesheno.xcodeproj -scheme Vzvesheno-Dev -configuration Dev-Debug \
+  -destination "id=$udid" -derivedDataPath build/dd -quiet
+app=$(find build/dd/Build/Products/Dev-Debug-iphonesimulator -maxdepth 1 -name 'Vzvesheno.app' | head -n1)
 xcrun simctl install "$udid" "$app"
 
 rm -rf "$out" && mkdir -p "$out"
 
 shot() {
-  local name="$1" role="$2" screen="$3"
+  local name="$1" scenario="$2"
   xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
   # Русская локаль: иначе раннер в en_US показал бы «1,173 ккал» и «8:20 AM».
-  xcrun simctl launch "$udid" "$bundle" -demo "$role" -demoScreen "$screen" \
+  xcrun simctl launch "$udid" "$bundle" -uiTestScenario "$scenario" \
     -AppleLanguages "(ru)" -AppleLocale ru_RU >/dev/null
   sleep 5
   xcrun simctl io "$udid" screenshot "$out/$name.png" >/dev/null
   echo "снят $name"
 }
 
-shot "01_today" client today
-shot "02_diary" client diary
-shot "03_chat" client chat
-shot "04_clients" curator clients
-shot "05_client" curator client
-shot "06_profile" client profile
+# Экраны клиента и куратора появятся с ios-client-app и ios-curator-app;
+# до тех пор снимки показывают каркас оболочек.
+shot "01_sign_in" signedOut
+shot "02_client" client
+shot "03_curator" coordinator
 
 python3 - "$out" <<'EOF'
 import struct, sys, pathlib

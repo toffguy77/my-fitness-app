@@ -2,7 +2,7 @@
 
 ### Requirement: Манифест приватности и декларации сборки
 
-Приложение и расширение SHALL содержать `PrivacyInfo.xcprivacy` с причинами использования API из списка Apple (`UserDefaults`, метки времени файлов, свободное место) и типами собираемых данных (здоровье и фитнес, фото, контакты — адрес почты); `Info.plist` MUST содержать `ITSAppUsesNonExemptEncryption = false`. Сборка MUST падать, если манифест отсутствует в цели.
+Приложение и расширение SHALL содержать `PrivacyInfo.xcprivacy` с причинами использования API из списка Apple (`UserDefaults`, метки времени файлов, свободное место) и типами собираемых данных (здоровье и фитнес, фото, контакты — адрес почты, данные о сбоях для Sentry, взаимодействие с продуктом для собственных событий); `Info.plist` MUST содержать `ITSAppUsesNonExemptEncryption = false`. Сборка MUST падать, если манифест отсутствует в цели.
 
 #### Scenario: Проверка сборки
 
@@ -47,9 +47,9 @@
 
 ### Requirement: Аналитика без сторонних SDK
 
-Приложение SHALL отправлять события только в `POST /api/v1/public/analytics/events` и MUST NOT включать сторонние SDK аналитики, рекламы или атрибуции; `NSUserTrackingUsageDescription` MUST отсутствовать.
+Приложение SHALL отправлять события только в `POST /api/v1/public/analytics/events` и MUST NOT включать сторонние SDK аналитики, рекламы или атрибуции; `NSUserTrackingUsageDescription` MUST отсутствовать. Единственный сторонний пакет приложения — Sentry, только для отчётов о сбоях (без трассировки производительности, сетевых крошек и снимков экрана); данные о сбоях объявлены в `PrivacyInfo.xcprivacy`.
 
 #### Scenario: Проверка зависимостей
 
 - **WHEN** тест CI перечисляет пакеты SPM приложения
-- **THEN** среди них нет пакетов из списка запрещённых (AppMetrica, Firebase Analytics, Adjust, AppsFlyer), а в `Info.plist` нет `NSUserTrackingUsageDescription`
+- **THEN** сторонний пакет приложения ровно один — Sentry, среди пакетов нет запрещённых (AppMetrica, Firebase Analytics, Adjust, AppsFlyer), а в `Info.plist` нет `NSUserTrackingUsageDescription`

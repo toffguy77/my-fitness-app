@@ -77,6 +77,9 @@ type Deps struct {
 	// AppleRevocations is nil without Sign in with Apple; the retry job is
 	// then not declared.
 	AppleRevocations *auth.AppleRevocations
+	// Idempotency хранит ключи Idempotency-Key; его задача убирает
+	// просроченные.
+	Idempotency *middleware.IdempotencyStore
 }
 
 // Register declares every periodic job. It panics on an invalid declaration:
@@ -288,6 +291,18 @@ func Register(registry *jobs.Registry, d Deps) {
 		Timeout: 2 * time.Minute,
 		Run: func(ctx context.Context) (int, error) {
 			return d.Auth.PurgeExpiredMagicLinks(ctx)
+		},
+	})
+
+	// Ключи Idempotency-Key помнят ответ сутки; потом строка не нужна никому,
+	// а пишет её каждое изменение из очереди приложения. Раз в час — чтобы
+	// таблица не держала больше суток с небольшим.
+	registry.MustRegister(jobs.Job{
+		Name:     "cleanup.idempotency-keys",
+		Interval: time.Hour,
+		Timeout:  2 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Idempotency.PurgeExpired(ctx)
 		},
 	})
 

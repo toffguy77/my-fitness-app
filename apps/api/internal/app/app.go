@@ -449,6 +449,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		Metrika:       metrikaService,
 		// nil без Sign in with Apple: задача повтора отзыва не объявляется.
 		AppleRevocations: appleRevocations,
+		Idempotency:      middleware.NewIdempotencyStore(db),
 	})
 
 	// Access tokens carry the account's token version; this is what checks it.
