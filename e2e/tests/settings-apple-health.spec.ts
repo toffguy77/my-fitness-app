@@ -1,12 +1,26 @@
-import { test, expect } from '../fixtures/session'
+import { test, expect, signIn, asUser } from '../fixtures/session'
 
 // Apple Здоровье в веб-настройках (healthkit-sync): подключается только в
 // приложении на iPhone, веб показывает пояснение и состояние по признаку
 // apple_health_enabled, который ставит приложение. Переключателя нет.
 test.describe('Settings Apple Health', () => {
+  // API узнаёт человека по заголовку Authorization, а не по cookie сессии:
+  // признак, который ставит приложение, тест ставит тем же запросом с токеном.
+  const setFlag = async (
+    context: import('@playwright/test').BrowserContext,
+    baseURL: string,
+    enabled: boolean,
+  ) => {
+    const token = await signIn(context, baseURL, 'client')
+    return context.request.put(`${baseURL}/api/v1/users/settings`, {
+      headers: asUser(token),
+      data: { apple_health_enabled: enabled },
+    })
+  }
+
   // Признак общий для учётки: возвращаем его в исходное состояние.
-  test.afterEach(async ({ page }) => {
-    await page.request.put('/api/v1/users/settings', { data: { apple_health_enabled: false } })
+  test.afterEach(async ({ context, baseURL }) => {
+    await setFlag(context, baseURL!, false)
   })
 
   test('explains that Health is connected from the iPhone app', async ({ page }) => {
@@ -18,14 +32,14 @@ test.describe('Settings Apple Health', () => {
     await expect(page.getByRole('switch')).toHaveCount(0)
   })
 
-  test('shows the state the app has set', async ({ page }) => {
-    const off = await page.request.put('/api/v1/users/settings', { data: { apple_health_enabled: false } })
+  test('shows the state the app has set', async ({ page, context, baseURL }) => {
+    const off = await setFlag(context, baseURL!, false)
     expect(off.ok()).toBeTruthy()
     await page.goto('/settings/apple-health')
     await expect(page.getByTestId('apple-health-state')).toHaveText('Не подключено', { timeout: 10000 })
 
     // Так флаг ставит приложение после системного запроса.
-    const on = await page.request.put('/api/v1/users/settings', { data: { apple_health_enabled: true } })
+    const on = await setFlag(context, baseURL!, true)
     expect(on.ok()).toBeTruthy()
     await page.reload()
     await expect(page.getByTestId('apple-health-state')).toHaveText('Подключено на iPhone', { timeout: 10000 })
