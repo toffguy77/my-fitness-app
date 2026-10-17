@@ -85,6 +85,9 @@ var strategies = []TableStrategy{
 	{Table: "push_subscriptions", Column: "user_id", Strategy: StrategyDelete, Reason: "browser endpoints and keys belonging to them"},
 	{Table: "oauth_app_handoffs", Column: "user_id", Strategy: StrategyDelete, Reason: "two-minute sign-in codes for the iOS app"},
 	{Table: "apns_devices", Column: "user_id", Strategy: StrategyDelete, Reason: "iPhone push tokens belonging to them"},
+	// Код передачи входа в приложение: живёт минуту, но, пока жив, его обмен
+	// выдаёт сессию в этот аккаунт.
+	{Table: "oauth_handoff_codes", Column: "user_id", Strategy: StrategyDelete, Reason: "one-minute codes that would hand a session in this account to the app"},
 	{Table: "notification_preferences", Column: "user_id", Strategy: StrategyDelete, Reason: "their channel choices"},
 	{Table: "notification_deliveries", Column: "user_id", Strategy: StrategyDelete, Reason: "what was sent to them and when"},
 	{Table: "ws_tickets", Column: "user_id", Strategy: StrategyDelete, Reason: "short-lived socket tickets — sessions by another name"},
