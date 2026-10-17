@@ -81,26 +81,8 @@ func (r *AppleRevocations) RetryDue(ctx context.Context) (int, error) {
 }
 
 func (r *AppleRevocations) process(ctx context.Context, query string, args ...any) (int, error) {
-	type row struct {
-		id       int64
-		token    string
-		attempts int
-	}
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	due, err := r.loadDue(ctx, query, args...)
 	if err != nil {
-		return 0, fmt.Errorf("load apple revocations: %w", err)
-	}
-	var due []row
-	for rows.Next() {
-		var item row
-		if err := rows.Scan(&item.id, &item.token, &item.attempts); err != nil {
-			_ = rows.Close()
-			return 0, fmt.Errorf("scan apple revocation: %w", err)
-		}
-		due = append(due, item)
-	}
-	_ = rows.Close()
-	if err := rows.Err(); err != nil {
 		return 0, err
 	}
 
@@ -126,4 +108,28 @@ func (r *AppleRevocations) process(ctx context.Context, query string, args ...an
 		revoked++
 	}
 	return revoked, nil
+}
+
+// loadDue reads the revocations whose turn has come.
+func (r *AppleRevocations) loadDue(ctx context.Context, query string, args ...any) ([]appleRevocationRow, error) {
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("load apple revocations: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var due []appleRevocationRow
+	for rows.Next() {
+		var item appleRevocationRow
+		if err := rows.Scan(&item.id, &item.token, &item.attempts); err != nil {
+			return nil, fmt.Errorf("scan apple revocation: %w", err)
+		}
+		due = append(due, item)
+	}
+	return due, rows.Err()
+}
+
+type appleRevocationRow struct {
+	id       int64
+	token    string
+	attempts int
 }

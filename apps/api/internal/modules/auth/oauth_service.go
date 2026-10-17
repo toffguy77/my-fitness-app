@@ -386,22 +386,11 @@ func (s *Service) UnlinkProvider(ctx context.Context, userID int64, provider str
 	// отзыва в той же транзакции, что удаляет привязку.
 	var queued []int64
 	if provider == "apple" {
-		rows, err := tx.QueryContext(ctx, QueueAppleRevocationSQL, userID)
+		ids, err := queueAppleRevocation(ctx, tx, userID)
 		if err != nil {
-			return fmt.Errorf("queue apple revocation: %w", err)
+			return err
 		}
-		for rows.Next() {
-			var id int64
-			if err := rows.Scan(&id); err != nil {
-				_ = rows.Close()
-				return fmt.Errorf("queue apple revocation: %w", err)
-			}
-			queued = append(queued, id)
-		}
-		_ = rows.Close()
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("queue apple revocation: %w", err)
-		}
+		queued = ids
 	}
 
 	result, err := tx.ExecContext(ctx,
@@ -827,4 +816,23 @@ func (s *Service) CompleteWithEmail(ctx context.Context, pendingID, email, _, _ 
 		Provider:       provider,
 		ProviderUserID: profile.ProviderUserID,
 	}, nil
+}
+
+// queueAppleRevocation puts the user's Apple token into the revocation queue
+// within tx and returns the queued rows.
+func queueAppleRevocation(ctx context.Context, tx *sql.Tx, userID int64) ([]int64, error) {
+	rows, err := tx.QueryContext(ctx, QueueAppleRevocationSQL, userID)
+	if err != nil {
+		return nil, fmt.Errorf("queue apple revocation: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var queued []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("queue apple revocation: %w", err)
+		}
+		queued = append(queued, id)
+	}
+	return queued, rows.Err()
 }

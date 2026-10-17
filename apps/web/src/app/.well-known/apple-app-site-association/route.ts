@@ -8,7 +8,10 @@ export const dynamic = 'force-dynamic'
 // Apple и так держит его у себя до суток, свой кэш только продлил бы
 // устаревшие пути.
 export function GET() {
-    const id = appID(process.env)
+    const id = appID({
+        APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+        APPLE_BUNDLE_ID: process.env.APPLE_BUNDLE_ID,
+    })
     if (!id) {
         return new Response('Not Found', {
             status: 404,

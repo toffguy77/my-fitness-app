@@ -335,26 +335,26 @@ func (a *Apple) clientSecret() (string, error) {
 	return token.SignedString(a.key)
 }
 
-func (a *Apple) post(ctx context.Context, endpoint string, form url.Values) (*http.Response, []byte, error) {
+func (a *Apple) post(ctx context.Context, endpoint string, form url.Values) (int, []byte, error) {
 	secret, err := a.clientSecret()
 	if err != nil {
-		return nil, nil, fmt.Errorf("sign apple client secret: %w", err)
+		return 0, nil, fmt.Errorf("sign apple client secret: %w", err)
 	}
 	form.Set("client_id", a.cfg.BundleID)
 	form.Set("client_secret", secret)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 	defer func() { _ = res.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
-	return res, body, err
+	return res.StatusCode, body, err
 }
 
 // exchangeCode trades the authorization code for Apple's refresh token.
@@ -362,7 +362,7 @@ func (a *Apple) exchangeCode(ctx context.Context, code string) (string, error) {
 	if code == "" {
 		return "", fmt.Errorf("authorization code is required: %w", ErrIdentityRejected)
 	}
-	res, body, err := a.post(ctx, a.tokenURL, url.Values{
+	status, body, err := a.post(ctx, a.tokenURL, url.Values{
 		"grant_type": {"authorization_code"},
 		"code":       {code},
 	})
@@ -376,13 +376,13 @@ func (a *Apple) exchangeCode(ctx context.Context, code string) (string, error) {
 	}
 	_ = json.Unmarshal(body, &out)
 	switch {
-	case res.StatusCode == http.StatusOK && out.RefreshToken != "":
+	case status == http.StatusOK && out.RefreshToken != "":
 		return out.RefreshToken, nil
-	case res.StatusCode == http.StatusBadRequest && out.Error == "invalid_grant":
+	case status == http.StatusBadRequest && out.Error == "invalid_grant":
 		// Spent, expired, or issued to another app: the person tries again.
 		return "", fmt.Errorf("apple refused the authorization code: %w", ErrIdentityRejected)
 	default:
-		return "", fmt.Errorf("apple token exchange: status %d, error %q", res.StatusCode, out.Error)
+		return "", fmt.Errorf("apple token exchange: status %d, error %q", status, out.Error)
 	}
 }
 
@@ -393,14 +393,14 @@ func (a *Apple) Revoke(ctx context.Context, sealed string) error {
 	if err != nil {
 		return fmt.Errorf("open apple refresh token: %w", err)
 	}
-	res, body, err := a.post(ctx, a.revokeURL, url.Values{
+	status, body, err := a.post(ctx, a.revokeURL, url.Values{
 		"token":           {refresh},
 		"token_type_hint": {"refresh_token"},
 	})
 	if err != nil {
 		return fmt.Errorf("apple revoke: %w", err)
 	}
-	if res.StatusCode == http.StatusOK {
+	if status == http.StatusOK {
 		return nil
 	}
 	var out struct {
@@ -410,5 +410,5 @@ func (a *Apple) Revoke(ctx context.Context, sealed string) error {
 	if out.Error == "invalid_grant" {
 		return nil
 	}
-	return fmt.Errorf("apple revoke: status %d, error %q", res.StatusCode, out.Error)
+	return fmt.Errorf("apple revoke: status %d, error %q", status, out.Error)
 }
