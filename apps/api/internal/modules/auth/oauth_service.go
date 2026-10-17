@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/burcev/api/internal/modules/auth/oauth"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"golang.org/x/crypto/bcrypt"
@@ -369,7 +371,35 @@ func (s *Service) UnlinkProvider(ctx context.Context, userID int64, provider str
 		return fmt.Errorf("cannot remove the only sign-in method: %w", apperrors.ErrConflict)
 	}
 
-	result, err := s.db.ExecContext(ctx,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin unlink: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Отвязка Apple отзывает и доступ у Apple: токен уходит в очередь
+	// отзыва в той же транзакции, что удаляет привязку.
+	var queued []int64
+	if provider == "apple" {
+		rows, err := tx.QueryContext(ctx, QueueAppleRevocationSQL, userID)
+		if err != nil {
+			return fmt.Errorf("queue apple revocation: %w", err)
+		}
+		for rows.Next() {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				_ = rows.Close()
+				return fmt.Errorf("queue apple revocation: %w", err)
+			}
+			queued = append(queued, id)
+		}
+		_ = rows.Close()
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("queue apple revocation: %w", err)
+		}
+	}
+
+	result, err := tx.ExecContext(ctx,
 		`DELETE FROM external_identities WHERE user_id = $1 AND provider = $2`, userID, provider)
 	if err != nil {
 		return fmt.Errorf("unlink provider: %w", err)
@@ -377,6 +407,10 @@ func (s *Service) UnlinkProvider(ctx context.Context, userID int64, provider str
 	if affected, _ := result.RowsAffected(); affected == 0 {
 		return fmt.Errorf("provider not linked: %w", apperrors.ErrNotFound)
 	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit unlink: %w", err)
+	}
+	s.appleRevocations.Attempt(ctx, queued)
 	return nil
 }
 
@@ -522,6 +556,21 @@ func (s *Service) issueTokens(ctx context.Context, spec SessionSpec, userID int6
 	return &LoginResult{User: &user, Token: token, RefreshToken: refreshToken, RefreshExpiresAt: expiresAt}, nil
 }
 
+// CanonicalPendingID accepts a pending sign-in id only in the one form the
+// database hands out: lowercase, hyphenated UUID. PostgreSQL's uuid input
+// also takes upper case, braces and missing hyphens; letting those through
+// would make the same attempt answer to several strings, and the rate
+// limiter, which keys by the address found under the string, could be
+// sidestepped by a spelling it does not look up the same way. Every reader of
+// a pending id — the limiter's key and the handlers — goes through this.
+func CanonicalPendingID(raw string) (string, bool) {
+	parsed, err := uuid.Parse(raw)
+	if err != nil || parsed.String() != raw {
+		return "", false
+	}
+	return raw, true
+}
+
 // PendingLinkTTL bounds how long an unfinished external sign-in can be resumed.
 const PendingLinkTTL = 15 * time.Minute
 
@@ -577,6 +626,9 @@ func (s *Service) rememberPendingEmail(ctx context.Context, id, email string) er
 // emailFromProvider says whether the address on the attempt was reported by
 // the provider (and is therefore verified) rather than typed by the person.
 func (s *Service) pendingLink(ctx context.Context, id string) (provider string, profile *oauth.Profile, emailFromProvider bool, err error) {
+	if _, ok := CanonicalPendingID(id); !ok {
+		return "", nil, false, fmt.Errorf("pending link id is not canonical: %w", apperrors.ErrTokenInvalid)
+	}
 	var p oauth.Profile
 	var email, name, avatar, sealed sql.NullString
 
@@ -710,12 +762,14 @@ func (s *Service) claimLinkPasswordAttempt(ctx context.Context, pendingID string
 // be attached to, or "" when there is none (or no such attempt). The rate
 // limiter keys the per-account bucket by it.
 func (s *Service) PendingLinkEmail(ctx context.Context, pendingID string) string {
-	if pendingID == "" {
+	if _, ok := CanonicalPendingID(pendingID); !ok {
+		// The handler refuses such an id with 400 before checking any
+		// password, so an empty key here never buys an uncounted guess.
 		return ""
 	}
 	var email sql.NullString
 	if err := s.db.QueryRowContext(ctx,
-		`SELECT email FROM oauth_pending_links WHERE id::text = $1`, pendingID).Scan(&email); err != nil {
+		`SELECT email FROM oauth_pending_links WHERE id = $1`, pendingID).Scan(&email); err != nil {
 		return ""
 	}
 	return email.String

@@ -516,3 +516,42 @@ func TestWebLinkLimitIsKeyedByTheCookieItChecks(t *testing.T) {
 		s.post(t, "/api/v1/auth/login", "192.0.2.2", `{"email":"a@example.test","password":"PassA1!aaaa"}`).Code,
 		"неудачи засчитаны аккаунту A из тела, которое обработчик не читает")
 }
+
+// Pending-токен в неканоническом виде (заглавные буквы, фигурные скобки, без
+// дефисов) Postgres принял бы за тот же uuid, а ключ лимита по нему не нашёл
+// бы адреса — и догадка о пароле прошла бы мимо счётчика аккаунта. Такой
+// токен отклоняется до проверки пароля, и попытка не тратится.
+func TestNonCanonicalPendingTokenIsRefusedBeforeThePassword(t *testing.T) {
+	ctx := context.Background()
+	s := newLinkStand(t, "link_canonical")
+	s.owner(t, "canon@example.test", "OwnerPass1!")
+	pending := s.pending(t, "canon@example.test")
+
+	for _, spelling := range []string{
+		strings.ToUpper(pending),
+		"{" + pending + "}",
+		strings.ReplaceAll(pending, "-", ""),
+	} {
+		w := s.nativeLink(t, "203.0.113.70", spelling, "OwnerPass1!")
+		assert.Equal(t, http.StatusBadRequest, w.Code, spelling)
+		assert.Contains(t, w.Body.String(), apperrors.CodeValidation, spelling)
+
+		w = s.post(t, "/api/v1/auth/oauth/link", "203.0.113.71", `{"password":"OwnerPass1!"}`,
+			&http.Cookie{Name: "oauth_pending", Value: spelling})
+		assert.Equal(t, http.StatusBadRequest, w.Code, spelling)
+
+		for _, path := range []string{"/api/v1/auth/native/oauth/email", "/api/v1/auth/native/consents"} {
+			w = s.post(t, path, "203.0.113.72", `{"pending_token":"`+spelling+`","email":"x@example.test",
+				"consents":{"terms_of_service":true,"privacy_policy":true,"data_processing":true}}`)
+			assert.Equal(t, http.StatusBadRequest, w.Code, path+" "+spelling)
+		}
+	}
+
+	var failed int
+	require.NoError(t, s.db.QueryRowContext(ctx,
+		`SELECT failed_attempts FROM oauth_pending_links WHERE id = $1`, pending).Scan(&failed))
+	assert.Zero(t, failed, "неканонический токен потратил попытку")
+
+	w := s.nativeLink(t, "203.0.113.73", pending, "OwnerPass1!")
+	assert.Equal(t, http.StatusOK, w.Code, "канонический токен после отказов работает")
+}

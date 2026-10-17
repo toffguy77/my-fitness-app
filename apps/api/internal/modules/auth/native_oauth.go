@@ -314,6 +314,9 @@ func (h *OAuthHandler) NativeOAuthEmail(c *gin.Context) {
 		response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation, "Укажите корректный адрес почты")
 		return
 	}
+	if !requireCanonicalPending(c, req.PendingToken) {
+		return
+	}
 
 	outcome, err := h.service.CompleteWithEmail(c.Request.Context(), req.PendingToken,
 		strings.ToLower(strings.TrimSpace(req.Email)), c.ClientIP(), c.Request.UserAgent())
@@ -356,6 +359,9 @@ func (h *OAuthHandler) NativeOAuthLink(c *gin.Context) {
 	var req NativeOAuthLinkRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation, "Нужны pending_token и пароль")
+		return
+	}
+	if !requireCanonicalPending(c, req.PendingToken) {
 		return
 	}
 
@@ -410,6 +416,9 @@ func (h *OAuthHandler) NativeConsents(c *gin.Context) {
 	var req NativeConsentsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation, "Нужен pending_token")
+		return
+	}
+	if !requireCanonicalPending(c, req.PendingToken) {
 		return
 	}
 	if !consentsComplete(req.Consents) {
@@ -484,4 +493,15 @@ func (h *OAuthHandler) PendingLinkAccountKeyFromBody(c *gin.Context) string {
 	}
 	middleware.PeekJSON(c, &body)
 	return middleware.AccountKey(c, h.service.PendingLinkEmail(c.Request.Context(), body.PendingToken))
+}
+
+// requireCanonicalPending refuses a pending id in any but its canonical form
+// (CanonicalPendingID) with 400 validation, before anything is checked
+// against it. Reports whether the request may go on.
+func requireCanonicalPending(c *gin.Context, raw string) bool {
+	if _, ok := CanonicalPendingID(raw); ok {
+		return true
+	}
+	response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation, "pending_token не в каноническом виде")
+	return false
 }

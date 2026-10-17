@@ -451,6 +451,9 @@ func (h *OAuthHandler) ConfirmLink(c *gin.Context) {
 	}
 
 	pendingID, err := c.Cookie(pendingCookie)
+	if err == nil && pendingID != "" && !requireCanonicalPending(c, pendingID) {
+		return
+	}
 	if err != nil || pendingID == "" {
 		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
 		return
@@ -507,6 +510,9 @@ func (h *OAuthHandler) CompleteEmail(c *gin.Context) {
 	}
 
 	pendingID, err := c.Cookie(pendingCookie)
+	if err == nil && pendingID != "" && !requireCanonicalPending(c, pendingID) {
+		return
+	}
 	if err != nil || pendingID == "" {
 		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
 		return
@@ -576,6 +582,9 @@ func (h *OAuthHandler) CompleteConsents(c *gin.Context) {
 	}
 
 	pendingID, err := c.Cookie(pendingCookie)
+	if err == nil && pendingID != "" && !requireCanonicalPending(c, pendingID) {
+		return
+	}
 	if err != nil || pendingID == "" {
 		response.Fail(c, http.StatusBadRequest, apperrors.ErrTokenInvalid,
 			"Попытка входа истекла. Начните заново.")

@@ -76,6 +76,9 @@ type Service struct {
 	// so a test can stand on a date — the day after bodyRefreshSunset, the
 	// ninety-first day of a native session — instead of waiting for it.
 	now func() time.Time
+	// appleRevocations revokes Apple's access when Apple is unlinked. nil
+	// when Sign in with Apple is not configured; Attempt is nil-safe.
+	appleRevocations *AppleRevocations
 }
 
 // clock returns the service's notion of the current time.
@@ -126,6 +129,13 @@ func (s *Service) WithSessionCache(cache SessionCache) *Service {
 // method a magic link needs to send. *email.Service satisfies it on its own.
 type MagicLinkSender interface {
 	SendMagicLink(ctx context.Context, data email.MagicLinkEmailData) error
+}
+
+// WithAppleRevocations attaches the queue that unlinking Apple revokes
+// through. Optional: without Apple configured there is nothing to revoke.
+func (s *Service) WithAppleRevocations(revocations *AppleRevocations) *Service {
+	s.appleRevocations = revocations
+	return s
 }
 
 // WithEmailService supplies the sender for letters this service triggers.
