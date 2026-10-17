@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Куратор: клиенты</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.ph{--canvas:#F6F1E8;--surface:#FFFCF6;--subtle:#EFE7DA;--fg:#2A2118;--muted:#5E5245;--sub:#76695A;--line:#E3D8C6;--primary:#B8492F;--pfg:#FFFFFF;--psoft:#B8492F1A;--track:#EADFCF;--danger:#A32A2A;--dsoft:#A32A2A14;--warn:#A6531B;--wsoft:#A6531B1A;--info:#4666B0;--isoft:#4666B01A;--ok:#56863F;--glass:rgba(255,252,246,.78);
+width:390px;height:844px;position:relative;overflow:hidden;background:var(--canvas);color:var(--fg);font-family:'Golos Text',system-ui,sans-serif;font-size:16px;line-height:24px}
+.serif{font-family:'Literata',Georgia,serif;font-weight:500}
+.cap{font-size:13px;line-height:18px;color:var(--muted)}
+.ico{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.glass{background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 8px 30px rgba(42,33,24,.14),inset 0 0 0 1px rgba(255,255,255,.35),inset 0 0 0 .5px var(--line)}
+.tabbar{position:absolute;left:16px;right:16px;bottom:22px;height:62px;border-radius:31px;display:flex;align-items:center;justify-content:space-around;padding:0 6px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;line-height:12px;font-weight:500;color:var(--fg);text-decoration:none;padding:7px 10px;border-radius:24px;position:relative}
+.tab.on{color:var(--primary);background:var(--psoft)}
+.tb{position:absolute;top:2px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--primary);color:var(--pfg);font-size:10px;line-height:16px;text-align:center;padding:0 4px;box-sizing:border-box}
+.st{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column}
+.cl{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line);text-decoration:none;color:var(--fg)}
+.av{width:38px;height:38px;border-radius:19px;background:var(--subtle);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex-shrink:0}
+.bd{font-size:11px;line-height:14px;padding:2px 7px;border-radius:999px;font-weight:500;white-space:nowrap}
+</style>
+
+<div class="ph">
+<div style="position:absolute;inset:0;padding:54px 20px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span class="serif" style="font-size:34px;line-height:40px">Клиенты</span>
+<button aria-label="Профиль" style="width:44px;height:44px;border-radius:22px;border:none;background:var(--subtle);font:600 15px 'Golos Text',sans-serif;color:var(--fg)">А</button>
+</div>
+<label style="display:flex;align-items:center;gap:8px;background:var(--subtle);border-radius:12px;padding:0 12px;height:38px"><svg class="ico" style="width:18px;height:18px;color:var(--sub)" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><input aria-label="Поиск клиента" placeholder="Поиск" style="border:none;background:transparent;font:400 16px 'Golos Text',sans-serif;outline:none;flex-grow:1"></label>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+<div class="st"><span class="cap">Активные</span><span style="font-size:22px;line-height:28px;font-weight:600">14</span><span class="cap" style="color:var(--danger)">требуют внимания: 4</span></div>
+<div class="st"><span class="cap">КБЖУ в среднем</span><span style="font-size:22px;line-height:28px;font-weight:600">87%</span><span class="cap">за сегодня</span></div>
+<div class="st"><span class="cap">Непрочитанные</span><span style="font-size:22px;line-height:28px;font-weight:600">6</span><span class="cap">от 3 клиентов</span></div>
+<div class="st"><span class="cap">Задачи</span><span style="font-size:22px;line-height:28px;font-weight:600">9</span><span class="cap">просрочено: 2</span></div>
+</div>
+<span class="serif" style="font-size:18px;line-height:24px;margin-top:4px">Требуют внимания</span>
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+<a class="cl" href="CuratorClient.dc.html" style="border-top:none"><span class="av">МК</span><span style="display:flex;flex-direction:column;gap:4px;flex-grow:1;min-width:0"><span style="font-weight:600;font-size:15px;line-height:20px">Мария К.</span><span style="display:flex;gap:4px;flex-wrap:wrap"><span class="bd" style="background:var(--dsoft);color:var(--danger)">Алерт КБЖУ · 132%</span><span class="bd" style="background:var(--isoft);color:var(--info)">Сообщение · 2</span></span></span><svg class="ico" style="width:16px;color:var(--sub)" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+<a class="cl" href="CuratorClient.dc.html"><span class="av">ИП</span><span style="display:flex;flex-direction:column;gap:4px;flex-grow:1"><span style="font-weight:600;font-size:15px;line-height:20px">Игорь П.</span><span style="display:flex;gap:4px"><span class="bd" style="background:var(--wsoft);color:var(--warn)">Просроченная задача</span></span></span><svg class="ico" style="width:16px;color:var(--sub)" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+<a class="cl" href="CuratorClient.dc.html"><span class="av">ОС</span><span style="display:flex;flex-direction:column;gap:4px;flex-grow:1"><span style="font-weight:600;font-size:15px;line-height:20px">Ольга С.</span><span style="display:flex;gap:4px"><span class="bd" style="background:var(--subtle);color:var(--muted)">Нет активности 2 дня</span></span></span><svg class="ico" style="width:16px;color:var(--sub)" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+<a class="cl" href="CuratorClient.dc.html"><span class="av">ДЛ</span><span style="display:flex;flex-direction:column;gap:4px;flex-grow:1"><span style="font-weight:600;font-size:15px;line-height:20px">Денис Л.</span><span style="display:flex;gap:4px"><span class="bd" style="background:var(--psoft);color:var(--primary)">Ожидает отзыв</span></span></span><svg class="ico" style="width:16px;color:var(--sub)" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+</div>
+<span class="serif" style="font-size:18px;line-height:24px;margin-top:4px">Остальные</span>
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+<a class="cl" href="CuratorClient.dc.html" style="border-top:none"><span class="av">АВ</span><span style="display:flex;flex-direction:column;gap:4px;flex-grow:1"><span style="font-weight:600;font-size:15px;line-height:20px">Алексей В.</span><span style="height:5px;border-radius:3px;background:var(--track);overflow:hidden"><i style="display:block;width:76%;height:100%;background:var(--ok)"></i></span></span><span class="cap">76%</span></a>
+</div>
+</div>
+<nav class="tabbar glass" aria-label="Разделы куратора">
+<a class="tab on" href="CuratorClients.dc.html" aria-current="page"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3.5"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M18 19a5 5 0 0 0-3-4.6"/></svg>Клиенты</a>
+<a class="tab" href="CuratorChat.dc.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg>Чаты<span class="tb">6</span></a>
+<a class="tab" href="CuratorLeads.dc.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13l2-8h12l2 8v6H4z"/><path d="M4 13h5a3 3 0 0 0 6 0h5"/></svg>Заявки</a>
+<a class="tab" href="CuratorSupport.dc.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M6.3 6.3l3.2 3.2M14.5 14.5l3.2 3.2M17.7 6.3l-3.2 3.2M9.5 14.5l-3.2 3.2"/></svg>Обращения<span class="tb">1</span></a>
+</nav>
+</div>
+
+
+</body>
+</html>

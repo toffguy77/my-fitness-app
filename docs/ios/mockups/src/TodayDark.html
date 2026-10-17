@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Сегодня</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.ph{--canvas:#F6F1E8;--surface:#FFFCF6;--subtle:#EFE7DA;--fg:#2A2118;--muted:#5E5245;--sub:#76695A;--line:#E3D8C6;--primary:#B8492F;--pfg:#FFFFFF;--psoft:#B8492F1A;--coach:#2A2118;--coachfg:#F6F1E8;--coachmuted:#CDBFAB;--track:#EADFCF;--protein:#4666B0;--fat:#A8700E;--fatfg:#9A650C;--carbs:#56863F;--carbsfg:#4E7A3D;--water:#4666B0;--ok:#4E7A3D;--glass:rgba(255,252,246,.78);
+width:390px;height:844px;position:relative;overflow:hidden;background:var(--canvas);color:var(--fg);font-family:'Golos Text',system-ui,sans-serif;font-size:16px;line-height:24px}
+.ph.dark{--canvas:#14110D;--surface:#1E1A15;--subtle:#29241D;--fg:#F3EADC;--muted:#C4B6A2;--sub:#A08F7B;--line:#3A3229;--primary:#E58A6C;--pfg:#14110D;--psoft:#E58A6C24;--coach:#3A2B21;--coachfg:#F3EADC;--coachmuted:#CDBBA5;--track:#332C24;--protein:#8AA4E6;--fat:#E3AE4A;--fatfg:#E8B95E;--carbs:#97C282;--carbsfg:#A6CC93;--water:#8AA4E6;--ok:#A6CC93;--glass:rgba(30,26,21,.78)}
+.serif{font-family:'Literata',Georgia,serif;font-weight:500}
+.cap{font-size:13px;line-height:18px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+.ib{width:44px;height:44px;border-radius:22px;border:none;background:var(--glass);color:var(--fg);display:flex;align-items:center;justify-content:center;padding:0;position:relative;box-shadow:0 1px 0 rgba(0,0,0,.04),inset 0 0 0 1px var(--line)}
+.ico{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.badge{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--primary);color:var(--pfg);font-size:10px;line-height:16px;font-weight:600;text-align:center;padding:0 4px;box-sizing:border-box}
+.glass{background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 8px 30px rgba(42,33,24,.14),inset 0 0 0 1px rgba(255,255,255,.35),inset 0 0 0 .5px var(--line)}
+.tabbar{position:absolute;left:16px;right:16px;bottom:22px;height:62px;border-radius:31px;display:flex;align-items:center;justify-content:space-around;padding:0 6px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;line-height:12px;font-weight:500;color:var(--fg);text-decoration:none;padding:7px 12px;border-radius:24px}
+.tab.on{color:var(--primary);background:var(--psoft)}
+.acc{position:absolute;left:16px;right:16px;bottom:94px;height:48px;border-radius:24px;display:flex;align-items:center;gap:8px;padding:0 6px 0 16px}
+.accb{height:36px;min-width:44px;border:none;border-radius:18px;background:var(--psoft);color:var(--primary);display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font:500 13px 'Golos Text',sans-serif}
+.track{height:6px;border-radius:3px;background:var(--track);overflow:hidden}
+.fill{height:100%;border-radius:3px}
+.src{display:inline-flex;align-items:center;gap:4px;font-size:11px;line-height:14px;color:var(--sub)}
+</style>
+
+<div class="ph dark">
+<div style="position:absolute;inset:0;overflow:hidden;padding:54px 20px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;flex-direction:column">
+<span class="cap">пятница, 17 октября</span>
+<span class="serif" style="font-size:34px;line-height:40px">Сегодня</span>
+</div>
+<div style="display:flex;gap:8px">
+<button class="ib" aria-label="Уведомления, 3 новых"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="badge">3</span></button>
+<button class="ib" aria-label="Профиль" style="background:var(--subtle);font-weight:600;font-size:15px">Д</button>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center">
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:12px;">
+<span style="font-size:11px;line-height:14px;color:var(--sub)">Пн</span>
+<span style="font-size:15px;line-height:18px;font-weight:600">13</span>
+<span style="display:flex;gap:2px"><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i></span>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:12px;">
+<span style="font-size:11px;line-height:14px;color:var(--sub)">Вт</span>
+<span style="font-size:15px;line-height:18px;font-weight:600">14</span>
+<span style="display:flex;gap:2px"><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--track)"></i></span>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:12px;">
+<span style="font-size:11px;line-height:14px;color:var(--sub)">Ср</span>
+<span style="font-size:15px;line-height:18px;font-weight:600">15</span>
+<span style="display:flex;gap:2px"><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i></span>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:12px;">
+<span style="font-size:11px;line-height:14px;color:var(--sub)">Чт</span>
+<span style="font-size:15px;line-height:18px;font-weight:600">16</span>
+<span style="display:flex;gap:2px"><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--track)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i></span>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:12px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)">
+<span style="font-size:11px;line-height:14px;color:var(--sub)">Пт</span>
+<span style="font-size:15px;line-height:18px;font-weight:600">17</span>
+<span style="display:flex;gap:2px"><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--primary)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--track)"></i></span>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:12px;">
+<span style="font-size:11px;line-height:14px;color:var(--sub)">Сб</span>
+<span style="font-size:15px;line-height:18px;font-weight:600">18</span>
+<span style="display:flex;gap:2px"><i style="width:6px;height:6px;border-radius:3px;background:var(--track)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--track)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--track)"></i></span>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border-radius:12px;">
+<span style="font-size:11px;line-height:14px;color:var(--sub)">Вс</span>
+<span style="font-size:15px;line-height:18px;font-weight:600">19</span>
+<span style="display:flex;gap:2px"><i style="width:6px;height:6px;border-radius:3px;background:var(--track)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--track)"></i><i style="width:6px;height:6px;border-radius:3px;background:var(--track)"></i></span>
+</div>
+
+</div>
+<div class="card" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span class="serif" style="font-size:18px;line-height:24px">Питание</span><span class="cap">норма куратора</span></div>
+<div style="display:flex;align-items:center;gap:16px">
+<svg width="132" height="76" viewBox="0 0 132 76" role="img" aria-label="Съедено 549 из 2472 ккал">
+<path d="M10 70 A56 56 0 0 1 122 70" fill="none" stroke="var(--track)" stroke-width="12" stroke-linecap="round"/>
+<path d="M10 70 A56 56 0 0 1 22.6 34.5" fill="none" stroke="var(--primary)" stroke-width="12" stroke-linecap="round"/>
+</svg>
+<div style="display:flex;flex-direction:column">
+<span style="font-size:40px;line-height:44px;font-weight:600;letter-spacing:-0.02em">1 923</span>
+<span class="cap">ккал осталось · съедено 549 из 2 472</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+<div style="display:flex;flex-direction:column;gap:4px"><span class="cap">Белки</span><span style="font-weight:600;color:var(--protein)">49 г</span><div class="track"><div class="fill" style="width:65%;background:var(--protein)"></div></div></div>
+<div style="display:flex;flex-direction:column;gap:4px"><span class="cap">Жиры</span><span style="font-weight:600;color:var(--fatfg)">31 г</span><div class="track"><div class="fill" style="width:58%;background:var(--fat)"></div></div></div>
+<div style="display:flex;flex-direction:column;gap:4px"><span class="cap">Углеводы</span><span style="font-weight:600;color:var(--carbsfg)">212 г</span><div class="track"><div class="fill" style="width:22%;background:var(--carbs)"></div></div></div>
+</div>
+</div>
+<a href="Chat.dc.html" style="text-decoration:none;color:var(--coachfg);background:var(--coach);border-radius:18px;padding:14px 16px;display:flex;gap:12px;align-items:center">
+<span style="width:40px;height:40px;border-radius:20px;background:#5E5245;display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0">А</span>
+<span style="display:flex;flex-direction:column;flex-grow:1;min-width:0"><span style="font-weight:600;font-size:15px;line-height:20px">Анна · ваш куратор</span><span style="font-size:13px;line-height:18px;color:var(--coachmuted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Белок держите отлично, добавьте овощей к ужину</span></span>
+<span style="background:var(--primary);color:var(--pfg);font-size:12px;font-weight:600;border-radius:10px;padding:1px 7px">2</span>
+</a>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+<div class="card" style="display:flex;flex-direction:column;gap:6px;padding:14px">
+<span class="cap">Шаги</span>
+<span style="font-size:22px;line-height:26px;font-weight:600">6 412</span>
+<div class="track"><div class="fill" style="width:64%;background:var(--ok)"></div></div>
+<span class="src"><svg class="ico" style="width:12px;height:12px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>из Здоровья · цель 10&nbsp;000</span>
+</div>
+<div class="card" style="display:flex;flex-direction:column;gap:6px;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span class="cap">Вода</span><button aria-label="Добавить стакан" style="width:32px;height:32px;border-radius:16px;border:none;background:var(--psoft);color:var(--primary);display:flex;align-items:center;justify-content:center;padding:0"><svg class="ico" style="width:18px;height:18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>
+<span style="font-size:22px;line-height:26px;font-weight:600">5 <span class="cap">из 8 стаканов</span></span>
+<div style="display:flex;gap:3px"><i style="flex:1;height:6px;border-radius:3px;background:var(--water)"></i><i style="flex:1;height:6px;border-radius:3px;background:var(--water)"></i><i style="flex:1;height:6px;border-radius:3px;background:var(--water)"></i><i style="flex:1;height:6px;border-radius:3px;background:var(--water)"></i><i style="flex:1;height:6px;border-radius:3px;background:var(--water)"></i><i style="flex:1;height:6px;border-radius:3px;background:var(--track)"></i><i style="flex:1;height:6px;border-radius:3px;background:var(--track)"></i><i style="flex:1;height:6px;border-radius:3px;background:var(--track)"></i></div>
+</div>
+<div class="card" style="display:flex;flex-direction:column;gap:6px;padding:14px">
+<span class="cap">Вес</span>
+<span style="font-size:22px;line-height:26px;font-weight:600">78,4 <span class="cap">кг</span></span>
+<span style="font-size:13px;line-height:18px;color:var(--ok)">−0,3 кг за неделю</span>
+<span class="src"><svg class="ico" style="width:12px;height:12px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>из Здоровья · 07:42</span>
+</div>
+<div class="card" style="display:flex;flex-direction:column;gap:6px;padding:14px">
+<span class="cap">Тренировка</span>
+<span style="font-size:22px;line-height:26px;font-weight:600">45 <span class="cap">мин</span></span>
+<span style="font-size:13px;line-height:18px;color:var(--muted)">Силовая · +210 ккал к норме</span>
+<span class="src"><svg class="ico" style="width:12px;height:12px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>из Здоровья</span>
+</div>
+</div>
+<div class="card" style="display:flex;flex-direction:column;gap:10px">
+<span class="serif" style="font-size:18px;line-height:24px">Задачи от куратора</span>
+<label style="display:flex;gap:12px;align-items:center"><input type="checkbox" style="width:22px;height:22px;accent-color:var(--primary);margin:0"><span style="display:flex;flex-direction:column"><span style="font-size:15px;line-height:20px">Сфотографировать обед</span><span class="cap">Питание · ежедневно</span></span></label>
+</div>
+</div>
+<div class="acc glass">
+<span style="font-size:14px;font-weight:500;flex-grow:1">Записать еду</span>
+<button class="accb" aria-label="Найти продукт"><svg class="ico" style="width:18px;height:18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></button>
+<button class="accb" aria-label="Сканировать штрихкод"><svg class="ico" style="width:18px;height:18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5h3M17 5h3v2M20 17v2h-3M7 19H4v-2M8 9v6M11 9v6M14 9v6M17 9v6"/></svg></button>
+<button class="accb" aria-label="Распознать по фото"><svg class="ico" style="width:18px;height:18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+</div>
+<nav class="tabbar glass" aria-label="Разделы">
+<a class="tab on" href="Today.dc.html" aria-current="page"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 0 1 16 0"/><path d="M12 17l3.5-5"/></svg>Сегодня</a>
+<a class="tab" href="Diary.dc.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M9 8h6M9 12h6"/></svg>Дневник</a>
+<a class="tab" href="Chat.dc.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg>Куратор</a>
+<a class="tab" href="Articles.dc.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Статьи</a>
+</nav>
+</div>
+
+
+</body>
+</html>

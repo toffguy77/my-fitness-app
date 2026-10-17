@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Еда по фото</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.ph{--canvas:#F6F1E8;--surface:#FFFCF6;--subtle:#EFE7DA;--fg:#2A2118;--muted:#5E5245;--sub:#76695A;--line:#E3D8C6;--primary:#B8492F;--pfg:#FFFFFF;--psoft:#B8492F1A;--ok:#4E7A3D;--oksoft:#5E8F4B1F;--warn:#A6531B;--warnsoft:#A6531B1A;
+width:390px;height:844px;position:relative;overflow:hidden;background:var(--canvas);color:var(--fg);font-family:'Golos Text',system-ui,sans-serif;font-size:16px;line-height:24px}
+.serif{font-family:'Literata',Georgia,serif;font-weight:500}
+.cap{font-size:13px;line-height:18px;color:var(--muted)}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.it{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.conf{font-size:11px;line-height:14px;padding:2px 7px;border-radius:999px;font-weight:500}
+.step{display:flex;align-items:center;border-radius:10px;background:var(--subtle)}
+.step button{width:36px;height:34px;border:none;background:transparent;font-size:18px;color:var(--fg)}
+</style>
+
+<div class="ph">
+<div style="position:absolute;inset:0;padding:54px 20px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<button aria-label="Назад" style="border:none;background:transparent;color:var(--primary);display:flex;align-items:center;gap:2px;font:500 16px 'Golos Text',sans-serif;padding:8px 0"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Снять заново</button>
+<span class="cap">ещё 2 из 3 сегодня</span>
+</div>
+<div role="img" aria-label="Фото тарелки" style="height:170px;border-radius:18px;background:radial-gradient(60% 70% at 50% 50%,#E9D7BC 0%,#C9A57E 55%,#7A5A3E 100%);position:relative">
+<span style="position:absolute;left:12px;bottom:10px;font-size:12px;color:#FFFCF6;background:rgba(20,17,13,.5);padding:2px 8px;border-radius:8px">Обед · 13:20</span>
+</div>
+<span class="serif" style="font-size:22px;line-height:28px">Нашли на тарелке</span>
+<div class="it">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:15px">Куриная грудка запечённая</span><span class="conf" style="background:var(--oksoft);color:var(--ok)">Высокая</span></div>
+<div style="display:flex;align-items:center;gap:10px">
+<div class="step"><button aria-label="Меньше">−</button><span style="min-width:56px;text-align:center;font-weight:600">150 г</span><button aria-label="Больше">+</button></div>
+<span class="cap" style="flex-grow:1">229 ккал · Б 46 · Ж 5</span>
+</div>
+</div>
+<div class="it">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:15px">Рис басмати</span><span class="conf" style="background:var(--oksoft);color:var(--ok)">Высокая</span></div>
+<div style="display:flex;align-items:center;gap:10px">
+<div class="step"><button aria-label="Меньше">−</button><span style="min-width:56px;text-align:center;color:var(--sub)">— г</span><button aria-label="Больше">+</button></div>
+<span class="cap" style="flex-grow:1">оценка 180 г</span>
+<button style="border:none;background:var(--psoft);color:var(--primary);border-radius:10px;font:500 13px 'Golos Text',sans-serif;padding:7px 10px">Подставить</button>
+</div>
+</div>
+<div class="it">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:15px">Соус, похож на сливочный</span><span class="conf" style="background:var(--warnsoft);color:var(--warn)">Низкая</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span class="cap" style="flex-grow:1">Состав не уверен — лучше найти вручную</span><button style="border:none;background:transparent;color:var(--primary);font:500 14px 'Golos Text',sans-serif;padding:6px 0">Найти</button></div>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;padding:14px 20px 34px;background:var(--surface);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between"><span class="cap">Итого, если подставить оценку</span><span style="font-weight:600">458 ккал</span></div>
+<button style="height:52px;border:none;border-radius:14px;background:var(--primary);color:var(--pfg);font:600 16px 'Golos Text',sans-serif">Добавить 2 позиции в обед</button>
+</div>
+</div>
+
+
+</body>
+</html>

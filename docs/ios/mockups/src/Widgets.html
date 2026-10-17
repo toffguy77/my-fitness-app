@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Виджеты и уведомления</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.w{font-family:'Golos Text',system-ui,sans-serif;color:#2A2118}
+.lbl{font-size:13px;line-height:18px;color:rgba(255,255,255,.85);font-weight:500;letter-spacing:.02em}
+.wg{background:#FFFCF6;border-radius:22px;box-shadow:0 10px 30px rgba(0,0,0,.25);box-sizing:border-box}
+.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.note{background:rgba(255,252,246,.86);backdrop-filter:blur(20px);border-radius:22px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.act{flex:1;height:40px;border:none;border-radius:12px;background:rgba(42,33,24,.08);font:500 14px 'Golos Text',sans-serif;color:#2A2118}
+.ctl{width:76px;height:76px;border-radius:38px;border:none;display:flex;align-items:center;justify-content:center;padding:0}
+</style>
+
+<div class="w" style="width:820px;height:844px;box-sizing:border-box;padding:36px;background:linear-gradient(160deg,#6F4A3A 0%,#3B2B24 45%,#1E1A15 100%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:36px">
+<div style="display:flex;flex-direction:column;gap:14px">
+<span class="lbl">Экран «Домой» · маленький и средний</span>
+<div style="display:flex;gap:16px">
+<div class="wg" style="width:158px;height:158px;padding:14px;display:flex;flex-direction:column;justify-content:space-between">
+<span style="font-size:12px;color:#5E5245;font-weight:500">Осталось</span>
+<svg width="120" height="66" viewBox="0 0 132 76" role="img" aria-label="Съедено 22 процента нормы"><path d="M10 70 A56 56 0 0 1 122 70" fill="none" stroke="#EADFCF" stroke-width="12" stroke-linecap="round"/><path d="M10 70 A56 56 0 0 1 22.6 34.5" fill="none" stroke="#B8492F" stroke-width="12" stroke-linecap="round"/></svg>
+<span style="display:flex;flex-direction:column"><span style="font-size:26px;line-height:28px;font-weight:600">1 923</span><span style="font-size:11px;color:#5E5245">ккал из 2 472</span></span>
+</div>
+</div>
+<div class="wg" style="width:338px;height:158px;padding:14px 16px;display:flex;gap:16px;align-items:center">
+<div style="display:flex;flex-direction:column;gap:2px;flex-grow:1">
+<span style="font-size:12px;color:#5E5245;font-weight:500">Осталось на сегодня</span>
+<span style="font-size:30px;line-height:34px;font-weight:600">1 923 <span style="font-size:13px;font-weight:400;color:#5E5245">ккал</span></span>
+<span style="font-size:13px;line-height:18px"><span style="color:#4666B0">Б 49</span> · <span style="color:#9A650C">Ж 31</span> · <span style="color:#4E7A3D">У 212</span> г</span>
+<span style="display:flex;gap:3px;margin-top:8px"><i style="width:14px;height:5px;border-radius:3px;background:#4666B0"></i><i style="width:14px;height:5px;border-radius:3px;background:#4666B0"></i><i style="width:14px;height:5px;border-radius:3px;background:#4666B0"></i><i style="width:14px;height:5px;border-radius:3px;background:#4666B0"></i><i style="width:14px;height:5px;border-radius:3px;background:#4666B0"></i><i style="width:14px;height:5px;border-radius:3px;background:#EADFCF"></i><i style="width:14px;height:5px;border-radius:3px;background:#EADFCF"></i><i style="width:14px;height:5px;border-radius:3px;background:#EADFCF"></i></span>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<button style="width:96px;height:44px;border:none;border-radius:14px;background:#4666B01A;color:#4666B0;font:600 14px 'Golos Text',sans-serif">+ стакан</button>
+<button style="width:96px;height:44px;border:none;border-radius:14px;background:#B8492F1A;color:#B8492F;font:600 14px 'Golos Text',sans-serif">+ еда</button>
+</div>
+</div>
+<span class="lbl" style="margin-top:16px">Экран блокировки</span>
+<div style="display:flex;gap:16px;align-items:center">
+<div style="width:72px;height:72px;border-radius:36px;background:rgba(255,255,255,.18);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff">
+<svg width="52" height="30" viewBox="0 0 132 76" aria-hidden="true"><path d="M10 70 A56 56 0 0 1 122 70" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="14" stroke-linecap="round"/><path d="M10 70 A56 56 0 0 1 22.6 34.5" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round"/></svg>
+<span style="font-size:14px;font-weight:600;line-height:16px">1923</span>
+</div>
+<div style="width:170px;height:72px;border-radius:16px;background:rgba(255,255,255,.18);backdrop-filter:blur(10px);color:#fff;padding:10px 12px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center">
+<span style="font-size:15px;font-weight:600;line-height:20px">1 923 ккал</span>
+<span style="font-size:12px;line-height:16px;opacity:.85">Б 49 · Ж 31 · У 212 · вода 5/8</span>
+</div>
+</div>
+<span class="lbl" style="margin-top:16px">Пункт управления и кнопка «Действие»</span>
+<div style="display:flex;gap:16px">
+<button class="ctl" aria-label="Добавить стакан воды" style="background:#4666B0;color:#fff"><svg class="ico" style="width:28px;height:28px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4s6 6.5 6 10.5a6 6 0 0 1-12 0C6 10.5 12 4 12 4z"/></svg></button>
+<button class="ctl" aria-label="Распознать еду по фото" style="background:rgba(255,255,255,.18);color:#fff"><svg class="ico" style="width:28px;height:28px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+<button class="ctl" aria-label="Сканировать штрихкод" style="background:rgba(255,255,255,.18);color:#fff"><svg class="ico" style="width:28px;height:28px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5h3M17 5h3v2M20 17v2h-3M7 19H4v-2M8 9v6M11 9v6M14 9v6M17 9v6"/></svg></button>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<span class="lbl">Пуш с ответом прямо из уведомления</span>
+<div class="note">
+<div style="display:flex;justify-content:space-between;font-size:12px;color:#5E5245"><span style="font-weight:600;letter-spacing:.03em">ВЗВЕШЕНО</span><span>сейчас</span></div>
+<span style="font-weight:600;font-size:15px;line-height:20px">Анна, куратор</span>
+<span style="font-size:14px;line-height:20px">Белок держите отлично, добавьте овощей к ужину</span>
+<div style="display:flex;align-items:center;gap:8px;background:#FFFCF6;border-radius:14px;padding:6px 6px 6px 12px;margin-top:4px"><span style="flex-grow:1;font-size:14px;color:#76695A">Ответить…</span><span style="width:30px;height:30px;border-radius:15px;background:#B8492F;color:#fff;display:flex;align-items:center;justify-content:center"><svg class="ico" style="width:16px;height:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span></div>
+</div>
+<span class="lbl" style="margin-top:6px">Пуш с действиями</span>
+<div class="note">
+<div style="display:flex;justify-content:space-between;font-size:12px;color:#5E5245"><span style="font-weight:600;letter-spacing:.03em">ВЗВЕШЕНО</span><span>13:00</span></div>
+<span style="font-weight:600;font-size:15px;line-height:20px">Задача от куратора</span>
+<span style="font-size:14px;line-height:20px">Сфотографировать обед</span>
+<div style="display:flex;gap:8px;margin-top:4px"><button class="act">Выполнено</button><button class="act">Открыть</button></div>
+</div>
+<div class="note">
+<div style="display:flex;justify-content:space-between;font-size:12px;color:#5E5245"><span style="font-weight:600;letter-spacing:.03em">ВЗВЕШЕНО</span><span>пн, 10:15</span></div>
+<span style="font-weight:600;font-size:15px;line-height:20px">Отзыв на недельный отчёт</span>
+<span style="font-size:14px;line-height:20px">Анна оценила неделю и оставила рекомендации</span>
+</div>
+<span class="lbl" style="margin-top:6px">Siri и Быстрые команды</span>
+<div class="note" style="background:rgba(20,17,13,.6);color:#F3EADC">
+<span style="font-size:14px;line-height:20px;opacity:.8">«Добавь стакан воды во Взвешено»</span>
+<span style="font-size:17px;line-height:24px;font-weight:600">Записано: 6 из 8 стаканов</span>
+</div>
+</div>
+</div>
+
+
+</body>
+</html>

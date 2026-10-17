@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Вход</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.ph{--canvas:#F6F1E8;--surface:#FFFCF6;--subtle:#EFE7DA;--fg:#2A2118;--muted:#5E5245;--sub:#76695A;--line:#E3D8C6;--primary:#B8492F;--pfg:#FFFFFF;
+width:390px;height:844px;position:relative;overflow:hidden;background:var(--canvas);color:var(--fg);font-family:'Golos Text',system-ui,sans-serif;font-size:16px;line-height:24px}
+.serif{font-family:'Literata',Georgia,serif;font-weight:500}
+.cap{font-size:13px;line-height:18px;color:var(--muted)}
+.btn{height:50px;border-radius:14px;border:none;font:500 16px 'Golos Text',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+</style>
+
+<div class="ph">
+<div style="position:absolute;inset:0;padding:96px 24px 34px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+<svg width="88" height="88" viewBox="0 0 1024 1024" role="img" aria-label="Значок Взвешено" style="border-radius:20px;align-self:center">
+<rect width="1024" height="1024" fill="#F6F1E8"/>
+<path d="M194 668 A318 318 0 0 1 830 668" fill="none" stroke="#EADFCF" stroke-width="82" stroke-linecap="round"/>
+<path d="M194 668 A318 318 0 0 1 512 350" fill="none" stroke="#B8492F" stroke-width="82" stroke-linecap="round"/>
+<rect x="495" y="428" width="34" height="240" rx="17" fill="#2A2118"/>
+<circle cx="512" cy="668" r="50" fill="#2A2118"/>
+<circle cx="512" cy="236" r="20" fill="#B8492F"/>
+</svg>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:18px">
+<span class="serif" style="font-size:34px;line-height:40px">Взвешено</span>
+<span class="cap" style="font-size:15px">Питание и вес вместе с куратором</span>
+</div>
+<button class="btn" style="background:#000;color:#fff">Вход с Apple</button>
+<div style="display:flex;gap:10px">
+<button class="btn" style="background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg)">Яндекс ID</button>
+<button class="btn" style="background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);color:var(--fg)">VK ID</button>
+</div>
+<div style="display:flex;align-items:center;gap:10px;color:var(--sub);font-size:13px"><i style="flex:1;height:1px;background:var(--line)"></i>или по почте<i style="flex:1;height:1px;background:var(--line)"></i></div>
+<label style="display:flex;flex-direction:column;gap:4px"><span class="cap">Электронная почта</span><input type="email" autocomplete="email" value="" placeholder="name@example.ru" style="height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 14px;font:400 16px 'Golos Text',sans-serif;color:var(--fg)"></label>
+<button class="btn" style="background:var(--primary);color:var(--pfg);font-weight:600">Получить ссылку для входа</button>
+<button class="btn" style="background:transparent;color:var(--primary);height:40px">Войти с паролем</button>
+<span class="cap" style="text-align:center;margin-top:auto">Ссылка придёт письмом и откроет приложение.</span>
+</div>
+</div>
+
+
+</body>
+</html>
