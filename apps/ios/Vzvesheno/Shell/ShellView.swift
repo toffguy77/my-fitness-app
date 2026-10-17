@@ -112,6 +112,9 @@ private struct TabRoot: View {
                     OfflineBanner()
                         .accessibilityIdentifier("banner.offline")
                 }
+                if tab == .today && model.healthAccessHint {
+                    HealthAccessHintCard()
+                }
                 DSCard {
                     VStack(alignment: .leading, spacing: DS.Space.s2) {
                         DSCardTitle(tab.title)
@@ -188,6 +191,14 @@ private struct MoreLinks: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // «Профиль → Здоровье»: профиль и настройки живут во вкладке «Ещё».
+            NavigationLink {
+                HealthScreen()
+            } label: {
+                row(String(localized: "health.title"), "heart")
+            }
+            .accessibilityIdentifier("more.health")
+            Divider().overlay(DS.Color.lineDefault)
             #if DEV_BUILD
             Button { model.showCatalogue = true } label: {
                 row("Компоненты", "paintpalette")
@@ -202,6 +213,16 @@ private struct MoreLinks: View {
         }
         .background(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).fill(DS.Color.bgSurface))
         .overlay(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).strokeBorder(DS.Color.lineDefault))
+        #if DEBUG
+        // Сценарий UI-теста: сколько раз подделка Здоровья получила системный
+        // запрос — по нему тест видит, что «Не сейчас» запроса не делает.
+        if let requests = model.uiTestHealthAuthorizationRequests {
+            Text(verbatim: "health.authRequests=\(requests)")
+                .dsText(DS.Typography.caption)
+                .foregroundStyle(DS.Color.fgMuted)
+                .accessibilityIdentifier("uitest.health.authRequests")
+        }
+        #endif
     }
 
     private func row(_ title: String, _ icon: String) -> some View {
