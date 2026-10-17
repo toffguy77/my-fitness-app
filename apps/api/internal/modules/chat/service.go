@@ -54,6 +54,24 @@ type Service struct {
 	// events записывает первое сообщение куратору. Необязателен: nil в тестах
 	// и там, где аналитики нет, и ничего здесь от него не зависит.
 	events FirstTimeRecorder
+	// push сообщает о новом сообщении получателю без открытого приложения.
+	// nil — пушей нет.
+	push MessagePusher
+}
+
+// MessagePusher — пуш о сообщении чата и обновление значка на iPhone.
+//
+// Узкий интерфейс: чату незачем знать про APNs и Web Push. Оба вызова — по
+// возможности: сообщение уже сохранено, и отказ пуша не должен его ронять.
+type MessagePusher interface {
+	ChatMessageSent(ctx context.Context, messageID string)
+	UnreadChanged(ctx context.Context, userID int64)
+}
+
+// WithPush подключает пуши. Без них чат работает по-прежнему.
+func (s *Service) WithPush(pusher MessagePusher) *Service {
+	s.push = pusher
+	return s
 }
 
 // FirstTimeRecorder записывает факт, случающийся однажды за всё время.
@@ -551,6 +569,10 @@ func (s *Service) SendMessage(ctx context.Context, conversationID string, sender
 		}
 	}
 
+	if s.push != nil {
+		s.push.ChatMessageSent(ctx, msg.ID)
+	}
+
 	return &msg, nil
 }
 
@@ -607,6 +629,11 @@ func (s *Service) MarkAsRead(ctx context.Context, conversationID string, userID 
 		"conversation_id": conversationID,
 		"user_id":         userID,
 	})
+
+	// Значок на iPhone считает непрочитанное в чате — теперь он устарел.
+	if s.push != nil {
+		s.push.UnreadChanged(ctx, userID)
+	}
 
 	return nil
 }
@@ -811,6 +838,11 @@ func (s *Service) CreateFoodEntryFromChat(ctx context.Context, conversationID st
 		"conversation_id": conversationID,
 		"entry_id":        entryID,
 	})
+
+	// Пуш клиенту: «КБЖУ запись», без самих значений дневника.
+	if s.push != nil {
+		s.push.ChatMessageSent(ctx, msg.ID)
+	}
 
 	return &msg, nil
 }

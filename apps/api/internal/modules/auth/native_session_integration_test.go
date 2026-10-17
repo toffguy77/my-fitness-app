@@ -233,7 +233,7 @@ func TestNativeLogoutEndsTheSessionAndForgetsThePhone(t *testing.T) {
 	session := s.registerNative(t, "native-logout@example.test")
 	const deviceToken = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90"
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO apns_devices (user_id, token, installation_id, environment)
+		INSERT INTO push_devices (user_id, token, installation_id, environment)
 		VALUES ($1, $2, 'install-1', 'production')`, session.Data.User.ID, deviceToken)
 	require.NoError(t, err)
 
@@ -244,7 +244,7 @@ func TestNativeLogoutEndsTheSessionAndForgetsThePhone(t *testing.T) {
 
 	var devices int
 	require.NoError(t, s.db.QueryRowContext(ctx,
-		`SELECT count(*) FROM apns_devices WHERE user_id = $1`, session.Data.User.ID).Scan(&devices))
+		`SELECT count(*) FROM push_devices WHERE user_id = $1`, session.Data.User.ID).Scan(&devices))
 	assert.Zero(t, devices, "устройство удалено — пуши на него больше не уходят")
 
 	w, _ = s.refresh(t, session.Data.RefreshToken)

@@ -87,14 +87,17 @@ var protectedRoutes = map[string]protection{
 	"POST /api/v1/conversations/:id/messages/:msgId/food-entry": protParticipant,
 
 	// Resources owned by the caller: every query filters on the caller's id.
-	"GET /api/v1/food-tracker/recommendations/:id":            protOwner,
-	"PUT /api/v1/food-tracker/entries/:id":                    protOwner,
-	"DELETE /api/v1/food-tracker/entries/:id":                 protOwner,
-	"PUT /api/v1/food-tracker/user-foods/:id":                 protOwner,
-	"DELETE /api/v1/food-tracker/user-foods/:id":              protOwner,
-	"POST /api/v1/food-tracker/favorites/:foodId":             protOwner,
-	"DELETE /api/v1/food-tracker/favorites/:foodId":           protOwner,
-	"POST /api/v1/notifications/:id/read":                     protOwner,
+	"GET /api/v1/food-tracker/recommendations/:id":  protOwner,
+	"PUT /api/v1/food-tracker/entries/:id":          protOwner,
+	"DELETE /api/v1/food-tracker/entries/:id":       protOwner,
+	"PUT /api/v1/food-tracker/user-foods/:id":       protOwner,
+	"DELETE /api/v1/food-tracker/user-foods/:id":    protOwner,
+	"POST /api/v1/food-tracker/favorites/:foodId":   protOwner,
+	"DELETE /api/v1/food-tracker/favorites/:foodId": protOwner,
+	"POST /api/v1/notifications/:id/read":           protOwner,
+	// Отписка устройства: DELETE ... WHERE user_id = вызывающий AND token = :token.
+	// Чужой токен не удаляется, ответ тот же 204 (push-devices «Чужой токен»).
+	"DELETE /api/v1/notifications/devices/:token":             protOwner,
 	"PUT /api/v1/dashboard/tasks/:id":                         protOwner,
 	"POST /api/v1/dashboard/tasks/:id/complete":               protOwner,
 	"GET /api/v1/dashboard/weekly-reports/:reportId/feedback": protOwner,

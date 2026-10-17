@@ -32,7 +32,7 @@
     "reason": "Регистрация iPhone для push через APNs. Зовёт iOS-приложение (apps/ios/Burcev/Sources/Push/PushRegistrar.swift), у браузера свой канал — Web Push через /notifications/push."
   },
   {
-    "route": "DELETE /api/v1/notifications/devices",
+    "route": "DELETE /api/v1/notifications/devices/:token",
     "reason": "Снятие iPhone с рассылки при выходе из аккаунта. Зовёт iOS-приложение, браузер снимает подписку через /notifications/push."
   },
   {

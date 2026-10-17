@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"time"
@@ -371,7 +372,7 @@ func requireUserID(c *gin.Context, h *Handler) (int64, bool) {
 func (h *Handler) GetPushKey(c *gin.Context) {
 	if !h.service.PushReady() {
 		response.Fail(c, http.StatusServiceUnavailable,
-			apperrors.ErrEmailUnavailable, "Push-уведомления в этой среде выключены")
+			apperrors.ErrFeatureUnavailable, "Push-уведомления в этой среде выключены")
 		return
 	}
 	response.Success(c, http.StatusOK, map[string]string{"publicKey": h.service.PushPublicKey()})
@@ -395,7 +396,7 @@ func (h *Handler) SubscribePush(c *gin.Context) {
 		switch {
 		case errors.Is(err, apperrors.ErrValidation):
 			response.Fail(c, http.StatusBadRequest, err, "Неполные данные подписки")
-		case errors.Is(err, apperrors.ErrEmailUnavailable):
+		case errors.Is(err, apperrors.ErrFeatureUnavailable):
 			response.Fail(c, http.StatusServiceUnavailable, err, "Push-уведомления в этой среде выключены")
 		default:
 			h.log.Errorw("Failed to store push subscription", "error", err, "user_id", userID)
@@ -408,6 +409,9 @@ func (h *Handler) SubscribePush(c *gin.Context) {
 }
 
 // RegisterDevice handles POST /api/v1/notifications/devices — iPhone app.
+//
+// Body {token, environment, app_version, installation_id}; 204 on success,
+// also when the same phone registers again.
 func (h *Handler) RegisterDevice(c *gin.Context) {
 	userID, ok := requireUserID(c, h)
 	if !ok {
@@ -415,16 +419,17 @@ func (h *Handler) RegisterDevice(c *gin.Context) {
 	}
 	var device APNSDevice
 	if err := c.ShouldBindJSON(&device); err != nil {
-		response.Error(c, http.StatusBadRequest, "Неверные данные устройства")
+		response.Fail(c, http.StatusBadRequest, fmt.Errorf("device: %w", apperrors.ErrValidation),
+			"Неверные данные устройства")
 		return
 	}
 	if err := h.service.RegisterDevice(c.Request.Context(), userID, device); err != nil {
 		switch {
 		case errors.Is(err, apperrors.ErrValidation):
-			response.Fail(c, http.StatusBadRequest, err, "Неверный токен устройства")
+			response.Fail(c, http.StatusBadRequest, err, "Неверные данные устройства")
 		case errors.Is(err, apperrors.ErrForbidden):
 			response.Fail(c, http.StatusForbidden, err, "Токен принадлежит другому устройству")
-		case errors.Is(err, apperrors.ErrEmailUnavailable):
+		case errors.Is(err, apperrors.ErrFeatureUnavailable):
 			response.Fail(c, http.StatusServiceUnavailable, err, "Уведомления на iPhone в этой среде выключены")
 		default:
 			h.log.Errorw("Failed to store APNs device", "error", err, "user_id", userID)
@@ -432,23 +437,18 @@ func (h *Handler) RegisterDevice(c *gin.Context) {
 		}
 		return
 	}
-	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+	c.Status(http.StatusNoContent)
 }
 
-// UnregisterDevice handles DELETE /api/v1/notifications/devices — on sign-out.
+// UnregisterDevice handles DELETE /api/v1/notifications/devices/:token — on
+// sign-out. Scoped to the caller: somebody else's token is left alone and the
+// answer is the same 204, so it says nothing about whether the token exists.
 func (h *Handler) UnregisterDevice(c *gin.Context) {
 	userID, ok := requireUserID(c, h)
 	if !ok {
 		return
 	}
-	var body struct {
-		Token string `json:"token"`
-	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		response.Error(c, http.StatusBadRequest, "Неверные данные устройства")
-		return
-	}
-	if err := h.service.UnregisterDevice(c.Request.Context(), userID, body.Token); err != nil {
+	if err := h.service.UnregisterDevice(c.Request.Context(), userID, c.Param("token")); err != nil {
 		if errors.Is(err, apperrors.ErrValidation) {
 			response.Fail(c, http.StatusBadRequest, err, "Не указан токен устройства")
 			return
@@ -457,7 +457,7 @@ func (h *Handler) UnregisterDevice(c *gin.Context) {
 		response.InternalError(c, "Не удалось удалить устройство")
 		return
 	}
-	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+	c.Status(http.StatusNoContent)
 }
 
 // UnsubscribePush handles DELETE /api/v1/notifications/push

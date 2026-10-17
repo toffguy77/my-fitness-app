@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -67,7 +66,7 @@ func (s *Service) PushPublicKey() string {
 // a table that only ever grows is a table of addresses nobody can deliver to.
 func (s *Service) Subscribe(ctx context.Context, userID int64, sub PushSubscription) error {
 	if !s.PushReady() {
-		return fmt.Errorf("web push: %w", apperrors.ErrEmailUnavailable)
+		return fmt.Errorf("web push: %w", apperrors.ErrFeatureUnavailable)
 	}
 	if sub.Endpoint == "" || sub.P256dh == "" || sub.Auth == "" {
 		return fmt.Errorf("incomplete push subscription: %w", apperrors.ErrValidation)
@@ -107,164 +106,6 @@ func (s *Service) UnsubscribePush(ctx context.Context, userID int64, endpoint st
 		return fmt.Errorf("delete push subscription: %w", err)
 	}
 	return nil
-}
-
-// pushPayload is what the service worker receives.
-type pushPayload struct {
-	Title string `json:"title"`
-	Body  string `json:"body"`
-	URL   string `json:"url,omitempty"`
-	Tag   string `json:"tag,omitempty"`
-}
-
-// SendDuePushes delivers every push that is due.
-//
-// Returns how many browsers were reached. A subscription the push service says
-// is gone is deleted on the spot: keeping it would mean retrying an address
-// that will never work again.
-func (s *Service) SendDuePushes(ctx context.Context) (int, error) {
-	if !s.anyPushReady() {
-		return 0, fmt.Errorf("push: %w", apperrors.ErrEmailUnavailable)
-	}
-
-	due, err := s.duePushes(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	delivered := 0
-	for _, item := range due {
-		// Browsers and iPhones are one channel to the person: a notification is
-		// delivered when any of their devices accepted it.
-		subscriptions := []PushSubscription{}
-		if s.PushReady() {
-			if subscriptions, err = s.subscriptionsFor(ctx, item.userID); err != nil {
-				return delivered, err
-			}
-		}
-		devices := []APNSDevice{}
-		if s.APNSReady() {
-			if devices, err = s.devicesFor(ctx, item.userID); err != nil {
-				return delivered, err
-			}
-		}
-		if len(subscriptions) == 0 && len(devices) == 0 {
-			// Nobody to reach. Not a failure: the person turned push on once
-			// and has since cleared their browser.
-			if err := s.markDeliveries(ctx, []int64{item.deliveryID}, StatusSkipped, ""); err != nil {
-				return delivered, err
-			}
-			continue
-		}
-
-		payload, err := json.Marshal(pushPayload{
-			Title: item.title,
-			Body:  item.content,
-			URL:   item.actionURL,
-			// Same notification, same tag: a browser that receives it twice
-			// shows one banner rather than two.
-			Tag: item.notificationID,
-		})
-		if err != nil {
-			return delivered, fmt.Errorf("encode push payload: %w", err)
-		}
-
-		reached := false
-		var lastErr error
-		for _, subscription := range subscriptions {
-			if err := s.sendOnePush(ctx, subscription, payload); err != nil {
-				lastErr = err
-				continue
-			}
-			reached = true
-		}
-		if len(devices) > 0 {
-			ok, err := s.sendToDevices(ctx, devices, item)
-			reached = reached || ok
-			if err != nil {
-				lastErr = err
-			}
-		}
-
-		if reached {
-			if err := s.markDeliveries(ctx, []int64{item.deliveryID}, StatusSent, ""); err != nil {
-				return delivered, err
-			}
-			delivered++
-			continue
-		}
-
-		message := "no subscription accepted the push"
-		if lastErr != nil {
-			message = lastErr.Error()
-		}
-		if err := s.markDeliveries(ctx, []int64{item.deliveryID}, "", message); err != nil {
-			return delivered, err
-		}
-	}
-
-	return delivered, nil
-}
-
-// duePush is one pending push delivery with the notification behind it.
-type duePush struct {
-	deliveryID     int64
-	userID         int64
-	notificationID string
-	title          string
-	content        string
-	actionURL      string
-}
-
-func (s *Service) duePushes(ctx context.Context) ([]duePush, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT d.id, d.user_id, n.id, n.title, n.content, COALESCE(n.action_url, '')
-		 FROM notification_deliveries d
-		 JOIN notifications n ON n.id = d.notification_id
-		 JOIN users u ON u.id = d.user_id
-		 WHERE d.channel = $1
-		   AND d.status = $2
-		   AND d.not_before <= NOW()
-		   AND d.attempts < $3
-		   AND n.read_at IS NULL
-		   AND u.deleted_at IS NULL
-		   AND u.deletion_requested_at IS NULL
-		 ORDER BY d.not_before`,
-		ChannelPush, StatusPending, maxAttempts)
-	if err != nil {
-		return nil, fmt.Errorf("load due pushes: %w", err)
-	}
-	defer rows.Close()
-
-	due := []duePush{}
-	for rows.Next() {
-		var item duePush
-		if err := rows.Scan(&item.deliveryID, &item.userID, &item.notificationID,
-			&item.title, &item.content, &item.actionURL); err != nil {
-			return nil, fmt.Errorf("scan due push: %w", err)
-		}
-		due = append(due, item)
-	}
-	return due, rows.Err()
-}
-
-func (s *Service) subscriptionsFor(ctx context.Context, userID int64) ([]PushSubscription, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1`, userID)
-	if err != nil {
-		return nil, fmt.Errorf("load push subscriptions: %w", err)
-	}
-	defer rows.Close()
-
-	subscriptions := []PushSubscription{}
-	for rows.Next() {
-		var sub PushSubscription
-		if err := rows.Scan(&sub.Endpoint, &sub.P256dh, &sub.Auth); err != nil {
-			return nil, fmt.Errorf("scan push subscription: %w", err)
-		}
-		subscriptions = append(subscriptions, sub)
-	}
-	return subscriptions, rows.Err()
 }
 
 // errSubscriptionGone marks a subscription the push service has retired.
@@ -346,7 +187,7 @@ func (s *Service) PurgeDeadSubscriptions(ctx context.Context, unusedFor time.Dur
 	// iPhones the same way. Not by age, though: a phone that simply had
 	// nothing to receive for months is still a phone that wants pushes, and
 	// Apple says plainly when a token is dead.
-	result, err = s.db.ExecContext(ctx, `DELETE FROM apns_devices WHERE failures >= $1`, maxPushFailures)
+	result, err = s.db.ExecContext(ctx, `DELETE FROM push_devices WHERE failures >= $1`, maxPushFailures)
 	if err != nil {
 		return browsers, fmt.Errorf("purge APNs devices: %w", err)
 	}

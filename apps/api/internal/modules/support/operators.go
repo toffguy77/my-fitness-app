@@ -71,6 +71,7 @@ func (s *Service) notifyOperators(ctx context.Context, conversationID string, cl
 			Title:     title,
 			Content:   content,
 			ActionURL: &actionURL,
+			Target:    notifications.Target{IDs: notifications.IDs{"conversation_id": conversationID}},
 		}); err != nil {
 			s.log.Error("Could not tell an operator about an escalation",
 				"error", fmt.Sprint(err), "operator_id", operatorID, "conversation_id", conversationID)

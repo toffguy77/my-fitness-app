@@ -14,10 +14,31 @@ import (
 // половину он не найдёт.
 type PlatformDelivery struct {
 	db *sql.DB
+	// push сообщает получателю о сообщении, пришедшем из Telegram, так же,
+	// как о написанном в приложении. nil — пушей нет.
+	push MessagePusher
+}
+
+// MessagePusher — пуш о новом сообщении переписки. По возможности: сообщение
+// уже записано.
+type MessagePusher interface {
+	ChatMessageSent(ctx context.Context, messageID string)
 }
 
 func NewPlatformDelivery(db *sql.DB) *PlatformDelivery {
 	return &PlatformDelivery{db: db}
+}
+
+// WithPush подключает пуши о сообщениях.
+func (p *PlatformDelivery) WithPush(pusher MessagePusher) *PlatformDelivery {
+	p.push = pusher
+	return p
+}
+
+func (p *PlatformDelivery) pushed(ctx context.Context, messageID string) {
+	if p.push != nil {
+		p.push.ChatMessageSent(ctx, messageID)
+	}
 }
 
 // ToPlatform записывает сообщение в беседу клиента с его куратором.
@@ -49,11 +70,14 @@ func (p *PlatformDelivery) ToPlatform(ctx context.Context, clientID, curatorID i
 		return fmt.Errorf("resolve conversation: %w", err)
 	}
 
-	if _, err := p.db.ExecContext(ctx, `
+	var messageID string
+	if err := p.db.QueryRowContext(ctx, `
 		INSERT INTO messages (conversation_id, sender_id, type, content)
-		VALUES ($1::uuid, $2, 'text', $3)`, conversationID, curatorID, text); err != nil {
+		VALUES ($1::uuid, $2, 'text', $3)
+		RETURNING id`, conversationID, curatorID, text).Scan(&messageID); err != nil {
 		return fmt.Errorf("store the curator's reply: %w", err)
 	}
+	p.pushed(ctx, messageID)
 	return nil
 }
 
@@ -108,11 +132,14 @@ func (p *PlatformDelivery) Attach(ctx context.Context, clientID int64, messageTy
 		return fmt.Errorf("resolve conversation: %w", err)
 	}
 
-	if _, err := p.db.ExecContext(ctx, `
+	var messageID string
+	if err := p.db.QueryRowContext(ctx, `
 		INSERT INTO messages (conversation_id, sender_id, type, content, metadata)
-		VALUES ($1::uuid, $2, $3, $4, jsonb_build_object('key', $5::text))`,
-		conversationID, clientID, messageType, caption, key); err != nil {
+		VALUES ($1::uuid, $2, $3, $4, jsonb_build_object('key', $5::text))
+		RETURNING id`,
+		conversationID, clientID, messageType, caption, key).Scan(&messageID); err != nil {
 		return fmt.Errorf("store the attachment: %w", err)
 	}
+	p.pushed(ctx, messageID)
 	return nil
 }

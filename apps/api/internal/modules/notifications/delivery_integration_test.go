@@ -135,9 +135,10 @@ func TestDeliveryPreferencesAgainstTheRealSchema(t *testing.T) {
 	// A deliberate choice is stored and read back; the defaults are not.
 	quiet := 22
 	morning := 8
+	off := false
 	require.NoError(t, service.UpdateDeliveryPreferences(context.Background(), userID,
 		notifications.UpdateDeliveryPreferencesRequest{
-			Types:           []notifications.TypeSetting{{Type: "trainer_feedback", App: true, Email: false}},
+			Types:           []notifications.TypeSetting{{Type: "trainer_feedback", App: true, Email: &off}},
 			QuietHoursStart: &quiet,
 			QuietHoursEnd:   &morning,
 		}))
@@ -150,7 +151,8 @@ func TestDeliveryPreferencesAgainstTheRealSchema(t *testing.T) {
 
 	for _, setting := range after.Types {
 		if setting.Type == "trainer_feedback" {
-			assert.False(t, setting.Email, "the stored choice was not read back")
+			require.NotNil(t, setting.Email)
+			assert.False(t, *setting.Email, "the stored choice was not read back")
 		}
 	}
 }

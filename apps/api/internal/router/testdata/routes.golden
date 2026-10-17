@@ -7,7 +7,7 @@ DELETE /api/v1/curator/clients/:id/weekly-plan/:planId
 DELETE /api/v1/food-tracker/entries/:id
 DELETE /api/v1/food-tracker/favorites/:foodId
 DELETE /api/v1/food-tracker/user-foods/:id
-DELETE /api/v1/notifications/devices
+DELETE /api/v1/notifications/devices/:token
 DELETE /api/v1/notifications/push
 DELETE /api/v1/recipes/:id/reject
 DELETE /api/v1/users/avatar

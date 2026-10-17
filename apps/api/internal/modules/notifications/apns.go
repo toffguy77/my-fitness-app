@@ -113,30 +113,6 @@ func (a *apnsSender) bearer() (string, error) {
 	return signed, nil
 }
 
-// apnsPayload is what the phone receives. `aps` is Apple's; the rest is ours,
-// read by the app to open the right screen.
-type apnsPayload struct {
-	APS struct {
-		Alert struct {
-			Title string `json:"title"`
-			Body  string `json:"body"`
-		} `json:"alert"`
-		Sound string `json:"sound"`
-	} `json:"aps"`
-	URL            string `json:"url,omitempty"`
-	NotificationID string `json:"notification_id"`
-}
-
-func newAPNSPayload(item duePush) ([]byte, error) {
-	var p apnsPayload
-	p.APS.Alert.Title = item.title
-	p.APS.Alert.Body = item.content
-	p.APS.Sound = "default"
-	p.URL = item.actionURL
-	p.NotificationID = item.notificationID
-	return json.Marshal(p)
-}
-
 // apnsResult is Apple's answer: the status and, when it refused, why.
 type apnsResult struct {
 	status int
@@ -155,28 +131,46 @@ func (r apnsResult) gone() bool {
 	return false
 }
 
-func (a *apnsSender) send(ctx context.Context, device APNSDevice, payload []byte, collapseID string) (apnsResult, error) {
-	host, ok := a.hosts[device.Environment]
+// apnsMessage is one request to Apple: the payload and the headers that go
+// with its kind.
+type apnsMessage struct {
+	payload []byte
+	// background is a silent badge update: content-available, no alert. Apple
+	// demands push type "background" and priority 5 for it, and refuses 10.
+	background bool
+	// collapseID makes a phone that receives the same notification twice show
+	// one banner. Empty for chat messages: every message is its own text.
+	collapseID string
+}
+
+func (a *apnsSender) send(ctx context.Context, device pushDevice, message apnsMessage) (apnsResult, error) {
+	host, ok := a.hosts[device.environment]
 	if !ok {
-		return apnsResult{}, fmt.Errorf("unknown APNs environment %q", device.Environment)
+		return apnsResult{}, fmt.Errorf("unknown APNs environment %q", device.environment)
 	}
 	bearer, err := a.bearer()
 	if err != nil {
 		return apnsResult{}, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, host+"/3/device/"+device.Token, bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, host+"/3/device/"+device.token, bytes.NewReader(message.payload))
 	if err != nil {
 		return apnsResult{}, err
 	}
 	request.Header.Set("authorization", "bearer "+bearer)
 	request.Header.Set("apns-topic", a.cfg.Topic)
-	request.Header.Set("apns-push-type", "alert")
-	request.Header.Set("apns-priority", "10")
+	if message.background {
+		request.Header.Set("apns-push-type", "background")
+		request.Header.Set("apns-priority", "5")
+	} else {
+		request.Header.Set("apns-push-type", "alert")
+		request.Header.Set("apns-priority", "10")
+	}
 	// Same as web push: a phone offline for longer than a day is not greeted
 	// by yesterday's news.
 	request.Header.Set("apns-expiration", fmt.Sprint(a.now().Add(pushTTL).Unix()))
-	// Same notification, same id: a phone that receives it twice shows one banner.
-	request.Header.Set("apns-collapse-id", collapseID)
+	if message.collapseID != "" {
+		request.Header.Set("apns-collapse-id", message.collapseID)
+	}
 	request.Header.Set("content-type", "application/json")
 
 	response, err := a.client.Do(request)
@@ -196,7 +190,7 @@ func (a *apnsSender) send(ctx context.Context, device APNSDevice, payload []byte
 	return result, nil
 }
 
-// APNSDevice is one iPhone that agreed to be interrupted.
+// APNSDevice is what the app sends to register an iPhone.
 type APNSDevice struct {
 	Token       string `json:"token"`
 	Environment string `json:"environment"`
@@ -204,6 +198,13 @@ type APNSDevice struct {
 	// InstallationID is generated once by the app and kept in the phone's
 	// Keychain. It is what proves a re-registration comes from the same phone.
 	InstallationID string `json:"installation_id"`
+}
+
+// pushDevice is a registered iPhone as the sender sees it.
+type pushDevice struct {
+	id          int64
+	token       string
+	environment string
 }
 
 var apnsInstallationID = regexp.MustCompile(`^[0-9a-fA-F-]{36}$`)
@@ -224,10 +225,14 @@ func (s *Service) APNSReady() bool {
 	return s.apns != nil
 }
 
-// anyPushReady: the push channel exists if either kind of device can be reached.
-func (s *Service) anyPushReady() bool {
+// PushChannelReady: the push channel exists if either kind of device can be
+// reached. The sending job runs on this, not on Web Push alone — otherwise a
+// deployment with only the APNs key would queue pushes nobody sends.
+func (s *Service) PushChannelReady() bool {
 	return s.PushReady() || s.APNSReady()
 }
+
+func (s *Service) anyPushReady() bool { return s.PushChannelReady() }
 
 // RegisterDevice records where an iPhone can be reached.
 //
@@ -237,9 +242,12 @@ func (s *Service) anyPushReady() bool {
 // id matches. Otherwise anybody who learned a token could register it to their
 // own account: their notifications would land on somebody else's phone, and
 // the owner would stop receiving theirs.
+//
+// Registering again re-enables a device APNs once called dead: the app only
+// registers a token iOS has just handed it.
 func (s *Service) RegisterDevice(ctx context.Context, userID int64, device APNSDevice) error {
 	if !s.APNSReady() {
-		return fmt.Errorf("ios push: %w", apperrors.ErrEmailUnavailable)
+		return fmt.Errorf("ios push: %w", apperrors.ErrFeatureUnavailable)
 	}
 	if !apnsDeviceToken.MatchString(device.Token) {
 		return fmt.Errorf("device token is not an APNs token: %w", apperrors.ErrValidation)
@@ -251,14 +259,16 @@ func (s *Service) RegisterDevice(ctx context.Context, userID int64, device APNSD
 		return fmt.Errorf("installation id is required: %w", apperrors.ErrValidation)
 	}
 	result, err := s.db.ExecContext(ctx,
-		`INSERT INTO apns_devices (user_id, token, installation_id, environment, app_version)
-		 VALUES ($1, $2, $3, $4, $5)
+		`INSERT INTO push_devices (user_id, token, installation_id, environment, app_version, platform)
+		 VALUES ($1, $2, $3, $4, $5, 'ios')
 		 ON CONFLICT (token) DO UPDATE
 		 SET user_id = EXCLUDED.user_id,
 		     environment = EXCLUDED.environment,
 		     app_version = EXCLUDED.app_version,
-		     failures = 0
-		 WHERE apns_devices.installation_id = EXCLUDED.installation_id`,
+		     failures = 0,
+		     last_seen_at = NOW(),
+		     disabled_at = NULL
+		 WHERE push_devices.installation_id = EXCLUDED.installation_id`,
 		userID, strings.ToLower(device.Token), strings.ToLower(device.InstallationID),
 		device.Environment, nullIfEmpty(device.AppVersion))
 	if err != nil {
@@ -275,30 +285,34 @@ func (s *Service) RegisterDevice(ctx context.Context, userID int64, device APNSD
 }
 
 // UnregisterDevice forgets one iPhone — on sign-out, so the next person to use
-// the phone does not receive this one's notifications.
+// the phone does not receive this one's notifications. Somebody else's token,
+// or one already gone, changes nothing and is not an error: the answer must
+// not tell a caller whether a token exists.
 func (s *Service) UnregisterDevice(ctx context.Context, userID int64, token string) error {
 	if token == "" {
 		return fmt.Errorf("no device token given: %w", apperrors.ErrValidation)
 	}
 	if _, err := s.db.ExecContext(ctx,
-		`DELETE FROM apns_devices WHERE user_id = $1 AND token = $2`,
+		`DELETE FROM push_devices WHERE user_id = $1 AND token = $2`,
 		userID, strings.ToLower(token)); err != nil {
 		return fmt.Errorf("delete APNs device: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) devicesFor(ctx context.Context, userID int64) ([]APNSDevice, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT token, environment FROM apns_devices WHERE user_id = $1`, userID)
+// devicesFor lists the iPhones a push can go to: registered and not disabled.
+func (s *Service) devicesFor(ctx context.Context, q queryer, userID int64) ([]pushDevice, error) {
+	rows, err := q.QueryContext(ctx,
+		`SELECT id, token, environment FROM push_devices
+		 WHERE user_id = $1 AND disabled_at IS NULL ORDER BY id`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("load APNs devices: %w", err)
 	}
 	defer rows.Close()
-	devices := []APNSDevice{}
+	devices := []pushDevice{}
 	for rows.Next() {
-		var d APNSDevice
-		if err := rows.Scan(&d.Token, &d.Environment); err != nil {
+		var d pushDevice
+		if err := rows.Scan(&d.id, &d.token, &d.environment); err != nil {
 			return nil, fmt.Errorf("scan APNs device: %w", err)
 		}
 		devices = append(devices, d)
@@ -306,45 +320,18 @@ func (s *Service) devicesFor(ctx context.Context, userID int64) ([]APNSDevice, e
 	return devices, rows.Err()
 }
 
-// sendToDevices pushes one notification to every iPhone of its recipient.
-// Returns whether any accepted it and the last refusal, for the record.
-func (s *Service) sendToDevices(ctx context.Context, devices []APNSDevice, item duePush) (bool, error) {
-	payload, err := newAPNSPayload(item)
-	if err != nil {
-		return false, fmt.Errorf("encode APNs payload: %w", err)
+// disableDevice records that APNs called the token dead. The row stays: it
+// says what happened and when, and a new registration switches it back on.
+func (s *Service) disableDevice(ctx context.Context, deviceID int64) {
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE push_devices SET disabled_at = NOW() WHERE id = $1`, deviceID); err != nil {
+		s.log.WithError(err).Error("Failed to disable a retired APNs device")
 	}
-	reached := false
-	var lastErr error
-	for _, device := range devices {
-		result, err := s.apns.send(ctx, device, payload, item.notificationID)
-		switch {
-		case err != nil:
-			s.recordDeviceFailure(ctx, device.Token)
-			lastErr = err
-		case result.status == http.StatusOK:
-			reached = true
-			if _, err := s.db.ExecContext(ctx,
-				`UPDATE apns_devices SET last_used_at = NOW(), failures = 0 WHERE token = $1`, device.Token); err != nil {
-				s.log.WithError(err).Error("Failed to record a successful APNs push")
-			}
-		case result.gone():
-			// The app was removed or the token belongs elsewhere: retrying it
-			// can never work.
-			if _, err := s.db.ExecContext(ctx, `DELETE FROM apns_devices WHERE token = $1`, device.Token); err != nil {
-				s.log.WithError(err).Error("Failed to delete a retired APNs device")
-			}
-			lastErr = fmt.Errorf("APNs: %d %s", result.status, result.reason)
-		default:
-			s.recordDeviceFailure(ctx, device.Token)
-			lastErr = fmt.Errorf("APNs answered %d %s", result.status, result.reason)
-		}
-	}
-	return reached, lastErr
 }
 
-func (s *Service) recordDeviceFailure(ctx context.Context, token string) {
+func (s *Service) recordDeviceFailure(ctx context.Context, deviceID int64) {
 	if _, err := s.db.ExecContext(ctx,
-		`UPDATE apns_devices SET failures = failures + 1 WHERE token = $1`, token); err != nil {
+		`UPDATE push_devices SET failures = failures + 1 WHERE id = $1`, deviceID); err != nil {
 		s.log.WithError(err).Error("Failed to record an APNs failure")
 	}
 }

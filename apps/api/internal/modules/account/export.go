@@ -290,11 +290,7 @@ func (s *Service) buildExport(ctx context.Context, exportID string, userID int64
 		return fmt.Errorf("mark ready: %w", err)
 	}
 
-	// The archive expires. Telling them is the difference between a download
-	// and a build nobody collected.
-	s.notify(ctx, userID, "export_ready", "Выгрузка данных готова",
-		"Архив с вашими данными собран. Ссылка действует ограниченное время.",
-		"/settings/privacy")
+	s.announceExport(ctx, userID, exportID)
 
 	s.log.Info("Data export ready", "user_id", userID, "export_id", exportID, "bytes", buf.Len())
 	return nil
@@ -420,4 +416,13 @@ func (s *Service) PurgeExpiredExports(ctx context.Context) (int, error) {
 	}
 
 	return removed, nil
+}
+
+// announceExport tells the person their archive is ready. It expires, so
+// telling them is the difference between a download and a build nobody
+// collected. The app opens the export itself (notification-targets).
+func (s *Service) announceExport(ctx context.Context, userID int64, exportID string) {
+	s.notify(ctx, userID, "export_ready", "Выгрузка данных готова",
+		"Архив с вашими данными собран. Ссылка действует ограниченное время.",
+		"/settings/privacy", map[string]string{"export_id": exportID})
 }
