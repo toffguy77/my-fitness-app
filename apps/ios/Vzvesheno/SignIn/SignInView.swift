@@ -54,10 +54,12 @@ struct SignInView: View {
                     .accessibilityIdentifier("signIn.submit")
 
                     VStack(alignment: .leading, spacing: 0) {
-                        NavigationLink("Войти по ссылке из письма") { MagicLinkView(initialEmail: email) }
-                            .frame(minHeight: DS.Size.touch)
-                        NavigationLink("Создать аккаунт") { RegisterView() }
-                            .frame(minHeight: DS.Size.touch)
+                        NavigationLink { MagicLinkView(initialEmail: email) } label: {
+                            linkLabel("Войти по ссылке из письма")
+                        }
+                        NavigationLink { RegisterView() } label: {
+                            linkLabel("Создать аккаунт")
+                        }
                     }
                     .dsText(DS.Typography.callout)
                     .fontWeight(.semibold)
@@ -97,6 +99,13 @@ struct SignInView: View {
             .accessibilityIdentifier("screen.signIn")
             .task { await loadProviders() }
         }
+    }
+
+    /// Ссылка-строка с областью нажатия 44 pt по всей ширине.
+    private func linkLabel(_ title: String) -> some View {
+        Text(title)
+            .frame(maxWidth: .infinity, minHeight: DS.Size.touch, alignment: .leading)
+            .contentShape(Rectangle())
     }
 
     static func providerTitle(_ provider: String) -> String {

@@ -32,8 +32,13 @@ struct ShellView: View {
         .sheet(isPresented: $model.showCatalogue) {
             NavigationStack {
                 CatalogueView()
-                    .toolbar {
-                        Button("Готово") { model.showCatalogue = false }
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Закрыть") { model.showCatalogue = false }
+                            .buttonStyle(DSButtonStyle(.secondary))
+                            .padding(.horizontal, DS.Space.screenX)
+                            .padding(.vertical, DS.Space.s2)
+                            .background(DS.Color.bgCanvas)
+                            .accessibilityIdentifier("catalogue.close")
                     }
             }
         }

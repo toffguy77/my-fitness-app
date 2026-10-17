@@ -96,6 +96,11 @@ final class AccessibilityAuditUITests: XCTestCase {
         try app.performAccessibilityAudit { issue in
             print("ACCESSIBILITY AUDIT: \(issue.compactDescription) | \(issue.detailedDescription) | "
                   + "\(issue.element?.debugDescription.prefix(300) ?? "нет элемента")")
+            // Контраст недоступного элемента WCAG 1.4.3 не нормирует: кнопка
+            // «Войти» до ввода почты и пароля и должна выглядеть погашенной.
+            if issue.auditType == .contrast, let element = issue.element, !element.isEnabled {
+                return true
+            }
             return false
         }
     }

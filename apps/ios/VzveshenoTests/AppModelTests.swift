@@ -26,6 +26,8 @@ final class AppModelTests: XCTestCase {
         ]
         for (scenario, state) in expected {
             let model = await started(scenario)
+            // Свежая /config приходит фоном после запуска — дождаться её.
+            await model.refreshConfig()
             XCTAssertEqual(model.launch, state, scenario.rawValue)
         }
     }
