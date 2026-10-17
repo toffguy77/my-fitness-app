@@ -105,6 +105,17 @@ public actor APIClient {
         return try EnvelopeDecoder.decode(T.self, data: raw.data, status: raw.status)
     }
 
+    /// Ответ без конверта: `GET /api/v1/config` отдаёт объект как есть.
+    public func sendBare<T: Decodable & Sendable>(_ endpoint: Endpoint, as type: T.Type = T.self) async throws -> T {
+        let raw = try await sendRaw(endpoint)
+        guard (200..<300).contains(raw.status) else { throw raw.apiError }
+        do {
+            return try JSONDecoder.api.decode(T.self, from: raw.data)
+        } catch {
+            throw APIError.decoding(EnvelopeDecoder.describe(error))
+        }
+    }
+
     /// Запрос без разбора: очередь сама решает, что значит статус.
     public func sendRaw(_ endpoint: Endpoint) async throws -> RawResponse {
         guard endpoint.method == .get else {
@@ -178,5 +189,12 @@ public actor APIClient {
             request.setValue(key, forHTTPHeaderField: "Idempotency-Key")
         }
         return request
+    }
+}
+
+extension RawResponse {
+    /// Ошибка этого ответа с кодом и параметрами из конверта.
+    public var apiError: APIError {
+        EnvelopeDecoder.serverError(data: data, status: status)
     }
 }

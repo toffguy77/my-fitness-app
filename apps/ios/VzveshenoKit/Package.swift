@@ -23,15 +23,18 @@ let outboxDependencies: [Target.Dependency] = ["API"]
 
 // Каталоги цветов обрабатывает actool, которого на Linux нет: там DesignSystem
 // собирается без ресурсов (SwiftUI там всё равно недоступен).
+// Plurals.xcstrings — String Catalog, который читает DS.Plural сам (а не
+// компилирует Xcode): склонение одинаково на iOS и в тестах на Linux.
 #if os(Linux)
 let designSystemResources: [Resource] = [
     .copy("Fonts"),
+    .copy("Plurals.xcstrings"),
 ]
 #else
 let designSystemResources: [Resource] = [
     .process("Generated/Colors.xcassets"),
     .copy("Fonts"),
-    .process("Localizable.xcstrings"),
+    .copy("Plurals.xcstrings"),
 ]
 #endif
 
@@ -61,7 +64,7 @@ let package = Package(
         // Generated → ../../../../../packages/design-tokens/dist/ios, а не копия.
         .target(
             name: "DesignSystem",
-            exclude: linuxExcludes(["Localizable.xcstrings", "Generated/Colors.xcassets"]),
+            exclude: linuxExcludes(["Generated/Colors.xcassets"]),
             resources: designSystemResources,
             swiftSettings: strictSwift
         ),
@@ -82,7 +85,7 @@ let package = Package(
     ]
 )
 
-/// Файлы, которые на Linux не нужны вовсе (String Catalog без SwiftUI-клиента).
+/// Файлы, которые на Linux не собираются (каталог цветов — работа actool).
 func linuxExcludes(_ paths: [String]) -> [String] {
     #if os(Linux)
     return paths

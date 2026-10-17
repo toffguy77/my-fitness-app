@@ -182,3 +182,21 @@ final class APIClientTests: XCTestCase {
         XCTAssertNil(transport.requests.last?.header("Authorization"))
     }
 }
+
+final class BareResponseTests: XCTestCase {
+    struct Config: Decodable, Sendable, Equatable {
+        struct IOS: Decodable, Sendable, Equatable {
+            let minimum: String
+            enum CodingKeys: String, CodingKey { case minimum = "min_supported_version" }
+        }
+        let ios: IOS
+    }
+
+    /// `GET /api/v1/config` отвечает без конверта (router/client_config.go).
+    func testConfigWithoutEnvelope() async throws {
+        let transport = StubTransport { _ in StubResponse(status: 200, body: Data(#"{"ios":{"min_supported_version":"1.2.0"}}"#.utf8)) }
+        let api = APIClient(baseURL: URL(string: "https://burcev.team")!, clientHeader: "x", transport: transport)
+        let config: Config = try await api.sendBare(.get("/api/v1/config", requiresAuth: false))
+        XCTAssertEqual(config.ios.minimum, "1.2.0")
+    }
+}

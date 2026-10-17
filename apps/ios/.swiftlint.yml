@@ -47,6 +47,10 @@ function_body_length:
   warning: 80
   error: 120
 
+# Таблицы соответствия (маршрутизатор, роли) — это switch, а не ветвистая логика.
+cyclomatic_complexity:
+  ignores_case_statements: true
+
 large_tuple:
   warning: 4
 
