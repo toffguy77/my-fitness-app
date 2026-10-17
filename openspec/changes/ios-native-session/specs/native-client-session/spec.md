@@ -4,10 +4,11 @@
 
 Нативные эндпоинты входа SHALL — `POST /api/v1/auth/native/login`,
 `/native/register`, `/native/magic-link/consume`, `/native/apple`,
-`/native/oauth/exchange` и `/native/consents` — при успехе отвечать телом
-`{access_token, refresh_token, expires_in, refresh_expires_in, user}`. Ответ
-MUST NOT содержать заголовок `Set-Cookie` с `refresh_token` или
-`session_present`.
+`/native/oauth/exchange` и `/native/consents` — при успехе отвечать
+`{access_token, refresh_token, expires_in, refresh_expires_in, user}` в поле
+`data` стандартного ответа API (`{status: "success", data: {...}}`);
+`expires_in` и `refresh_expires_in` — секунды. Ответ MUST NOT содержать
+заголовок `Set-Cookie` с `refresh_token` или `session_present`.
 
 #### Scenario: Вход по паролю из приложения
 
@@ -25,13 +26,22 @@ MUST NOT содержать заголовок `Set-Cookie` с `refresh_token` �
 
 `POST /api/v1/auth/native/refresh` и `POST /api/v1/auth/native/logout` SHALL
 брать refresh-токен только из поля `refresh_token` тела. Cookie
-`refresh_token` в запросе MUST игнорироваться.
+`refresh_token` в запросе MUST игнорироваться. Токен, выпущенный вебу
+(`client_kind = web`), нативные эндпоинты MUST NOT принимать, а веб-эндпоинты
+MUST NOT принимать нативный токен: иначе нативный путь стал бы способом
+вынуть веб-сессию в тело ответа.
 
 #### Scenario: Запрос с cookie браузера без токена в теле
 
 - **WHEN** на `POST /api/v1/auth/native/refresh` приходит запрос с действующей веб-cookie `refresh_token` и пустым телом
 - **THEN** ответ `400` с кодом `validation`
 - **AND** новый токен не выпущен и cookie не ротирована
+
+#### Scenario: Веб-токен в теле нативного обновления
+
+- **WHEN** на `POST /api/v1/auth/native/refresh` в поле `refresh_token` приходит токен веб-сессии
+- **THEN** ответ `401` с кодом `token_invalid`
+- **AND** токен не ротирован и не отозван
 
 #### Scenario: Обновление нативной сессии
 
