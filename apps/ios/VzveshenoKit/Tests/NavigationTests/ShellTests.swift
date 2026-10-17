@@ -137,6 +137,7 @@ final class PostSignInRouteTests: XCTestCase {
 
     func testExportOpensUnderTheProfile() {
         XCTAssertEqual(Router.target(for: .export, shell: .client), NavigationTarget(tab: .today, path: [.profile, .export]))
-        XCTAssertEqual(Router.target(for: .article(slug: "x"), shell: .client), NavigationTarget(tab: .articles, path: [.article(slug: "x")]))
+        XCTAssertEqual(Router.target(for: .article(slug: "x"), shell: .client),
+                       NavigationTarget(tab: .articles, path: [.article(slug: "x")]))
     }
 }

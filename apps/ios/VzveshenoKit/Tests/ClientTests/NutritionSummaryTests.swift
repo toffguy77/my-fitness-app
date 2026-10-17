@@ -6,6 +6,8 @@ import XCTest
 final class NutritionSummaryTests: XCTestCase {
     private let nbsp = NumberText.nbsp
 
+    private let calculated = CalculatedTargets(calories: 2472, protein: 125, fat: 80, carbs: 230)
+
     private func day(_ calories: Int, protein: Int = 0, fat: Int = 0, carbs: Int = 0) -> DailyMetrics {
         DailyMetrics(date: "2025-10-17", calories: calories, protein: protein, fat: fat, carbs: carbs)
     }
@@ -39,14 +41,14 @@ final class NutritionSummaryTests: XCTestCase {
 
     func testActivePlanWinsOverCalculatedNorm() {
         let summary = NutritionSummary(day: day(549), plan: WeeklyPlan(caloriesGoal: 2240, proteinGoal: 140),
-                                       targets: TargetsAnswer(targets: CalculatedTargets(calories: 2472, protein: 125, fat: 80, carbs: 230)))
+                                       targets: TargetsAnswer(targets: calculated))
         XCTAssertEqual(summary.norm?.calories, 2240)
         XCTAssertEqual(summary.sourceLabel, "норма куратора")
     }
 
     func testCalculatedNormSaysSo() {
         let summary = NutritionSummary(day: day(549), plan: nil,
-                                       targets: TargetsAnswer(targets: CalculatedTargets(calories: 2472, protein: 125, fat: 80, carbs: 230)))
+                                       targets: TargetsAnswer(targets: calculated))
         XCTAssertEqual(summary.sourceLabel, "рассчитано автоматически")
     }
 

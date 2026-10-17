@@ -109,29 +109,17 @@ public final class TodayModel {
 
     // MARK: Производные
 
-    public var nutrition: NutritionSummary? {
-        snapshot.map { NutritionSummary(day: $0.day, plan: $0.plan, targets: $0.targets) }
+    /// Состояние экрана для отрисовки.
+    public var state: TodayScreenState {
+        TodayScreenState(snapshot: snapshot, selected: selected, today: today, calendar: calendar, photoUploaded: photoUploaded)
     }
 
-    public var weekStrip: [WeekStripDay] {
-        WeekStrip.days(selected: selected, today: today, metrics: snapshot?.week ?? [], calendar: calendar)
-    }
-
-    public var visibility: TodayVisibility {
-        TodayVisibility(selected: selected, today: today, calendar: calendar,
-                        firstWeekActive: snapshot?.onboarding?.active ?? false,
-                        hasTasks: !(snapshot?.tasks.isEmpty ?? true),
-                        photoUploadedThisWeek: photoUploaded,
-                        hasPlan: snapshot?.plan != nil,
-                        hasHistory: CalorieBar.hasData(snapshot?.history))
-    }
+    public var nutrition: NutritionSummary? { state.nutrition }
 
     public private(set) var photoUploaded = false
 
-    /// Заголовок: «Сегодня» или дата выбранного дня.
-    public var title: String { selected == today ? "Сегодня" : DayText.dayMonth(selected) }
-    /// Строка над заголовком: «пятница, 17 октября».
-    public var subtitle: String { DayText.full(selected, calendar: calendar) }
+    public var title: String { state.title }
+    public var subtitle: String { state.subtitle }
 
     // MARK: Загрузка
 
@@ -253,8 +241,9 @@ public final class TodayModel {
     }
 
     /// GET с кэшем экрана: ответ сохраняется; без сети — последний сохранённый.
-    private nonisolated func getCached<T: Decodable & Sendable>(_ type: T.Type, _ path: String, _ query: [URLQueryItem] = [],
-                                                                  userID: Int64?) async -> Result<(T, Bool), APIError> {
+    private nonisolated func getCached<T: Decodable & Sendable>(
+        _ type: T.Type, _ path: String, _ query: [URLQueryItem] = [], userID: Int64?
+    ) async -> Result<(T, Bool), APIError> {
         let endpoint = Endpoint.get(path, query: query)
         let key = "today" + path + query.map { "_\($0.name)=\($0.value ?? "")" }.joined()
         do {

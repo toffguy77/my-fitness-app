@@ -42,7 +42,7 @@ final class AppModelTests: XCTestCase {
     func testClientTabsHaveNoChatTab() async {
         let model = await started(.client)
         guard case let .shell(shell, _) = model.launch else { return XCTFail("нет оболочки") }
-        XCTAssertEqual(shell.tabs.map(\.title), ["Сегодня", "Дневник", "Меню", "Ещё"])
+        XCTAssertEqual(shell.tabs.map(\.title), ["Сегодня", "Дневник", "Меню", "Статьи"])
     }
 
     func testDeepLinkOpensTabAndPath() async throws {

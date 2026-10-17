@@ -24,6 +24,8 @@ struct SignInFlow: View {
             }
         case let .resetPassword(token):
             NavigationStack { ResetPasswordView(token: token) }
+        case .linkExpired:
+            NavigationStack { LinkExpiredView() }
         }
     }
 }
@@ -32,6 +34,7 @@ struct SignInFlow: View {
 struct DSField: View {
     let title: String
     @Binding var text: String
+    var placeholder: String?
     var secure = false
     var contentType: UITextContentType?
     var keyboard: UIKeyboardType = .default
@@ -44,9 +47,9 @@ struct DSField: View {
                 .foregroundStyle(DS.Color.fgMuted)
             Group {
                 if secure {
-                    SecureField(title, text: $text)
+                    SecureField(placeholder ?? title, text: $text)
                 } else {
-                    TextField(title, text: $text)
+                    TextField(placeholder ?? title, text: $text)
                         .keyboardType(keyboard)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()

@@ -1,4 +1,5 @@
 import API
+import Client
 import DesignSystem
 import Foundation
 import Health
@@ -10,38 +11,6 @@ import Session
 import WidgetKit
 #endif
 
-/// Всё, что связано с аккаунтом на устройстве, кроме Keychain: стирается при выходе.
-struct AccountEraser: AccountDataEraser {
-    let cache: ScreenCache
-    let outbox: Outbox
-    let snapshot: DaySnapshotStore
-    let health: HealthSync
-
-    func eraseAccountData() async {
-        // Наблюдатели и фоновая доставка Здоровья останавливаются: иначе
-        // HealthKit будил бы приложение без сессии.
-        await health.erase()
-        cache.eraseAll()
-        await outbox.eraseAll()
-        snapshot.erase()
-        #if canImport(WidgetKit)
-        // Виджет не показывает данные прежнего аккаунта ни минуты.
-        WidgetCenter.shared.reloadAllTimelines()
-        #endif
-    }
-}
-
-/// Ссылка на сессию для Здоровья: кто вошёл сейчас.
-final class SessionRef: @unchecked Sendable {
-    private let lock = NSLock()
-    private weak var _store: SessionStore?
-
-    var store: SessionStore? {
-        get { lock.withLock { _store } }
-        set { lock.withLock { _store = newValue } }
-    }
-}
-
 /// Состояние приложения: сессия, выбор оболочки, навигация и вход.
 @MainActor
 @Observable
@@ -51,10 +20,12 @@ final class AppModel {
         case form
         case pending(PendingSignIn)
         case resetPassword(token: String)
+        /// Ссылка из письма не подошла: просрочена, использована или чужая.
+        case linkExpired
     }
 
     private(set) var launch: LaunchState = .loading
-    private(set) var user: SessionUser?
+    internal(set) var user: SessionUser?
     private(set) var offline = false
     private(set) var config: ClientConfig?
     var selectedTab: AppTab?
@@ -64,6 +35,13 @@ final class AppModel {
     var signInStep: SignInStep = .form
     /// Ссылка из письма не сработала — почему.
     var linkError: String?
+    /// Вход аккаунта, ждущего удаления: экран «Аккаунт будет удалён».
+    internal(set) var pendingDeletion: PendingDeletion?
+    /// Имя из профиля — для аватара в шапке.
+    private(set) var profileName: String?
+    /// Модель «Сегодня» вошедшего клиента.
+    private(set) var today: TodayModel?
+    var profileTimeZone = TimeZone.current
     /// Ссылка входа пришла при открытой сессии — ждёт подтверждения
     /// «Войти в другой аккаунт? Текущий сеанс завершится».
     var authLinkAwaitingConfirmation: AuthLink?
@@ -90,6 +68,9 @@ final class AppModel {
     let health: HealthSync
     private let healthStore: HealthStore
     let messages = ErrorMessages()
+    let realtime: RealtimeConnection
+    let photoWeeks: PhotoWeekStore
+    private var realtimeTask: Task<Void, Never>?
     private let pendingLinks = PendingLinkStore()
     private let configLoader: ConfigLoader
     private let configCache: ConfigCache
@@ -123,10 +104,14 @@ final class AppModel {
         self.outbox = outbox
         self.health = health
         self.healthStore = healthStore
+        let photoWeeks = FilePhotoWeekStore(url: directory.appendingPathComponent("photo-weeks.json"))
+        self.photoWeeks = photoWeeks
         session = SessionStore(api: api, secure: secure, installMarker: installMarker,
-                               erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health)])
+                               erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health,
+                                                       photoWeeks: photoWeeks)])
         sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
+        realtime = RealtimeConnection(api: api)
         let configCache = FileConfigCache(url: directory.appendingPathComponent("config.json"))
         self.configCache = configCache
         configLoader = ConfigLoader(cache: configCache) {
@@ -214,34 +199,104 @@ final class AppModel {
         recompute()
     }
 
+    /// `GET /users/profile` → `{profile: {name, onboarding_completed, settings}}`:
+    /// язык запросов, пояс профиля и признак онбординга. (Раньше разбиралось
+    /// без обёртки `profile`, и язык с поясом не применялись.)
     private func refreshLanguage() async {
-        struct Profile: Decodable, Sendable {
-            struct Settings: Decodable, Sendable {
-                let language: String?
-                let timezone: String?
+        struct Answer: Decodable, Sendable {
+            struct Profile: Decodable, Sendable {
+                struct Settings: Decodable, Sendable {
+                    let language: String?
+                    let timezone: String?
+                }
+                let name: String?
+                let onboardingCompleted: Bool?
+                let settings: Settings?
+
+                enum CodingKeys: String, CodingKey {
+                    case name, settings
+                    case onboardingCompleted = "onboarding_completed"
+                }
             }
-            let settings: Settings?
+            let profile: Profile
         }
-        let profile = try? await api.send(.get("/api/v1/users/profile"), as: Profile.self)
-        await api.setLanguage(profile?.settings?.language)
+        guard let answer = try? await api.send(.get("/api/v1/users/profile"), as: Answer.self) else { return }
+        let profile = answer.profile
+        profileName = profile.name
+        await api.setLanguage(profile.settings?.language)
         // Сутки шагов и дата взвешивания — по поясу профиля, не устройства.
-        if let timezone = profile?.settings?.timezone {
+        if let timezone = profile.settings?.timezone {
             await health.setTimeZone(timezone)
+            if let zone = TimeZone(identifier: timezone), zone != profileTimeZone {
+                profileTimeZone = zone
+                today = nil
+            }
+        }
+        if let completed = profile.onboardingCompleted, var current = await session.user, current.onboardingCompleted != completed {
+            current.onboardingCompleted = completed
+            await session.updateUser(current)
+            user = current
         }
     }
 
-    private func recompute() {
+    func recompute() {
         let before = launch
         launch = LaunchState.resolve(
             isSignedIn: user != nil,
             serverRole: serverRole,
             cachedRole: user.map { Role($0.role) },
             serverUnreachable: offline,
-            updateRequired: VersionGate.isUpdateRequired(current: environment.version, config: config)
+            updateRequired: VersionGate.isUpdateRequired(current: environment.version, config: config),
+            pendingDeletion: pendingDeletion != nil,
+            emailVerified: user?.emailVerified,
+            onboardingCompleted: user?.onboardingCompleted
         )
         if case let .shell(shell, _) = launch {
             if case .shell = before {} else { selectedTab = shell.rootTab }
+            if shell == .client { startClient() }
+        } else {
+            stopClient()
         }
+    }
+
+    // MARK: Клиент
+
+    /// «Сегодня» и сокет — пока открыта клиентская оболочка.
+    private func startClient() {
+        if today == nil {
+            let model = TodayModel(api: api, outbox: outbox, cache: cache, photoWeeks: photoWeeks,
+                                   calendar: DayCalendar(timeZone: profileTimeZone),
+                                   userID: { [session] in await session.user?.id })
+            model.onWaterChanged = { [health] day, glasses, glassSize in
+                Task { await health.setWater(day: day, glasses: glasses, glassMilliliters: Double(glassSize), at: Date()) }
+            }
+            model.observeDayChanges()
+            today = model
+        }
+        if realtimeTask == nil { connectRealtime() }
+    }
+
+    private func stopClient() {
+        today = nil
+        realtimeTask?.cancel()
+        realtimeTask = nil
+        Task { await realtime.disconnect() }
+    }
+
+    private func connectRealtime() {
+        realtimeTask?.cancel()
+        realtimeTask = Task { [weak self, realtime] in
+            for await event in await realtime.connect() {
+                await self?.today?.handle(event)
+            }
+        }
+    }
+
+    /// Приложение ушло в фон: сокет закрывается, вернётся по переднему плану.
+    func onBackground() {
+        realtimeTask?.cancel()
+        realtimeTask = nil
+        Task { await realtime.disconnect() }
     }
 
     private func watchSessionEndings() async {
@@ -253,6 +308,8 @@ final class AppModel {
             serverRole = nil
             paths = [:]
             signInStep = .form
+            pendingDeletion = nil
+            profileName = nil
             Telemetry.identify(id: nil, role: nil)
             recompute()
         }
@@ -270,6 +327,7 @@ final class AppModel {
             // смену аккаунта человек подтверждает до этого — confirmSwitchingAccount.
             try await session.adopt(newSession)
             user = newSession.user
+            pendingDeletion = newSession.pendingDeletion
             sessionMessage = nil
             signInStep = .form
             serverRole = nil
@@ -356,6 +414,10 @@ final class AppModel {
         case let .magicLink(token):
             do {
                 try await complete(try await auth.consumeMagicLink(token: token))
+            } catch APIError.server(_, "token_invalid", _) {
+                // Просроченная, использованная и поддельная ссылка сервер не
+                // различает — для человека это одно: «Ссылка устарела».
+                signInStep = .linkExpired
             } catch {
                 linkError = messages.message(for: error)
             }
@@ -396,6 +458,10 @@ final class AppModel {
     func onForeground() async {
         await session.flushPendingLogout()
         await drainOutbox()
+        if today != nil {
+            connectRealtime()
+            await today?.refresh()
+        }
         await refreshConfig()
         await health.refresh()
         await refreshHealthState()

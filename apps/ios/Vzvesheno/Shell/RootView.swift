@@ -16,6 +16,12 @@ struct RootView: View {
                 SignInFlow()
             case .updateRequired:
                 UpdateRequiredView()
+            case .pendingDeletion:
+                PendingDeletionView()
+            case .verifyEmail:
+                VerifyEmailView()
+            case .onboarding:
+                OnboardingFlow()
             case let .shell(shell, offline):
                 switch shell {
                 case .webOnly:

@@ -23,7 +23,8 @@ final class TodayModelTests: XCTestCase {
             case "/api/v1/dashboard/week": return .success(#"{"metrics":[],"count":0}"#)
             case "/api/v1/dashboard/weekly-plan": return .success(#"{"plan":null}"#)
             case "/api/v1/nutrition-calc/targets":
-                return .success(#"{"id":1,"date":"2025-10-17","calories":2472,"protein":125,"fat":80,"carbs":230,"workout_bonus":0,"source":"calculated"}"#)
+                return .success(#"{"id":1,"date":"2025-10-17","calories":2472,"protein":125,"fat":80,"carbs":230,"#
+                                + #""workout_bonus":0,"source":"calculated"}"#)
             case "/api/v1/food-tracker/water":
                 return request.method == "POST" ? .success(#"{"glasses":6,"goal":8,"glass_size":250,"enabled":true}"#) : .success(water)
             case "/api/v1/dashboard/tasks": return .success(#"{"tasks":[],"count":0,"week":0}"#)
@@ -32,7 +33,8 @@ final class TodayModelTests: XCTestCase {
             case "/api/v1/dashboard/progress": return .success(#"{"weight_trend":[],"nutrition_adherence":0,"target_weight":null}"#)
             case "/api/v1/nutrition-calc/history": return .success(#"{"days":[]}"#)
             case "/api/v1/notifications/unread-counts": return .success(#"{"main":2,"content":1}"#)
-            case "/api/v1/dashboard/daily": return .success(#"{"id":"x","date":"2025-10-17","calories":0,"steps":0,"workout_completed":false}"#)
+            case "/api/v1/dashboard/daily":
+                return .success(#"{"id":"x","date":"2025-10-17","calories":0,"steps":0,"workout_completed":false}"#)
             default: return .error(404, code: "not_found")
             }
         }

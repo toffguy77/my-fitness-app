@@ -37,6 +37,7 @@ struct VzveshenoApp: App {
             case .active:
                 Task { await model.onForeground() }
             case .background:
+                model.onBackground()
                 OutboxBackgroundTask.schedule(id: model.environment.outboxTaskID)
             default:
                 break

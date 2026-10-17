@@ -80,9 +80,9 @@ public struct DailyMetrics: Decodable, Sendable, Equatable {
         workoutTypeDurations = try container.decodeIfPresent([String: Int].self, forKey: .workoutTypeDurations)
         workoutDuration = try container.decodeIfPresent(Int.self, forKey: .workoutDuration)
         // Незнакомый источник — не повод терять день.
-        stepsSource = (try? container.decodeIfPresent(MetricSource.self, forKey: .stepsSource)) ?? nil
-        weightSource = (try? container.decodeIfPresent(MetricSource.self, forKey: .weightSource)) ?? nil
-        workoutSource = (try? container.decodeIfPresent(MetricSource.self, forKey: .workoutSource)) ?? nil
+        stepsSource = try? container.decodeIfPresent(MetricSource.self, forKey: .stepsSource)
+        weightSource = try? container.decodeIfPresent(MetricSource.self, forKey: .weightSource)
+        workoutSource = try? container.decodeIfPresent(MetricSource.self, forKey: .workoutSource)
         updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
     }
 }

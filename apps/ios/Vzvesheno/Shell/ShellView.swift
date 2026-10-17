@@ -4,9 +4,9 @@ import SwiftUI
 
 /// Оболочка роли: таббар вкладок роли и стек навигации в каждой.
 ///
-/// Клиент: «Сегодня», «Дневник», «Меню», «Ещё»; переписка с куратором —
-/// значок в шапке рядом с профилем. Куратор: «Клиенты», «Чаты», «Заявки»,
-/// «Обращения». Суперадмин: «Заявки», «Обращения».
+/// Клиент: «Сегодня», «Дневник», «Меню», «Статьи»; уведомления, переписка
+/// с куратором и профиль — кнопки шапки «Сегодня». Куратор: «Клиенты»,
+/// «Чаты», «Заявки», «Обращения». Суперадмин: «Заявки», «Обращения».
 struct ShellView: View {
     @Environment(AppModel.self) private var model
     let shell: Shell
@@ -61,7 +61,7 @@ extension AppTab {
         case .today: return String(localized: "tab.today")
         case .diary: return String(localized: "tab.diary")
         case .menu: return String(localized: "tab.menu")
-        case .more: return String(localized: "tab.more")
+        case .articles: return String(localized: "tab.articles")
         case .clients: return String(localized: "tab.clients")
         case .chats: return String(localized: "tab.chats")
         case .leads: return String(localized: "tab.leads")
@@ -71,10 +71,10 @@ extension AppTab {
 
     var systemImage: String {
         switch self {
-        case .today: return "sun.max"
+        case .today: return "gauge.with.dots.needle.33percent"
         case .diary: return "fork.knife"
         case .menu: return "menucard"
-        case .more: return "ellipsis.circle"
+        case .articles: return "doc.text"
         case .clients: return "person.2"
         case .chats: return "bubble.left.and.bubble.right"
         case .leads: return "tray"
@@ -88,7 +88,7 @@ extension AppTab {
         case .today: return "Дашборд дня: питание, вода, шаги, вес и задачи от куратора."
         case .diary: return "Дневник питания: приёмы пищи, запись поиском, штрихкодом и по фото."
         case .menu: return "План питания на неделю и список покупок."
-        case .more: return "Статьи, профиль и настройки."
+        case .articles: return "Лента статей о питании, тренировках и здоровье."
         case .clients: return "Сводка по клиентам и те, кому нужно внимание."
         case .chats: return "Переписки с клиентами."
         case .leads: return "Очередь заявок."
@@ -106,14 +106,19 @@ private struct TabRoot: View {
     let offline: Bool
 
     var body: some View {
+        if shell == .client && tab == .today {
+            TodayScreen(offline: offline)
+        } else {
+            placeholder
+        }
+    }
+
+    private var placeholder: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Space.s4) {
                 if offline {
                     OfflineBanner()
                         .accessibilityIdentifier("banner.offline")
-                }
-                if tab == .today && model.healthAccessHint {
-                    HealthAccessHintCard()
                 }
                 DSCard {
                     VStack(alignment: .leading, spacing: DS.Space.s2) {
@@ -127,9 +132,6 @@ private struct TabRoot: View {
                             .foregroundStyle(DS.Color.fgSubtle)
                     }
                 }
-                if tab == .more {
-                    MoreLinks()
-                }
             }
             .padding(.horizontal, DS.Space.screenX)
             .padding(.vertical, DS.Space.s4)
@@ -142,16 +144,6 @@ private struct TabRoot: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
-            if shell == .client && tab == .today {
-                // Переписка с куратором — значок в шапке, а не вкладка.
-                Button {
-                    model.open(.chat)
-                } label: {
-                    Image(systemName: "bubble.left.and.text.bubble.right")
-                }
-                .accessibilityLabel("Чат с куратором")
-                .accessibilityIdentifier("header.chat")
-            }
             if tab == shell.rootTab {
                 NavigationLink(value: Destination.notifications) {
                     Image(systemName: "bell")
@@ -186,63 +178,19 @@ private struct ProfileMenu: View {
     }
 }
 
-private struct MoreLinks: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // «Профиль → Здоровье»: профиль и настройки живут во вкладке «Ещё».
-            NavigationLink {
-                HealthScreen()
-            } label: {
-                row(String(localized: "health.title"), "heart")
-            }
-            .accessibilityIdentifier("more.health")
-            Divider().overlay(DS.Color.lineDefault)
-            #if DEV_BUILD
-            Button { model.showCatalogue = true } label: {
-                row("Компоненты", "paintpalette")
-            }
-            .accessibilityIdentifier("more.catalogue")
-            Divider().overlay(DS.Color.lineDefault)
-            #endif
-            Button { Task { await model.signOut() } } label: {
-                row("Выйти", "rectangle.portrait.and.arrow.right")
-            }
-            .accessibilityIdentifier("more.signOut")
-        }
-        .background(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).fill(DS.Color.bgSurface))
-        .overlay(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).strokeBorder(DS.Color.lineDefault))
-        #if DEBUG
-        // Сценарий UI-теста: сколько раз подделка Здоровья получила системный
-        // запрос — по нему тест видит, что «Не сейчас» запроса не делает.
-        if let requests = model.uiTestHealthAuthorizationRequests {
-            Text(verbatim: "health.authRequests=\(requests)")
-                .dsText(DS.Typography.caption)
-                .foregroundStyle(DS.Color.fgMuted)
-                .accessibilityIdentifier("uitest.health.authRequests")
-        }
-        #endif
-    }
-
-    private func row(_ title: String, _ icon: String) -> some View {
-        HStack(spacing: DS.Space.s3) {
-            Image(systemName: icon).foregroundStyle(DS.Color.fgMuted).accessibilityHidden(true)
-            Text(title).dsText(DS.Typography.body).foregroundStyle(DS.Color.fgDefault)
-            Spacer()
-            Image(systemName: "chevron.right").foregroundStyle(DS.Color.fgSubtle).accessibilityHidden(true)
-        }
-        .padding(.horizontal, DS.Space.s4)
-        .frame(minHeight: 56)
-        .contentShape(Rectangle())
-    }
-}
-
 /// Экран пути навигации. Пока — заглушка с названием.
 private struct DestinationView: View {
     let destination: Destination
 
     var body: some View {
+        switch destination {
+        case .profile: ProfileScreen()
+        case .health: HealthScreen()
+        default: placeholder
+        }
+    }
+
+    private var placeholder: some View {
         VStack(spacing: DS.Space.s3) {
             Text(title)
                 .dsText(DS.Typography.title2)
@@ -267,6 +215,8 @@ private struct DestinationView: View {
         case .task: return "Задача"
         case .diaryDay: return "Дневник"
         case .curatorChat: return "Куратор"
+        case .profile: return "Профиль"
+        case .health: return "Здоровье"
         case .notifications: return "Уведомления"
         case .weeklyFeedback: return "Отзыв куратора"
         case .plan: return "План"
@@ -284,6 +234,8 @@ private struct DestinationView: View {
         case .task: return "task"
         case .diaryDay: return "diaryDay"
         case .curatorChat: return "curatorChat"
+        case .profile: return "profile"
+        case .health: return "health"
         case .notifications: return "notifications"
         case .weeklyFeedback: return "weeklyFeedback"
         case .plan: return "plan"

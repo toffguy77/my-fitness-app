@@ -12,11 +12,12 @@ final class HealthUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestScenario", "client", "-AppleLanguages", "(ru)", "-AppleLocale", "ru_RU"]
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["Ещё"].waitForExistence(timeout: 10))
-        app.tabBars.buttons["Ещё"].tap()
-        XCTAssertTrue(app.buttons["more.health"].waitForExistence(timeout: 5))
-        app.buttons["more.health"].tap()
-        XCTAssertTrue(app.staticTexts["Подключение Здоровья"].waitForExistence(timeout: 5))
+        // «Профиль → Здоровье»: аватар в шапке «Сегодня».
+        XCTAssertTrue(app.buttons["header.profile"].waitForExistence(timeout: 10))
+        app.buttons["header.profile"].tap()
+        XCTAssertTrue(app.buttons["profile.health"].waitForExistence(timeout: 5))
+        app.buttons["profile.health"].tap()
+        XCTAssertTrue(app.staticTexts["health.connect.title"].waitForExistence(timeout: 5))
         return app
     }
 
@@ -33,11 +34,11 @@ final class HealthUITests: XCTestCase {
         XCTAssertTrue(app.buttons["health.continue"].exists)
         app.buttons["health.notNow"].tap()
 
-        XCTAssertTrue(app.buttons["more.health"].waitForExistence(timeout: 5), "экран закрыт")
+        XCTAssertTrue(app.buttons["profile.health"].waitForExistence(timeout: 5), "экран закрыт")
         XCTAssertEqual(authorizationRequests(app), "health.authRequests=0")
 
-        app.buttons["more.health"].tap()
-        XCTAssertTrue(app.staticTexts["Подключение Здоровья"].waitForExistence(timeout: 5), "экран открывается снова")
+        app.buttons["profile.health"].tap()
+        XCTAssertTrue(app.staticTexts["health.connect.title"].waitForExistence(timeout: 5), "экран открывается снова")
         XCTAssertTrue(app.buttons["health.continue"].exists)
     }
 
@@ -51,7 +52,7 @@ final class HealthUITests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertEqual(authorizationRequests(app), "health.authRequests=1")
 
-        app.buttons["more.health"].tap()
+        app.buttons["profile.health"].tap()
         XCTAssertTrue(app.buttons["health.disconnect"].waitForExistence(timeout: 5))
         app.buttons["health.disconnect"].tap()
         XCTAssertTrue(app.buttons["health.continue"].waitForExistence(timeout: 5))

@@ -21,8 +21,19 @@ final class ShellUITests: XCTestCase {
     // ios-role-shell: четыре роли на заглушках /auth/me.
     func testClientShell() {
         let app = launch("client")
-        XCTAssertEqual(tabTitles(app), ["Сегодня", "Дневник", "Меню", "Ещё"])
-        XCTAssertTrue(app.buttons["header.chat"].exists, "чат с куратором — значок в шапке")
+        XCTAssertEqual(tabTitles(app), ["Сегодня", "Дневник", "Меню", "Статьи"])
+        XCTAssertTrue(app.buttons["header.chat"].waitForExistence(timeout: 10), "чат с куратором — значок в шапке")
+        XCTAssertTrue(app.buttons["header.notifications"].exists)
+        XCTAssertFalse(app.tabBars.buttons["Ещё"].exists)
+        XCTAssertFalse(app.tabBars.buttons["Куратор"].exists)
+    }
+
+    // Аватар открывает «Профиль» с пунктом «Здоровье».
+    func testAvatarOpensProfileWithHealth() {
+        let app = launch("client")
+        XCTAssertTrue(app.buttons["header.profile"].waitForExistence(timeout: 10))
+        app.buttons["header.profile"].tap()
+        XCTAssertTrue(app.buttons["profile.health"].waitForExistence(timeout: 5))
     }
 
     func testCoordinatorShell() {
@@ -51,16 +62,17 @@ final class ShellUITests: XCTestCase {
     // Сценарий «Нет сети, есть кэш профиля».
     func testOfflineWithCachedProfile() {
         let app = launch("offlineClient")
-        XCTAssertEqual(tabTitles(app), ["Сегодня", "Дневник", "Меню", "Ещё"])
+        XCTAssertEqual(tabTitles(app), ["Сегодня", "Дневник", "Меню", "Статьи"])
         XCTAssertTrue(app.staticTexts["Нет подключения"].waitForExistence(timeout: 5))
     }
 
     // 3.3: справочник открывается и показывает все компоненты.
     func testCatalogueShowsEveryComponent() {
         let app = launch("client")
-        XCTAssertTrue(app.tabBars.buttons["Ещё"].waitForExistence(timeout: 10))
-        app.tabBars.buttons["Ещё"].tap()
-        app.buttons["more.catalogue"].tap()
+        XCTAssertTrue(app.buttons["header.profile"].waitForExistence(timeout: 10))
+        app.buttons["header.profile"].tap()
+        XCTAssertTrue(app.buttons["profile.catalogue"].waitForExistence(timeout: 5))
+        app.buttons["profile.catalogue"].tap()
         let entries = ["card", "coachCard", "progressArc", "progressBar", "macroRemaining", "weekDots", "quickAdd",
                        "quickAddBar", "buttons", "offlineBanner", "spinner", "nutritionCard"]
         let scroll = app.scrollViews.firstMatch
@@ -79,9 +91,10 @@ final class ShellUITests: XCTestCase {
     // Выход возвращает на экран входа.
     func testSignOut() {
         let app = launch("client")
-        XCTAssertTrue(app.tabBars.buttons["Ещё"].waitForExistence(timeout: 10))
-        app.tabBars.buttons["Ещё"].tap()
-        app.buttons["more.signOut"].tap()
+        XCTAssertTrue(app.buttons["header.profile"].waitForExistence(timeout: 10))
+        app.buttons["header.profile"].tap()
+        XCTAssertTrue(app.buttons["profile.signOut"].waitForExistence(timeout: 5))
+        app.buttons["profile.signOut"].tap()
         XCTAssertTrue(app.otherElements["screen.signIn"].waitForExistence(timeout: 5)
                       || app.scrollViews["screen.signIn"].waitForExistence(timeout: 1))
     }
@@ -114,7 +127,7 @@ final class AccessibilityAuditUITests: XCTestCase {
 
     func testSignInScreen() throws {
         let app = launch("signedOut")
-        XCTAssertTrue(app.buttons["signIn.submit"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["signIn.magicLink"].waitForExistence(timeout: 10))
         try audit(app)
     }
 
@@ -132,9 +145,10 @@ final class AccessibilityAuditUITests: XCTestCase {
 
     func testComponentCatalogue() throws {
         let app = launch("client")
-        XCTAssertTrue(app.tabBars.buttons["Ещё"].waitForExistence(timeout: 10))
-        app.tabBars.buttons["Ещё"].tap()
-        app.buttons["more.catalogue"].tap()
+        XCTAssertTrue(app.buttons["header.profile"].waitForExistence(timeout: 10))
+        app.buttons["header.profile"].tap()
+        XCTAssertTrue(app.buttons["profile.catalogue"].waitForExistence(timeout: 5))
+        app.buttons["profile.catalogue"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["catalogue.nutritionCard"].waitForExistence(timeout: 5)
                       || app.scrollViews.firstMatch.exists)
         try audit(app)

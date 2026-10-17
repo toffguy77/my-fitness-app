@@ -43,7 +43,9 @@ final class AuthRulesTests: XCTestCase {
     /// Вход аккаунта, ждущего удаления: сессия выдана, признак — в итоге входа.
     func testLoginWithPendingDeletionKeepsTheSession() async throws {
         let transport = StubTransport { _ in
-            .success(#"{"access_token":"a","refresh_token":"r","expires_in":900,"user":{"id":7,"email":"a@b.c","role":"client","email_verified":true,"onboarding_completed":true},"pending_deletion":{"requested_at":"2026-10-17T10:00:00Z","scheduled_for":"2026-11-16T10:00:00Z"}}"#)
+            .success(#"{"access_token":"a","refresh_token":"r","expires_in":900,"#
+                     + #""user":{"id":7,"email":"a@b.c","role":"client","email_verified":true,"onboarding_completed":true},"#
+                     + #""pending_deletion":{"requested_at":"2026-10-17T10:00:00Z","scheduled_for":"2026-11-16T10:00:00Z"}}"#)
         }
         let api = APIClient(baseURL: URL(string: "https://new.burcev.team")!, clientHeader: "ios/test", transport: transport)
         let outcome = try await NativeAuthAPI(api: api, deviceName: "test").login(email: "a@b.c", password: "x")
