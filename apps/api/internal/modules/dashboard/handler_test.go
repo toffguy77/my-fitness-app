@@ -181,6 +181,14 @@ func (m *MockService) GetOnboardingState(ctx context.Context, userID int64, plat
 	return args.Get(0).(*OnboardingState), args.Error(1)
 }
 
+func (m *MockService) ImportHealth(ctx context.Context, userID int64, now time.Time, items []json.RawMessage) (*HealthImportResult, error) {
+	args := m.Called(ctx, userID, now, items)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*HealthImportResult), args.Error(1)
+}
+
 func setupTestHandlerWithMock() (*Handler, *MockService) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{

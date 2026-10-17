@@ -4,7 +4,7 @@
 //
 // Ядро каждого модуля — на Foundation и проверяется `swift test` и на Linux
 // (Docker, см. apps/ios/README.md). Адаптеры к Keychain, SwiftUI, Network,
-// BackgroundTasks и WidgetKit — под `#if canImport(...)` за протоколами; их
+// BackgroundTasks, WidgetKit и HealthKit — под `#if canImport(...)` за протоколами; их
 // тесты идут только на симуляторе в CI.
 import PackageDescription
 
@@ -59,6 +59,7 @@ let package = Package(
         .library(name: "Session", targets: ["Session"]),
         .library(name: "Outbox", targets: ["Outbox"]),
         .library(name: "Navigation", targets: ["Navigation"]),
+        .library(name: "Health", targets: ["Health"]),
     ],
     targets: sqliteTargets + [
         // Токены — сгенерированный packages/design-tokens/dist/ios по ссылке
@@ -73,6 +74,9 @@ let package = Package(
         .target(name: "Session", dependencies: ["API"], swiftSettings: strictSwift),
         .target(name: "Outbox", dependencies: outboxDependencies, swiftSettings: strictSwift),
         .target(name: "Navigation", swiftSettings: strictSwift),
+        // Apple Здоровье (healthkit-sync): ядро на Foundation, HealthKit — адаптер
+        // `HealthKitStore` под `#if canImport(HealthKit) && os(iOS)`.
+        .target(name: "Health", dependencies: ["API", "Outbox"], swiftSettings: strictSwift),
 
         // Заглушки транспорта и пути к файлам репозитория — общие для тестов.
         .target(name: "TestSupport", dependencies: ["API"], path: "Tests/TestSupport", swiftSettings: strictSwift),
@@ -83,6 +87,7 @@ let package = Package(
         .testTarget(name: "SessionTests", dependencies: ["Session", "API", "TestSupport"], swiftSettings: strictSwift),
         .testTarget(name: "OutboxTests", dependencies: ["Outbox", "API", "TestSupport"], swiftSettings: strictSwift),
         .testTarget(name: "NavigationTests", dependencies: ["Navigation", "TestSupport"], swiftSettings: strictSwift),
+        .testTarget(name: "HealthTests", dependencies: ["Health", "Outbox", "API", "TestSupport"], swiftSettings: strictSwift),
     ]
 )
 

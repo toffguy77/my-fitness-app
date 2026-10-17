@@ -86,4 +86,18 @@ describe('StepsChart', () => {
 
         expect(screen.getByText('Динамика шагов')).toBeInTheDocument()
     })
+
+    it('подписывает последние шаги из Здоровья', () => {
+        // days приходят от новых к старым: первый — последний день.
+        render(<StepsChart days={[
+            makeDay({ steps: 6412, date: '2026-03-06', steps_source: 'healthkit' }),
+            makeDay({ steps: 8000, date: '2026-03-05', steps_source: 'manual' }),
+        ]} />)
+        expect(screen.getByText('из Здоровья')).toBeInTheDocument()
+    })
+
+    it('не подписывает шаги, введённые вручную', () => {
+        render(<StepsChart days={[makeDay({ steps: 8000, steps_source: 'manual' })]} />)
+        expect(screen.queryByText('из Здоровья')).not.toBeInTheDocument()
+    })
 })

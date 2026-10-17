@@ -1411,6 +1411,39 @@ describe('Dashboard Store - Coverage Gaps', () => {
             expect(data.completionStatus.weightLogged).toBe(false);
             expect(data.completionStatus.activityCompleted).toBe(true);
         });
+
+        it('maps the source of steps, weight and workout (daily-metric-source)', async () => {
+            const { result } = renderHook(() => useDashboardStore());
+
+            mockApiClient.get.mockResolvedValueOnce(
+                makeBackendMetrics('2024-01-15', {
+                    steps_source: 'healthkit',
+                    weight_source: 'manual',
+                    workout_source: null,
+                })
+            );
+
+            await act(async () => {
+                await result.current.fetchDailyData(new Date('2024-01-15'));
+            });
+
+            const data = result.current.dailyData['2024-01-15'];
+            expect(data.stepsSource).toBe('healthkit');
+            expect(data.weightSource).toBe('manual');
+            expect(data.workoutSource).toBeNull();
+        });
+
+        it('treats a response without sources as having none', async () => {
+            const { result } = renderHook(() => useDashboardStore());
+
+            mockApiClient.get.mockResolvedValueOnce(makeBackendMetrics('2024-01-15'));
+
+            await act(async () => {
+                await result.current.fetchDailyData(new Date('2024-01-15'));
+            });
+
+            expect(result.current.dailyData['2024-01-15'].stepsSource).toBeNull();
+        });
     });
 
     describe('memoryCache.invalidateDailyData', () => {

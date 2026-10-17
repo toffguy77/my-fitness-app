@@ -1,6 +1,7 @@
 #if DEBUG
 import API
 import Foundation
+import Health
 import Session
 
 /// Сценарии UI-тестов: приложение запускается с `-uiTestScenario <имя>` и
@@ -44,7 +45,10 @@ enum UITestScenario: String {
             }
         }
         return AppModel(environment: environment, transport: ScenarioTransport(scenario: self), secure: secure,
-                        installMarker: MarkedInstall(), directory: directory, deviceName: "UI test")
+                        installMarker: MarkedInstall(), directory: directory, deviceName: "UI test",
+                        // Системный запрос Здоровья в UI-тесте не показывается:
+                        // подделка считает запросы, экран «Ещё» показывает счёт.
+                        healthStore: InMemoryHealthStore())
     }
 }
 
@@ -83,6 +87,10 @@ private struct ScenarioTransport: HTTPTransport {
             return (200, #"{"status":"success","data":{"settings":{"language":"ru"}}}"#)
         case "/api/v1/auth/native/logout":
             return (204, "")
+        case "/api/v1/users/settings":
+            return (200, #"{"status":"success","data":{"apple_health_enabled":true}}"#)
+        case "/api/v1/health/import":
+            return (200, #"{"status":"success","data":{"accepted":0,"rejected":[]}}"#)
         default:
             return (404, #"{"status":"error","code":"not_found"}"#)
         }

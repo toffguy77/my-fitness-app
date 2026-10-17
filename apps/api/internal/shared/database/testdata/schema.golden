@@ -71,6 +71,9 @@ INDEX food_items idx_food_items_search gin (search_vector)
 INDEX food_items idx_food_items_source btree (source)
 INDEX food_recognition_usage food_recognition_usage_pkey btree (id)
 INDEX food_recognition_usage idx_food_recognition_usage_user_date btree (user_id, used_at)
+INDEX health_workouts health_workouts_pkey btree (id)
+INDEX health_workouts health_workouts_user_external_key btree (user_id, external_id)
+INDEX health_workouts idx_health_workouts_user_date btree (user_id, date)
 INDEX idempotency_keys idempotency_keys_pkey btree (user_id, key)
 INDEX idempotency_keys idx_idempotency_keys_created_at btree (created_at)
 INDEX job_runs idx_job_runs_name_started btree (job_name, started_at DESC)
@@ -371,11 +374,14 @@ daily_metrics.fat integer DEFAULT 0
 daily_metrics.id uuid NOT NULL DEFAULT gen_random_uuid()
 daily_metrics.protein integer DEFAULT 0
 daily_metrics.steps integer DEFAULT 0
+daily_metrics.steps_source text
 daily_metrics.updated_at timestamp with time zone DEFAULT now()
 daily_metrics.user_id bigint NOT NULL
 daily_metrics.weight numeric
+daily_metrics.weight_source text
 daily_metrics.workout_completed boolean DEFAULT false
 daily_metrics.workout_duration integer
+daily_metrics.workout_source text
 daily_metrics.workout_type text
 data_exports.completed_at timestamp with time zone
 data_exports.downloaded_at timestamp with time zone
@@ -450,6 +456,15 @@ food_recognition_usage.id integer NOT NULL DEFAULT nextval('food_recognition_usa
 food_recognition_usage.photo_url text
 food_recognition_usage.used_at timestamp with time zone NOT NULL DEFAULT now()
 food_recognition_usage.user_id bigint NOT NULL
+health_workouts.created_at timestamp with time zone NOT NULL DEFAULT now()
+health_workouts.date date NOT NULL
+health_workouts.duration_min integer NOT NULL
+health_workouts.external_id text NOT NULL
+health_workouts.id uuid NOT NULL DEFAULT gen_random_uuid()
+health_workouts.started_at timestamp with time zone NOT NULL
+health_workouts.type text NOT NULL
+health_workouts.updated_at timestamp with time zone NOT NULL DEFAULT now()
+health_workouts.user_id bigint NOT NULL
 idempotency_keys.body_hash text NOT NULL
 idempotency_keys.content_type text
 idempotency_keys.created_at timestamp with time zone NOT NULL DEFAULT now()

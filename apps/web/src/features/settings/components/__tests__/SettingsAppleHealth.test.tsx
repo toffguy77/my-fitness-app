@@ -1,60 +1,39 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { SettingsAppleHealth } from '../SettingsAppleHealth'
 
 const mockSaveSettings = jest.fn().mockResolvedValue(undefined)
-
-const mockProfile = {
-  settings: {
-    apple_health_enabled: false,
-  },
-}
+let mockEnabled = false
 
 jest.mock('../SettingsPageLayout', () => ({
   SettingsPageLayout: ({ children }: { children: (props: Record<string, unknown>) => React.ReactNode }) =>
     <div data-testid="settings-layout">{children({
-      profile: mockProfile,
+      profile: { settings: { apple_health_enabled: mockEnabled } },
       isLoading: false,
       saveSettings: mockSaveSettings,
     })}</div>,
 }))
 
-let capturedToggleProps: Record<string, unknown> = {}
-
-jest.mock('@/shared/components/settings', () => ({
-  AppleHealthToggle: (props: { enabled: boolean; onChange: (v: boolean) => void }) => {
-    capturedToggleProps = props
-    return (
-      <div data-testid="apple-health-toggle">
-        <button onClick={() => props.onChange(!props.enabled)}>toggle</button>
-        <span>{props.enabled ? 'on' : 'off'}</span>
-      </div>
-    )
-  },
-}))
-
 describe('SettingsAppleHealth', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockSaveSettings.mockResolvedValue(undefined)
   })
 
-  it('renders Apple Health toggle', () => {
+  it('показывает «Подключено на iPhone» по признаку из профиля', () => {
+    mockEnabled = true
     render(<SettingsAppleHealth />)
-    expect(screen.getByTestId('apple-health-toggle')).toBeInTheDocument()
+    expect(screen.getByTestId('apple-health-state')).toHaveTextContent('Подключено на iPhone')
   })
 
-  it('passes enabled=false from profile settings', () => {
+  it('показывает «Не подключено» и объяснение, когда признак снят', () => {
+    mockEnabled = false
     render(<SettingsAppleHealth />)
-    expect(capturedToggleProps.enabled).toBe(false)
-    expect(screen.getByText('off')).toBeInTheDocument()
+    expect(screen.getByTestId('apple-health-state')).toHaveTextContent('Не подключено')
+    expect(screen.getByText(/Подключается в приложении на iPhone/)).toBeInTheDocument()
   })
 
-  it('calls saveSettings with apple_health_enabled when toggled', () => {
+  it('ничего не сохраняет: признак принадлежит приложению', () => {
     render(<SettingsAppleHealth />)
-
-    fireEvent.click(screen.getByText('toggle'))
-
-    expect(mockSaveSettings).toHaveBeenCalledWith({ apple_health_enabled: true })
+    expect(mockSaveSettings).not.toHaveBeenCalled()
   })
 })

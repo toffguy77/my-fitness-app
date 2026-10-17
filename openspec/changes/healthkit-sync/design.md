@@ -110,7 +110,7 @@
 
 Приложение пишет `dietaryEnergyConsumed`, `dietaryProtein`, `dietaryFatTotal`,
 `dietaryCarbohydrates` как `HKCorrelation(.food)` на каждую запись дневника и
-`dietaryWater` на каждый стакан.
+`dietaryWater` на каждый стакан (`HKMetadataKeySyncIdentifier = "water:<дата>:<номер>"`: убранный стакан удаляется по нему). Вес в Здоровье не пишется — он оттуда приходит, и запись обратно задвоила бы взвешивания.
 
 Метаданные:
 - `HKMetadataKeySyncIdentifier = "entry:<id>"`;

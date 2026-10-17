@@ -120,6 +120,8 @@ targets:
         product: Outbox
       - package: VzveshenoKit
         product: Navigation
+      - package: VzveshenoKit
+        product: Health
       - package: Sentry
         product: Sentry
     info:
@@ -261,6 +263,7 @@ schemes:
         - package: VzveshenoKit/SessionTests
         - package: VzveshenoKit/OutboxTests
         - package: VzveshenoKit/NavigationTests
+        - package: VzveshenoKit/HealthTests
     profile:
       config: Dev-Release
     analyze:

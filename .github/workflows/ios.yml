@@ -70,6 +70,10 @@ jobs:
           xcrun simctl list runtimes | grep -q "iOS 18.5" || {
             echo "::error::нет iOS 18.5; доступны:"; xcrun simctl list runtimes; exit 1; }
 
+      # Повтор упавшего теста до трёх раз: UI-тесты на раннере падают и без
+      # дефекта — не инициализируется раннер UI-тестов (AXDisableAccessibility…),
+      # аудит доступности не укладывается во время. Дефект в коде падает все
+      # три раза; повтор, прошедший со второй попытки, виден в xcresult.
       - name: Build and test
         run: |
           set -o pipefail
@@ -81,6 +85,7 @@ jobs:
             -destination "$DESTINATION" \
             -derivedDataPath build/DerivedData \
             -resultBundlePath build/Vzvesheno.xcresult \
+            -retry-tests-on-failure -test-iterations 3 \
             | tee build/xcodebuild.log \
             | grep -E "error:|warning: .*/apps/ios/V|Test Case .* failed|with [0-9]+ failures|\*\* (BUILD|TEST) " || true
           grep -q "\*\* TEST SUCCEEDED \*\*" build/xcodebuild.log

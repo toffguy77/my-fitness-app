@@ -138,6 +138,7 @@ func New(d Deps) *gin.Engine {
 	registerFoodTrackerRoutes(v1, d)
 	registerNutritionCalcRoutes(v1, d)
 	registerDashboardRoutes(v1, d)
+	registerHealthImportRoutes(v1, d)
 	registerChatRoutes(v1, d)
 	registerCuratorRoutes(v1, d)
 	registerAdminRoutes(v1, d)

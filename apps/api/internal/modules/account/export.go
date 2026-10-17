@@ -212,6 +212,7 @@ var sections = []exportSection{
 	{"food_diary", `SELECT * FROM food_entries WHERE user_id = $1 ORDER BY date`},
 	{"water", `SELECT * FROM water_logs WHERE user_id = $1 ORDER BY date`},
 	{"metrics", `SELECT * FROM daily_metrics WHERE user_id = $1 ORDER BY date`},
+	{"health_workouts", `SELECT * FROM health_workouts WHERE user_id = $1 ORDER BY started_at`},
 	{"tasks", `SELECT * FROM tasks WHERE user_id = $1 ORDER BY created_at`},
 	{"weekly_plans", `SELECT * FROM weekly_plans WHERE user_id = $1 ORDER BY start_date`},
 	{"weekly_reports", `SELECT * FROM weekly_reports WHERE user_id = $1 ORDER BY created_at`},

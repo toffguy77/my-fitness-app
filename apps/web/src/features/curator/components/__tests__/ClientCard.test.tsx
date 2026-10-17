@@ -167,4 +167,21 @@ describe('ClientCard', () => {
         expect(screen.getByText('Пропуск')).toBeInTheDocument()
         expect(screen.getByText('Мало воды')).toBeInTheDocument()
     })
+
+    describe('источник веса', () => {
+        it('подписывает вес из Здоровья', () => {
+            render(<ClientCard client={makeClient({ last_weight: 78.4, last_weight_source: 'healthkit' })} />)
+            expect(screen.getByText('из Здоровья')).toBeInTheDocument()
+        })
+
+        it('не подписывает вес, введённый вручную', () => {
+            render(<ClientCard client={makeClient({ last_weight: 78.1, last_weight_source: 'manual' })} />)
+            expect(screen.queryByText('из Здоровья')).not.toBeInTheDocument()
+        })
+
+        it('не подписывает, когда источник не пришёл', () => {
+            render(<ClientCard client={makeClient({ last_weight: 78.1 })} />)
+            expect(screen.queryByText('из Здоровья')).not.toBeInTheDocument()
+        })
+    })
 })

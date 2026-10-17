@@ -54,6 +54,7 @@ var strategies = []TableStrategy{
 	{Table: "food_entries", Column: "user_id", Strategy: StrategyDelete, Reason: "the person's food diary"},
 	{Table: "water_logs", Column: "user_id", Strategy: StrategyDelete, Reason: "the person's water log"},
 	{Table: "daily_metrics", Column: "user_id", Strategy: StrategyDelete, Reason: "weight and measurements"},
+	{Table: "health_workouts", Column: "user_id", Strategy: StrategyDelete, Reason: "workouts imported from Apple Health"},
 	{Table: "daily_calculated_targets", Column: "user_id", Strategy: StrategyDelete, Reason: "derived from their body profile"},
 	{Table: "weekly_photos", Column: "user_id", Strategy: StrategyDelete, Reason: "progress photographs"},
 	{Table: "user_foods", Column: "user_id", Strategy: StrategyDelete, Reason: "foods they authored"},

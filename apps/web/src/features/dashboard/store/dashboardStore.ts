@@ -26,6 +26,7 @@ import { getToken } from '@/shared/utils/token-storage';
 import { addToQueue, removeFromQueue, incrementAttempts, shouldRetry, sortQueueByTimestamp, type QueueEntry } from '../utils/offlineQueue';
 
 import { t, plural } from '@/shared/i18n'
+import type { MetricSource } from '@/shared/components/ui/HealthSourceLabel'
 import { mapApiError } from '@/shared/errors/mapApiError'
 import { isApiError } from '@/shared/errors/apiErrors'
 
@@ -269,6 +270,9 @@ interface BackendDailyMetrics {
     workout_types?: string[] | null;
     workout_duration?: number | null;
     workout_type_durations?: Record<string, number> | null;
+    steps_source?: MetricSource | null;
+    weight_source?: MetricSource | null;
+    workout_source?: MetricSource | null;
     created_at: string;
     updated_at: string;
 }
@@ -314,6 +318,9 @@ function mapBackendMetrics(raw: Raw<BackendDailyMetrics, DailyMetrics>): DailyMe
             duration: raw.workout_duration ?? undefined,
             typeDurations: raw.workout_type_durations ?? undefined,
         },
+        stepsSource: raw.steps_source ?? null,
+        weightSource: raw.weight_source ?? null,
+        workoutSource: raw.workout_source ?? null,
         completionStatus: {
             nutritionFilled: (raw.calories || 0) > 0,
             weightLogged: raw.weight != null,
@@ -1165,14 +1172,18 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                     break;
                 case 'weight':
                     updatedMetrics.weight = metric.data.weight;
+                    // Ручной ввод главнее импорта: подпись «из Здоровья» уходит сразу.
+                    updatedMetrics.weightSource = 'manual';
                     updatedMetrics.completionStatus.weightLogged = true;
                     break;
                 case 'steps':
                     updatedMetrics.steps = metric.data.steps;
+                    updatedMetrics.stepsSource = metric.data.steps > 0 ? 'manual' : null;
                     updatedMetrics.completionStatus.activityCompleted = metric.data.steps >= (state.weeklyPlan?.stepsGoal || 10000);
                     break;
                 case 'workout':
                     updatedMetrics.workout = metric.data;
+                    updatedMetrics.workoutSource = metric.data.completed ? 'manual' : null;
                     updatedMetrics.completionStatus.activityCompleted = metric.data.completed;
                     break;
             }

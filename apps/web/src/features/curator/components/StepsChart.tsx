@@ -8,6 +8,7 @@ import {
 import type { Payload } from 'recharts/types/component/DefaultTooltipContent'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import type { DayDetail } from '../types'
+import { HealthSourceLabel } from '@/shared/components/ui/HealthSourceLabel'
 
 import { t } from '@/shared/i18n'
 import { AXIS_STYLE, GRID_STROKE, TOOLTIP_CLASS, chartColor } from '@/shared/charts/chartTheme'
@@ -45,6 +46,7 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
         [...days].reverse().map(d => ({
             date: d.date,
             steps: d.steps,
+            source: d.steps_source,
             label: new Date(d.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
         })),
         [days]
@@ -54,14 +56,18 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
     if (!hasAnySteps) return null
 
     const latestSteps = stepsData[stepsData.length - 1]?.steps ?? 0
+    const latestSource = stepsData[stepsData.length - 1]?.source
 
     return (
         <Card variant="bordered">
             <CardHeader className="mb-3">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-fg">{t('curator.charts.stepsHeading')}</CardTitle>
-                    <span className="type-num-l tabular-nums text-fg">
-                        {latestSteps.toLocaleString('ru-RU')}
+                    <span className="flex items-baseline gap-2">
+                        {latestSteps > 0 && <HealthSourceLabel source={latestSource} />}
+                        <span className="type-num-l tabular-nums text-fg">
+                            {latestSteps.toLocaleString('ru-RU')}
+                        </span>
                     </span>
                 </div>
             </CardHeader>

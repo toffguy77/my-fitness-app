@@ -64,7 +64,6 @@ export function OnboardingWizard() {
         fitnessGoal,
         telegram,
         instagram,
-        appleHealthEnabled,
         nextStep,
         setLanguage,
         setUnits,
@@ -77,7 +76,6 @@ export function OnboardingWizard() {
         setFitnessGoal,
         setTelegram,
         setInstagram,
-        setAppleHealth,
     } = useOnboardingStore()
 
     // Signed-out visitors never reach this page: proxy.ts redirects
@@ -110,7 +108,6 @@ export function OnboardingWizard() {
                     }
                     if (s.telegram_username) setTelegram(s.telegram_username)
                     if (s.instagram_username) setInstagram(s.instagram_username)
-                    if (s.apple_health_enabled) setAppleHealth(s.apple_health_enabled)
                 }
             } catch {
                 // Молчим намеренно: это необязательное предзаполнение, а не
@@ -130,7 +127,6 @@ export function OnboardingWizard() {
             timezone,
             telegram_username: telegram,
             instagram_username: instagram,
-            apple_health_enabled: appleHealthEnabled,
         }
     }
 

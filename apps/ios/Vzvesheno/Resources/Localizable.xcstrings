@@ -1,6 +1,204 @@
 {
   "sourceLanguage": "ru",
   "strings": {
+    "health.connect.continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продолжить"
+          }
+        }
+      }
+    },
+    "health.connect.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не получилось подключить Здоровье. Попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "health.connect.intro": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взвешено будет брать данные из Apple Здоровья, чтобы вам не вводить их вручную, а куратор видел вашу активность."
+          }
+        }
+      }
+    },
+    "health.connect.manualWins": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введённое вручную всегда главнее: данные из Здоровья его не перезапишут. После «Продолжить» iPhone спросит, к каким данным открыть доступ."
+          }
+        }
+      }
+    },
+    "health.connect.notNow": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не сейчас"
+          }
+        }
+      }
+    },
+    "health.connect.reads": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шаги (сумма за день), вес (первое взвешивание дня) и тренировки — в том числе когда приложение закрыто. При подключении загружается история за последние 90 дней."
+          }
+        }
+      }
+    },
+    "health.connect.reads.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читаем из Здоровья"
+          }
+        }
+      }
+    },
+    "health.connect.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключение Здоровья"
+          }
+        }
+      }
+    },
+    "health.connect.writes": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Съеденные калории, белки, жиры и углеводы из дневника и выпитую воду. Правка или удаление записи меняет её и в Здоровье."
+          }
+        }
+      }
+    },
+    "health.connect.writes.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Записываем в Здоровье"
+          }
+        }
+      }
+    },
+    "health.connected.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шаги, вес и тренировки приходят сами, еда и вода записываются в Здоровье. Доступ к отдельным данным меняется в приложении «Здоровье» или в настройках iPhone."
+          }
+        }
+      }
+    },
+    "health.connected.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здоровье подключено"
+          }
+        }
+      }
+    },
+    "health.disconnect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить"
+          }
+        }
+      }
+    },
+    "health.disconnect.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "После отключения данные перестают приходить и записываться. То, что уже записано в Здоровье, там останется."
+          }
+        }
+      }
+    },
+    "health.hint.noData": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет данных из Здоровья за 3 дня — проверьте доступ"
+          }
+        }
+      }
+    },
+    "health.hint.openSettings": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть настройки"
+          }
+        }
+      }
+    },
+    "health.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здоровье"
+          }
+        }
+      }
+    },
+    "health.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Здоровье недоступно на этом устройстве."
+          }
+        }
+      }
+    },
     "tab.chats": {
       "extractionState": "manual",
       "localizations": {

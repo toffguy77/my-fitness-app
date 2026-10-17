@@ -12,6 +12,10 @@ struct VzveshenoApp: App {
         let model = AppModel.live()
         Telemetry.start(environment: model.environment)
         _model = State(initialValue: model)
+        // Запуск не ждёт окна: фоновый запуск по событию Здоровья окна не
+        // создаёт, а наблюдатели и досылка нужны и ему. Второй вызов из
+        // .task ничего не делает.
+        Task { await model.start() }
     }
 
     var body: some Scene {

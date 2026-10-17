@@ -1,6 +1,7 @@
 import API
 import DesignSystem
 import Foundation
+import Health
 import Navigation
 import Observation
 import Outbox
@@ -14,8 +15,12 @@ struct AccountEraser: AccountDataEraser {
     let cache: ScreenCache
     let outbox: Outbox
     let snapshot: DaySnapshotStore
+    let health: HealthSync
 
     func eraseAccountData() async {
+        // Наблюдатели и фоновая доставка Здоровья останавливаются: иначе
+        // HealthKit будил бы приложение без сессии.
+        await health.erase()
         cache.eraseAll()
         await outbox.eraseAll()
         snapshot.erase()
@@ -23,6 +28,17 @@ struct AccountEraser: AccountDataEraser {
         // Виджет не показывает данные прежнего аккаунта ни минуты.
         WidgetCenter.shared.reloadAllTimelines()
         #endif
+    }
+}
+
+/// Ссылка на сессию для Здоровья: кто вошёл сейчас.
+final class SessionRef: @unchecked Sendable {
+    private let lock = NSLock()
+    private weak var _store: SessionStore?
+
+    var store: SessionStore? {
+        get { lock.withLock { _store } }
+        set { lock.withLock { _store = newValue } }
     }
 }
 
@@ -53,6 +69,16 @@ final class AppModel {
     var authLinkAwaitingConfirmation: AuthLink?
     /// Справочник компонентов открыт (только Dev-сборка).
     var showCatalogue = false
+    /// Здоровье подключено в профиле приложения.
+    private(set) var healthConnected = false
+    /// Здоровье есть на устройстве.
+    private(set) var healthAvailable = true
+    /// «Нет данных из Здоровья за 3 дня — проверьте доступ» на «Сегодня».
+    private(set) var healthAccessHint = false
+    #if DEBUG
+    /// Сколько раз сценарий UI-теста получил системный запрос Здоровья.
+    private(set) var uiTestHealthAuthorizationRequests: Int?
+    #endif
 
     let environment: AppEnvironment
     let api: APIClient
@@ -61,6 +87,8 @@ final class AppModel {
     let outbox: Outbox
     let cache: ScreenCache
     let snapshot: DaySnapshotStore
+    let health: HealthSync
+    private let healthStore: HealthStore
     let messages = ErrorMessages()
     private let pendingLinks = PendingLinkStore()
     private let configLoader: ConfigLoader
@@ -70,7 +98,7 @@ final class AppModel {
     private var started = false
 
     init(environment: AppEnvironment, transport: HTTPTransport, secure: SecureStore, installMarker: InstallMarker,
-         directory: URL, deviceName: String) {
+         directory: URL, deviceName: String, healthStore: HealthStore) {
         self.environment = environment
         let api = APIClient(baseURL: environment.apiBaseURL, clientHeader: environment.clientHeader, transport: transport)
         self.api = api
@@ -79,11 +107,25 @@ final class AppModel {
         let outboxStore: OutboxStore = (try? SQLiteOutboxStore(url: directory.appendingPathComponent("outbox.sqlite")))
             ?? InMemoryOutboxStore()
         let outbox = Outbox(store: outboxStore, api: api)
+        // Сессия создаётся после Здоровья (её стиратели включают Здоровье),
+        // а Здоровью нужен вошедший пользователь — ссылка заполняется ниже.
+        let sessionRef = SessionRef()
+        // Состояние Здоровья — в каталоге аккаунта: фоновая доставка читает
+        // якоря и часовой пояс профиля на заблокированном телефоне.
+        let health = HealthSync(
+            store: healthStore, outbox: outbox,
+            stateStore: FileHealthStateStore(url: directory.appendingPathComponent("health-state.json")),
+            currentUser: { [sessionRef] in await sessionRef.store?.user?.id },
+            drain: { [outbox] userID in await outbox.drain(userID: userID) }
+        )
         self.cache = cache
         self.snapshot = snapshot
         self.outbox = outbox
+        self.health = health
+        self.healthStore = healthStore
         session = SessionStore(api: api, secure: secure, installMarker: installMarker,
-                               erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot)])
+                               erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health)])
+        sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
         let configCache = FileConfigCache(url: directory.appendingPathComponent("config.json"))
         self.configCache = configCache
@@ -105,7 +147,8 @@ final class AppModel {
         let secure = KeychainStore(policy: KeychainPolicy(service: "\(environment.bundleID).session",
                                                           accessGroup: environment.keychainAccessGroup))
         return AppModel(environment: environment, transport: URLSessionTransport(), secure: secure,
-                        installMarker: UserDefaultsInstallMarker(), directory: directory, deviceName: AppEnvironment.deviceName)
+                        installMarker: UserDefaultsInstallMarker(), directory: directory, deviceName: AppEnvironment.deviceName,
+                        healthStore: HealthKitStore())
     }
 
     // MARK: Запуск
@@ -120,6 +163,14 @@ final class AppModel {
         config = configCache.load()
         user = await session.restore()
         recompute()
+        // Наблюдатели Здоровья живут до конца процесса: при каждом запуске,
+        // в том числе фоновом по событию Здоровья, — заново и после restore(),
+        // чтобы досылке было чьим токеном отправлять.
+        let userID = user?.id
+        Task {
+            await health.resume(userID: userID)
+            await refreshHealthState()
+        }
         Task { await refreshConfig() }
         if user != nil {
             await refreshProfile()
@@ -165,11 +216,18 @@ final class AppModel {
 
     private func refreshLanguage() async {
         struct Profile: Decodable, Sendable {
-            struct Settings: Decodable, Sendable { let language: String? }
+            struct Settings: Decodable, Sendable {
+                let language: String?
+                let timezone: String?
+            }
             let settings: Settings?
         }
         let profile = try? await api.send(.get("/api/v1/users/profile"), as: Profile.self)
         await api.setLanguage(profile?.settings?.language)
+        // Сутки шагов и дата взвешивания — по поясу профиля, не устройства.
+        if let timezone = profile?.settings?.timezone {
+            await health.setTimeZone(timezone)
+        }
     }
 
     private func recompute() {
@@ -339,6 +397,33 @@ final class AppModel {
         await session.flushPendingLogout()
         await drainOutbox()
         await refreshConfig()
+        await health.refresh()
+        await refreshHealthState()
+    }
+
+    // MARK: Здоровье
+
+    /// «Продолжить» на экране подключения. `false` — Здоровья на устройстве
+    /// нет или запрос не удался.
+    func connectHealth() async -> Bool {
+        guard let userID = user?.id else { return false }
+        let connected = (try? await health.connect(userID: userID)) ?? false
+        await refreshHealthState()
+        return connected
+    }
+
+    func disconnectHealth() async {
+        await health.disconnect()
+        await refreshHealthState()
+    }
+
+    func refreshHealthState() async {
+        healthConnected = await health.isConnected
+        healthAvailable = await health.isAvailable
+        healthAccessHint = await health.showsAccessHint()
+        #if DEBUG
+        uiTestHealthAuthorizationRequests = (healthStore as? InMemoryHealthStore)?.authorizationRequests
+        #endif
     }
 
     func drainOutbox() async {

@@ -170,3 +170,23 @@ describe('WeightBlock - Core Functionality', () => {
         }, { timeout: 500 })
     })
 })
+
+describe('WeightBlock - источник веса', () => {
+    const mockDate = new Date('2024-01-15')
+
+    it.each([
+        ['healthkit', true],
+        ['manual', false],
+        [null, false],
+    ] as const)('источник %s — подпись «из Здоровья»: %s', (weightSource, shown) => {
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
+            dailyData: { '2024-01-15': { weight: 78.4, weightSource } },
+            updateMetric: jest.fn(),
+        }))
+
+        render(<WeightBlock date={mockDate} />)
+
+        expect(screen.getByText('78,4')).toBeInTheDocument()
+        expect(screen.queryByText('из Здоровья') !== null).toBe(shown)
+    })
+})
