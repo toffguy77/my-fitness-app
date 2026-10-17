@@ -47,7 +47,7 @@ struct TasksCard: View {
                     .buttonStyle(.plain)
                     .accessibilityElement(children: .combine)
                     .accessibilityAddTraits(row.isDone ? .isSelected : [])
-                    .accessibilityHint(row.isDone ? "" : "Отметить выполненной")
+                    .accessibilityHint(Text(row.isDone ? "" : "Отметить выполненной"))
                     .accessibilityIdentifier("task.\(row.id)")
                 }
             }
@@ -75,7 +75,7 @@ struct FirstWeekCard: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityValue(item.done ? "сделано" : "не сделано")
+                    .accessibilityValue(Text(item.done ? "сделано" : "не сделано"))
                 }
             }
         }

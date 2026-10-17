@@ -414,7 +414,7 @@ final class AppModel {
         case let .magicLink(token):
             do {
                 try await complete(try await auth.consumeMagicLink(token: token))
-            } catch APIError.server(_, "token_invalid", _) {
+            } catch APIError.server(_, .some("token_invalid"), _) {
                 // Просроченная, использованная и поддельная ссылка сервер не
                 // различает — для человека это одно: «Ссылка устарела».
                 signInStep = .linkExpired

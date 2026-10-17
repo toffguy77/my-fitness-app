@@ -31,7 +31,7 @@ struct HealthScreen: View {
             .padding(.vertical, DS.Space.s4)
         }
         .background(DS.Color.bgCanvas)
-        .navigationTitle(Text(model.healthConnected ? "health.title" : "health.connect.title"))
+        .navigationTitle(Text(LocalizedStringKey(model.healthConnected ? "health.title" : "health.connect.title")))
         .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("screen.health")
     }

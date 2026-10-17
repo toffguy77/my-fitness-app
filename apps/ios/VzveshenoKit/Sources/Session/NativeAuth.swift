@@ -64,6 +64,13 @@ public struct PendingSignIn: Sendable, Equatable {
     public let pendingToken: String
     public let provider: String?
     public let email: String?
+
+    public init(step: Step, pendingToken: String, provider: String?, email: String?) {
+        self.step = step
+        self.pendingToken = pendingToken
+        self.provider = provider
+        self.email = email
+    }
 }
 
 /// Итог шага входа.
