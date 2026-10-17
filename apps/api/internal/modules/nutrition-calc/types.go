@@ -46,8 +46,22 @@ var ProteinPerKg = map[FitnessGoal]float64{
 // FatCaloriePercent is the percentage of calories from fat
 const FatCaloriePercent = 0.25
 
-// WorkoutCaloriesPerHour maps workout types (Russian UI labels) to kcal/hour burn estimates
+// WorkoutCaloriesPerHour maps workout types to kcal/hour burn estimates.
+//
+// Since migration 062 the column holds codes (strength, cardio, …), which is
+// what the form and the Apple Health import write. The Russian labels stay for
+// rows written before it. Keyed by the labels alone, every workout saved after
+// 062 earned no bonus at all.
 var WorkoutCaloriesPerHour = map[string]float64{
+	"strength":   300,
+	"cardio":     400,
+	"hiit":       500,
+	"yoga":       200,
+	"stretching": 200,
+	"swimming":   350,
+	"running":    450,
+	"cycling":    400,
+
 	"Силовая":   300,
 	"Кардио":    400,
 	"HIIT":      500,

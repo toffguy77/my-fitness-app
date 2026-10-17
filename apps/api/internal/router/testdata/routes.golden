@@ -172,6 +172,7 @@ POST /api/v1/food-tracker/recommendations/custom
 POST /api/v1/food-tracker/user-foods
 POST /api/v1/food-tracker/user-foods/clone
 POST /api/v1/food-tracker/water
+POST /api/v1/health/import
 POST /api/v1/leads/curator-request
 POST /api/v1/logs
 POST /api/v1/meal-plans/:date/items/:mealType/eat

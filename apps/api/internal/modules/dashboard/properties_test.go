@@ -68,7 +68,7 @@ func TestAuthenticationValidationProperty(t *testing.T) {
 			// Mock expects query with user_id parameter
 			rows := sqlmock.NewRows([]string{
 				"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-				"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+				"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 			}).AddRow(
 				uuid.New().String(),
 				userID,
@@ -82,12 +82,12 @@ func TestAuthenticationValidationProperty(t *testing.T) {
 				false,
 				nil,
 				nil,
+				nil, nil, nil,
 				time.Now(),
-				time.Now(),
-			)
+				time.Now())
 
 			// The query MUST include user_id in WHERE clause for authorization
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(userID, date).
 				WillReturnRows(rows)
 
@@ -260,12 +260,12 @@ func TestAuthenticationValidationProperty(t *testing.T) {
 			// Mock expects parameterized query (not string concatenation)
 			rows := sqlmock.NewRows([]string{
 				"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-				"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+				"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 			})
 
 			// If the query uses string concatenation instead of parameters,
 			// this expectation will fail
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(userID, date).
 				WillReturnRows(rows)
 
@@ -319,11 +319,11 @@ func TestUserIsolationProperty(t *testing.T) {
 			// Mock expects query with requesting user's ID
 			rows := sqlmock.NewRows([]string{
 				"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-				"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+				"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 			})
 
 			// Query should use requesting user's ID, not data owner's ID
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(requestingUserID, date).
 				WillReturnRows(rows)
 
@@ -1040,7 +1040,7 @@ func TestDataPersistenceReliabilityProperty(t *testing.T) {
 			date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 
 			// Mock the initial GET (returns empty)
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(userID, date).
 				WillReturnError(sql.ErrNoRows)
 
@@ -1048,25 +1048,23 @@ func TestDataPersistenceReliabilityProperty(t *testing.T) {
 			// Arguments: id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration
 			// When updating nutrition, steps will be from the existing metrics (could be the generated value)
 			mock.ExpectQuery(`INSERT INTO daily_metrics`).
-				WithArgs(sqlmock.AnyArg(), userID, date, calories, protein, fat, carbs, nil, sqlmock.AnyArg(), false, nil, nil).
+				WithArgs(sqlmock.AnyArg(), userID, date, calories, protein, fat, carbs, nil, sqlmock.AnyArg(), false, nil, nil, nil, nil, nil).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-					"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+					"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 				}).AddRow(
 					metricID, userID, date, calories, protein, fat, carbs, nil, steps,
-					false, nil, nil, time.Now(), time.Now(),
-				))
+					false, nil, nil, nil, nil, nil, time.Now(), time.Now()))
 
 			// Mock the subsequent GET (returns saved data)
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(userID, date).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-					"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+					"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 				}).AddRow(
 					metricID, userID, date, calories, protein, fat, carbs, nil, steps,
-					false, nil, nil, time.Now(), time.Now(),
-				))
+					false, nil, nil, nil, nil, nil, time.Now(), time.Now()))
 
 			// Save metric
 			metricUpdate := MetricUpdate{
@@ -1162,32 +1160,30 @@ func TestDataPersistenceReliabilityProperty(t *testing.T) {
 			date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 
 			// Mock the initial GET (returns empty)
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(userID, date).
 				WillReturnError(sql.ErrNoRows)
 
 			// Mock the INSERT/UPDATE (upsert)
 			// Arguments: id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration
 			mock.ExpectQuery(`INSERT INTO daily_metrics`).
-				WithArgs(sqlmock.AnyArg(), userID, date, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), weight, sqlmock.AnyArg(), false, nil, nil).
+				WithArgs(sqlmock.AnyArg(), userID, date, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), weight, sqlmock.AnyArg(), false, nil, nil, nil, "manual", nil).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-					"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+					"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 				}).AddRow(
 					metricID, userID, date, 0, 0, 0, 0, weight, 0,
-					false, nil, nil, time.Now(), time.Now(),
-				))
+					false, nil, nil, nil, nil, nil, time.Now(), time.Now()))
 
 			// Mock the subsequent GET (returns saved data)
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(userID, date).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-					"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+					"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 				}).AddRow(
 					metricID, userID, date, 0, 0, 0, 0, weight, 0,
-					false, nil, nil, time.Now(), time.Now(),
-				))
+					false, nil, nil, nil, nil, nil, time.Now(), time.Now()))
 
 			// Save weight
 			metricUpdate := MetricUpdate{
@@ -1252,51 +1248,47 @@ func TestDataPersistenceReliabilityProperty(t *testing.T) {
 			date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 
 			// First save
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(userID, date).
 				WillReturnError(sql.ErrNoRows)
 
 			mock.ExpectQuery(`INSERT INTO daily_metrics`).
-				WithArgs(sqlmock.AnyArg(), userID, date, calories1, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), nil, sqlmock.AnyArg(), false, nil, nil).
+				WithArgs(sqlmock.AnyArg(), userID, date, calories1, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), nil, sqlmock.AnyArg(), false, nil, nil, nil, nil, nil).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-					"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+					"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 				}).AddRow(
 					metricID, userID, date, calories1, 0, 0, 0, nil, 0,
-					false, nil, nil, time.Now(), time.Now(),
-				))
+					false, nil, nil, nil, nil, nil, time.Now(), time.Now()))
 
 			// Second save (update)
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(userID, date).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-					"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+					"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 				}).AddRow(
 					metricID, userID, date, calories1, 0, 0, 0, nil, 0,
-					false, nil, nil, time.Now(), time.Now(),
-				))
+					false, nil, nil, nil, nil, nil, time.Now(), time.Now()))
 
 			mock.ExpectQuery(`INSERT INTO daily_metrics`).
-				WithArgs(sqlmock.AnyArg(), userID, date, calories2, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), nil, sqlmock.AnyArg(), false, nil, nil).
+				WithArgs(sqlmock.AnyArg(), userID, date, calories2, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), nil, sqlmock.AnyArg(), false, nil, nil, nil, nil, nil).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-					"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+					"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 				}).AddRow(
 					metricID, userID, date, calories2, 0, 0, 0, nil, 0,
-					false, nil, nil, time.Now(), time.Now(),
-				))
+					false, nil, nil, nil, nil, nil, time.Now(), time.Now()))
 
 			// Final GET
-			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
+			mock.ExpectQuery(`SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, steps_source, weight_source, workout_source, created_at, updated_at FROM daily_metrics WHERE user_id = \$1 AND date = \$2`).
 				WithArgs(userID, date).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"id", "user_id", "date", "calories", "protein", "fat", "carbs", "weight", "steps",
-					"workout_completed", "workout_type", "workout_duration", "created_at", "updated_at",
+					"workout_completed", "workout_type", "workout_duration", "steps_source", "weight_source", "workout_source", "created_at", "updated_at",
 				}).AddRow(
 					metricID, userID, date, calories2, 0, 0, 0, nil, 0,
-					false, nil, nil, time.Now(), time.Now(),
-				))
+					false, nil, nil, nil, nil, nil, time.Now(), time.Now()))
 
 			// First save
 			metricUpdate1 := MetricUpdate{

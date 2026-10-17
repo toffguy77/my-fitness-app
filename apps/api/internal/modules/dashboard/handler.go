@@ -3,6 +3,7 @@ package dashboard
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
@@ -43,6 +44,7 @@ type ServiceInterface interface {
 	GetProgressData(ctx context.Context, userID int64, weeks int) (*ProgressData, error)
 	GetReportFeedback(ctx context.Context, userID int64, reportID string) (*ReportFeedback, error)
 	GetOnboardingState(ctx context.Context, userID int64, plateRecognitionEnabled bool) (*OnboardingState, error)
+	ImportHealth(ctx context.Context, userID int64, now time.Time, items []json.RawMessage) (*HealthImportResult, error)
 }
 
 // Handler handles dashboard requests

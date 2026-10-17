@@ -21,9 +21,21 @@ type DailyMetrics struct {
 	WorkoutTypes         []string       `json:"workout_types,omitempty"`          // derived; not a DB column
 	WorkoutTypeDurations map[string]int `json:"workout_type_durations,omitempty"` // derived; not a DB column
 	WorkoutDuration      *int           `json:"workout_duration,omitempty" db:"workout_duration"`
-	CreatedAt            time.Time      `json:"created_at" db:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at" db:"updated_at"`
+	// Откуда значение: SourceManual или SourceHealthKit; nil — значения нет.
+	// Без omitempty: клиенту нужен явный null, а не отсутствующее поле.
+	StepsSource   *string   `json:"steps_source" db:"steps_source"`
+	WeightSource  *string   `json:"weight_source" db:"weight_source"`
+	WorkoutSource *string   `json:"workout_source" db:"workout_source"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
 }
+
+// Источники метрик дня (daily-metric-source). Ручной ввод главнее импорта:
+// импорт не трогает значение с источником SourceManual.
+const (
+	SourceManual    = "manual"
+	SourceHealthKit = "healthkit"
+)
 
 // Validate validates the daily metrics fields
 func (d *DailyMetrics) Validate() error {

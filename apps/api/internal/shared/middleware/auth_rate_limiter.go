@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
@@ -126,6 +127,11 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// authorization_code не угадать; каждый вход дёргает Apple, так что
 	// потолок нужен от расходов, а не от перебора. NAT-поправка — как у входа.
 	"native-apple": {maxRequests: 100, window: 15 * time.Minute},
+	// Импорт Здоровья: считается по пользователю (ByUser), не по IP. Первая
+	// загрузка — 90 дней пачками по 500, это единицы пачек; дальше фоновая
+	// доставка присылает по пачке на событие. 120 в час — с запасом для
+	// живого телефона и потолок для зациклившейся очереди.
+	"health-import": {maxRequests: 120, window: time.Hour},
 }
 
 // KeyFunc picks what a limit counts by. The endpoint name is prepended by the
@@ -134,6 +140,16 @@ type KeyFunc func(c *gin.Context) string
 
 // ByIP counts by the client address — the default.
 func ByIP(c *gin.Context) string { return c.ClientIP() }
+
+// ByUser counts by the signed-in user — for limits on authenticated routes,
+// where one person behind a mobile NAT must not share a bucket with everyone
+// else on it. Placed after RequireAuth; without a user it counts by IP.
+func ByUser(c *gin.Context) string {
+	if id, ok := c.Get("user_id"); ok {
+		return fmt.Sprintf("user:%v", id)
+	}
+	return "ip:" + c.ClientIP()
+}
 
 // ByEmail counts by the mailbox in the JSON body alone, whatever the IP:
 // attempts against one account, or letters to one mailbox. A body without an

@@ -93,7 +93,8 @@ func (s *Service) GetDailyMetrics(ctx context.Context, userID int64, date time.T
 
 	query := `
 		SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps,
-		       workout_completed, workout_type, workout_duration, created_at, updated_at
+		       workout_completed, workout_type, workout_duration,
+		       steps_source, weight_source, workout_source, created_at, updated_at
 		FROM daily_metrics
 		WHERE user_id = $1 AND date = $2
 	`
@@ -112,6 +113,9 @@ func (s *Service) GetDailyMetrics(ctx context.Context, userID int64, date time.T
 		&metrics.WorkoutCompleted,
 		&metrics.WorkoutType,
 		&metrics.WorkoutDuration,
+		&metrics.StepsSource,
+		&metrics.WeightSource,
+		&metrics.WorkoutSource,
 		&metrics.CreatedAt,
 		&metrics.UpdatedAt,
 	)
@@ -156,6 +160,34 @@ func (s *Service) GetDailyMetrics(ctx context.Context, userID int64, date time.T
 
 	populateWorkoutTypes(&metrics)
 	return &metrics, nil
+}
+
+// markManualSource records that the metric just written came from a person.
+//
+// Ручной ввод главнее импорта (daily-metric-source): записанное значение
+// получает источник manual, и импорт его больше не трогает. Очищенное значение
+// (0 шагов, снятая отметка тренировки) остаётся без источника — так следующий
+// импорт за эту дату вправе его вернуть. Источники других метрик дня не
+// меняются: строка перезаписывается целиком, и они едут в ней как прочитаны.
+func markManualSource(m *DailyMetrics, metric MetricUpdateType) {
+	manual := SourceManual
+	switch metric {
+	case MetricUpdateTypeSteps:
+		m.StepsSource = nil
+		if m.Steps > 0 {
+			m.StepsSource = &manual
+		}
+	case MetricUpdateTypeWeight:
+		m.WeightSource = nil
+		if m.Weight != nil {
+			m.WeightSource = &manual
+		}
+	case MetricUpdateTypeWorkout:
+		m.WorkoutSource = nil
+		if m.WorkoutCompleted || (m.WorkoutType != nil && *m.WorkoutType != "") {
+			m.WorkoutSource = &manual
+		}
+	}
 }
 
 // SaveMetric creates or updates a daily metric
@@ -273,6 +305,8 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 		}
 	}
 
+	markManualSource(existing, metricUpdate.Type)
+
 	// Validate the updated metrics
 	if err := existing.Validate(); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)
@@ -282,8 +316,9 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 	query := `
 		INSERT INTO daily_metrics (
 			id, user_id, date, calories, protein, fat, carbs, weight, steps,
-			workout_completed, workout_type, workout_duration, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+			workout_completed, workout_type, workout_duration,
+			steps_source, weight_source, workout_source, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())
 		ON CONFLICT (user_id, date)
 		DO UPDATE SET
 			calories = EXCLUDED.calories,
@@ -295,9 +330,13 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 			workout_completed = EXCLUDED.workout_completed,
 			workout_type = EXCLUDED.workout_type,
 			workout_duration = EXCLUDED.workout_duration,
+			steps_source = EXCLUDED.steps_source,
+			weight_source = EXCLUDED.weight_source,
+			workout_source = EXCLUDED.workout_source,
 			updated_at = NOW()
 		RETURNING id, user_id, date, calories, protein, fat, carbs, weight, steps,
-		          workout_completed, workout_type, workout_duration, created_at, updated_at
+		          workout_completed, workout_type, workout_duration,
+		          steps_source, weight_source, workout_source, created_at, updated_at
 	`
 
 	var result DailyMetrics
@@ -316,6 +355,9 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 		existing.WorkoutCompleted,
 		existing.WorkoutType,
 		existing.WorkoutDuration,
+		existing.StepsSource,
+		existing.WeightSource,
+		existing.WorkoutSource,
 	).Scan(
 		&result.ID,
 		&result.UserID,
@@ -329,6 +371,9 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 		&result.WorkoutCompleted,
 		&result.WorkoutType,
 		&result.WorkoutDuration,
+		&result.StepsSource,
+		&result.WeightSource,
+		&result.WorkoutSource,
 		&result.CreatedAt,
 		&result.UpdatedAt,
 	)
@@ -368,7 +413,8 @@ func (s *Service) GetWeekMetrics(ctx context.Context, userID int64, startDate, e
 
 	query := `
 		SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps,
-		       workout_completed, workout_type, workout_duration, created_at, updated_at
+		       workout_completed, workout_type, workout_duration,
+		       steps_source, weight_source, workout_source, created_at, updated_at
 		FROM daily_metrics
 		WHERE user_id = $1 AND date >= $2 AND date <= $3
 		ORDER BY date ASC
@@ -401,6 +447,9 @@ func (s *Service) GetWeekMetrics(ctx context.Context, userID int64, startDate, e
 			&m.WorkoutCompleted,
 			&m.WorkoutType,
 			&m.WorkoutDuration,
+			&m.StepsSource,
+			&m.WeightSource,
+			&m.WorkoutSource,
 			&m.CreatedAt,
 			&m.UpdatedAt,
 		)

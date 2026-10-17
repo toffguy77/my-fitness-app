@@ -190,3 +190,20 @@ func TestCalculatorPageExample(t *testing.T) {
 	assert.InDelta(t, 51, got.Fat, 0.5)
 	assert.InDelta(t, 226, got.Carbs, 0.5)
 }
+
+// С миграции 062 колонка хранит коды видов тренировки (strength, running, …),
+// и их же пишет импорт Здоровья. Код обязан давать ту же надбавку, что и
+// прежнее русское название: иначе тренировка после 062 не меняла норму вовсе.
+func TestCalculateWorkoutBonus_CodesMatchLabels(t *testing.T) {
+	pairs := map[string]string{
+		"strength": "Силовая", "cardio": "Кардио", "hiit": "HIIT", "yoga": "Йога",
+		"stretching": "Растяжка", "swimming": "Плавание", "running": "Бег", "cycling": "Велосипед",
+	}
+	for code, label := range pairs {
+		byCode := CalculateWorkoutBonus(&WorkoutInfo{Types: []string{code}, TypeDurations: map[string]int{code: 60}})
+		byLabel := CalculateWorkoutBonus(&WorkoutInfo{Types: []string{label}, TypeDurations: map[string]int{label: 60}})
+		if byCode <= 0 || byCode != byLabel {
+			t.Errorf("%s: bonus %.1f, %s: %.1f — должны совпадать и быть больше нуля", code, byCode, label, byLabel)
+		}
+	}
+}
