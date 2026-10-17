@@ -27,6 +27,7 @@ const preferences = (overrides = {}) => ({
     quietHoursEnd: null,
     timezone: 'Europe/Moscow',
     emailUnsubscribed: false,
+    showMessageText: true,
     ...overrides,
 })
 
@@ -120,5 +121,49 @@ describe('NotificationDeliverySettings', () => {
         await waitFor(() =>
             expect(toast.error).toHaveBeenCalledWith('Не удалось загрузить настройки доставки')
         )
+    })
+
+    it('labels the push column for browsers and iPhone alike', async () => {
+        getPrefs.mockResolvedValue(preferences())
+
+        render(<NotificationDeliverySettings />)
+
+        expect(await screen.findByText('Пуш (браузер и iPhone)')).toBeInTheDocument()
+    })
+
+    it('shows chat messages with a push switch and no email switch', async () => {
+        getPrefs.mockResolvedValue(
+            preferences({
+                types: [
+                    { type: 'trainer_feedback', app: true, email: true, push: true },
+                    { type: 'chat_message', app: true, push: true },
+                ],
+            })
+        )
+        const user = userEvent.setup()
+
+        render(<NotificationDeliverySettings />)
+
+        expect(await screen.findByText('Сообщения чата')).toBeInTheDocument()
+        expect(screen.getByRole('switch', { name: 'Сообщения чата через push' })).toBeChecked()
+        expect(screen.queryByRole('switch', { name: 'Сообщения чата письмом' })).not.toBeInTheDocument()
+        expect(screen.getByText('Письмом не приходит')).toBeInTheDocument()
+
+        await user.click(screen.getByRole('switch', { name: 'Сообщения чата через push' }))
+        await waitFor(() => expect(updatePrefs).toHaveBeenCalled())
+        expect(updatePrefs.mock.calls[0][0].types).toContainEqual({ type: 'chat_message', app: true, push: false })
+    })
+
+    it('saves the message text choice', async () => {
+        getPrefs.mockResolvedValue(preferences())
+        const user = userEvent.setup()
+
+        render(<NotificationDeliverySettings />)
+
+        const toggle = await screen.findByRole('switch', { name: 'Показывать текст сообщений' })
+        expect(toggle).toBeChecked()
+        await user.click(toggle)
+        await waitFor(() => expect(updatePrefs).toHaveBeenCalled())
+        expect(updatePrefs.mock.calls[0][0].showMessageText).toBe(false)
     })
 })

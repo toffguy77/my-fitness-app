@@ -117,7 +117,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 	})
 	// Уведомления на iPhone. Ключ, который не разбирается, — ошибка
 	// настройки: говорим громко, а не делаем вид, что канал работает.
-	if cfg.Features.IOSPush {
+	if cfg.Features.APNS {
 		if err := notificationsSvc.WithAPNS(notifications.APNSConfig{
 			KeyID:      cfg.APNSKeyID,
 			TeamID:     cfg.APNSTeamID,
@@ -125,9 +125,13 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 			Topic:      cfg.APNSTopic,
 		}); err != nil {
 			log.Error("iOS push is configured but the key is unusable", "error", err)
-			cfg.Features.IOSPush = false
+			cfg.Features.APNS = false
 		}
 	}
+	// Пуш о сообщении чата уходит, только если у получателя нет открытого
+	// соединения; хаб знает, у кого оно есть.
+	notificationsSvc.WithPresence(wsHub)
+	chatService.WithPush(notificationsSvc)
 	// The digest needs a way to send and a secret to sign unsubscribe links
 	// with. Without SMTP it is simply not wired, and the job says so.
 	if emailService != nil {
@@ -300,7 +304,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		// Ответы куратора из темы: мост говорит, кому и куда, а доставка
 		// кладёт ответ в переписку платформы от его имени.
 		supportService.WithBridge(bridge,
-			supportbridge.NewPlatformDelivery(db.DB),
+			supportbridge.NewPlatformDelivery(db.DB).WithPush(notificationsSvc),
 			supportbridge.NewCuratorByTelegram(db.DB))
 		// Сообщения из чата платформы — в ту же тему.
 		chatService.WithBridge(bridge)
@@ -310,7 +314,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		if chatS3 != nil {
 			bridge.WithMedia(chatS3, telegram.NewClient(cfg.TelegramBotToken))
 		}
-		bridge.WithPlatform(supportbridge.NewPlatformDelivery(db.DB))
+		bridge.WithPlatform(supportbridge.NewPlatformDelivery(db.DB).WithPush(notificationsSvc))
 		supportService.WithMedia(bridge)
 		// Привязка Telegram: `/start <билет>` гасится до логики поддержки.
 		supportService.WithLinks(telegramlink.NewService(db.DB))

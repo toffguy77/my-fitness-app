@@ -148,14 +148,14 @@ func main() {
 			string(notifications.TypeCuratorAccessEnded),
 			"Доступ к куратору закончился",
 			"Переписка с куратором осталась доступной для чтения. Продлите доступ, чтобы снова писать.",
-			"/pricing"); err != nil {
+			"/pricing", nil); err != nil {
 			log.Errorw("Не удалось уведомить клиента", "error", err, "client_id", a.clientID)
 		}
 		if err := notifier.Notify(ctx, a.curatorID,
 			string(notifications.TypeCuratorAccessEnded),
 			"У клиента закончился доступ",
 			"Клиент больше не может писать вам, пока не продлит доступ.",
-			"/curator/chat"); err != nil {
+			"/curator/chat", nil); err != nil {
 			log.Errorw("Не удалось уведомить куратора", "error", err, "curator_id", a.curatorID)
 		}
 

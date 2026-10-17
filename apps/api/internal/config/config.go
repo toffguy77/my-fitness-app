@@ -42,9 +42,10 @@ type Features struct {
 	SupportBot      bool
 	SupportBridge   bool
 	WebPush         bool
-	// IOSPush — уведомления на iPhone через APNs: ключ .p8 с правом APNs,
-	// его идентификатор и команда Apple.
-	IOSPush bool
+	// APNS — уведомления на iPhone через APNs: ключ .p8 с правом APNs,
+	// его идентификатор и команда Apple. Хост (sandbox или production)
+	// выбирается по окружению, с которым зарегистрировалось устройство.
+	APNS bool
 	// AppleSignIn — вход через Apple из приложения: команда, bundle id и ключ
 	// с правом Sign in with Apple. Без всех четырёх провайдер выключен.
 	AppleSignIn bool
@@ -81,7 +82,7 @@ func (f Features) Disabled() []string {
 		{"support_bot", f.SupportBot},
 		{"support_bridge", f.SupportBridge},
 		{"web_push", f.WebPush},
-		{"ios_push", f.IOSPush},
+		{"apns", f.APNS},
 		{"apple_sign_in", f.AppleSignIn},
 		{"error_reporting", f.ErrorReporting},
 		{"tracing", f.Tracing},
@@ -108,7 +109,7 @@ func (f Features) Map() map[string]bool {
 		"support_bot":      f.SupportBot,
 		"support_bridge":   f.SupportBridge,
 		"web_push":         f.WebPush,
-		"ios_push":         f.IOSPush,
+		"apns":             f.APNS,
 		"apple_sign_in":    f.AppleSignIn,
 		"error_reporting":  f.ErrorReporting,
 		"tracing":          f.Tracing,
@@ -600,7 +601,7 @@ func deriveFeatures(c *Config) Features {
 		// refuses a request signed without any of them.
 		WebPush: c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != "",
 		// Ключ без идентификатора или команды Apple не принимает.
-		IOSPush: c.APNSKeyID != "" && c.APNSTeamID != "" && c.APNSPrivateKey != "",
+		APNS: c.APNSKeyID != "" && c.APNSTeamID != "" && c.APNSPrivateKey != "",
 		// Без команды и ключа не подписать client secret для обмена кода и
 		// отзыва, без bundle id не проверить audience identity token'а.
 		// Без ключа шифрования токен Apple негде хранить, а без него не

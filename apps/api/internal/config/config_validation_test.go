@@ -197,7 +197,7 @@ func TestFeatures_DerivedFromCredentials(t *testing.T) {
 	// Обратная связь рекламному кабинету выключена по той же причине: токен
 	// привязан к живому человеку, и вывести его из учётных данных нельзя.
 	assert.Equal(t, []string{
-		"support_bot", "support_bridge", "web_push", "ios_push", "apple_sign_in",
+		"support_bot", "support_bridge", "web_push", "apns", "apple_sign_in",
 		"error_reporting", "tracing", "ads_attribution",
 	}, cfg.Features.Disabled())
 }

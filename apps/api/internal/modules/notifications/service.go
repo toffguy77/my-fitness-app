@@ -37,6 +37,8 @@ type Service struct {
 	pushClient *http.Client
 	// apns sends to iPhones; nil when no key is configured.
 	apns *apnsSender
+	// presence says who has the application open; nil counts nobody.
+	presence Presence
 	// telegram может быть nil: без привязок доставлять некуда.
 	telegram TelegramDelivery
 }
@@ -68,7 +70,7 @@ func (s *Service) GetNotifications(ctx context.Context, userID int64, category N
 
 	// Query to get notifications with pagination
 	query := `
-		SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category
+		SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category, target
 		FROM notifications
 		WHERE user_id = $1 AND category = $2
 		ORDER BY created_at DESC
@@ -102,6 +104,7 @@ func (s *Service) GetNotifications(ctx context.Context, userID int64, category N
 			&n.ReadAt,
 			&n.ActionURL,
 			&n.ContentCategory,
+			&n.Target,
 		)
 		if err != nil {
 			s.log.Error("Failed to scan notification", "error", err)
@@ -188,6 +191,9 @@ func (s *Service) MarkAsRead(ctx context.Context, userID int64, notificationID s
 		"read_at":         readAt,
 	})
 
+	// The iPhone's badge counts this; it is now one too high.
+	s.UnreadChanged(ctx, userID)
+
 	return &readAt, nil
 }
 
@@ -226,6 +232,10 @@ func (s *Service) MarkAllAsRead(ctx context.Context, userID int64, category Noti
 		"category":      category,
 		"rows_affected": rowsAffected,
 	})
+
+	if rowsAffected > 0 && category == CategoryMain {
+		s.UnreadChanged(ctx, userID)
+	}
 
 	return int(rowsAffected), nil
 }
@@ -318,6 +328,14 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 		notification.CreatedAt = time.Now()
 	}
 
+	// The kind follows from the type; the caller supplies only the ids.
+	target, missing := resolveTarget(notification.Type, notification.Target.IDs)
+	if missing != "" {
+		s.log.Warn("Notification target lacks ids; it will open the notification list",
+			"type", notification.Type, "missing", missing)
+	}
+	notification.Target = target
+
 	// The notification and its delivery records go in together. A notification
 	// with no delivery row would be invisible to the sender — the person would
 	// see it in the application and never hear about it anywhere else.
@@ -328,8 +346,8 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 	defer func() { _ = tx.Rollback() }()
 
 	query := `
-		INSERT INTO notifications (id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO notifications (id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category, target)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, created_at
 	`
 
@@ -347,6 +365,7 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 		notification.ReadAt,
 		notification.ActionURL,
 		notification.ContentCategory,
+		notification.Target,
 	).Scan(&notification.ID, &notification.CreatedAt)
 
 	if err != nil {
@@ -387,6 +406,11 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 	// После фиксации и в стороне от её ошибок: уведомление уже создано, и
 	// откатывать его из-за недоставленного сообщения — неверный размен.
 	s.sendToTelegram(ctx, notification)
+
+	// The badge counts unread notifications of the main category.
+	if notification.Category == CategoryMain {
+		s.UnreadChanged(ctx, notification.UserID)
+	}
 
 	return nil
 }
@@ -451,14 +475,15 @@ func (s *Service) isLeaving(ctx context.Context, userID int64) (bool, error) {
 
 // Notify creates one notification from the narrow interface other modules
 // declare, so they do not have to build a Notification value or import this
-// package's types.
-func (s *Service) Notify(ctx context.Context, userID int64, notificationType, title, content, actionURL string) error {
+// package's types. ids are the target's ids; the kind follows from the type.
+func (s *Service) Notify(ctx context.Context, userID int64, notificationType, title, content, actionURL string, ids map[string]string) error {
 	notification := &Notification{
 		UserID:   userID,
 		Category: CategoryMain,
 		Type:     NotificationType(notificationType),
 		Title:    title,
 		Content:  content,
+		Target:   Target{IDs: ids},
 	}
 	if actionURL != "" {
 		notification.ActionURL = &actionURL

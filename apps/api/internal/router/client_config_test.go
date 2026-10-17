@@ -71,7 +71,7 @@ func TestConfigAndReadyReportTheSameFeatures(t *testing.T) {
 	for name, features := range map[string]config.Features{
 		"all off":            {},
 		"recognition off":    {Email: true, WeeklyPhotos: true, AppleSignIn: true},
-		"recognition on":     {FoodRecognition: true, IOSPush: true},
+		"recognition on":     {FoodRecognition: true, APNS: true},
 		"apple sign-in only": {AppleSignIn: true},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -84,6 +84,9 @@ func TestConfigAndReadyReportTheSameFeatures(t *testing.T) {
 			assert.Equal(t, ready, cfg)
 			assert.Equal(t, features.FoodRecognition, cfg.(map[string]any)["food_recognition"])
 			assert.Contains(t, cfg, "apple_sign_in")
+			// push-devices «Ключ не задан»: features.apns — false и в /config,
+			// и в /ready (они равны целиком строкой выше).
+			assert.Equal(t, features.APNS, cfg.(map[string]any)["apns"])
 		})
 	}
 }

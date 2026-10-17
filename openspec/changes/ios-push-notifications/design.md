@@ -58,14 +58,25 @@
 
 ### Таблица `push_devices`, отдельная от Web Push-подписок
 
-Поля таблицы:
-- `id`, `user_id`, `token` (уникальный);
+Таблица `apns_devices` из миграции 095 переименовывается в `push_devices`
+с сохранением данных. Поля:
+- `id`, `user_id`, `token` (уникальный), `installation_id`;
 - `platform` (`ios`), `environment` (`sandbox` | `production`);
-- `app_version`, `created_at`, `last_seen_at`, `disabled_at`.
+- `app_version`, `created_at`, `last_seen_at`, `last_used_at`, `failures`, `disabled_at`;
+- `badge_dirty_at`, `badge_pushed_at` — для фонового обновления значка.
 
 Регистрация — upsert по `token`. Если токен уже числится за другим
 пользователем (выход и вход другим аккаунтом на том же телефоне), он
-**переносится**: старая привязка удаляется.
+**переносится**, но только когда совпадает `installation_id` — случайный
+идентификатор установки из Keychain телефона. Иначе `403 forbidden`: знание
+чужого токена не должно позволять забрать телефон. При переносе ожидающие
+пуши прежнего владельца на устройство отменяются в той же транзакции, а
+отправитель вторым замком отменяет задание, чей адресат сменил владельца
+(так же для подписок браузера). Удаление устройства уносит его задания
+каскадом.
+
+Индекс по `user_id` — обычный, а не частичный «для активных»: проверка
+`TestEveryForeignKeyHasALeadingIndex` требует ведущий индекс у внешнего ключа.
 
 Отвергнуто:
 - **Хранить токен APNs в `push_subscriptions` с фиктивным `endpoint`.**
@@ -76,14 +87,27 @@
   устройства на сервере. Токен APNs и так уникален для пары
   «приложение — устройство».
 
-### APNs: авторизация ключом, `sideshow/apns2`
+### APNs: авторизация ключом, свой HTTP/2-клиент
 
 Токен-авторизация `.p8`: один ключ на все приложения команды, не истекает,
-не требует ежегодного продления сертификата. Клиент держит одно
-HTTP/2-соединение на окружение.
+не требует ежегодного продления сертификата. Клиент — `net/http` с
+`ForceAttemptHTTP2` и JWT ES256 (уже был в 095); библиотека `sideshow/apns2`
+не нужна. Тест — поддельный APNs на `httptest` с HTTP/2 по TLS.
 
-`environment` устройства выбирает хост: sandbox для сборок из Xcode и
-production для TestFlight и App Store.
+`environment` устройства выбирает хост: sandbox для сборок из Xcode
+(`aps-environment: development`) и production для TestFlight и App Store.
+Отдельная переменная `APNS_ENVIRONMENT` не нужна.
+
+Фоновое обновление значка: `apns-push-type: background`, `apns-priority: 5`,
+нагрузка `{"aps":{"content-available":1,"badge":N}}`.
+
+`thread-id`: `conversation:<id>` для чата, `support:<id>` для обращений, вид
+адреса (`task`, `plan`, …) для прочего. Категории: `CHAT_MESSAGE`, `TASK`,
+`TASK_WORKOUT` (задача-тренировка: без «Выполнено»), `SUPPORT_ESCALATED`.
+
+Пуш о сообщении чата уходит и в браузер (Web Push), как всё в канале push.
+Задание отправки работает раз в 15 секунд и запускается, если готов любой
+из двух транспортов.
 
 Отвергнуто:
 - **Сертификат `.p12`.** Ежегодное продление, отдельный сертификат на
@@ -190,7 +214,7 @@ Web Push такого уровня не имеет — для него пове�
    `schema_migrations` dev и прода).
 2. Бэкенд с выключенной возможностью `apns`: регистрация отвечает `503`,
    заполнение `target` уже работает.
-3. Ключ APNs «Weighted» (Key ID `743P3Y36VM`, `.p8` — только в секретах Dokploy), `APNS_TOPIC` — bundle id среды: `team.burcev.app.dev` и `APNS_ENVIRONMENT=sandbox` на dev, `team.burcev.app` и `production` на проде (сборки Dev и Prod — разные приложения, `apps/ios/project.yml`).
+3. Ключ APNs «Weighted» (Key ID `743P3Y36VM`, `.p8` — только в секретах Dokploy), `APNS_TOPIC` — bundle id среды: `team.burcev.app.dev` на dev и `team.burcev.app` на проде (сборки Dev и Prod — разные приложения, `apps/ios/project.yml`). `APNS_ENVIRONMENT` не нужен: окружение sandbox/production приходит с устройством.
 
 Откат: выключить `apns` в конфигурации. Web Push не затронут.
 

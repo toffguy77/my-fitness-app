@@ -53,6 +53,8 @@ func TestEveryOperatorIsToldAboutAnEscalation(t *testing.T) {
 		assert.Contains(t, n.Content, "оплата", "the reason is why an operator opens it first")
 		require.NotNil(t, n.ActionURL)
 		assert.Equal(t, "/curator/support", *n.ActionURL)
+		// notification-targets: приложение открывает само обращение.
+		assert.Equal(t, notifications.IDs{"conversation_id": "conv-1"}, n.Target.IDs)
 	}
 	assert.Equal(t, int64(1), notifier.created[0].UserID)
 	assert.Equal(t, int64(2), notifier.created[1].UserID)

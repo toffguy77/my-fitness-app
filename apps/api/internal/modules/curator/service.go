@@ -2417,6 +2417,7 @@ func (s *Service) sendPlanUpdatedNotification(ctx context.Context, clientID int6
 		Title:     title,
 		Content:   content,
 		ActionURL: &actionURL,
+		Target:    notifications.Target{IDs: notifications.IDs{"plan_id": plan.ID}},
 	}
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
@@ -2442,6 +2443,10 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 		Title:     title,
 		Content:   content,
 		ActionURL: &actionURL,
+		// task_type — не идентификатор, но без него приложение не отличит
+		// задачу-тренировку: ей «Выполнено» из уведомления не подходит, нужны
+		// тип и длительность.
+		Target: notifications.Target{IDs: notifications.IDs{"task_id": task.ID, "task_type": task.Type}},
 	}
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
@@ -2473,6 +2478,7 @@ func (s *Service) sendFeedbackReceivedNotification(ctx context.Context, clientID
 		Type:     notifications.TypeFeedbackReceived,
 		Title:    title,
 		Content:  content,
+		Target:   notifications.Target{IDs: notifications.IDs{"report_id": reportID}},
 	}
 
 	actionURL := FeedbackActionURL(reportID)

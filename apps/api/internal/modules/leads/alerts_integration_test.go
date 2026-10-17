@@ -75,8 +75,15 @@ func TestCuratorRequest_ЗовётГруппуИСуперадминов(t *test
 	admin := seedUser(t, db, "boss@example.test", "super_admin")
 	client := seedUser(t, db, "client@example.test", "client")
 
-	_, err := service.CreateCuratorRequest(ctx, client, leads.CaptureCuratorOfferChat)
+	lead, err := service.CreateCuratorRequest(ctx, client, leads.CaptureCuratorOfferChat)
 	require.NoError(t, err)
+
+	// notification-targets: уведомление открывает саму заявку.
+	var target string
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT target::text FROM notifications WHERE user_id = $1 AND type = 'curator_requested'`,
+		admin).Scan(&target))
+	assert.JSONEq(t, `{"kind":"lead","ids":{"lead_id":"`+lead.ID+`"}}`, target)
 
 	sent := group.messages()
 	require.Len(t, sent, 1, "о заявке должна узнать группа кураторов")

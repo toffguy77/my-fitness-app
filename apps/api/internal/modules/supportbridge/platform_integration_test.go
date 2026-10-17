@@ -104,3 +104,42 @@ func TestCuratorFoundByTelegramChat(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, found)
 }
+
+type pushSpy struct{ ids []string }
+
+func (p *pushSpy) ChatMessageSent(_ context.Context, messageID string) {
+	p.ids = append(p.ids, messageID)
+}
+
+// Ответ куратора из Telegram и вложение клиента — такие же сообщения
+// переписки: получателю без открытого приложения уходит пуш.
+func TestBridgedMessagesArePushed(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "bridge_platform_push")
+	ctx := context.Background()
+	spy := &pushSpy{}
+	delivery := supportbridge.NewPlatformDelivery(db.DB).WithPush(spy)
+
+	var curator, clientID int64
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('кур@e.test','x','К','coordinator') RETURNING id`).Scan(&curator))
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('кли@e.test','x','Кл','client') RETURNING id`).Scan(&clientID))
+	_, err := db.ExecContext(ctx, `INSERT INTO curator_client_relationships (curator_id, client_id, status) VALUES ($1,$2,'active')`, curator, clientID)
+	require.NoError(t, err)
+
+	require.NoError(t, delivery.ToPlatform(ctx, clientID, curator, "Отвечаю из Telegram"))
+	require.NoError(t, delivery.Attach(ctx, clientID, "image", "chat/key.jpg", ""))
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT m.id::text FROM messages m JOIN conversations c ON c.id = m.conversation_id
+		 WHERE c.client_id = $1 ORDER BY m.created_at, m.id`, clientID)
+	require.NoError(t, err)
+	defer rows.Close()
+	var stored []string
+	for rows.Next() {
+		var id string
+		require.NoError(t, rows.Scan(&id))
+		stored = append(stored, id)
+	}
+	require.NoError(t, rows.Err())
+	assert.ElementsMatch(t, stored, spy.ids)
+	assert.Len(t, spy.ids, 2)
+}

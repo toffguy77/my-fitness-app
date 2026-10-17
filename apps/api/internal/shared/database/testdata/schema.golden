@@ -5,9 +5,6 @@ INDEX analytics_events idx_analytics_events_user btree (user_id, occurred_at) WH
 INDEX analytics_events idx_analytics_events_visitor btree (visitor_id, occurred_at)
 INDEX analytics_identities analytics_identities_pkey btree (visitor_id)
 INDEX analytics_identities idx_analytics_identities_user btree (user_id)
-INDEX apns_devices apns_devices_pkey btree (id)
-INDEX apns_devices apns_devices_token_key btree (token)
-INDEX apns_devices idx_apns_devices_user_id btree (user_id)
 INDEX apple_token_revocations apple_token_revocations_pkey btree (id)
 INDEX apple_token_revocations idx_apple_token_revocations_next_attempt_at btree (next_attempt_at)
 INDEX article_audience article_audience_pkey btree (article_id, client_id)
@@ -141,6 +138,16 @@ INDEX products idx_products_name_trgm gin (name gin_trgm_ops)
 INDEX products idx_products_source btree (source)
 INDEX products idx_products_vendor_code btree (vendor_code)
 INDEX products products_pkey btree (id)
+INDEX push_deliveries idx_push_deliveries_chat_message btree (chat_message_id) WHERE (chat_message_id IS NOT NULL)
+INDEX push_deliveries idx_push_deliveries_device btree (device_id) WHERE (device_id IS NOT NULL)
+INDEX push_deliveries idx_push_deliveries_due btree (not_before) WHERE (status = 'pending'::text)
+INDEX push_deliveries idx_push_deliveries_notification btree (notification_id) WHERE (notification_id IS NOT NULL)
+INDEX push_deliveries idx_push_deliveries_subscription btree (subscription_id) WHERE (subscription_id IS NOT NULL)
+INDEX push_deliveries idx_push_deliveries_user btree (user_id)
+INDEX push_deliveries push_deliveries_pkey btree (id)
+INDEX push_devices idx_push_devices_user_id btree (user_id)
+INDEX push_devices push_devices_pkey btree (id)
+INDEX push_devices push_devices_token_key btree (token)
 INDEX push_subscriptions idx_push_subscriptions_user btree (user_id)
 INDEX push_subscriptions push_subscriptions_endpoint_key btree (endpoint)
 INDEX push_subscriptions push_subscriptions_pkey btree (id)
@@ -249,15 +256,6 @@ analytics_events.visitor_id uuid NOT NULL
 analytics_identities.linked_at timestamp with time zone NOT NULL DEFAULT now()
 analytics_identities.user_id bigint NOT NULL
 analytics_identities.visitor_id uuid NOT NULL
-apns_devices.app_version text
-apns_devices.created_at timestamp with time zone NOT NULL DEFAULT now()
-apns_devices.environment text NOT NULL
-apns_devices.failures integer NOT NULL DEFAULT 0
-apns_devices.id bigint NOT NULL DEFAULT nextval('apns_devices_id_seq')
-apns_devices.installation_id text NOT NULL
-apns_devices.last_used_at timestamp with time zone
-apns_devices.token text NOT NULL
-apns_devices.user_id bigint NOT NULL
 apple_token_revocations.attempts integer NOT NULL DEFAULT 0
 apple_token_revocations.created_at timestamp with time zone NOT NULL DEFAULT now()
 apple_token_revocations.id bigint NOT NULL DEFAULT nextval('apple_token_revocations_id_seq')
@@ -614,6 +612,7 @@ notifications.created_at timestamp with time zone NOT NULL DEFAULT now()
 notifications.icon_url character varying
 notifications.id uuid NOT NULL DEFAULT gen_random_uuid()
 notifications.read_at timestamp with time zone
+notifications.target jsonb NOT NULL DEFAULT '{"kind": "notifications"}'
 notifications.title character varying NOT NULL
 notifications.type character varying NOT NULL
 notifications.user_id bigint NOT NULL
@@ -695,6 +694,33 @@ products.source text NOT NULL DEFAULT 'database'
 products.source_url text
 products.vendor_code text
 products.water numeric
+push_deliveries.attempts integer NOT NULL DEFAULT 0
+push_deliveries.chat_message_id uuid
+push_deliveries.created_at timestamp with time zone NOT NULL DEFAULT now()
+push_deliveries.device_id bigint
+push_deliveries.id bigint NOT NULL DEFAULT nextval('push_deliveries_id_seq')
+push_deliveries.last_error text
+push_deliveries.not_before timestamp with time zone NOT NULL DEFAULT now()
+push_deliveries.notification_id uuid
+push_deliveries.status text NOT NULL DEFAULT 'pending'
+push_deliveries.subscription_id bigint
+push_deliveries.transport text NOT NULL
+push_deliveries.updated_at timestamp with time zone NOT NULL DEFAULT now()
+push_deliveries.user_id bigint NOT NULL
+push_devices.app_version text
+push_devices.badge_dirty_at timestamp with time zone
+push_devices.badge_pushed_at timestamp with time zone
+push_devices.created_at timestamp with time zone NOT NULL DEFAULT now()
+push_devices.disabled_at timestamp with time zone
+push_devices.environment text NOT NULL
+push_devices.failures integer NOT NULL DEFAULT 0
+push_devices.id bigint NOT NULL DEFAULT nextval('push_devices_id_seq')
+push_devices.installation_id text NOT NULL
+push_devices.last_seen_at timestamp with time zone NOT NULL DEFAULT now()
+push_devices.last_used_at timestamp with time zone
+push_devices.platform text NOT NULL DEFAULT 'ios'
+push_devices.token text NOT NULL
+push_devices.user_id bigint NOT NULL
 push_subscriptions.auth text NOT NULL
 push_subscriptions.created_at timestamp with time zone NOT NULL DEFAULT now()
 push_subscriptions.endpoint text NOT NULL
@@ -925,6 +951,7 @@ users.onboarding_completed boolean DEFAULT false
 users.password text
 users.password_changed_at timestamp without time zone
 users.pending_file_prefixes jsonb
+users.push_show_message_text boolean NOT NULL DEFAULT true
 users.quiet_hours_end smallint
 users.quiet_hours_start smallint
 users.role text NOT NULL DEFAULT 'client'

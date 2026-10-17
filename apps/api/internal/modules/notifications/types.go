@@ -62,6 +62,12 @@ const (
 	// кто-нибудь туда не заглянет, — так единственная за две недели пролежала
 	// неделю.
 	TypeCuratorRequested NotificationType = "curator_requested"
+
+	// Сообщение чата. Уведомлением не является: строки в notifications у него
+	// нет (у чата своя лента и свой счётчик непрочитанного), поэтому IsValid
+	// его не принимает. Тип существует ради матрицы предпочтений — push о
+	// сообщении можно выключить — и ради адреса экрана в пуше.
+	TypeChatMessage NotificationType = "chat_message"
 )
 
 // IsValid checks if the notification type is valid
@@ -74,6 +80,12 @@ func (t NotificationType) IsValid() bool {
 		return true
 	}
 	return false
+}
+
+// isPreferenceType reports whether the type has a row in the delivery
+// preference matrix: every notification type, plus chat messages.
+func (t NotificationType) isPreferenceType() bool {
+	return t.IsValid() || t == TypeChatMessage
 }
 
 // Notification represents a user notification
@@ -89,6 +101,9 @@ type Notification struct {
 	ReadAt          *time.Time           `json:"readAt,omitempty" db:"read_at"`
 	ActionURL       *string              `json:"actionUrl,omitempty" db:"action_url"`
 	ContentCategory *string              `json:"contentCategory,omitempty" db:"content_category"`
+	// Target — экран, который открывает уведомление в приложении. Kind
+	// выводится из типа (targetKinds); вызывающий задаёт только IDs.
+	Target Target `json:"target" db:"target"`
 }
 
 // Validate validates the notification fields

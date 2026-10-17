@@ -2029,6 +2029,7 @@ func (s *Service) sendPlanUpdateNotification(ctx context.Context, clientID int64
 		Title:    title,
 		Content:  content,
 		IconURL:  nil,
+		Target:   notifications.Target{IDs: notifications.IDs{"plan_id": plan.ID}},
 	}
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
@@ -2071,6 +2072,7 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 		Title:    title,
 		Content:  content,
 		IconURL:  nil,
+		Target:   notifications.Target{IDs: notifications.IDs{"task_id": task.ID, "task_type": task.Type}},
 	}
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
@@ -2124,6 +2126,11 @@ func (s *Service) sendWeeklyReportNotification(ctx context.Context, curatorID in
 		Title:    title,
 		Content:  content,
 		IconURL:  nil,
+		// Куратору нужен и клиент: отчёт открывается в его карточке.
+		Target: notifications.Target{IDs: notifications.IDs{
+			"report_id": report.ID,
+			"client_id": strconv.FormatInt(report.UserID, 10),
+		}},
 	}
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {

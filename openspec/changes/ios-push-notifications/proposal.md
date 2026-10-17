@@ -60,7 +60,7 @@
 - `apps/api/internal/modules/notifications/push.go`:
   - `:125` — `SendDuePushes`, второй транспорт;
   - `:257-266` — отправка Web Push остаётся.
-- `apps/api/internal/modules/notifications/apns.go` — новый отправитель (библиотека `github.com/sideshow/apns2`).
+- `apps/api/internal/modules/notifications/apns.go` — отправитель уже есть (миграция 095): свой HTTP/2-клиент с токен-авторизацией `.p8`, без библиотеки `sideshow/apns2`.
 - `apps/api/internal/modules/notifications/types.go`:
   - `:39` — типы;
   - `:90` — `ActionURL`, рядом поле `Target`.
@@ -71,7 +71,7 @@
   соединения через `shared/ws`, событие `chat_message`.
 - `apps/api/internal/router/users.go:56-60` — маршруты `devices` рядом с `push`.
 - `apps/api/internal/router/authorization_matrix_test.go` — `DELETE …/devices/:token` с защитой `owner`; `routes.golden`.
-- `apps/api/internal/config/config.go:32-100` — возможность `apns` и переменные `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`, `APNS_TOPIC`, `APNS_ENVIRONMENT`.
+- `apps/api/internal/config/config.go:32-100` — возможность `apns` (вместо `ios_push`) и переменные `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`, `APNS_TOPIC`. `APNS_ENVIRONMENT` не нужен: хост выбирается по `environment` устройства.
 - Миграция:
   - таблица `push_devices`;
   - таблица `push_deliveries` — задание на каждый адресат (подписка браузера или устройство), статус `cancelled`;

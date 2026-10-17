@@ -160,6 +160,7 @@ func (s *Service) announce(ctx context.Context, req curatorRequest, waiting time
 			Title:     title,
 			Content:   content,
 			ActionURL: &actionURL,
+			Target:    notifications.Target{IDs: notifications.IDs{"lead_id": req.LeadID}},
 		}); err != nil {
 			s.log.Errorw("Не удалось уведомить суперадмина о заявке",
 				"lead_id", req.LeadID, "admin_id", adminID, "error", fmt.Sprint(err))

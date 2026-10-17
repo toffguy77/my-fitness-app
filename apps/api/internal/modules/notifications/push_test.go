@@ -29,12 +29,12 @@ func TestPushIsOffWithoutKeys(t *testing.T) {
 	assert.False(t, service.PushReady())
 
 	_, err := service.SendDuePushes(context.Background())
-	assert.ErrorIs(t, err, apperrors.ErrEmailUnavailable)
+	assert.ErrorIs(t, err, apperrors.ErrFeatureUnavailable)
 
 	err = service.Subscribe(context.Background(), 1, PushSubscription{
 		Endpoint: "https://push.example/1", P256dh: "k", Auth: "a",
 	})
-	assert.ErrorIs(t, err, apperrors.ErrEmailUnavailable)
+	assert.ErrorIs(t, err, apperrors.ErrFeatureUnavailable)
 }
 
 func TestPushIsOffWithHalfAKeyPair(t *testing.T) {
@@ -70,9 +70,15 @@ func TestSubscribeReplacesTheSameBrowsersRow(t *testing.T) {
 
 	// Browsers rotate endpoints on their own; a table that only grows is a
 	// table of addresses nobody can deliver to.
-	mock.ExpectExec(`INSERT INTO push_subscriptions`).
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO push_subscriptions`).
 		WithArgs(int64(7), "https://push.example/1", "key", "auth", "Firefox").
-		WillReturnResult(sqlmock.NewResult(1, 1))
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(3)))
+	// Pushes queued for whoever had this browser before are not for user 7.
+	mock.ExpectQuery(`UPDATE push_deliveries SET status = 'cancelled'`).
+		WithArgs(int64(3), int64(7)).
+		WillReturnRows(sqlmock.NewRows([]string{"notification_id"}))
+	mock.ExpectCommit()
 
 	require.NoError(t, service.Subscribe(context.Background(), 7, PushSubscription{
 		Endpoint: "https://push.example/1", P256dh: "key", Auth: "auth", UserAgent: "Firefox",
@@ -85,9 +91,15 @@ func TestSubscribeStoresNoUserAgentRatherThanAnEmptyOne(t *testing.T) {
 	defer cleanup()
 	service.WithPush(testPush())
 
-	mock.ExpectExec(`INSERT INTO push_subscriptions`).
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO push_subscriptions`).
 		WithArgs(int64(7), "https://push.example/1", "key", "auth", nil).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(3)))
+	// Pushes queued for whoever had this browser before are not for user 7.
+	mock.ExpectQuery(`UPDATE push_deliveries SET status = 'cancelled'`).
+		WithArgs(int64(3), int64(7)).
+		WillReturnRows(sqlmock.NewRows([]string{"notification_id"}))
+	mock.ExpectCommit()
 
 	require.NoError(t, service.Subscribe(context.Background(), 7, PushSubscription{
 		Endpoint: "https://push.example/1", P256dh: "key", Auth: "auth", UserAgent: "  ",
@@ -121,19 +133,28 @@ func TestPushWithNoSubscriptionIsSkippedNotFailed(t *testing.T) {
 	defer cleanup()
 	service.WithPush(testPush())
 
-	mock.ExpectQuery(`FROM notification_deliveries d`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "nid", "title", "content", "action_url"}).
-			AddRow(1, int64(7), "9f6d4e0c-0000-0000-0000-000000000001", "Событие", "Текст", "/chat"))
-	mock.ExpectQuery(`FROM push_subscriptions WHERE user_id`).
-		WillReturnRows(sqlmock.NewRows([]string{"endpoint", "p256dh", "auth"}))
+	notificationID := "9f6d4e0c-0000-0000-0000-000000000001"
+	mock.ExpectBegin()
+	expectRecipient(mock, 7)
+	mock.ExpectQuery(`SELECT id FROM push_subscriptions WHERE user_id = \$1`).
+		WithArgs(int64(7)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+	mock.ExpectExec(`INSERT INTO notification_deliveries`).
+		WithArgs(notificationID, int64(7), ChannelApp, StatusSent, dueWithin{time.Minute}).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 	// Nobody to reach is not a failure: the person turned push on once and has
-	// since cleared their browser.
-	mock.ExpectExec(`UPDATE notification_deliveries`).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+	// since cleared their browser. Recorded as skipped, not left pending.
+	mock.ExpectExec(`INSERT INTO notification_deliveries`).
+		WithArgs(notificationID, int64(7), ChannelPush, StatusSkipped, dueWithin{time.Minute}).
+		WillReturnResult(sqlmock.NewResult(2, 1))
+	mock.ExpectCommit()
 
-	delivered, err := service.SendDuePushes(context.Background())
+	tx, err := service.db.BeginTx(context.Background(), nil)
 	require.NoError(t, err)
-	assert.Equal(t, 0, delivered)
+	require.NoError(t, service.planDelivery(context.Background(), tx, &Notification{
+		ID: notificationID, UserID: 7, Type: TypeReminder,
+	}))
+	require.NoError(t, tx.Commit())
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -144,7 +165,7 @@ func TestPurgeDeadSubscriptions(t *testing.T) {
 	mock.ExpectExec(`DELETE FROM push_subscriptions`).
 		WillReturnResult(sqlmock.NewResult(0, 3))
 	// iPhones are purged by failures only, not by age.
-	mock.ExpectExec(`DELETE FROM apns_devices WHERE failures >= \$1`).
+	mock.ExpectExec(`DELETE FROM push_devices WHERE failures >= \$1`).
 		WithArgs(maxPushFailures).
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
@@ -168,13 +189,14 @@ func TestPushIsPlannedWithoutTheEmailDelay(t *testing.T) {
 	service.WithPush(testPush())
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(`FROM users u\s+LEFT JOIN user_settings`).
-		WillReturnRows(sqlmock.NewRows([]string{"timezone", "quiet_hours_start", "quiet_hours_end", "email_unsubscribed_at"}).
-			AddRow("Europe/Moscow", nil, nil, nil))
-	mock.ExpectQuery(`FROM notification_preferences WHERE user_id = \$1`).
-		WillReturnRows(sqlmock.NewRows([]string{"type", "channel", "enabled"}))
-
+	expectRecipient(mock, 7)
 	notificationID := "9f6d4e0c-0000-0000-0000-000000000003"
+	// One job per browser, not delayed.
+	mock.ExpectQuery(`SELECT id FROM push_subscriptions WHERE user_id = \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(11)))
+	mock.ExpectExec(`INSERT INTO push_deliveries`).
+		WithArgs(notificationID, nil, int64(7), int64(11), dueWithin{time.Minute}).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(`INSERT INTO notification_deliveries`).
 		WithArgs(notificationID, int64(7), ChannelApp, StatusSent, dueWithin{time.Minute}).
 		WillReturnResult(sqlmock.NewResult(1, 1))
