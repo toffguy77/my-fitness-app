@@ -206,6 +206,11 @@ services:
       - APNS_TEAM_ID=${APNS_TEAM_ID:-}
       - APNS_PRIVATE_KEY=${APNS_PRIVATE_KEY:-}
       - APNS_TOPIC=${APNS_TOPIC:-team.burcev.app}
+      - APPLE_TEAM_ID=${APPLE_TEAM_ID:-}
+      - APPLE_BUNDLE_ID=${APPLE_BUNDLE_ID:-}
+      - APPLE_KEY_ID=${APPLE_KEY_ID:-}
+      - APPLE_PRIVATE_KEY=${APPLE_PRIVATE_KEY:-}
+      - IOS_MIN_SUPPORTED_VERSION=${IOS_MIN_SUPPORTED_VERSION:-}
       - APP_VERSION=${APP_VERSION:-dev}
       # Наблюдаемость. Обе выключаются отсутствием значения — см. .env.example.
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
