@@ -267,11 +267,13 @@ describe('NotificationDropdown', () => {
         expect(onClose).not.toHaveBeenCalled()
     })
 
-    // Branch: fetchNotifications and markAllAsRead called on mount
-    it('calls fetchNotifications and markAllAsRead on mount', () => {
+    // Открытие загружает обе категории и ничего не помечает прочитанным
+    // (спека notification-dropdown). Раньше этот тест закреплял обратное.
+    it('fetches both categories on mount and marks nothing read', () => {
         render(<NotificationDropdown onClose={onClose} />)
+        expect(mockFetchNotifications).toHaveBeenCalledWith('main')
         expect(mockFetchNotifications).toHaveBeenCalledWith('content')
-        expect(mockMarkAllAsRead).toHaveBeenCalledWith('content')
+        expect(mockMarkAllAsRead).not.toHaveBeenCalled()
     })
 
     // Branch: clicking notification inside expanded group

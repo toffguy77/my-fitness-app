@@ -21,6 +21,14 @@ export const chatApi = {
     getConversations: () => apiClient.get<Conversation[]>(BASE),
 
     /**
+     * The caller's conversation with one particular person, shaped like an
+     * element of getConversations(). 404 when there is none — or when it is not
+     * the caller's: the server does not tell the two apart.
+     */
+    getConversationWith: (userId: number) =>
+        apiClient.get<Conversation>(`${BASE}/by-participant/${encodeURIComponent(String(userId))}`),
+
+    /**
      * Fetch messages for a conversation with cursor-based pagination
      */
     getMessages: (convId: string, cursor?: string, limit = 50) =>

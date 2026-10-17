@@ -21,15 +21,17 @@ interface GroupedNotifications {
 export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     const router = useRouter()
     const dropdownRef = useRef<HTMLDivElement>(null)
-    const { notifications, fetchNotifications, markAllAsRead, markAsRead } = useNotificationsStore()
+    const { notifications, fetchNotifications, markAsRead } = useNotificationsStore()
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
-    // Fetch notifications for both categories on open
+    // Fetch notifications for both categories on open. Opening marks nothing
+    // read: it used to mark every «Контент» notification read on the spot,
+    // so the counter dropped to zero before anybody had seen a single title.
+    // A notification is read when it is clicked, or by «Прочитать все».
     useEffect(() => {
         fetchNotifications('main')
         fetchNotifications('content')
-        markAllAsRead('content')
-    }, [fetchNotifications, markAllAsRead])
+    }, [fetchNotifications])
 
     // Close on click outside
     useEffect(() => {

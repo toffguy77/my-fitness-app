@@ -18,6 +18,8 @@ import { ChatInput } from '@/features/chat/components/ChatInput'
 import { TypingIndicator } from '@/features/chat/components/TypingIndicator'
 import { FoodEntryForm } from '@/features/chat/components/FoodEntryForm'
 import { IconButton } from '@/shared/components/ui/Button'
+import { isApiError } from '@/shared/errors/apiErrors'
+import Link from 'next/link'
 import type { Conversation, Message } from '@/features/chat/types'
 
 import { t } from '@/shared/i18n'
@@ -26,16 +28,28 @@ export default function CuratorChatPage() {
     const params = useParams()
     const clientId = Number(params.clientId)
     const [conversation, setConversation] = useState<Conversation | null>(null)
+    const [lookup, setLookup] = useState<'loading' | 'found' | 'not_found' | 'failed'>('loading')
     const [foodEntryMsg, setFoodEntryMsg] = useState<Message | null>(null)
 
-    // Find the conversation for this client
+    // Переписка с этим клиентом — одним запросом. Раньше страница тянула весь
+    // список переписок куратора и искала в нём; не нашла — и заголовок
+    // навсегда оставался «Загрузка…», без объяснения и без выхода.
     useEffect(() => {
-        chatApi.getConversations().then((convs) => {
-            const conv = convs.find((c) => c.participant.id === clientId)
-            if (conv) {
+        let cancelled = false
+        chatApi
+            .getConversationWith(clientId)
+            .then((conv) => {
+                if (cancelled) return
                 setConversation(conv)
-            }
-        })
+                setLookup('found')
+            })
+            .catch((error) => {
+                if (cancelled) return
+                setLookup(isApiError(error) && error.status === 404 ? 'not_found' : 'failed')
+            })
+        return () => {
+            cancelled = true
+        }
     }, [clientId])
 
     const {
@@ -78,21 +92,44 @@ export default function CuratorChatPage() {
         }
     }, [lastEvent, conversation?.id])
 
+    const header = (title: string) => (
+        <div className="flex items-center gap-2 border-b border-line bg-surface px-3 py-2">
+            <IconButton
+                variant="ghost"
+                onClick={() => router.push('/curator/chat')}
+                aria-label={t('curator.navigation.backToChats')}
+            >
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+            </IconButton>
+            <h1 className="type-title-3 min-w-0 truncate text-fg">{title}</h1>
+        </div>
+    )
+
+    if (lookup === 'not_found' || lookup === 'failed') {
+        return (
+            <div className="flex flex-col h-[calc(100vh-8rem)]">
+                {header(t('curator.navigation.chatsHeading'))}
+                <div className="flex flex-1 flex-col items-center justify-center gap-4 px-screen-x text-center">
+                    <p className="type-body text-fg-muted" role={lookup === 'failed' ? 'alert' : undefined}>
+                        {lookup === 'not_found'
+                            ? t('curator.conversation.notFound')
+                            : t('curator.conversation.loadFailed')}
+                    </p>
+                    <Link
+                        href={`/curator/clients/${clientId}`}
+                        className="font-semibold text-primary underline-offset-2 hover:underline"
+                    >
+                        {t('curator.conversation.openClientCard')}
+                    </Link>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="flex flex-col h-[calc(100vh-8rem)]">
             {/* Header with back button and client name */}
-            <div className="flex items-center gap-2 border-b border-line bg-surface px-3 py-2">
-                <IconButton
-                    variant="ghost"
-                    onClick={() => router.push('/curator/chat')}
-                    aria-label={t('curator.navigation.backToChats')}
-                >
-                    <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-                </IconButton>
-                <h1 className="type-title-3 min-w-0 truncate text-fg">
-                    {conversation?.participant.name ?? t('common.loading')}
-                </h1>
-            </div>
+            {header(conversation?.participant.name ?? t('common.loading'))}
 
             {/* Message list with image action support */}
             <MessageList

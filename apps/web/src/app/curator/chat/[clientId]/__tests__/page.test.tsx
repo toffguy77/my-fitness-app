@@ -19,7 +19,7 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('@/features/chat/api/chatApi', () => ({
     chatApi: {
-        getConversations: jest.fn(),
+        getConversationWith: jest.fn(),
         markAsRead: jest.fn(),
     },
 }))
@@ -89,7 +89,7 @@ function chatState(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
     jest.clearAllMocks()
-    mockChatApi.getConversations.mockResolvedValue([conversation] as never)
+    mockChatApi.getConversationWith.mockResolvedValue(conversation as never)
 })
 
 it('помечает прочитанным, когда сообщения показаны', async () => {
@@ -106,7 +106,7 @@ it('не помечает прочитанным, пока сообщения з
 
     render(<CuratorChatPage />)
 
-    await waitFor(() => expect(mockChatApi.getConversations).toHaveBeenCalled())
+    await waitFor(() => expect(mockChatApi.getConversationWith).toHaveBeenCalledWith(7))
     expect(mockChatApi.markAsRead).not.toHaveBeenCalled()
 })
 
@@ -117,7 +117,7 @@ it('не помечает прочитанным, если загрузка со
 
     render(<CuratorChatPage />)
 
-    await waitFor(() => expect(mockChatApi.getConversations).toHaveBeenCalled())
+    await waitFor(() => expect(mockChatApi.getConversationWith).toHaveBeenCalledWith(7))
     expect(mockChatApi.markAsRead).not.toHaveBeenCalled()
     expect(resetUnread).not.toHaveBeenCalled()
 })

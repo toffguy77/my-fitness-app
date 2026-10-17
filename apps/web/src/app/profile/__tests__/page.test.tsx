@@ -5,6 +5,8 @@ import ProfilePage from '../page'
 import { getProfile } from '@/features/settings/api/settings'
 import { apiClient } from '@/shared/utils/api-client'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
+import { NetworkError } from '@/shared/errors/apiErrors'
+import { getToken, setToken } from '@/shared/utils/token-storage'
 
 // --- Mocks ---
 
@@ -20,6 +22,7 @@ jest.mock('@/features/settings/api/settings', () => ({
 jest.mock('@/shared/utils/api-client', () => ({
     apiClient: {
         clearToken: jest.fn(),
+        post: jest.fn(),
     },
 }))
 
@@ -196,19 +199,42 @@ describe('ProfilePage', () => {
         })
     })
 
-    // Branch: handleLogout (line 51-57)
-    it('clears auth and redirects on logout', async () => {
-        render(<ProfilePage />)
-
-        await waitFor(() => {
-            expect(screen.getByText('Выйти из аккаунта')).toBeInTheDocument()
+    // Спека web-logout, «Выход»: сначала сервер отзывает refresh-cookie, затем
+    // локальная очистка и переход на /auth. Раньше вызова сервера не было
+    // вовсе: cookie жила, и следующая загрузка выпускала новую сессию.
+    it('вызывает POST /auth/logout, затем очищает токен и профиль и уводит на /auth', async () => {
+        const mockPost = apiClient.post as jest.Mock
+        const order: string[] = []
+        mockPost.mockImplementation(async () => {
+            order.push(`post, token=${getToken()}`)
+            return {}
         })
+        mockPush.mockImplementation((path: string) => order.push(`push ${path}`))
+        setToken('access-token')
 
-        await user.click(screen.getByText('Выйти из аккаунта'))
+        render(<ProfilePage />)
+        await user.click(await screen.findByText('Выйти из аккаунта'))
 
-        expect(apiClient.clearToken).toHaveBeenCalled()
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/auth'))
+        expect(mockPost).toHaveBeenCalledWith('/api/v1/auth/logout', {})
+        // Сервер спрошен, пока токен ещё был: иначе запрос ушёл бы без него.
+        expect(order).toEqual(['post, token=access-token', 'push /auth'])
+        expect(getToken()).toBeNull()
         expect(localStorage.getItem('user')).toBeNull()
-        expect(mockPush).toHaveBeenCalledWith('/auth')
+    })
+
+    // Спека web-logout, «Нет сети».
+    it('выходит локально, даже если POST /auth/logout упал на сети', async () => {
+        ;(apiClient.post as jest.Mock).mockRejectedValue(new NetworkError('Failed to fetch'))
+        setToken('access-token')
+
+        render(<ProfilePage />)
+        await user.click(await screen.findByText('Выйти из аккаунта'))
+
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/auth'))
+        expect(apiClient.post).toHaveBeenCalledWith('/api/v1/auth/logout', {})
+        expect(getToken()).toBeNull()
+        expect(localStorage.getItem('user')).toBeNull()
     })
 
     // Эти два теста раньше закрепляли запасное значение роли: испорченный или

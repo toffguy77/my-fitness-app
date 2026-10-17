@@ -317,7 +317,7 @@ export const foodTrackerTabGenerator = (): fc.Arbitrary<FoodTrackerTab> => {
  * Generate an entry method tab
  */
 export const entryMethodTabGenerator = (): fc.Arbitrary<EntryMethodTab> => {
-    return fc.constantFrom('search', 'barcode', 'photo', 'chat');
+    return fc.constantFrom('search', 'barcode', 'manual', 'photo');
 };
 
 /**

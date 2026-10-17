@@ -172,14 +172,18 @@ describe('Supplying a missing address', () => {
         searchParams = new URLSearchParams({ provider: 'vk' })
     })
 
-    it('signs in when the address is new', async () => {
-        api.completeWithEmail.mockResolvedValue(session)
+    // A new address is not an account yet: it is created on the consents
+    // screen (spec external-identity), not here without them.
+    it('sends a new address on to the consents screen, with no session', async () => {
+        api.completeWithEmail.mockResolvedValue({ result: 'needs_consents' })
 
         render(<OAuthEmailScreen />)
         await userEvent.type(screen.getByLabelText('Email'), 'new@example.com')
         await userEvent.click(screen.getByRole('button', { name: 'Продолжить' }))
 
-        await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'))
+        await waitFor(() => expect(replace).toHaveBeenCalledWith('/auth/consents?provider=vk'))
+        expect(apiClient.setToken).not.toHaveBeenCalled()
+        expect(localStorage.getItem('user')).toBeNull()
     })
 
     // Typing somebody else's address must not hand over their account.

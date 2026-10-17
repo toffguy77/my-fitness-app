@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import {
     curatorApi,
     type SupportConversation,
+    type SupportMessage,
     type SupportThread,
 } from '../api/curatorApi'
 
@@ -55,6 +56,17 @@ const stepLabels: Record<string, string> = {
     result: t('curator.leadSteps.result'),
     contact: t('curator.leadSteps.contact'),
     registration: t('curator.leadSteps.registration'),
+}
+
+/**
+ * Подпись поля ответа: куда он уйдёт. Обращения бывают из Telegram и с сайта,
+ * а подпись и кнопка раньше всегда говорили «Telegram» — оператор, отвечая
+ * посетителю сайта, не знал, увидит ли тот ответ.
+ */
+function replyCaption(channel: SupportConversation['channel']): string {
+    if (channel === 'telegram') return t('curator.support.replyTelegram')
+    if (channel === 'web') return t('curator.support.replyWeb')
+    return t('curator.support.reply')
 }
 
 export function SupportQueue() {
@@ -128,6 +140,35 @@ export function SupportQueue() {
         }
     }
 
+    // Повтор недоставленного ответа. Пока идёт — кнопка занята, чтобы второй
+    // щелчок не отправил человеку тот же текст дважды.
+    const [retrying, setRetrying] = useState<string | null>(null)
+
+    const handleRetry = async (message: SupportMessage) => {
+        if (!selected || retrying) return
+        const conversationId = selected.conversation.id
+
+        setRetrying(message.id)
+        try {
+            const { message: updated } = await curatorApi.retrySupportDelivery(conversationId, message.id)
+            setSelected((current) =>
+                current && current.conversation.id === conversationId
+                    ? {
+                          ...current,
+                          messages: current.messages.map((m) =>
+                              m.id === message.id ? { ...m, ...updated, delivered: true } : m,
+                          ),
+                      }
+                    : current,
+            )
+        } catch (err) {
+            // Признак остаётся: сообщение по-прежнему не доставлено.
+            toast.error(messageForOr(err, t('curator.support.retryFailed')))
+        } finally {
+            setRetrying(null)
+        }
+    }
+
     const handleClose = async () => {
         if (!selected) return
         try {
@@ -171,15 +212,39 @@ export function SupportQueue() {
                                   ? messageStyles.operator
                                   : messageStyles.bot
                         return (
-                            <li key={message.id} className={cn('rounded-tile p-4 text-[15px] leading-[22px]', style.bubble)}>
-                                <p className={cn('mb-1 text-[13px] font-medium', style.author)}>
-                                    {message.author === 'user'
-                                        ? t('curator.support.authorUser')
-                                        : message.author === 'operator'
-                                          ? t('curator.support.authorOperator')
-                                          : t('curator.support.authorBot')}
-                                </p>
-                                {message.text}
+                            <li key={message.id}>
+                                <div className={cn('rounded-tile p-4 text-[15px] leading-[22px]', style.bubble)}>
+                                    <p className={cn('mb-1 text-[13px] font-medium', style.author)}>
+                                        {message.author === 'user'
+                                            ? t('curator.support.authorUser')
+                                            : message.author === 'operator'
+                                              ? t('curator.support.authorOperator')
+                                              : t('curator.support.authorBot')}
+                                    </p>
+                                    {message.text}
+                                </div>
+                                {/* Только явный отказ: поля нет у входящих, у
+                                    веб-виджета и у сообщений до миграции 065 —
+                                    про них исход неизвестен, и «не доставлено»
+                                    было бы неправдой. */}
+                                {message.delivered === false && (
+                                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                                        <span className="text-[13px] font-semibold text-danger-fg">
+                                            {t('curator.support.notDelivered')}
+                                        </span>
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => handleRetry(message)}
+                                            disabled={retrying !== null}
+                                            isLoading={retrying === message.id}
+                                        >
+                                            {retrying === message.id
+                                                ? t('curator.support.retrying')
+                                                : t('curator.support.retry')}
+                                        </Button>
+                                    </div>
+                                )}
                             </li>
                         )
                     })}
@@ -187,7 +252,7 @@ export function SupportQueue() {
 
                 <div className="mt-6">
                     <label htmlFor="support-reply" className={LABEL_CLASS}>
-                        {t('curator.support.reply')}
+                        {replyCaption(selected.conversation.channel)}
                     </label>
                     <textarea
                         id="support-reply"
@@ -201,7 +266,11 @@ export function SupportQueue() {
                             onClick={handleReply}
                             disabled={!reply.trim() || sending}
                         >
-                            {sending ? t('curator.support.sending') : t('curator.support.sendToTelegram')}
+                            {sending
+                                ? t('curator.support.sending')
+                                : selected.conversation.channel === 'telegram'
+                                  ? t('curator.support.sendToTelegram')
+                                  : t('curator.support.send')}
                         </Button>
                         <Button variant="secondary" onClick={handleClose}>
                             {t('curator.support.close')}

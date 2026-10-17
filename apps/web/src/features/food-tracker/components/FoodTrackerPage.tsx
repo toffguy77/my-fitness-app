@@ -53,15 +53,42 @@ const LINKABLE_ENTRY_TABS: Record<string, EntryMethodTab> = {
     search: 'search',
 };
 
-export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
-    const [activeTab, setActiveTab] = useState<FoodTrackerTab>('diet');
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+const LINKED_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+/**
+ * День из `?date=YYYY-MM-DD` или `null`, если параметр нельзя принять.
+ *
+ * Быстрая запись со вчерашнего дня дашборда ведёт сюда с датой, а страница
+ * её не читала и открывала сегодня — запись уезжала не в тот день. Значение
+ * пришло из адресной строки, поэтому проверяется строго: только формат
+ * ГГГГ-ММ-ДД, только существующий день (31 февраля не превращается в 3 марта)
+ * и не будущий — в будущее не пускает и сам выбор даты.
+ */
+export function parseLinkedDate(value: string | null | undefined): Date | null {
+    const match = value ? LINKED_DATE.exec(value) : null;
+    if (!match) return null;
+
+    const [, year, month, day] = match.map(Number);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return null;
+    }
+    if (formatLocalDate(date) > formatLocalDate(new Date())) return null;
+
+    return date;
+}
+
+export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
     // Пункт чек-листа «фото тарелки» ведёт сюда с ?add=photo: распознавание
     // живёт внутри окна записи, и без этого ссылка приводила бы на вкладку
     // рациона, откуда нужное искать три клика вглубь.
     const searchParams = useSearchParams();
     const openEntryOn = LINKABLE_ENTRY_TABS[searchParams?.get('add') ?? ''] ?? null;
+
+    const [activeTab, setActiveTab] = useState<FoodTrackerTab>('diet');
+    const [selectedDate, setSelectedDate] = useState<Date>(
+        () => parseLinkedDate(searchParams?.get('date')) ?? new Date()
+    );
 
     const {
         entries,
