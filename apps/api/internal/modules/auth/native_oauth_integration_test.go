@@ -7,11 +7,13 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/burcev/api/internal/config"
@@ -449,4 +451,68 @@ func TestNativeLinkIPLimitMatchesTheWebOne(t *testing.T) {
 	}
 	assert.Equal(t, http.StatusTooManyRequests,
 		s.nativeLink(t, "192.0.2.9", "00000000-0000-0000-0000-000000000099", "x").Code)
+}
+
+// Параллельные неверные пароли не проскакивают потолок: попытка списывается
+// до сравнения одним UPDATE с условием, так что из 20 одновременных запросов
+// до bcrypt доходят не больше пяти, а попытка сгорает.
+func TestLinkPasswordCeilingHoldsUnderConcurrency(t *testing.T) {
+	ctx := context.Background()
+	s := newLinkStand(t, "link_concurrent")
+	s.owner(t, "parallel@example.test", "OwnerPass1!")
+	pending := s.pending(t, "parallel@example.test")
+
+	service := auth.NewService(s.db, &config.Config{JWTSecret: "integration-secret-that-is-long-enough-32"}, logger.New())
+	var wg sync.WaitGroup
+	results := make(chan error, 20)
+	for range 20 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := service.ConfirmLinkWithPasswordFor(ctx, auth.NativeSession(""), pending, "wrong", "ip", "ua")
+			results <- err
+		}()
+	}
+	wg.Wait()
+	close(results)
+
+	compared := 0
+	for err := range results {
+		require.Error(t, err)
+		if errors.Is(err, apperrors.ErrInvalidCredentials) {
+			compared++
+		} else {
+			require.ErrorIs(t, err, apperrors.ErrTokenInvalid)
+		}
+	}
+	assert.LessOrEqual(t, compared, auth.MaxLinkPasswordFailures, "до bcrypt дошло больше догадок, чем положено")
+	assert.Equal(t, auth.MaxLinkPasswordFailures, compared)
+
+	var left int
+	require.NoError(t, s.db.QueryRow(`SELECT COUNT(*) FROM oauth_pending_links WHERE id = $1`, pending).Scan(&left))
+	assert.Zero(t, left, "попытка пережила потолок")
+}
+
+// Ключ лимита берётся оттуда же, откуда обработчик берёт попытку: веб —
+// из cookie. Тело с pending_token чужого аккаунта счёт не переносит.
+func TestWebLinkLimitIsKeyedByTheCookieItChecks(t *testing.T) {
+	s := newLinkStand(t, "link_key_source")
+	s.owner(t, "a@example.test", "PassA1!aaaa")
+	s.owner(t, "b@example.test", "PassB1!bbbb")
+
+	for i := range 20 {
+		pendingA := s.pending(t, "a@example.test")
+		pendingB := s.pending(t, "b@example.test")
+		w := s.post(t, "/api/v1/auth/oauth/link", "198.51.100."+strconv.Itoa(i%9+1),
+			`{"pending_token":"`+pendingA+`","password":"guess"}`,
+			&http.Cookie{Name: "oauth_pending", Value: pendingB})
+		require.Equal(t, http.StatusUnauthorized, w.Code, "неудача %d", i+1)
+	}
+
+	assert.Equal(t, http.StatusTooManyRequests,
+		s.post(t, "/api/v1/auth/login", "192.0.2.1", `{"email":"b@example.test","password":"PassB1!bbbb"}`).Code,
+		"неудачи по cookie B не засчитаны аккаунту B")
+	assert.Equal(t, http.StatusOK,
+		s.post(t, "/api/v1/auth/login", "192.0.2.2", `{"email":"a@example.test","password":"PassA1!aaaa"}`).Code,
+		"неудачи засчитаны аккаунту A из тела, которое обработчик не читает")
 }

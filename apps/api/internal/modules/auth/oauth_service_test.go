@@ -219,6 +219,8 @@ func TestConfirmLinkWithPassword_LinksOnlyOnTheRightPassword(t *testing.T) {
 		mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows("user@example.com"))
 		mock.ExpectQuery("SELECT id, password FROM users WHERE email").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), string(hash)))
+		mock.ExpectQuery("UPDATE oauth_pending_links SET failed_attempts").
+			WillReturnRows(sqlmock.NewRows([]string{"failed_attempts"}).AddRow(1))
 
 		_, err := service.ConfirmLinkWithPassword(context.Background(), "pending-1", "guess", "ip", "ua")
 
@@ -235,6 +237,8 @@ func TestConfirmLinkWithPassword_LinksOnlyOnTheRightPassword(t *testing.T) {
 		mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows("user@example.com"))
 		mock.ExpectQuery("SELECT id, password FROM users WHERE email").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), string(hash)))
+		mock.ExpectQuery("UPDATE oauth_pending_links SET failed_attempts").
+			WillReturnRows(sqlmock.NewRows([]string{"failed_attempts"}).AddRow(1))
 		mock.ExpectExec("INSERT INTO external_identities").WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectExec("DELETE FROM oauth_pending_links").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectQuery("SELECT id, email").

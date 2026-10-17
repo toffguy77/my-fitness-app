@@ -47,7 +47,7 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	// ones also count against that account's login-account allowance, keyed
 	// by the address on the parked attempt, and the fifth burns the attempt.
 	g.POST("/oauth/link", d.AuthRateLimiter.Limit("oauth-link"),
-		d.AuthRateLimiter.LimitOutcomesBy("login-account", d.OAuth.PendingLinkAccountKey, middleware.FailedCredentials),
+		d.AuthRateLimiter.LimitOutcomesBy("login-account", d.OAuth.PendingLinkAccountKeyFromCookie, middleware.FailedCredentials),
 		d.OAuth.ConfirmLink)
 	g.POST("/oauth/email", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.CompleteEmail)
 	// Согласия до создания аккаунта через провайдера: колбэк уводит на экран
@@ -112,7 +112,7 @@ func registerNativeAuthRoutes(auth *gin.RouterGroup, d Deps) {
 	// пятая сжигает попытку.
 	g.POST("/oauth/email", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.NativeOAuthEmail)
 	g.POST("/oauth/link", d.AuthRateLimiter.Limit("oauth-link"),
-		d.AuthRateLimiter.LimitOutcomesBy("login-account", d.OAuth.PendingLinkAccountKey, middleware.FailedCredentials),
+		d.AuthRateLimiter.LimitOutcomesBy("login-account", d.OAuth.PendingLinkAccountKeyFromBody, middleware.FailedCredentials),
 		d.OAuth.NativeOAuthLink)
 	// Согласия до создания аккаунта — общий шаг Apple, Яндекса и VK.
 	g.POST("/consents", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.NativeConsents)

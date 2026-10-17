@@ -655,8 +655,18 @@ func (s *Service) ConfirmLinkWithPasswordFor(ctx context.Context, spec SessionSp
 	if !PasswordIsSet(hash) {
 		return nil, fmt.Errorf("account has no password: %w", apperrors.ErrConflict)
 	}
+	// The guess is paid for before it is checked: the claim is one UPDATE
+	// with the ceiling in its WHERE, so parallel requests cannot all read
+	// "four failures so far" and all go on to bcrypt.
+	attempt, err := s.claimLinkPasswordAttempt(ctx, pendingID)
+	if err != nil {
+		return nil, err
+	}
 	if err := bcrypt.CompareHashAndPassword([]byte(hash.String), []byte(password)); err != nil {
-		s.recordFailedLinkPassword(ctx, pendingID)
+		if attempt >= MaxLinkPasswordFailures {
+			s.log.Warnw("Pending external sign-in burned after wrong passwords", "attempts", attempt)
+			s.deletePendingLink(ctx, pendingID)
+		}
 		return nil, fmt.Errorf("confirm link: %w", apperrors.ErrInvalidCredentials)
 	}
 
@@ -677,22 +687,23 @@ func (s *Service) ConfirmLinkWithPasswordFor(ctx context.Context, spec SessionSp
 // these failures too.
 const MaxLinkPasswordFailures = 5
 
-// recordFailedLinkPassword counts a wrong password against the attempt and
-// burns it at MaxLinkPasswordFailures. Best effort: the caller already answers
-// "wrong password", and the per-account limit still counts the failure.
-func (s *Service) recordFailedLinkPassword(ctx context.Context, pendingID string) {
-	var failures int
-	err := s.db.QueryRowContext(ctx,
-		`UPDATE oauth_pending_links SET failed_attempts = failed_attempts + 1
-		 WHERE id = $1 RETURNING failed_attempts`, pendingID).Scan(&failures)
+// claimLinkPasswordAttempt spends one of the attempt's password guesses and
+// returns its number. An attempt that is gone, expired or out of guesses
+// fails with ErrTokenInvalid — the person starts again. A right password
+// consumes the attempt anyway, so a claimed guess is never given back.
+func (s *Service) claimLinkPasswordAttempt(ctx context.Context, pendingID string) (int, error) {
+	var attempt int
+	err := s.db.QueryRowContext(ctx, `
+		UPDATE oauth_pending_links SET failed_attempts = failed_attempts + 1
+		 WHERE id = $1 AND expires_at > NOW() AND failed_attempts < $2
+		 RETURNING failed_attempts`, pendingID, MaxLinkPasswordFailures).Scan(&attempt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("pending link burned or expired: %w", apperrors.ErrTokenInvalid)
+	}
 	if err != nil {
-		s.log.Errorw("Failed to count a wrong link password", "error", err)
-		return
+		return 0, fmt.Errorf("claim link password attempt: %w", err)
 	}
-	if failures >= MaxLinkPasswordFailures {
-		s.log.Warnw("Pending external sign-in burned after wrong passwords", "failures", failures)
-		s.deletePendingLink(ctx, pendingID)
-	}
+	return attempt, nil
 }
 
 // PendingLinkEmail is the address of the account an unfinished sign-in would

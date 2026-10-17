@@ -461,19 +461,27 @@ func (h *OAuthHandler) NativeConsents(c *gin.Context) {
 	response.Success(c, http.StatusOK, body)
 }
 
-// PendingLinkAccountKey is the rate-limit key of the account a password
-// confirmation is aimed at: the address on the parked attempt, named by
-// pending_token in the body (app) or the oauth_pending cookie (site). It is
-// the same key as the account's sign-ins (middleware.ByEmail), so wrong
-// passwords typed here count against the same login-account allowance.
-func (h *OAuthHandler) PendingLinkAccountKey(c *gin.Context) string {
+// PendingLinkAccountKeyFromCookie and PendingLinkAccountKeyFromBody are the
+// rate-limit keys of the account a password confirmation is aimed at: the
+// address on the parked attempt. The same key as the account's sign-ins
+// (middleware.ByEmail), so wrong passwords typed here count against the same
+// login-account allowance.
+//
+// Two functions, each reading exactly where its handler reads the attempt
+// from: the site's /auth/oauth/link takes the oauth_pending cookie, the app's
+// native/oauth/link the pending_token in the body. A key read from anywhere
+// else would let a request charge one account's allowance while guessing
+// another's password.
+func (h *OAuthHandler) PendingLinkAccountKeyFromCookie(c *gin.Context) string {
+	pending, _ := c.Cookie(pendingCookie)
+	return middleware.AccountKey(c, h.service.PendingLinkEmail(c.Request.Context(), pending))
+}
+
+// PendingLinkAccountKeyFromBody: see PendingLinkAccountKeyFromCookie.
+func (h *OAuthHandler) PendingLinkAccountKeyFromBody(c *gin.Context) string {
 	var body struct {
 		PendingToken string `json:"pending_token"`
 	}
 	middleware.PeekJSON(c, &body)
-	pending := body.PendingToken
-	if pending == "" {
-		pending, _ = c.Cookie(pendingCookie)
-	}
-	return middleware.AccountKey(c, h.service.PendingLinkEmail(c.Request.Context(), pending))
+	return middleware.AccountKey(c, h.service.PendingLinkEmail(c.Request.Context(), body.PendingToken))
 }
