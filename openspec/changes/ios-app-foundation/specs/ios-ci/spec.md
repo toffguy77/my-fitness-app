@@ -2,7 +2,7 @@
 
 ### Requirement: Приложение собирается и тестируется в CI
 
-Задача `ios` в `.github/workflows/ci.yml` SHALL запускаться при изменениях в `apps/ios/**` или `packages/design-tokens/**`, генерировать проект XcodeGen, выполнять `swiftlint --strict` и `xcodebuild test` на симуляторе iPhone; падение любого шага MUST помечать задачу неуспешной.
+Задача `ios` в отдельном файле `.github/workflows/ios.yml` (не в `ci.yml`, чьи имена задач — договор обязательных проверок) SHALL запускаться при изменениях в `apps/ios/**`, `packages/design-tokens/**` или самом файле, генерировать проект XcodeGen, выполнять `swiftlint --strict` и `xcodebuild test -scheme Vzvesheno-Dev` на симуляторе iPhone, кэшировать SwiftPM и DerivedData и всегда выкладывать снапшоты (`**/__Snapshots__/**`) и `.xcresult` артефактами; падение любого шага MUST помечать задачу неуспешной.
 
 #### Scenario: Изменение токенов
 
@@ -16,7 +16,7 @@
 
 ### Requirement: Новая проверка не меняет обязательные
 
-Добавление задачи `ios` SHALL оставлять имена существующих задач без изменений.
+Добавление задачи `ios` SHALL оставлять имена существующих задач `ci.yml` без изменений.
 
 #### Scenario: Сравнение имён задач
 

@@ -190,7 +190,7 @@ Web Push такого уровня не имеет — для него пове�
    `schema_migrations` dev и прода).
 2. Бэкенд с выключенной возможностью `apns`: регистрация отвечает `503`,
    заполнение `target` уже работает.
-3. Ключ APNs «Weighted» (Key ID `743P3Y36VM`, `.p8` — только в секретах Dokploy), `APNS_TOPIC=team.burcev.app`, `APNS_ENVIRONMENT=sandbox` на dev, `production` на проде.
+3. Ключ APNs «Weighted» (Key ID `743P3Y36VM`, `.p8` — только в секретах Dokploy), `APNS_TOPIC` — bundle id среды: `team.burcev.app.dev` и `APNS_ENVIRONMENT=sandbox` на dev, `team.burcev.app` и `production` на проде (сборки Dev и Prod — разные приложения, `apps/ios/project.yml`).
 
 Откат: выключить `apns` в конфигурации. Web Push не затронут.
 
