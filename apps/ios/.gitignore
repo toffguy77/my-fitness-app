@@ -1,13 +1,26 @@
-# Проект генерируется XcodeGen из project.yml.
-Burcev.xcodeproj/
+# Генерирует XcodeGen из project.yml: проект, Info.plist, entitlements и номер сборки.
+*.xcodeproj/
+*.xcworkspace/
+Vzvesheno/Info.plist
+Vzvesheno/Vzvesheno.entitlements
+VzveshenoWidgets/Info.plist
+VzveshenoWidgets/VzveshenoWidgets.entitlements
+BuildNumber.xcconfig
+
+# Сборка.
 build/
 DerivedData/
+*.xcresult
+VzveshenoKit/.build/
+VzveshenoKit/.swiftpm/
+*.xcuserstate
+
+# fastlane: отчёты и секреты.
 fastlane/report.xml
 fastlane/README.md
 fastlane/*.p8
 fastlane/*.p12
 fastlane/*.mobileprovision
-*.xcuserstate
 
 # Скриншоты снимает scripts/screenshots.sh в CI.
 fastlane/screenshots/

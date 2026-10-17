@@ -1,61 +1,107 @@
 name: iOS
 
-# Сборка и тесты iOS-клиента на симуляторе. Подпись не нужна — она только при
-# выкладке (ios-testflight.yml). Своего Mac у разработки нет, поэтому этот
-# прогон — единственное место, где Swift компилируется.
+# Сборка, линтер и тесты приложения «Взвешено» на симуляторе (ios-ci).
+# Подпись не нужна — она только при выкладке (ios-testflight.yml). Своего Mac
+# у разработки нет: этот прогон — единственное место, где Swift собирается
+# для iOS. Ядро модулей VzveshenoKit проверяется и на Linux (apps/ios/README.md).
+#
+# Отдельный файл, а не задача в ci.yml: имена обязательных проверок там —
+# договор (CLAUDE.md), а эта проверка в обязательные не входит, пока
+# приложение не в App Store.
 on:
   push:
     branches: [dev, main, 'feat/ios-**']
-    paths: ['apps/ios/**', '.github/workflows/ios.yml']
+    paths: ['apps/ios/**', 'packages/design-tokens/**', '.github/workflows/ios.yml']
   pull_request:
     branches: [dev, main]
-    paths: ['apps/ios/**', '.github/workflows/ios.yml']
+    paths: ['apps/ios/**', 'packages/design-tokens/**', '.github/workflows/ios.yml']
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    name: iOS Build
+  ios:
+    name: ios
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: apps/ios
+    env:
+      # Снапшоты сняты на этом симуляторе; на другой версии iOS они разойдутся.
+      DESTINATION: platform=iOS Simulator,name=iPhone 16 Pro,OS=18.5
     steps:
       - uses: actions/checkout@v5
 
       - name: Select Xcode 26
         run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install XcodeGen and SwiftLint
+        run: brew install xcodegen swiftlint
+
+      - name: Cache SwiftPM and DerivedData
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            apps/ios/build/DerivedData
+          key: ios-dd-${{ hashFiles('apps/ios/project.yml', 'apps/ios/VzveshenoKit/Package.swift') }}-${{ github.sha }}
+          restore-keys: |
+            ios-dd-${{ hashFiles('apps/ios/project.yml', 'apps/ios/VzveshenoKit/Package.swift') }}-
 
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Pick a simulator
+      - name: SwiftLint
+        run: swiftlint lint --strict
+
+      - name: SwiftLint colour rule still fires
+        run: scripts/check-color-rule.sh
+
+      - name: Check the simulator
         run: |
-          # Имя симулятора меняется с версиями Xcode: берём первый доступный iPhone.
-          udid=$(xcrun simctl list devices available -j \
-            | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r,v in d.items() if "iOS" in r for x in v if x["name"].startswith("iPhone")))')
-          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
+          # Снапшоты привязаны к iPhone 16 Pro на iOS 18.5. Если образ раннера
+          # его больше не содержит — громко, а не молча на другом симуляторе.
+          xcrun simctl list runtimes | grep -q "iOS 18.5" || {
+            echo "::error::нет iOS 18.5; доступны:"; xcrun simctl list runtimes; exit 1; }
 
       - name: Build and test
         run: |
           set -o pipefail
+          mkdir -p build
+          rm -rf build/Vzvesheno.xcresult
           xcodebuild test \
-            -project Burcev.xcodeproj \
-            -scheme Burcev \
-            -destination "id=$SIM_UDID" \
-            CODE_SIGNING_ALLOWED=NO \
-            | tee build.log | grep -E "error:|warning: .*Burcev/|Test Case .* (passed|failed)|\*\* (BUILD|TEST)" || true
-          grep -q "\*\* TEST SUCCEEDED \*\*" build.log
+            -project Vzvesheno.xcodeproj \
+            -scheme Vzvesheno-Dev \
+            -destination "$DESTINATION" \
+            -derivedDataPath build/DerivedData \
+            -resultBundlePath build/Vzvesheno.xcresult \
+            | tee build/xcodebuild.log \
+            | grep -E "error:|warning: .*/apps/ios/V|Test Case .* failed|with [0-9]+ failures|\*\* (BUILD|TEST) " || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" build/xcodebuild.log
 
-      - name: Upload build log
-        if: failure()
+      - name: Check the built bundle
+        run: scripts/check-bundle.sh build/DerivedData/Build/Products/Dev-Debug-iphonesimulator/Vzvesheno.app
+
+      - name: Upload snapshots
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build-log
-          path: apps/ios/build.log
+          name: ios-snapshots
+          path: apps/ios/**/__Snapshots__/**
+          if-no-files-found: ignore
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-xcresult
+          path: |
+            apps/ios/build/Vzvesheno.xcresult
+            apps/ios/build/xcodebuild.log
+          if-no-files-found: ignore
