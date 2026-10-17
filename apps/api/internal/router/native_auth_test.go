@@ -91,3 +91,99 @@ func TestNativeLogoutNeedsNoAccessTokenButChangePasswordDoes(t *testing.T) {
 		nativePost(engine, "/api/v1/auth/native/change-password", `{"current_password":"a","new_password":"bbbbbbbb"}`).Code)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+func postFromIP(engine *gin.Engine, path, ip, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = ip + ":5555"
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+	return w
+}
+
+// Ниже база не отвечает ни на что (у sqlmock нет ожиданий): вход отвечает
+// 401, запрос ссылки — 500. Проверяется только одно — дошёл ли запрос до
+// обработчика или остановлен лимитом (429).
+
+// Пара «адрес + IP» не мешает перебирать пароль одного аккаунта с многих IP:
+// это делает лимит на аккаунт — 20 попыток за 15 минут с любых адресов.
+func TestLoginAccountCapStopsOneAddressFromManyIPs(t *testing.T) {
+	engine, _ := nativeAuthEngine(t)
+	body := `{"email":"victim@example.com","password":"guess"}`
+
+	for i := range 20 {
+		ip := "198.51.100." + string(rune('1'+i/10)) // по 10 попыток с двух IP
+		w := postFromIP(engine, "/api/v1/auth/native/login", ip, body)
+		require.NotEqual(t, http.StatusTooManyRequests, w.Code, "попытка %d", i+1)
+	}
+
+	w := postFromIP(engine, "/api/v1/auth/native/login", "198.51.100.9",
+		`{"email":"Victim@Example.com ","password":"guess"}`)
+	assert.Equal(t, http.StatusTooManyRequests, w.Code, "21-я попытка в аккаунт с нового IP")
+	assert.NotEmpty(t, w.Header().Get("Retry-After"))
+
+	other := postFromIP(engine, "/api/v1/auth/native/login", "198.51.100.9",
+		`{"email":"someone-else@example.com","password":"x"}`)
+	assert.NotEqual(t, http.StatusTooManyRequests, other.Code, "другой аккаунт с того же IP не задет")
+}
+
+// Веб и приложение считают попытки в один аккаунт одним счётчиком: иначе
+// перебор просто делится на два пути.
+func TestLoginAccountCapIsSharedByWebAndNative(t *testing.T) {
+	engine, _ := nativeAuthEngine(t)
+	body := `{"email":"shared@example.com","password":"guess"}`
+
+	for i := range 10 {
+		require.NotEqual(t, http.StatusTooManyRequests,
+			postFromIP(engine, "/api/v1/auth/login", "203.0.113.1", body).Code, "веб %d", i+1)
+	}
+	for i := range 10 {
+		require.NotEqual(t, http.StatusTooManyRequests,
+			postFromIP(engine, "/api/v1/auth/native/login", "203.0.113.2", body).Code, "приложение %d", i+1)
+	}
+
+	native := postFromIP(engine, "/api/v1/auth/native/login", "203.0.113.3", body)
+	assert.Equal(t, http.StatusTooManyRequests, native.Code)
+	assert.NotEmpty(t, native.Header().Get("Retry-After"))
+	web := postFromIP(engine, "/api/v1/auth/login", "203.0.113.4", body)
+	assert.Equal(t, http.StatusTooManyRequests, web.Code)
+	assert.NotEmpty(t, web.Header().Get("Retry-After"))
+}
+
+// Письма одному адресату — 5 за 15 минут с любых IP, общим счётчиком веба и
+// приложения.
+func TestMagicLinkRecipientCapIsSharedByWebAndNative(t *testing.T) {
+	engine, _ := nativeAuthEngine(t)
+	body := `{"email":"inbox@example.com"}`
+
+	for i, path := range []string{
+		"/api/v1/auth/magic-link/request", "/api/v1/auth/native/magic-link/request",
+		"/api/v1/auth/magic-link/request", "/api/v1/auth/native/magic-link/request",
+		"/api/v1/auth/native/magic-link/request",
+	} {
+		w := postFromIP(engine, path, "192.0.2."+string(rune('1'+i)), body)
+		require.NotEqual(t, http.StatusTooManyRequests, w.Code, "письмо %d", i+1)
+	}
+
+	for _, path := range []string{"/api/v1/auth/native/magic-link/request", "/api/v1/auth/magic-link/request"} {
+		w := postFromIP(engine, path, "192.0.2.9", body)
+		assert.Equal(t, http.StatusTooManyRequests, w.Code, path)
+		assert.NotEmpty(t, w.Header().Get("Retry-After"))
+	}
+
+	other := postFromIP(engine, "/api/v1/auth/native/magic-link/request", "192.0.2.9", `{"email":"another@example.com"}`)
+	assert.NotEqual(t, http.StatusTooManyRequests, other.Code, "другой адресат не задет")
+}
+
+// Потолок на IP у нативного запроса ссылки — рядом с веб-лимитом, без
+// NAT-поправки входа: 10 писем за 15 минут с одного IP разным адресатам.
+func TestNativeMagicLinkIPCeilingIsNearTheWebOne(t *testing.T) {
+	engine, _ := nativeAuthEngine(t)
+	for i := range 10 {
+		w := postFromIP(engine, "/api/v1/auth/native/magic-link/request", "192.0.2.50",
+			`{"email":"r`+string(rune('a'+i))+`@example.com"}`)
+		require.NotEqual(t, http.StatusTooManyRequests, w.Code, "письмо %d", i+1)
+	}
+	w := postFromIP(engine, "/api/v1/auth/native/magic-link/request", "192.0.2.50", `{"email":"rz@example.com"}`)
+	assert.Equal(t, http.StatusTooManyRequests, w.Code)
+}

@@ -13,7 +13,10 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/auth")
 
 	g.POST("/register", d.AuthRateLimiter.Limit("register"), d.Auth.Register)
-	g.POST("/login", d.AuthRateLimiter.Limit("login"), d.Auth.Login)
+	// Попытки в один аккаунт считаются по адресу с любого IP, общим счётчиком
+	// с native/login: иначе пароль одного человека перебирают с многих IP.
+	g.POST("/login", d.AuthRateLimiter.Limit("login"),
+		d.AuthRateLimiter.LimitBy("login-account", middleware.ByEmail), d.Auth.Login)
 	g.POST("/refresh", d.Auth.Refresh)
 	g.POST("/logout", d.Auth.Logout)
 
@@ -52,7 +55,9 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 
 	// Вход по одноразовой ссылке. Оба эндпоинта ограничены по частоте: первый
 	// шлёт письма на чужой адрес, второй — угадываемая цель.
-	g.POST("/magic-link/request", d.AuthRateLimiter.Limit("magic-link-request"), d.Auth.RequestMagicLink)
+	// Письма одному адресату — общим счётчиком с native/magic-link/request.
+	g.POST("/magic-link/request", d.AuthRateLimiter.Limit("magic-link-request"),
+		d.AuthRateLimiter.LimitBy("magic-link-recipient", middleware.ByEmail), d.Auth.RequestMagicLink)
 	g.POST("/magic-link/consume", d.AuthRateLimiter.Limit("magic-link-consume"), d.Auth.ConsumeMagicLink)
 
 	registerNativeAuthRoutes(g, d)
@@ -63,15 +68,22 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 // The refresh token travels in the body here and nowhere else; none of these
 // handlers reads or sets the refresh cookie (see auth/native_session.go).
 //
-// Sign-in and the sign-in letter are limited per address and IP, with a
-// per-IP ceiling ten times the web's: a mobile carrier's NAT puts hundreds of
-// people behind one address, and an IP-only limit would make them share ten
-// attempts.
+// Sign-in is limited per address and IP, with a per-IP ceiling ten times the
+// web's: a mobile carrier's NAT puts hundreds of people behind one address,
+// and an IP-only limit would make them share ten attempts. On top of that,
+// attempts against one account are capped by address alone, in a bucket
+// shared with the web's /auth/login, so the per-pair key does not let one
+// password be guessed from many IPs.
+//
+// The sign-in letter gets no NAT allowance — it sends mail. Its per-IP
+// ceiling is near the web's, and letters to one recipient share a bucket
+// with the web's /auth/magic-link/request.
 func registerNativeAuthRoutes(auth *gin.RouterGroup, d Deps) {
 	g := auth.Group("/native")
 
 	g.POST("/login", d.AuthRateLimiter.Limit("native-login-ip"),
-		d.AuthRateLimiter.LimitBy("native-login", middleware.ByEmailAndIP), d.Auth.NativeLogin)
+		d.AuthRateLimiter.LimitBy("native-login", middleware.ByEmailAndIP),
+		d.AuthRateLimiter.LimitBy("login-account", middleware.ByEmail), d.Auth.NativeLogin)
 	g.POST("/register", d.AuthRateLimiter.Limit("register"), d.Auth.NativeRegister)
 	g.POST("/refresh", d.AuthRateLimiter.LimitBy("native-refresh", middleware.ByRefreshToken), d.Auth.NativeRefresh)
 	// Без access-токена: приложение выходит и тогда, когда тот давно истёк.
@@ -79,7 +91,7 @@ func registerNativeAuthRoutes(auth *gin.RouterGroup, d Deps) {
 	// Письмо то же, что у сайта: ссылка открывает приложение через universal
 	// link, и оно гасит токен на native/magic-link/consume.
 	g.POST("/magic-link/request", d.AuthRateLimiter.Limit("native-magic-link-ip"),
-		d.AuthRateLimiter.LimitBy("native-magic-link-request", middleware.ByEmailAndIP), d.Auth.RequestMagicLink)
+		d.AuthRateLimiter.LimitBy("magic-link-recipient", middleware.ByEmail), d.Auth.RequestMagicLink)
 	g.POST("/magic-link/consume", d.AuthRateLimiter.Limit("magic-link-consume"), d.Auth.NativeConsumeMagicLink)
 	g.POST("/change-password", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.Auth.NativeChangePassword)
 }

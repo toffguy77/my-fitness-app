@@ -96,19 +96,27 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// be hammered by a script the way a person never would.
 	"unsubscribe": {maxRequests: 5, window: 15 * time.Minute},
 
-	// Нативный вход и запрос ссылки считаются по паре «адрес + IP»
-	// (LimitBy с ByEmailAndIP): сотни абонентов одного мобильного NAT делили
-	// бы 10 попыток веба на всех. Перебор пароля к одному адресу упирается в
-	// те же 10 попыток, а перебор адресов с одного IP — в общий потолок,
-	// в десять раз выше веб-лимита.
-	"native-login":              {maxRequests: 10, window: 15 * time.Minute},
-	"native-login-ip":           {maxRequests: 100, window: 15 * time.Minute},
-	"native-magic-link-request": {maxRequests: 10, window: 15 * time.Minute},
-	"native-magic-link-ip":      {maxRequests: 100, window: 15 * time.Minute},
-	// Обновление нативной сессии — на один refresh-токен (ByRefreshToken).
-	// Приложение обновляется раз в 15 минут; 60 — запас на сбои сети, а не
-	// разрешение крутить обновление в цикле.
-	"native-refresh": {maxRequests: 60, window: 15 * time.Minute},
+	// Нативный вход считается по паре «адрес + IP» (LimitBy с
+	// ByEmailAndIP): сотни абонентов одного мобильного NAT делили бы 10
+	// попыток веба на всех. Перебор адресов с одного IP упирается в общий
+	// потолок, в десять раз выше веб-лимита.
+	"native-login":    {maxRequests: 10, window: 15 * time.Minute},
+	"native-login-ip": {maxRequests: 100, window: 15 * time.Minute},
+	// Попытки входа в один аккаунт — по адресу почты, с любого IP, общий
+	// счётчик веба и приложения (ByEmail). Пара «адрес + IP» не мешает
+	// перебирать пароль одного аккаунта с многих адресов; этот лимит мешает.
+	// 20 за 15 минут — вдвое выше того, что человек успевает набрать сам
+	// (10 попыток в пару «адрес + IP» плюс вход с телефона и с ноутбука),
+	// и всё ещё 80 паролей в час на аккаунт против миллионов у перебора.
+	"login-account": {maxRequests: 20, window: 15 * time.Minute},
+	// Ссылка для входа уходит письмом, и NAT-поправка тут не к месту: её
+	// заслуживает вход, а не рассылка. Потолок на IP у приложения рядом с
+	// веб-лимитом (5), а письма одному адресату ограничены отдельно — общим
+	// счётчиком веба и приложения по адресу получателя (ByEmail): иначе
+	// ящик можно заваливать письмами с разных IP.
+	"native-magic-link-ip": {maxRequests: 10, window: 15 * time.Minute},
+	"magic-link-recipient": {maxRequests: 5, window: 15 * time.Minute},
+	"native-refresh":       {maxRequests: 60, window: 15 * time.Minute},
 }
 
 // KeyFunc picks what a limit counts by. The endpoint name is prepended by the
@@ -117,6 +125,21 @@ type KeyFunc func(c *gin.Context) string
 
 // ByIP counts by the client address — the default.
 func ByIP(c *gin.Context) string { return c.ClientIP() }
+
+// ByEmail counts by the address in the JSON body alone, whatever the IP:
+// attempts against one account, or letters to one mailbox. A body without an
+// address counts against the IP.
+func ByEmail(c *gin.Context) string {
+	var body struct {
+		Email string `json:"email"`
+	}
+	peekJSON(c, &body)
+	email := strings.ToLower(strings.TrimSpace(body.Email))
+	if email == "" {
+		return "ip:" + c.ClientIP()
+	}
+	return "email:" + email
+}
 
 // ByEmailAndIP counts by the address in the JSON body together with the
 // client IP. The body is read and put back for the handler. A body without an
