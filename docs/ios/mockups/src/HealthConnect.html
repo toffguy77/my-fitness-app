@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Подключение Здоровья</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.ph{--canvas:#F6F1E8;--surface:#FFFCF6;--subtle:#EFE7DA;--fg:#2A2118;--muted:#5E5245;--sub:#76695A;--line:#E3D8C6;--primary:#B8492F;--pfg:#FFFFFF;--psoft:#B8492F1A;--ok:#56863F;
+width:390px;height:844px;position:relative;overflow:hidden;background:var(--canvas);color:var(--fg);font-family:'Golos Text',system-ui,sans-serif;font-size:16px;line-height:24px}
+.serif{font-family:'Literata',Georgia,serif;font-weight:500}
+.cap{font-size:13px;line-height:18px;color:var(--muted)}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.grp{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}
+.li:first-child{border-top:none}
+.sw{margin-left:auto;width:51px;height:31px;border-radius:16px;background:var(--ok);position:relative;flex-shrink:0;border:none;padding:0}
+.sw::after{content:'';position:absolute;right:2px;top:2px;width:27px;height:27px;border-radius:14px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+.hd{font-size:12px;line-height:16px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;padding:0 14px 6px}
+</style>
+
+<div class="ph">
+<div style="position:absolute;inset:0;padding:54px 20px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:16px">
+<a href="Profile.dc.html" style="color:var(--primary);display:flex;align-items:center;gap:2px;text-decoration:none;font-weight:500"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Профиль</a>
+<span style="width:64px;height:64px;border-radius:16px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center;color:var(--primary)"><svg class="ico" style="width:34px;height:34px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span>
+<div style="display:flex;flex-direction:column;gap:6px">
+<span class="serif" style="font-size:28px;line-height:34px">Шаги и вес — без ручного ввода</span>
+<span class="cap" style="font-size:15px;line-height:22px">Подключите Здоровье, и Взвешено будет брать данные с часов, телефона и умных весов. Куратор увидит их так же, как введённые вручную.</span>
+</div>
+<div>
+<div class="hd">Читать из Здоровья</div>
+<div class="grp">
+<div class="li"><span style="display:flex;flex-direction:column"><span>Шаги</span><span class="cap">сумма за день</span></span><button class="sw" role="switch" aria-checked="true" aria-label="Шаги"></button></div>
+<div class="li"><span style="display:flex;flex-direction:column"><span>Вес</span><span class="cap">первое взвешивание за день</span></span><button class="sw" role="switch" aria-checked="true" aria-label="Вес"></button></div>
+<div class="li"><span style="display:flex;flex-direction:column"><span>Тренировки</span><span class="cap">тип и длительность — поднимают норму</span></span><button class="sw" role="switch" aria-checked="true" aria-label="Тренировки"></button></div>
+</div>
+</div>
+<div>
+<div class="hd">Записывать в Здоровье</div>
+<div class="grp">
+<div class="li"><span style="display:flex;flex-direction:column"><span>Еда: калории, белки, жиры, углеводы</span></span><button class="sw" role="switch" aria-checked="true" aria-label="Еда"></button></div>
+<div class="li"><span>Вода</span><button class="sw" role="switch" aria-checked="true" aria-label="Вода"></button></div>
+</div>
+</div>
+<span class="cap">Что вы ввели вручную, синхронизация не перезапишет. Отключить можно в любой момент в профиле.</span>
+</div>
+<div style="position:absolute;left:20px;right:20px;bottom:34px;display:flex;flex-direction:column;gap:8px">
+<button style="height:52px;border:none;border-radius:14px;background:var(--primary);color:var(--pfg);font:600 16px 'Golos Text',sans-serif">Продолжить</button>
+<button style="height:44px;border:none;background:transparent;color:var(--primary);font:500 15px 'Golos Text',sans-serif">Не сейчас</button>
+</div>
+</div>
+
+
+</body>
+</html>

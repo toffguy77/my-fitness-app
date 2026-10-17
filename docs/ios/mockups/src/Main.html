@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Карта приложения</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.m{font-family:'Golos Text',system-ui,sans-serif;color:#2A2118}
+.m h1,.m h2,.m h3{font-family:'Literata',Georgia,serif;font-weight:500;margin:0}
+.col{background:#FFFCF6;border:1px solid #E3D8C6;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:14px}
+.tab{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:#EFE7DA}
+.tab b{font-weight:600;font-size:15px}
+.row{font-size:13px;line-height:18px;color:#5E5245}
+.web{font-size:12px;color:#76695A}
+.chip{display:inline-block;font-size:12px;line-height:16px;padding:3px 9px;border-radius:999px;background:#B8492F1A;color:#9C3B25;margin:0 4px 4px 0}
+.chip.n{background:#4666B01A;color:#4666B0}
+.chip.g{background:#5E8F4B1F;color:#4E7A3D}
+</style>
+
+<div class="m" style="width:1640px;height:940px;box-sizing:border-box;padding:48px 56px;background:#F6F1E8;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<h1 style="font-size:44px;line-height:50px">Взвешено для iPhone</h1>
+<div style="font-size:17px;line-height:26px;color:#5E5245;max-width:900px">Клиент и куратор в одном приложении, интерфейс выбирается по роли. SwiftUI, iOS 18+, на iOS 26 — Liquid Glass. Цвета, шрифты и отступы берутся из тех же токенов, что и в вебе (tokens.json → каталог цветов Xcode).</div>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:520px">
+<span class="chip">HealthKit</span><span class="chip">VisionKit</span><span class="chip">APNs + ответ из пуша</span><span class="chip">Виджеты</span><span class="chip">Пункт управления</span><span class="chip">App Intents / Siri</span><span class="chip">Universal Links</span><span class="chip">Вход с Apple</span><span class="chip">Офлайн-очередь</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;flex-grow:1">
+<div class="col">
+<h2 style="font-size:22px">Клиент · вкладки</h2>
+<div class="tab"><b>Сегодня</b><div class="row">Остаток ккал и макросы, неделя, куратор, шаги, вода, вес, тренировка, задачи, фото недели, недельный отчёт</div><div class="web">веб: /dashboard</div></div>
+<div class="tab"><b>Дневник</b><div class="row">День по приёмам пищи, итог КБЖУ, вода, рекомендации по нутриентам; свайп — удалить, тап — порция</div><div class="web">веб: /food-tracker</div></div>
+<div class="tab"><b>Куратор</b><div class="row">Переписка, фото и файлы, «печатает»; без доступа — экран без цены</div><div class="web">веб: /chat</div></div>
+<div class="tab"><b>Статьи</b><div class="row">Лента по категориям, статья в Markdown, «Поделиться»</div><div class="web">веб: /content</div></div>
+<div class="row"><b style="color:#2A2118">Аксессуар над таббаром:</b> «Записать еду» — поиск, штрихкод, фото — на вкладках Сегодня, Дневник и Статьи; в чате его место занимает поле сообщения.</div>
+<div class="row"><b style="color:#2A2118">В навбаре:</b> колокольчик → уведомления, аватар → профиль и настройки.</div>
+</div>
+<div class="col">
+<h2 style="font-size:22px">Куратор · вкладки</h2>
+<div class="tab"><b>Клиенты</b><div class="row">Сводка, «Требуют внимания» по приоритету, все клиенты; карточка: Обзор / План / Задачи / Отчёты</div><div class="web">веб: /curator, /curator/clients/[id]</div></div>
+<div class="tab"><b>Чаты</b><div class="row">Список с непрочитанным, переписка, «Ввести КБЖУ» по фото клиента</div><div class="web">веб: /curator/chat</div></div>
+<div class="tab"><b>Заявки</b><div class="row">Очередь от старых к новым, «Отметить обработанной», письмо без согласия недоступно</div><div class="web">веб: /curator/leads</div></div>
+<div class="tab"><b>Обращения</b><div class="row">Эскалации первыми, ответ в Telegram, закрыть; признак недоставки</div><div class="web">веб: /curator/support</div></div>
+<div class="row"><b style="color:#2A2118">Остаётся в вебе:</b> редактор статей (Markdown, обложки, импорт .md), админка.</div>
+</div>
+<div class="col">
+<h2 style="font-size:22px">Что даёт iOS</h2>
+<div class="row"><span class="chip g">Здоровье</span>Шаги, вес, тренировки приходят сами; еда и вода уходят в Здоровье. Ручной ввод остаётся запасным.</div>
+<div class="row"><span class="chip g">Камера</span>Штрихкод — системный сканер VisionKit; фото еды и недели — камера или «Фото», HEIC → JPEG на устройстве.</div>
+<div class="row"><span class="chip g">Пуш</span>Ответ куратору прямо из уведомления, «Выполнено» для задачи, эскалация обращения куратору.</div>
+<div class="row"><span class="chip g">Виджеты</span>«Осталось ккал» на экране «Домой» и блокировки; кнопка «+ стакан» без открытия приложения.</div>
+<div class="row"><span class="chip g">Siri</span>«Добавь стакан воды», «Сколько калорий осталось», «Запиши вес», «Запиши еду».</div>
+<div class="row"><span class="chip g">Ссылки</span>Письма (вход по ссылке, сброс пароля) и пуши открывают нужный экран приложения.</div>
+</div>
+<div class="col">
+<h2 style="font-size:22px">Нужно от бэкенда</h2>
+<div class="row"><span class="chip n">Сессия</span>Refresh-токен в теле ответа для приложения, хранение в Keychain; сейчас только cookie, приём из тела снимается 1 ноября.</div>
+<div class="row"><span class="chip n">Вход</span>Sign in with Apple (обязателен при Яндекс/VK), нативный обмен кода OAuth.</div>
+<div class="row"><span class="chip n">APNs</span>Регистрация устройств, отправка, действия; канал «Push» в настройках покрывает оба транспорта.</div>
+<div class="row"><span class="chip n">Здоровье</span>Пакетный идемпотентный импорт с источником записи.</div>
+<div class="row"><span class="chip n">Ссылки</span>apple-app-site-association; уведомления несут тип и id, а не только веб-путь.</div>
+<div class="row"><span class="chip n">Конфиг</span>GET /api/v1/config: возможности, минимальная версия приложения.</div>
+</div>
+</div>
+</div>
+
+
+</body>
+</html>

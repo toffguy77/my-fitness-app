@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Штрихкод</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.ph{width:390px;height:844px;position:relative;overflow:hidden;background:#1A1714;color:#F3EADC;font-family:'Golos Text',system-ui,sans-serif;font-size:16px;line-height:24px}
+.ico{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cb{width:44px;height:44px;border-radius:22px;border:none;background:rgba(255,255,255,.16);backdrop-filter:blur(14px);color:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.corner{position:absolute;width:28px;height:28px;border-color:#FFFFFF;border-style:solid;border-width:0}
+</style>
+
+<div class="ph">
+<div style="position:absolute;inset:0;background:radial-gradient(120% 70% at 50% 40%,#5B5045 0%,#2A241F 60%,#14110D 100%)"></div>
+<div style="position:absolute;left:92px;top:300px;width:206px;height:120px;border-radius:10px;background:#EDE6DA;transform:rotate(-4deg);box-shadow:0 20px 40px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center">
+<svg width="150" height="70" viewBox="0 0 150 70" aria-hidden="true"><g fill="#2A2118"><rect x="4" y="4" width="3" height="52"/><rect x="10" y="4" width="2" height="52"/><rect x="15" y="4" width="5" height="52"/><rect x="23" y="4" width="2" height="52"/><rect x="28" y="4" width="3" height="52"/><rect x="35" y="4" width="6" height="52"/><rect x="44" y="4" width="2" height="52"/><rect x="50" y="4" width="3" height="52"/><rect x="57" y="4" width="2" height="52"/><rect x="62" y="4" width="5" height="52"/><rect x="71" y="4" width="2" height="52"/><rect x="76" y="4" width="3" height="52"/><rect x="83" y="4" width="6" height="52"/><rect x="92" y="4" width="2" height="52"/><rect x="97" y="4" width="3" height="52"/><rect x="104" y="4" width="2" height="52"/><rect x="109" y="4" width="5" height="52"/><rect x="118" y="4" width="2" height="52"/><rect x="123" y="4" width="3" height="52"/><rect x="130" y="4" width="6" height="52"/><rect x="140" y="4" width="3" height="52"/></g><text x="75" y="68" font-size="10" text-anchor="middle" fill="#2A2118" font-family="Golos Text">4 607 012 345 678</text></svg>
+</div>
+<div style="position:absolute;left:70px;top:270px;width:250px;height:180px">
+<span class="corner" style="left:0;top:0;border-left-width:4px;border-top-width:4px;border-top-left-radius:14px"></span>
+<span class="corner" style="right:0;top:0;border-right-width:4px;border-top-width:4px;border-top-right-radius:14px"></span>
+<span class="corner" style="left:0;bottom:0;border-left-width:4px;border-bottom-width:4px;border-bottom-left-radius:14px"></span>
+<span class="corner" style="right:0;bottom:0;border-right-width:4px;border-bottom-width:4px;border-bottom-right-radius:14px"></span>
+<span style="position:absolute;left:14px;right:14px;top:86px;height:2px;background:#E58A6C;box-shadow:0 0 12px #E58A6C"></span>
+</div>
+<div style="position:absolute;left:20px;right:20px;top:58px;display:flex;justify-content:space-between;align-items:center">
+<button class="cb" aria-label="Закрыть"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+<span style="font-weight:600">Наведите на штрихкод</span>
+<button class="cb" aria-label="Фонарик"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l-1 5H9z"/><path d="M9 8h6v12H9z"/><path d="M12 12v3"/></svg></button>
+</div>
+<div style="position:absolute;left:0;right:0;top:470px;text-align:center;font-size:14px;color:rgba(243,234,220,.8)">EAN и UPC распознаются без нажатия</div>
+<div style="position:absolute;left:12px;right:12px;bottom:28px;background:#FFFCF6;color:#2A2118;border-radius:28px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+<span style="display:flex;flex-direction:column"><span style="font-family:'Literata',Georgia,serif;font-weight:500;font-size:18px;line-height:24px">Йогурт греческий 2%</span><span style="font-size:13px;line-height:18px;color:#5E5245">Теос · 66 ккал на 100 г · Б 7 · Ж 2 · У 4</span></span>
+<span style="font-size:11px;padding:2px 6px;border-radius:6px;background:#EFE7DA;color:#76695A;white-space:nowrap">Open Food Facts</span>
+</div>
+<div style="display:flex;gap:10px">
+<button style="flex:1;height:50px;border:none;border-radius:14px;background:#EFE7DA;color:#2A2118;font:500 15px 'Golos Text',sans-serif">Ввести код</button>
+<button style="flex:2;height:50px;border:none;border-radius:14px;background:#B8492F;color:#fff;font:600 16px 'Golos Text',sans-serif">Добавить 140 г</button>
+</div>
+</div>
+</div>
+
+
+</body>
+</html>

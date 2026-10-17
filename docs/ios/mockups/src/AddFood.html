@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Записать еду</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.ph{--canvas:#F6F1E8;--surface:#FFFCF6;--subtle:#EFE7DA;--fg:#2A2118;--muted:#5E5245;--sub:#76695A;--line:#E3D8C6;--primary:#B8492F;--pfg:#FFFFFF;--psoft:#B8492F1A;--protein:#4666B0;--fatfg:#9A650C;--carbsfg:#4E7A3D;
+width:390px;height:844px;position:relative;overflow:hidden;background:#3B342C;color:var(--fg);font-family:'Golos Text',system-ui,sans-serif;font-size:16px;line-height:24px}
+.serif{font-family:'Literata',Georgia,serif;font-weight:500}
+.cap{font-size:13px;line-height:18px;color:var(--muted)}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.seg{display:flex;background:var(--subtle);border-radius:12px;padding:3px}
+.seg span{flex:1;text-align:center;font-size:13px;line-height:18px;padding:7px 0;border-radius:9px;font-weight:500;color:var(--muted)}
+.seg .on{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.res{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.tag{font-size:11px;line-height:14px;padding:2px 6px;border-radius:6px;background:var(--subtle);color:var(--sub)}
+.star{width:36px;height:36px;border:none;background:transparent;color:var(--sub);display:flex;align-items:center;justify-content:center;padding:0}
+</style>
+
+<div class="ph">
+<div style="position:absolute;left:0;right:0;top:0;height:120px;background:#2E2822"></div>
+<div style="position:absolute;left:10px;right:10px;top:52px;height:60px;border-radius:14px 14px 0 0;background:#8F8476;opacity:.5"></div>
+<div style="position:absolute;left:0;right:0;top:64px;bottom:0;background:var(--canvas);border-radius:28px 28px 0 0;padding:8px 20px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+<div style="width:36px;height:5px;border-radius:3px;background:var(--line);align-self:center"></div>
+<div style="display:flex;align-items:center;justify-content:space-between">
+<button style="border:none;background:transparent;color:var(--primary);font:500 16px 'Golos Text',sans-serif;padding:8px 0">Отмена</button>
+<span class="serif" style="font-size:18px">Записать еду</span>
+<button aria-label="Приём пищи: Ужин" style="border:none;background:var(--psoft);color:var(--primary);border-radius:16px;font:500 14px 'Golos Text',sans-serif;padding:6px 12px;display:flex;align-items:center;gap:4px">Ужин<svg class="ico" style="width:14px;height:14px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+</div>
+<div class="seg" role="tablist"><span class="on" role="tab" aria-selected="true">Поиск</span><span role="tab" aria-selected="false">Штрихкод</span><span role="tab" aria-selected="false">Фото</span><span role="tab" aria-selected="false">Вручную</span></div>
+<label style="display:flex;align-items:center;gap:8px;background:var(--subtle);border-radius:12px;padding:0 12px;height:44px">
+<svg class="ico" style="color:var(--sub)" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+<input aria-label="Продукт или блюдо" value="гречка" style="border:none;background:transparent;font:400 16px 'Golos Text',sans-serif;color:var(--fg);flex-grow:1;outline:none">
+</label>
+<div style="display:flex;flex-direction:column">
+<div class="res" style="border-top:none"><span style="display:flex;flex-direction:column;flex-grow:1"><span style="font-size:15px;line-height:20px">Гречка отварная</span><span class="cap">110 ккал на 100 г · Б 4 · Ж 1 · У 21</span></span><span class="tag">база</span><button class="star" aria-label="В избранном" style="color:var(--primary)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="fill:currentColor"><path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6z"/></svg></button></div>
+<div class="res"><span style="display:flex;flex-direction:column;flex-grow:1"><span style="font-size:15px;line-height:20px">Гречка ядрица «Мистраль»</span><span class="cap">313 ккал на 100 г · сухая</span></span><span class="tag">штрихкод</span><button class="star" aria-label="Добавить в избранное"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6z"/></svg></button></div>
+<div class="res"><span style="display:flex;flex-direction:column;flex-grow:1"><span style="font-size:15px;line-height:20px">Гречка с курицей</span><span class="cap">150 ккал на 100 г · моё блюдо</span></span><span class="tag">моё</span><button class="star" aria-label="Добавить в избранное"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6z"/></svg></button></div>
+</div>
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:600">Гречка отварная</span><span class="cap">165 ккал</span></div>
+<div style="display:flex;gap:8px">
+<span style="flex:1;text-align:center;border-radius:10px;background:var(--subtle);padding:8px 0;font-size:14px">100 г</span>
+<span style="flex:1;text-align:center;border-radius:10px;background:var(--fg);color:var(--canvas);padding:8px 0;font-size:14px;font-weight:600">150 г</span>
+<span style="flex:1;text-align:center;border-radius:10px;background:var(--subtle);padding:8px 0;font-size:14px">200 г</span>
+<span style="flex:1;text-align:center;border-radius:10px;background:var(--subtle);padding:8px 0;font-size:14px">250 г</span>
+</div>
+<div style="display:flex;gap:14px;font-size:13px;line-height:18px"><span style="color:var(--protein)">Б 6 г</span><span style="color:var(--fatfg)">Ж 2 г</span><span style="color:var(--carbsfg)">У 32 г</span><span class="cap" style="margin-left:auto">прокрутите колесо для точного веса</span></div>
+<button style="height:50px;border:none;border-radius:14px;background:var(--primary);color:var(--pfg);font:600 16px 'Golos Text',sans-serif">Добавить в ужин</button>
+</div>
+</div>
+</div>
+
+
+</body>
+</html>

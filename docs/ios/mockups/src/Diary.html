@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Дневник</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.ph{--canvas:#F6F1E8;--surface:#FFFCF6;--subtle:#EFE7DA;--fg:#2A2118;--muted:#5E5245;--sub:#76695A;--line:#E3D8C6;--primary:#B8492F;--pfg:#FFFFFF;--psoft:#B8492F1A;--track:#EADFCF;--protein:#4666B0;--fat:#A8700E;--fatfg:#9A650C;--carbs:#56863F;--carbsfg:#4E7A3D;--water:#4666B0;--danger:#A32A2A;--glass:rgba(255,252,246,.78);
+width:390px;height:844px;position:relative;overflow:hidden;background:var(--canvas);color:var(--fg);font-family:'Golos Text',system-ui,sans-serif;font-size:16px;line-height:24px}
+.serif{font-family:'Literata',Georgia,serif;font-weight:500}
+.cap{font-size:13px;line-height:18px;color:var(--muted)}
+.ib{width:44px;height:44px;border-radius:22px;border:none;background:var(--glass);color:var(--fg);display:flex;align-items:center;justify-content:center;padding:0;box-shadow:inset 0 0 0 1px var(--line)}
+.ico{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.glass{background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 8px 30px rgba(42,33,24,.14),inset 0 0 0 1px rgba(255,255,255,.35),inset 0 0 0 .5px var(--line)}
+.tabbar{position:absolute;left:16px;right:16px;bottom:22px;height:62px;border-radius:31px;display:flex;align-items:center;justify-content:space-around;padding:0 6px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;line-height:12px;font-weight:500;color:var(--fg);text-decoration:none;padding:7px 12px;border-radius:24px}
+.tab.on{color:var(--primary);background:var(--psoft)}
+.acc{position:absolute;left:16px;right:16px;bottom:94px;height:48px;border-radius:24px;display:flex;align-items:center;gap:8px;padding:0 6px 0 16px}
+.accb{height:36px;min-width:44px;border:none;border-radius:18px;background:var(--psoft);color:var(--primary);display:flex;align-items:center;justify-content:center;padding:0 12px}
+.group{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.gh{display:flex;justify-content:space-between;align-items:baseline;padding:12px 16px 4px}
+.item{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--line);gap:12px}
+.seg{display:flex;background:var(--subtle);border-radius:12px;padding:3px}
+.seg span{flex:1;text-align:center;font-size:14px;line-height:20px;padding:6px 0;border-radius:9px;font-weight:500;color:var(--muted)}
+.seg .on{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+</style>
+
+<div class="ph">
+<div style="position:absolute;inset:0;padding:54px 20px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span class="serif" style="font-size:34px;line-height:40px">Дневник</span>
+<button class="ib" aria-label="Выбрать дату"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></button>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between">
+<button class="ib" aria-label="Предыдущий день" style="width:36px;height:36px;box-shadow:none;background:transparent"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+<span style="font-weight:600">Сегодня, 17 октября</span>
+<button class="ib" aria-label="Следующий день" style="width:36px;height:36px;box-shadow:none;background:transparent;color:var(--sub)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<div class="seg" role="tablist"><span class="on" role="tab" aria-selected="true">Рацион</span><span role="tab" aria-selected="false">Нутриенты</span></div>
+<div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:22px;line-height:26px;font-weight:600">1 923 <span class="cap">ккал осталось</span></span><span class="cap">549 из 2 472</span></div>
+<div style="display:flex;gap:14px;font-size:13px;line-height:18px"><span style="color:var(--protein)">Б 49 г</span><span style="color:var(--fatfg)">Ж 31 г</span><span style="color:var(--carbsfg)">У 212 г</span><span class="cap" style="margin-left:auto">План куратора</span></div>
+</div>
+<div class="group">
+<div class="gh"><span class="serif" style="font-size:17px">Завтрак</span><span class="cap">320 ккал</span></div>
+<div class="item"><span style="display:flex;flex-direction:column"><span style="font-size:15px;line-height:20px">Овсянка на молоке</span><span class="cap">250 г · 08:10</span></span><span style="font-size:15px;font-weight:500">280</span></div>
+<div class="item"><span style="display:flex;flex-direction:column"><span style="font-size:15px;line-height:20px">Кофе с молоком</span><span class="cap">200 мл · 08:12</span></span><span style="font-size:15px;font-weight:500">40</span></div>
+</div>
+<div class="group" style="position:relative">
+<div class="gh"><span class="serif" style="font-size:17px">Обед</span><span class="cap">229 ккал</span></div>
+<div style="display:flex;border-top:1px solid var(--line)">
+<div class="item" style="border-top:none;flex-grow:1;transform:translateX(-84px);margin-right:-84px;background:var(--surface)"><span style="display:flex;flex-direction:column"><span style="font-size:15px;line-height:20px">Куриная грудка запечённая</span><span class="cap">150 г · 13:20 · по фото</span></span><span style="font-size:15px;font-weight:500">229</span></div>
+<button style="width:84px;border:none;background:var(--danger);color:#fff;font:500 14px 'Golos Text',sans-serif">Удалить</button>
+</div>
+</div>
+<div class="group">
+<div class="gh"><span class="serif" style="font-size:17px">Ужин</span><span class="cap">—</span></div>
+<div class="item"><span class="cap">Нет записей</span><a href="AddFood.dc.html" style="color:var(--primary);font-size:15px;font-weight:500;text-decoration:none">Добавить</a></div>
+</div>
+<div class="group" style="display:flex;align-items:center;gap:12px;padding:12px 16px">
+<svg class="ico" style="color:var(--water)" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4s6 6.5 6 10.5a6 6 0 0 1-12 0C6 10.5 12 4 12 4z"/></svg>
+<span style="flex-grow:1">Вода <span class="cap">5 из 8 · 250 мл</span></span>
+<button aria-label="Убрать стакан" style="width:32px;height:32px;border-radius:16px;border:none;background:var(--subtle);color:var(--fg);font-size:18px">−</button>
+<button aria-label="Добавить стакан" style="width:32px;height:32px;border-radius:16px;border:none;background:var(--psoft);color:var(--primary);font-size:18px">+</button>
+</div>
+</div>
+<div class="acc glass">
+<span style="font-size:14px;font-weight:500;flex-grow:1">Записать еду</span>
+<button class="accb" aria-label="Найти продукт"><svg class="ico" style="width:18px;height:18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></button>
+<button class="accb" aria-label="Сканировать штрихкод"><svg class="ico" style="width:18px;height:18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5h3M17 5h3v2M20 17v2h-3M7 19H4v-2M8 9v6M11 9v6M14 9v6M17 9v6"/></svg></button>
+<button class="accb" aria-label="Распознать по фото"><svg class="ico" style="width:18px;height:18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+</div>
+<nav class="tabbar glass" aria-label="Разделы">
+<a class="tab" href="Today.dc.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 0 1 16 0"/><path d="M12 17l3.5-5"/></svg>Сегодня</a>
+<a class="tab on" href="Diary.dc.html" aria-current="page"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M9 8h6M9 12h6"/></svg>Дневник</a>
+<a class="tab" href="Chat.dc.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg>Куратор</a>
+<a class="tab" href="Articles.dc.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Статьи</a>
+</nav>
+</div>
+
+
+</body>
+</html>

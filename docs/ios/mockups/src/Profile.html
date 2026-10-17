@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<!-- Макет iOS-экрана «Взвешено». Источник — холст Design «Взвешено · iOS». Шрифты берутся из node_modules репозитория. -->
+<meta charset="utf-8">
+<title>Профиль</title>
+
+</head>
+<body>
+
+
+<style>
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-cyrillic-wght-normal.woff2) format('woff2');font-weight:400 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Golos Text';src:url(../../../../node_modules/@fontsource-variable/golos-text/files/golos-text-latin-wght-normal.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-cyrillic-wght-normal.woff2) format('woff2');font-weight:200 900;unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Literata';src:url(../../../../node_modules/@fontsource-variable/literata/files/literata-latin-wght-normal.woff2) format('woff2');font-weight:200 900}
+</style>
+<style>
+body{margin:0}
+.ph{--canvas:#F6F1E8;--surface:#FFFCF6;--subtle:#EFE7DA;--fg:#2A2118;--muted:#5E5245;--sub:#76695A;--line:#E3D8C6;--primary:#B8492F;--danger:#A32A2A;--ok:#4E7A3D;
+width:390px;height:844px;position:relative;overflow:hidden;background:var(--canvas);color:var(--fg);font-family:'Golos Text',system-ui,sans-serif;font-size:16px;line-height:24px}
+.serif{font-family:'Literata',Georgia,serif;font-weight:500}
+.cap{font-size:13px;line-height:18px;color:var(--muted)}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.grp{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:0 14px;height:48px;border-top:1px solid var(--line);color:var(--fg);text-decoration:none;font-size:15px}
+.li:first-child{border-top:none}
+.li .v{margin-left:auto;color:var(--sub);font-size:14px;display:flex;align-items:center;gap:4px}
+.hd{font-size:12px;line-height:16px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;padding:0 14px 6px}
+.seg{display:flex;background:var(--subtle);border-radius:10px;padding:2px;margin-left:auto}
+.seg span{font-size:13px;line-height:18px;padding:4px 10px;border-radius:8px;color:var(--muted)}
+.seg .on{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+</style>
+
+<div class="ph">
+<div style="position:absolute;inset:0;padding:54px 20px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<a href="Today.dc.html" style="color:var(--primary);display:flex;align-items:center;gap:2px;text-decoration:none;font-weight:500"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Сегодня</a>
+<span style="font-weight:600">Профиль</span>
+<span style="width:72px"></span>
+</div>
+<div style="display:flex;align-items:center;gap:14px">
+<span style="width:60px;height:60px;border-radius:30px;background:var(--subtle);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:22px">Д</span>
+<span style="display:flex;flex-direction:column"><span class="serif" style="font-size:22px;line-height:28px">Дмитрий</span><span class="cap">d***@yandex.ru</span></span>
+</div>
+<div>
+<div class="grp">
+<a class="li" href="#">Имя и фото<span class="v"><svg class="ico" style="width:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></a>
+<a class="li" href="#">Тело и цели<span class="v">78,4 → 74 кг<svg class="ico" style="width:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></a>
+<a class="li" href="#">Язык, единицы, часовой пояс<span class="v"><svg class="ico" style="width:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></a>
+</div>
+</div>
+<div>
+<div class="hd">Связи</div>
+<div class="grp">
+<a class="li" href="HealthConnect.dc.html">Здоровье<span class="v" style="color:var(--ok)">шаги, вес, тренировки<svg class="ico" style="width:16px;color:var(--sub)" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></a>
+<a class="li" href="#">Уведомления<span class="v">пуш, почта, тихое время<svg class="ico" style="width:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></a>
+<a class="li" href="#">Telegram<span class="v">не привязан<svg class="ico" style="width:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></a>
+</div>
+</div>
+<div>
+<div class="hd">Вход</div>
+<div class="grp">
+<a class="li" href="#">Пароль<span class="v">изменить<svg class="ico" style="width:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></a>
+<a class="li" href="#">Способы входа<span class="v">Apple, Яндекс<svg class="ico" style="width:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></a>
+<div class="li">Оформление<div class="seg" role="radiogroup" aria-label="Тема"><span class="on" role="radio" aria-checked="true">Авто</span><span role="radio" aria-checked="false">Светлая</span><span role="radio" aria-checked="false">Тёмная</span></div></div>
+</div>
+</div>
+<div>
+<div class="hd">Данные</div>
+<div class="grp">
+<a class="li" href="#">Выгрузить мои данные<span class="v"><svg class="ico" style="width:16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></a>
+<a class="li" href="#" style="color:var(--danger)">Удалить аккаунт</a>
+</div>
+</div>
+<button style="height:48px;border:none;border-radius:16px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);color:var(--danger);font:500 15px 'Golos Text',sans-serif">Выйти</button>
+</div>
+</div>
+
+
+</body>
+</html>

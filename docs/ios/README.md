@@ -15,10 +15,10 @@
 | `openspec/changes/ios-curator-app` | iOS: экраны куратора |
 | `openspec/changes/ios-system-surfaces` | iOS: виджеты, Пункт управления, App Intents и Siri |
 
-Макеты — холст Design «Взвешено · iOS»
+Макеты — `docs/ios/mockups/` (PNG @2x и HTML-исходники, таблица «экран → спека»).
+Живая копия — холст Design «Взвешено · iOS»
 (https://claude.ai/artifact/7i8fUfu4fuwq5LSXn1ZRCL, открывается у владельца
-и у тех, с кем им поделились): светлая и тёмная тема, клиент, куратор,
-системные поверхности.
+и у тех, с кем им поделились).
 
 Решения, принятые для первой версии:
 
