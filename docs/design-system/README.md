@@ -52,7 +52,9 @@ packages/design-tokens/dist/
   tokens.css     --ds-* переменные; тёмная тема по prefers-color-scheme и [data-theme="dark"]
   tailwind.css   @theme для Tailwind v4: bg-surface, text-fg-muted, rounded-card, type-title-2…
   tokens.js/.d.ts  color.* (CSS-переменные для SVG/recharts), values.light/dark (сырые значения)
-  tokens.json    развёрнутые значения обеих тем — для iOS/Android
+  tokens.json    развёрнутые значения обеих тем — для Android и прочих потребителей
+  ios/Colors.xcassets  colorset на роль (bg.canvas → BgCanvas), варианты Any и Dark
+  ios/Tokens.swift     DS.Color, DS.Space/Radius/Size, DS.Typography (Dynamic Type)
 ```
 
 Три слоя: **палитра** (сырые значения, в коде не используются) → **роли**

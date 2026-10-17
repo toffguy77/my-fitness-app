@@ -10,7 +10,11 @@
  *   dist/tailwind.css   @theme для Tailwind v4: утилиты bg-surface, text-fg-muted,
  *                       rounded-card, type-title-2 … ссылаются на --ds-*
  *   dist/tokens.js      те же роли для кода (SVG, recharts) и сырые значения (+ .d.ts)
- *   dist/tokens.json    развёрнутые значения обеих тем — для iOS/Android
+ *   dist/tokens.json    развёрнутые значения обеих тем — для Android и прочих потребителей
+ *   dist/ios/Colors.xcassets  каталог цветов: colorset на роль (bg.canvas → BgCanvas),
+ *                       варианты Any (светлая) и Dark (тёмная)
+ *   dist/ios/Tokens.swift     DS.Color (из каталога), DS.Space/Radius/Size (CGFloat),
+ *                       DS.Typography с относительным стилем Dynamic Type
  *
  * Сборка же и проверяет то, что иначе разъезжается молча:
  *   - ссылка {palette.x.y} указывает на существующий токен;
@@ -20,7 +24,7 @@
  * `node scripts/build.mjs --check` ничего не пишет и падает, если dist/ отстал
  * от источника. Его вызывает CI.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -327,19 +331,302 @@ const json = JSON.stringify(
     2,
 ) + '\n'
 
-const outputs = { 'dist/tokens.css': css, 'dist/tailwind.css': tailwind, 'dist/tokens.js': js, 'dist/tokens.d.ts': dts, 'dist/tokens.json': json }
+// ---------------------------------------------------------------------------
+// iOS: каталог цветов и Swift
+// ---------------------------------------------------------------------------
+
+/**
+ * Относительный стиль Dynamic Type для каждого стиля текста: под ним размер
+ * следует настройке «Размер текста». Взят ближайший по размеру системный стиль
+ * (display 34 → largeTitle 34, caption 13 → footnote 13), кроме назначенных
+ * проектом: title-1 → title, num-xl → largeTitle. Новый стиль текста без
+ * строки здесь останавливает сборку: Dynamic Type не забывается молча.
+ */
+const IOS_TEXT_STYLE = {
+    display: 'largeTitle',
+    'title-1': 'title',
+    'title-2': 'title2',
+    'title-3': 'title3',
+    quote: 'body',
+    'num-xl': 'largeTitle',
+    'num-l': 'title2',
+    headline: 'headline',
+    body: 'body',
+    callout: 'callout',
+    caption: 'footnote',
+    overline: 'footnote',
+    micro: 'caption2',
+}
+const IOS_TEXT_STYLES = ['largeTitle', 'title', 'title2', 'title3', 'headline', 'body', 'callout', 'subheadline', 'footnote', 'caption', 'caption2']
+
+// Ключевые слова Swift: именем члена они годятся только в обратных кавычках.
+const SWIFT_RESERVED = new Set([
+    'associatedtype', 'borrowing', 'class', 'consuming', 'deinit', 'enum', 'extension', 'fileprivate', 'func', 'import', 'init', 'inout',
+    'internal', 'let', 'nonisolated', 'open', 'operator', 'private', 'precedencegroup', 'protocol', 'public', 'rethrows', 'static', 'struct',
+    'subscript', 'typealias', 'var', 'break', 'case', 'catch', 'continue', 'default', 'defer', 'do', 'else', 'fallthrough', 'for', 'guard',
+    'if', 'in', 'repeat', 'return', 'throw', 'switch', 'where', 'while', 'Any', 'as', 'await', 'false', 'is', 'nil', 'self', 'Self', 'super',
+    'throws', 'true', 'try', 'Type', 'Protocol',
+])
+
+const words = (path) => path.split(/[.\-_\s]+/).filter(Boolean)
+const capitalize = (w) => w.charAt(0).toUpperCase() + w.slice(1)
+
+/** Имя colorset: bg.canvas → BgCanvas, coach.fg-muted → CoachFgMuted. */
+const iosColorName = (path) => words(path.replace(/^color\./, '')).map(capitalize).join('')
+
+/**
+ * Имя члена Swift: lowerCamelCase; ведущая цифра получает приставку
+ * (space.4 → s4), ключевое слово — обратные кавычки (`default`).
+ */
+function swiftIdentifier(path, digitPrefix = 'n') {
+    let id = words(path).map((w, i) => (i === 0 ? w.charAt(0).toLowerCase() + w.slice(1) : capitalize(w))).join('')
+    if (/^[0-9]/.test(id)) id = digitPrefix + id
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(id)) {
+        errors.push(`iOS: из «${path}» не получается имя Swift`)
+        return '_'
+    }
+    return SWIFT_RESERVED.has(id) ? `\`${id}\`` : id
+}
+
+/** JSON с отсортированными ключами: каталог не переписывается от порядка обхода. */
+function stableJson(value) {
+    const sort = (v) => {
+        if (Array.isArray(v)) return v.map(sort)
+        if (v && typeof v === 'object') return Object.fromEntries(Object.keys(v).sort().map((k) => [k, sort(v[k])]))
+        return v
+    }
+    return JSON.stringify(sort(value), null, 2) + '\n'
+}
+
+/** #RRGGBB или #RRGGBBAA → компоненты sRGB: каналы байтом, как в токене; альфа — долей. */
+function srgbComponents(hex, role) {
+    const h = String(hex).replace('#', '').toUpperCase()
+    if (!/^[0-9A-F]{6}([0-9A-F]{2})?$/.test(h)) {
+        errors.push(`iOS: цвет ${role} = ${hex} — ожидается #RRGGBB или #RRGGBBAA`)
+        return {}
+    }
+    const alpha = h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1
+    return { red: `0x${h.slice(0, 2)}`, green: `0x${h.slice(2, 4)}`, blue: `0x${h.slice(4, 6)}`, alpha: alpha.toFixed(3) }
+}
+
+const iosColorRoles = colorKeys.map((k) => ({ path: k, asset: iosColorName(k), member: swiftIdentifier(k.replace(/^color\./, '')) }))
+for (const [i, r] of iosColorRoles.entries()) {
+    const twin = iosColorRoles.findIndex((o) => o.asset === r.asset)
+    if (twin !== i) errors.push(`iOS: роли ${iosColorRoles[twin].path} и ${r.path} дают одно имя ${r.asset}`)
+}
+
+const xcassets = 'dist/ios/Colors.xcassets'
+const iosOutputs = { [`${xcassets}/Contents.json`]: stableJson({ info: { author: 'xcode', version: 1 } }) }
+for (const r of iosColorRoles) {
+    iosOutputs[`${xcassets}/${r.asset}.colorset/Contents.json`] = stableJson({
+        colors: [
+            { idiom: 'universal', color: { 'color-space': 'srgb', components: srgbComponents(resolved.light.get(r.path).value, `${r.path} (light)`) } },
+            {
+                idiom: 'universal',
+                appearances: [{ appearance: 'luminosity', value: 'dark' }],
+                color: { 'color-space': 'srgb', components: srgbComponents(resolved.dark.get(r.path).value, `${r.path} (dark)`) },
+            },
+        ],
+        info: { author: 'xcode', version: 1 },
+    })
+}
+
+/** "20px" → 20: pt на iOS соответствует px веба. */
+function points(t, path) {
+    const m = String(t?.value).match(/^(-?\d+(?:\.\d+)?)px$/)
+    if (!m) { errors.push(`iOS: ${path} = ${t?.value} — ожидается значение в px`); return 0 }
+    return Number(m[1])
+}
+// Округление до 4 знаков: -0.015 × 30 в двоичной арифметике — -0.44999999999999996.
+const swiftNumber = (n) => String(Math.round(n * 10000) / 10000 || 0)
+
+/** Имя семейства для Font.custom: первое в списке, кроме веб-обёртки «… Variable» из @fontsource. */
+function iosFamily(key) {
+    const name = (resolvedBase.get(`font.family.${key}`)?.value ?? []).find((f) => !/ Variable$/.test(f))
+    if (!name) errors.push(`iOS: у font.family.${key} нет имени семейства для iOS`)
+    return name
+}
+
+const dimensionGroup = (group, digitPrefix) => [...resolvedBase]
+    .filter(([k]) => k.startsWith(`${group}.`))
+    .map(([k, t]) => ({ name: swiftIdentifier(k.slice(group.length + 1), digitPrefix), value: points(t, k), description: t.description }))
+
+const iosSpace = dimensionGroup('space', 's')
+const iosRadius = dimensionGroup('radius', 'r')
+const iosSize = dimensionGroup('size', 'z')
+
+const families = [...resolvedBase.keys()].filter((k) => k.startsWith('font.family.')).map((k) => k.split('.')[2])
+const iosTypography = typeNames.map((n) => {
+    const get = (p) => resolvedBase.get(`type.${n}.${p}`)
+    const relativeTo = IOS_TEXT_STYLE[n]
+    if (!relativeTo) errors.push(`iOS: у стиля текста type.${n} нет относительного стиля Dynamic Type (IOS_TEXT_STYLE в build.mjs)`)
+    else if (!IOS_TEXT_STYLES.includes(relativeTo)) errors.push(`iOS: type.${n} → ${relativeTo} — нет такого Font.TextStyle`)
+    const size = points(get('size'), `type.${n}.size`)
+    return {
+        name: swiftIdentifier(n),
+        family: swiftIdentifier(String(get('family')?.value)),
+        size,
+        lineHeight: points(get('line'), `type.${n}.line`),
+        weight: Number(get('weight')?.value),
+        tracking: Number(String(get('tracking')?.value).replace(/em$/, '')) * size,
+        relativeTo,
+        monospacedDigits: n.startsWith('num'),
+        uppercase: n === 'overline',
+        italic: n === 'quote',
+    }
+})
+
+if (errors.length) {
+    console.error('Токены не собраны:\n  ' + errors.join('\n  '))
+    process.exit(1)
+}
+
+const swiftDoc = (text, indent) => (text ? [`${indent}/// ${text}`] : [])
+const cgGroup = (name, items, about) => [
+    `    /// ${about}`,
+    `    public enum ${name} {`,
+    ...items.flatMap((i) => [...swiftDoc(i.description, '        '), `        public static let ${i.name}: CGFloat = ${swiftNumber(i.value)}`]),
+    '    }',
+    '',
+]
+const swiftString = (s) => JSON.stringify(s)
+
+const swift = [
+    '// Сгенерировано packages/design-tokens/scripts/build.mjs из tokens/*.json. Не править руками.',
+    '//',
+    '// Исходник цели DesignSystem пакета VzveshenoKit. Colors.xcassets рядом — её',
+    '// ресурс (`resources: [.process("Colors.xcassets")]`), отсюда `Bundle.module`.',
+    '// Всё, что не требует SwiftUI, собирается и без него; цвета и шрифты — под',
+    '// `#if canImport(SwiftUI)`.',
+    '',
+    'import Foundation',
+    '',
+    '#if canImport(SwiftUI)',
+    'import SwiftUI',
+    '#endif',
+    '',
+    'public enum DS {',
+    '    /// Роли цвета; значение — имя colorset в Colors.xcassets. Светлый и тёмный вариант выбирает система.',
+    '    public enum ColorRole: String, CaseIterable, Sendable {',
+    ...iosColorRoles.map((r) => `        case ${r.member} = ${swiftString(r.asset)}`),
+    '    }',
+    '',
+    ...cgGroup('Space', iosSpace, 'Отступы, сетка 4 pt. `s4` — шаг 4 шкалы (16 pt), а не 4 pt.'),
+    ...cgGroup('Radius', iosRadius, 'Радиусы скругления, pt.'),
+    ...cgGroup('Size', iosSize, 'Размеры, pt.'),
+    '    /// Семейства шрифтов бренда — имена для `Font.custom`.',
+    '    public enum FontFamily {',
+    ...families.map((f) => `        public static let ${swiftIdentifier(f)} = ${swiftString(iosFamily(f))}`),
+    '    }',
+    '',
+    '    /// Системный стиль, вслед за которым стиль бренда масштабируется с Dynamic Type; имена — как у `Font.TextStyle`.',
+    '    public enum TextStyleRole: String, CaseIterable, Sendable {',
+    ...IOS_TEXT_STYLES.map((s) => `        case ${s}`),
+    '    }',
+    '',
+    '    /// Стиль текста. Размеры в pt; `tracking` — в pt для этого размера.',
+    '    public struct TextStyle: Hashable, Sendable {',
+    '        public let family: String',
+    '        public let size: CGFloat',
+    '        public let lineHeight: CGFloat',
+    '        /// Вес по шкале CSS: 400 обычный, 500 средний, 600 полужирный.',
+    '        public let weight: Int',
+    '        public let tracking: CGFloat',
+    '        public let relativeTo: TextStyleRole',
+    '        /// Цифры одной ширины (tabular-nums).',
+    '        public let monospacedDigits: Bool',
+    '        public let uppercase: Bool',
+    '        public let italic: Bool',
+    '',
+    '        /// Добавка к высоте строки до `lineHeight` (для `.lineSpacing`).',
+    '        public var lineSpacing: CGFloat { lineHeight - size }',
+    '    }',
+    '',
+    '    public enum Typography {',
+    ...iosTypography.map((t) => `        public static let ${t.name} = TextStyle(family: FontFamily.${t.family}, size: ${swiftNumber(t.size)}, lineHeight: ${swiftNumber(t.lineHeight)}, weight: ${t.weight}, tracking: ${swiftNumber(t.tracking)}, relativeTo: .${t.relativeTo}, monospacedDigits: ${t.monospacedDigits}, uppercase: ${t.uppercase}, italic: ${t.italic})`),
+    '    }',
+    '}',
+    '',
+    '#if canImport(SwiftUI)',
+    'extension DS {',
+    '    /// Цвета ролей из каталога модуля DesignSystem. Литерал цвета вне DesignSystem запрещён SwiftLint (ds_color_literal).',
+    '    public enum Color {',
+    ...iosColorRoles.map((r) => `        public static var ${r.member}: SwiftUI.Color { SwiftUI.Color(${swiftString(r.asset)}, bundle: .module) }`),
+    '    }',
+    '}',
+    '',
+    'extension DS.ColorRole {',
+    '    public var color: SwiftUI.Color { SwiftUI.Color(rawValue, bundle: .module) }',
+    '}',
+    '',
+    'extension DS.TextStyleRole {',
+    '    public var textStyle: SwiftUI.Font.TextStyle {',
+    '        switch self {',
+    ...IOS_TEXT_STYLES.map((s) => `        case .${s}: .${s}`),
+    '        }',
+    '    }',
+    '}',
+    '',
+    'extension DS.TextStyle {',
+    '    public var fontWeight: SwiftUI.Font.Weight {',
+    '        switch weight {',
+    '        case ..<150: .ultraLight',
+    '        case ..<250: .thin',
+    '        case ..<350: .light',
+    '        case ..<450: .regular',
+    '        case ..<550: .medium',
+    '        case ..<650: .semibold',
+    '        case ..<750: .bold',
+    '        case ..<850: .heavy',
+    '        default: .black',
+    '        }',
+    '    }',
+    '',
+    '    /// Шрифт бренда, масштабируемый с Dynamic Type относительно `relativeTo`.',
+    '    public var font: SwiftUI.Font {',
+    '        var font = SwiftUI.Font.custom(family, size: size, relativeTo: relativeTo.textStyle).weight(fontWeight)',
+    '        if monospacedDigits { font = font.monospacedDigit() }',
+    '        if italic { font = font.italic() }',
+    '        return font',
+    '    }',
+    '}',
+    '#endif',
+    '',
+].join('\n')
+iosOutputs['dist/ios/Tokens.swift'] = swift
+
+const outputs = { 'dist/tokens.css': css, 'dist/tailwind.css': tailwind, 'dist/tokens.js': js, 'dist/tokens.d.ts': dts, 'dist/tokens.json': json, ...iosOutputs }
+
+/** Все файлы под каталогом, пути от корня пакета. */
+function listFiles(rel) {
+    if (!existsSync(join(root, rel))) return []
+    return readdirSync(join(root, rel), { withFileTypes: true })
+        .flatMap((e) => (e.isDirectory() ? listFiles(`${rel}/${e.name}`) : [`${rel}/${e.name}`]))
+        .sort()
+}
 
 if (process.argv.includes('--check')) {
-    const stale = Object.entries(outputs).filter(([p, c]) => !existsSync(join(root, p)) || readFileSync(join(root, p), 'utf8') !== c)
-    if (stale.length) {
-        console.error(`dist/ отстал от tokens/: ${stale.map(([p]) => p).join(', ')}.\nЗапустите: npm run build --workspace=packages/design-tokens`)
+    const stale = Object.entries(outputs).filter(([p, c]) => !existsSync(join(root, p)) || readFileSync(join(root, p), 'utf8') !== c).map(([p]) => p)
+    // dist/ios — каталог: colorset удалённой роли остался бы в нём и продолжал
+    // собираться в приложение, поэтому лишний файл — тоже отставание.
+    const extra = listFiles('dist/ios').filter((p) => !(p in outputs))
+    if (stale.length || extra.length) {
+        const why = []
+        if (stale.length) why.push(`dist/ отстал от tokens/: ${stale.join(', ')}.`)
+        if (extra.length) why.push(`В dist/ios лишние файлы, которых сборка не выпускает: ${extra.join(', ')}.`)
+        console.error(`${why.join('\n')}\nЗапустите: npm run build --workspace=packages/design-tokens`)
         process.exit(1)
     }
     console.log('Токены в порядке: dist/ совпадает с источником, контраст и ссылки проверены.')
 } else {
-    mkdirSync(join(root, 'dist'), { recursive: true })
-    for (const [p, c] of Object.entries(outputs)) writeFileSync(join(root, p), c)
+    // dist/ios собирается заново целиком: colorset удалённой роли не переживает сборку.
+    rmSync(join(root, 'dist/ios'), { recursive: true, force: true })
+    for (const [p, c] of Object.entries(outputs)) {
+        mkdirSync(dirname(join(root, p)), { recursive: true })
+        writeFileSync(join(root, p), c)
+    }
     const worst = [...contrastReport].sort((a, b) => a.ratio / a.min - b.ratio / b.min).slice(0, 3)
-    console.log(`Собрано: ${Object.keys(outputs).join(', ')}`)
+    const ios = Object.keys(iosOutputs).length
+    console.log(`Собрано: ${Object.keys(outputs).filter((p) => !(p in iosOutputs)).join(', ')} и ${ios} файлов dist/ios`)
     console.log('Ближе всего к порогу контраста:', worst.map((w) => `${w.theme} ${w.fg}/${w.bg} ${w.ratio}`).join('; '))
 }
