@@ -303,3 +303,14 @@ func TestAPNSGoneAnswers(t *testing.T) {
 	assert.False(t, apnsResult{status: 429, reason: "TooManyRequests"}.gone())
 	assert.False(t, apnsResult{status: 503, reason: "ServiceUnavailable"}.gone())
 }
+
+// «Ключ APNs есть, VAPID нет»: канал push готов, и задание отправки
+// (jobsetup, notifications.send-pushes) смотрит на PushChannelReady.
+func TestPushChannelIsReadyWithAPNsAlone(t *testing.T) {
+	service, _, cleanup := setupTestService(t)
+	defer cleanup()
+	pemKey, _ := testAPNSKey(t)
+	require.NoError(t, service.WithAPNS(APNSConfig{KeyID: "K", TeamID: "T", PrivateKey: pemKey, Topic: "x"}))
+	assert.False(t, service.PushReady())
+	assert.True(t, service.PushChannelReady())
+}

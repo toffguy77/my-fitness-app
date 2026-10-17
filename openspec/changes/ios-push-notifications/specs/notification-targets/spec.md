@@ -2,7 +2,7 @@
 
 ### Requirement: Уведомление несёт адрес экрана
 
-Каждое создаваемое уведомление SHALL иметь поле `target {kind, ids}` с `kind` из перечня `chat`, `task`, `weekly_feedback`, `plan`, `client`, `support_conversation`, `lead`, `article`, `export`, `notifications`. `GET /api/v1/notifications` MUST отдавать `target` у каждой записи; записи, созданные до изменения, отдают `{kind: "notifications"}`.
+Каждое создаваемое уведомление SHALL иметь поле `target {kind, ids}` с `kind` из перечня `chat`, `task`, `weekly_feedback`, `plan`, `client`, `support_conversation`, `lead`, `article`, `export`, `notifications`. Все значения `ids` — строки (uuid или десятичный id пользователя). `GET /api/v1/notifications` MUST отдавать `target` у каждой записи; записи, созданные до изменения, отдают `{kind: "notifications"}` без `ids`. Адрес, которому не хватает нужного id, MUST заменяться на `{kind: "notifications"}`.
 
 #### Scenario: Отзыв на недельный отчёт
 
@@ -13,6 +13,7 @@
 
 - **WHEN** куратор создаёт задачу клиенту
 - **THEN** у уведомления `task_assigned` поле `target.kind` равно `task`, а `target.ids.task_id` — id задачи
+- **AND** `target.ids.task_type` — тип задачи
 
 #### Scenario: Старая запись
 
@@ -34,8 +35,13 @@
 
 #### Scenario: Пуш о задаче
 
-- **WHEN** отправляется пуш `task_assigned`
+- **WHEN** отправляется пуш `task_assigned` о задаче не-тренировке
 - **THEN** нагрузка содержит `aps.category = "TASK"` и `target.ids.task_id`
+
+#### Scenario: Пуш о тренировке
+
+- **WHEN** отправляется пуш о задаче с `task_type = workout`
+- **THEN** нагрузка содержит `aps.category = "TASK_WORKOUT"` — без действия «Выполнено», которому нужны тип и длительность
 
 ### Requirement: Значок считает важное непрочитанное
 

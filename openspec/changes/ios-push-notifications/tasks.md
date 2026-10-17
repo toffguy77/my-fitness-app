@@ -2,7 +2,7 @@
 
 - [ ] 1.1 Выбрать номер миграции по `schema_migrations` dev и прода. Проверка: номер указан в PR и больше максимального в обеих базах.
 - [ ] 1.2 Миграция:
-  - таблица `push_devices`: `token` уникальный, индекс по `user_id` для активных устройств;
+  - таблица `push_devices` (переименование `apns_devices` из 095 с сохранением данных и `installation_id`): `token` уникальный, индекс по `user_id` (обычный — внешнему ключу нужен ведущий индекс);
   - `notifications.target jsonb NOT NULL DEFAULT '{"kind":"notifications"}'`;
   - таблица `push_deliveries` (задание на адресат: `notification_id` или `chat_message_id`, `transport`, `subscription_id`/`device_id`, статус с `cancelled`).
 
@@ -25,8 +25,8 @@
 
 ## 4. Отправка
 
-- [ ] 4.1 `apns.go`: клиент `sideshow/apns2` на каждое окружение, построение нагрузки (`alert`, `thread-id`, `category`, `badge`, `target`, `notification_id`, `interruption-level`). Проверка: юнит-тест нагрузки на каждый вид `target`; тест «нет почты и значений дневника в нагрузке».
-- [ ] 4.2 `SendDuePushes` (`push.go:125`) работает по `push_deliveries`: задание на каждую подписку и устройство, повтор только неудавшихся, сводный статус в `notification_deliveries`; `410` и `BadDeviceToken` отключают устройство. Проверка: тест с фальшивым HTTP/2-сервером APNs (`httptest` + `apns2.Client` с подменённым хостом).
+- [ ] 4.1 `apns.go`: свой HTTP/2-клиент (из 095) с хостом по окружению устройства, построение нагрузки (`alert`, `thread-id`, `category`, `badge`, `target`, `notification_id`, `interruption-level`). Проверка: юнит-тест нагрузки на каждый вид `target`; тест «нет почты и значений дневника в нагрузке».
+- [ ] 4.2 `SendDuePushes` (`push.go:125`) работает по `push_deliveries`: задание на каждую подписку и устройство, повтор только неудавшихся, сводный статус в `notification_deliveries`; `410` и `BadDeviceToken` отключают устройство. Проверка: тест с фальшивым HTTP/2-сервером APNs (`httptest` с `EnableHTTP2` и TLS, подменённые хосты).
 - [ ] 4.3 Тихое время: для iOS — `passive` без звука, для Web Push — отложить. Проверка: тест для обоих транспортов в тихий интервал.
 - [ ] 4.4 Значок: `main` + непрочитанные сообщения чата. Проверка: тест сценария «две статьи и одно сообщение».
 - [ ] 4.5 Фоновый пуш `content-available` при изменении непрочитанного, не чаще раза в минуту на устройство. Проверка: тест сценария «Прочитано в вебе» и тест ограничения частоты.
@@ -43,4 +43,4 @@
 ## 6. Документация и выкат
 
 - [ ] 6.1 Подпись колонки «Пуш (браузер и iPhone)» в вебе, `docs/user-guide/` — уведомления на iPhone; `make sync-knowledge`. Проверка: `TestKnowledgeMatchesUserGuide`, `npm run lint:web`.
-- [ ] 6.2 Ключ «Weighted» (Key ID `743P3Y36VM`) в секретах Dokploy, `APNS_TOPIC=team.burcev.app.dev` на dev (sandbox) и `team.burcev.app` на проде, выкат на dev. Проверка: сборка из Xcode на устройстве получает пуш о сообщении куратора и открывает переписку по тапу.
+- [ ] 6.2 Ключ «Weighted» (Key ID `743P3Y36VM`) в секретах Dokploy, `APNS_TOPIC=team.burcev.app.dev` на dev и `team.burcev.app` на проде, выкат на dev. Проверка: сборка из Xcode на устройстве получает пуш о сообщении куратора и открывает переписку по тапу.
