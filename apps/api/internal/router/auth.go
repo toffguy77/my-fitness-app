@@ -42,7 +42,13 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	// address that already has an account, or supplying one the provider did
 	// not give us. Both are unauthenticated by necessity and both are guessing
 	// targets, so both are rate limited.
-	g.POST("/oauth/link", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.ConfirmLink)
+	//
+	// The password step is a guess at an existing account's password: wrong
+	// ones also count against that account's login-account allowance, keyed
+	// by the address on the parked attempt, and the fifth burns the attempt.
+	g.POST("/oauth/link", d.AuthRateLimiter.Limit("oauth-link"),
+		d.AuthRateLimiter.LimitOutcomesBy("login-account", d.OAuth.PendingLinkAccountKey, middleware.FailedCredentials),
+		d.OAuth.ConfirmLink)
 	g.POST("/oauth/email", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.CompleteEmail)
 	// Согласия до создания аккаунта через провайдера: колбэк уводит на экран
 	// согласий, а аккаунт появляется здесь.
@@ -97,15 +103,23 @@ func registerNativeAuthRoutes(auth *gin.RouterGroup, d Deps) {
 	g.POST("/magic-link/consume", d.AuthRateLimiter.Limit("magic-link-consume"), d.Auth.NativeConsumeMagicLink)
 	g.POST("/change-password", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.Auth.NativeChangePassword)
 
-	// Вход через провайдера, начатый из приложения (native-oauth-handoff):
-	// обмен одноразового кода из universal link и продолжения незавершённого
-	// входа с pending_token в теле. Код и pending_token — 32 байта и UUID,
-	// угадывать нечего; пароль в oauth/link — цель перебора, но только для
-	// того, у кого есть pending_token от входа через провайдера. Потолок на
-	// IP с NAT-поправкой, как у native/login.
-	g.POST("/oauth/exchange", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeOAuthExchange)
-	g.POST("/oauth/email", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeOAuthEmail)
-	g.POST("/oauth/link", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeOAuthLink)
+	// Вход через провайдера, начатый из приложения (native-oauth-handoff).
+	//
+	// Продолжения с pending_token в теле ограничены не мягче своих
+	// веб-двойников (/auth/oauth/*): тот же oauth-link на IP. Пароль в
+	// oauth/link — догадка о пароле существующего аккаунта, поэтому неудачи
+	// идут и в его login-account (общий с /auth/login и native/login), а
+	// пятая сжигает попытку.
+	g.POST("/oauth/email", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.NativeOAuthEmail)
+	g.POST("/oauth/link", d.AuthRateLimiter.Limit("oauth-link"),
+		d.AuthRateLimiter.LimitOutcomesBy("login-account", d.OAuth.PendingLinkAccountKey, middleware.FailedCredentials),
+		d.OAuth.NativeOAuthLink)
 	// Согласия до создания аккаунта — общий шаг Apple, Яндекса и VK.
-	g.POST("/consents", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeConsents)
+	g.POST("/consents", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.NativeConsents)
+	// Обмен кода из universal link. Веб-двойника нет; код — 32 случайных
+	// байта и гасится первым предъявлением, даже с неверным verifier, так
+	// что перебирать нечего. Потолок на IP с NAT-поправкой: каждый вход
+	// через провайдера из приложения проходит здесь ровно один раз, а за
+	// одним мобильным NAT их сотни.
+	g.POST("/oauth/exchange", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeOAuthExchange)
 }

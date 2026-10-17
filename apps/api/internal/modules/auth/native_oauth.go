@@ -18,6 +18,7 @@ import (
 
 	"github.com/burcev/api/internal/modules/auth/oauth"
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
 )
@@ -458,4 +459,21 @@ func (h *OAuthHandler) NativeConsents(c *gin.Context) {
 	body.Status = string(outcome.Result)
 	body.Created = &created
 	response.Success(c, http.StatusOK, body)
+}
+
+// PendingLinkAccountKey is the rate-limit key of the account a password
+// confirmation is aimed at: the address on the parked attempt, named by
+// pending_token in the body (app) or the oauth_pending cookie (site). It is
+// the same key as the account's sign-ins (middleware.ByEmail), so wrong
+// passwords typed here count against the same login-account allowance.
+func (h *OAuthHandler) PendingLinkAccountKey(c *gin.Context) string {
+	var body struct {
+		PendingToken string `json:"pending_token"`
+	}
+	middleware.PeekJSON(c, &body)
+	pending := body.PendingToken
+	if pending == "" {
+		pending, _ = c.Cookie(pendingCookie)
+	}
+	return middleware.AccountKey(c, h.service.PendingLinkEmail(c.Request.Context(), pending))
 }

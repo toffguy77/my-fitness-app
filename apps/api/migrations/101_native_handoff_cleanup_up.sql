@@ -14,6 +14,12 @@ DROP TABLE IF EXISTS oauth_app_handoffs;
 ALTER TABLE oauth_pending_links
   ADD COLUMN IF NOT EXISTS provider_refresh_token_enc TEXT;
 
+-- Неудачные пароли при подтверждении владения адресом (/auth/oauth/link и
+-- native/oauth/link). Пятая неудача сжигает попытку: pending-токен не
+-- становится бесконечной лазейкой к перебору пароля в обход лимитов входа.
+ALTER TABLE oauth_pending_links
+  ADD COLUMN IF NOT EXISTS failed_attempts INTEGER NOT NULL DEFAULT 0;
+
 -- 3. Очередь отзыва токенов Apple. Удаление аккаунта кладёт сюда токен в
 --    той же транзакции, что стирает привязку, затем пробует отозвать сразу;
 --    неудача остаётся строкой, и её повторяет фоновая задача

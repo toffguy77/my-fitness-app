@@ -656,6 +656,7 @@ func (s *Service) ConfirmLinkWithPasswordFor(ctx context.Context, spec SessionSp
 		return nil, fmt.Errorf("account has no password: %w", apperrors.ErrConflict)
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(hash.String), []byte(password)); err != nil {
+		s.recordFailedLinkPassword(ctx, pendingID)
 		return nil, fmt.Errorf("confirm link: %w", apperrors.ErrInvalidCredentials)
 	}
 
@@ -667,6 +668,46 @@ func (s *Service) ConfirmLinkWithPasswordFor(ctx context.Context, spec SessionSp
 		"user_id", userID, "provider", provider)
 
 	return s.issueTokens(ctx, spec, userID, ip, ua)
+}
+
+// MaxLinkPasswordFailures is how many wrong passwords one parked attempt
+// survives. The attempt is the only key to the ownership proof, and without a
+// ceiling of its own it would be a way to guess the account's password that
+// the sign-in limits never see; the per-account limit (login-account) counts
+// these failures too.
+const MaxLinkPasswordFailures = 5
+
+// recordFailedLinkPassword counts a wrong password against the attempt and
+// burns it at MaxLinkPasswordFailures. Best effort: the caller already answers
+// "wrong password", and the per-account limit still counts the failure.
+func (s *Service) recordFailedLinkPassword(ctx context.Context, pendingID string) {
+	var failures int
+	err := s.db.QueryRowContext(ctx,
+		`UPDATE oauth_pending_links SET failed_attempts = failed_attempts + 1
+		 WHERE id = $1 RETURNING failed_attempts`, pendingID).Scan(&failures)
+	if err != nil {
+		s.log.Errorw("Failed to count a wrong link password", "error", err)
+		return
+	}
+	if failures >= MaxLinkPasswordFailures {
+		s.log.Warnw("Pending external sign-in burned after wrong passwords", "failures", failures)
+		s.deletePendingLink(ctx, pendingID)
+	}
+}
+
+// PendingLinkEmail is the address of the account an unfinished sign-in would
+// be attached to, or "" when there is none (or no such attempt). The rate
+// limiter keys the per-account bucket by it.
+func (s *Service) PendingLinkEmail(ctx context.Context, pendingID string) string {
+	if pendingID == "" {
+		return ""
+	}
+	var email sql.NullString
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT email FROM oauth_pending_links WHERE id::text = $1`, pendingID).Scan(&email); err != nil {
+		return ""
+	}
+	return email.String
 }
 
 // CompleteWithEmail continues a sign-in whose provider returned no address.

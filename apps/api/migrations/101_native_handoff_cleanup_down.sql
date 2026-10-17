@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS apple_token_revocations;
 
+ALTER TABLE oauth_pending_links DROP COLUMN IF EXISTS failed_attempts;
 ALTER TABLE oauth_pending_links DROP COLUMN IF EXISTS provider_refresh_token_enc;
 
 CREATE TABLE IF NOT EXISTS oauth_app_handoffs (

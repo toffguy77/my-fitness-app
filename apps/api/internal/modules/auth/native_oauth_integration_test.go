@@ -5,15 +5,24 @@ package auth_test
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/auth/oauth"
+	"github.com/burcev/api/internal/router"
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/middleware"
+	"github.com/burcev/api/internal/testsupport"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -314,4 +323,130 @@ func TestWebOAuthStillEndsWithTheCookie(t *testing.T) {
 	assert.Equal(t, "/auth/complete", location.Path)
 	assert.NotNil(t, liveCookie(res, "refresh_token"))
 	assert.Equal(t, []string{"web"}, clientKindOf(t, f, userID))
+}
+
+// linkStand — настоящий движок маршрутов (лимитеры как в проде) с
+// обработчиком внешнего входа, для проверок пароля в oauth/link.
+type linkStand struct {
+	engine *gin.Engine
+	db     *sql.DB
+}
+
+func newLinkStand(t *testing.T, name string) linkStand {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	db := testsupport.SchemaWithMigrations(t, name)
+	cfg := &config.Config{Env: "test", JWTSecret: "integration-secret-that-is-long-enough-32", AppDomain: "app.example.com"}
+	log := logger.New()
+	versions := middleware.NewTokenVersions(db.DB)
+	service := auth.NewService(db.DB, cfg, log).WithSessionCache(versions)
+	engine := router.New(router.Deps{
+		Cfg:             cfg,
+		Log:             log,
+		DB:              db,
+		TokenVersions:   versions,
+		AuthRateLimiter: middleware.NewAuthRateLimiter(),
+		Auth:            auth.NewHandler(service, cfg, log, nil),
+		OAuth:           auth.NewOAuthHandler(cfg, log, service, oauth.NewRegistry()),
+	})
+	return linkStand{engine: engine, db: db.DB}
+}
+
+func (s linkStand) owner(t *testing.T, email, password string) {
+	t.Helper()
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+	require.NoError(t, err)
+	_, err = s.db.Exec(`INSERT INTO users (email, password, name, role) VALUES ($1, $2, 'Хозяин', 'client')`, email, string(hash))
+	require.NoError(t, err)
+}
+
+func (s linkStand) pending(t *testing.T, email string) string {
+	t.Helper()
+	var id string
+	require.NoError(t, s.db.QueryRow(`
+		INSERT INTO oauth_pending_links (provider, provider_user_id, email, expires_at, email_from_provider)
+		VALUES ('vk', gen_random_uuid()::text, $1, NOW() + INTERVAL '10 minutes', true) RETURNING id`, email).Scan(&id))
+	return id
+}
+
+func (s linkStand) post(t *testing.T, path, ip, body string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = ip + ":4444"
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	w := httptest.NewRecorder()
+	s.engine.ServeHTTP(w, req)
+	return w
+}
+
+func (s linkStand) nativeLink(t *testing.T, ip, pending, password string) *httptest.ResponseRecorder {
+	return s.post(t, "/api/v1/auth/native/oauth/link", ip,
+		`{"pending_token":"`+pending+`","password":"`+password+`"}`)
+}
+
+// Пятый неверный пароль сжигает попытку: верный после него не помогает.
+func TestLinkPasswordBurnsTheAttemptAfterFiveFailures(t *testing.T) {
+	s := newLinkStand(t, "link_burn")
+	s.owner(t, "burn@example.test", "OwnerPass1!")
+	pending := s.pending(t, "burn@example.test")
+
+	for i := range auth.MaxLinkPasswordFailures {
+		w := s.nativeLink(t, "203.0.113."+strconv.Itoa(i+1), pending, "wrong")
+		require.Equal(t, http.StatusUnauthorized, w.Code, "попытка %d", i+1)
+	}
+	w := s.nativeLink(t, "203.0.113.50", pending, "OwnerPass1!")
+	assert.Equal(t, http.StatusBadRequest, w.Code, "попытка пережила пять неверных паролей")
+	assert.Contains(t, w.Body.String(), apperrors.CodeTokenInvalid)
+}
+
+// Неверные пароли подтверждения — и веб, и приложения — идут в общий
+// login-account этого аккаунта: 20 неудач через oauth/link, и вход по паролю
+// в этот аккаунт с нового IP получает 429, а другой аккаунт — нет.
+func TestLinkPasswordFailuresCountAgainstTheAccount(t *testing.T) {
+	s := newLinkStand(t, "link_account")
+	s.owner(t, "target@example.test", "OwnerPass1!")
+	s.owner(t, "other@example.test", "OtherPass1!")
+
+	failures := 0
+	for attempt := 0; failures < 20; attempt++ {
+		pending := s.pending(t, "Target@Example.test")
+		for range 4 { // меньше пяти — попытка не сгорает
+			ip := "198.51.100." + strconv.Itoa(failures%9+1)
+			var w *httptest.ResponseRecorder
+			if failures%2 == 0 {
+				w = s.nativeLink(t, ip, pending, "guess")
+			} else {
+				w = s.post(t, "/api/v1/auth/oauth/link", ip, `{"password":"guess"}`,
+					&http.Cookie{Name: "oauth_pending", Value: pending})
+			}
+			require.Equal(t, http.StatusUnauthorized, w.Code, "неудача %d", failures+1)
+			failures++
+			if failures == 20 {
+				break
+			}
+		}
+	}
+
+	w := s.post(t, "/api/v1/auth/native/login", "192.0.2.77", `{"email":"target@example.test","password":"OwnerPass1!"}`)
+	assert.Equal(t, http.StatusTooManyRequests, w.Code, "перебор через oauth/link обошёл лимит аккаунта")
+	w = s.post(t, "/api/v1/auth/login", "192.0.2.78", `{"email":"target@example.test","password":"OwnerPass1!"}`)
+	assert.Equal(t, http.StatusTooManyRequests, w.Code)
+
+	w = s.post(t, "/api/v1/auth/native/login", "192.0.2.77", `{"email":"other@example.test","password":"OtherPass1!"}`)
+	assert.Equal(t, http.StatusOK, w.Code, "другой аккаунт задет")
+}
+
+// Потолок на IP у native/oauth/link — как у веб-/auth/oauth/link: 10 за
+// 15 минут, без NAT-поправки.
+func TestNativeLinkIPLimitMatchesTheWebOne(t *testing.T) {
+	s := newLinkStand(t, "link_ip")
+	for i := range 10 {
+		w := s.nativeLink(t, "192.0.2.9", "00000000-0000-0000-0000-00000000000"+strconv.Itoa(i), "x")
+		require.NotEqual(t, http.StatusTooManyRequests, w.Code, "запрос %d", i+1)
+	}
+	assert.Equal(t, http.StatusTooManyRequests,
+		s.nativeLink(t, "192.0.2.9", "00000000-0000-0000-0000-000000000099", "x").Code)
 }

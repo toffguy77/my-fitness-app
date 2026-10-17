@@ -648,6 +648,7 @@ oauth_pending_links.created_at timestamp with time zone NOT NULL DEFAULT now()
 oauth_pending_links.email text
 oauth_pending_links.email_from_provider boolean NOT NULL DEFAULT false
 oauth_pending_links.expires_at timestamp with time zone NOT NULL
+oauth_pending_links.failed_attempts integer NOT NULL DEFAULT 0
 oauth_pending_links.id uuid NOT NULL DEFAULT gen_random_uuid()
 oauth_pending_links.name text
 oauth_pending_links.provider text NOT NULL

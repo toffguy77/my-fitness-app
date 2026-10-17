@@ -117,9 +117,10 @@ var authLimitConfigs = map[string]authLimitConfig{
 	"native-magic-link-ip": {maxRequests: 10, window: 15 * time.Minute},
 	"magic-link-recipient": {maxRequests: 5, window: 15 * time.Minute},
 	"native-refresh":       {maxRequests: 60, window: 15 * time.Minute},
-	// Продолжения входа через провайдера из приложения: обмен кода,
-	// адрес, пароль для привязки, согласия. Секрет каждого — код на 32
-	// байта или pending_token — не угадать; потолок на IP с NAT-поправкой.
+	// Обмен кода из universal link (native/oauth/exchange): код на 32
+	// случайных байта гаснет первым предъявлением, угадывать нечего; потолок
+	// на IP с NAT-поправкой, как у native/login. Продолжения с паролем и
+	// согласиями стоят на oauth-link, как их веб-двойники.
 	"native-oauth": {maxRequests: 100, window: 15 * time.Minute},
 }
 
@@ -143,11 +144,7 @@ func ByEmail(c *gin.Context) string {
 		Email string `json:"email"`
 	}
 	peekJSON(c, &body)
-	email := CanonicalMailbox(body.Email)
-	if email == "" {
-		return "ip:" + c.ClientIP()
-	}
-	return "email:" + email
+	return AccountKey(c, body.Email)
 }
 
 // CanonicalMailbox reduces an address to the inbox it delivers to, for
@@ -218,6 +215,20 @@ func ByRefreshToken(c *gin.Context) string {
 	sum := sha256.Sum256([]byte(body.RefreshToken))
 	return "token:" + hex.EncodeToString(sum[:])
 }
+
+// AccountKey is the key ByEmail gives an address — for limits that learn the
+// account's address some other way (from a parked sign-in, say) and must
+// share its bucket.
+func AccountKey(c *gin.Context, email string) string {
+	if mailbox := CanonicalMailbox(email); mailbox != "" {
+		return "email:" + mailbox
+	}
+	return "ip:" + c.ClientIP()
+}
+
+// PeekJSON decodes the request body into dst and puts it back for the
+// handler.
+func PeekJSON(c *gin.Context, dst any) { peekJSON(c, dst) }
 
 // peekJSON decodes the request body into dst and restores it, so the handler
 // binds the same bytes. A body that is not JSON leaves dst empty.
