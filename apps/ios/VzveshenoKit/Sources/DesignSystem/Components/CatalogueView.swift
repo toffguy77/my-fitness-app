@@ -8,7 +8,9 @@ public struct CatalogueView: View {
 
     public var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: DS.Space.s6) {
+            // Не LazyVStack: аудит доступности увеличивает текст и проверяет
+            // элементы у края экрана — ленивый стек их к тому времени разбирает.
+            VStack(alignment: .leading, spacing: DS.Space.s6) {
                 ForEach(CatalogueEntry.allCases) { entry in
                     VStack(alignment: .leading, spacing: DS.Space.s3) {
                         Text(entry.title)
