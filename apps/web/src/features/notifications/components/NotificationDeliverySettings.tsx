@@ -51,6 +51,7 @@ export function NotificationDeliverySettings() {
                 quietHoursStart: next.quietHoursStart,
                 quietHoursEnd: next.quietHoursEnd,
                 emailUnsubscribed: next.emailUnsubscribed,
+                showMessageText: next.showMessageText,
             })
         } catch (err) {
             // Переключатель уже сдвинулся (setPrefs выше): без причины экран
@@ -163,11 +164,12 @@ export function NotificationDeliverySettings() {
 
             <div className="rounded-card border border-line bg-surface p-5">
                 <h2 className="mb-3 type-title-3 text-fg">{t('notifications.delivery.whatHeading')}</h2>
-                <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 text-xs font-medium text-fg-subtle">
+                <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto] items-end gap-x-4 text-xs font-medium text-fg-subtle">
                     <span />
                     <span className="w-12 text-center">{t('notifications.delivery.columnHere')}</span>
                     <span className="w-12 text-center">{t('notifications.delivery.columnEmail')}</span>
-                    <span className="w-12 text-center">Push</span>
+                    {/* Один канал на браузеры и iPhone: включённый push приходит туда, где его разрешили. */}
+                    <span className="w-16 text-center">{t('notifications.delivery.columnPush')}</span>
                 </div>
                 {prefs.types.map((setting, index) => (
                     <div
@@ -185,22 +187,46 @@ export function NotificationDeliverySettings() {
                             label={t('notifications.delivery.inAppLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
                             onChange={() => {}}
                         />
-                        <Switch
-                            checked={setting.email && !prefs.emailUnsubscribed}
-                            disabled={prefs.emailUnsubscribed}
-                            label={t('notifications.delivery.emailLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
-                            onChange={(enabled) => setChannel(setting.type, 'email', enabled)}
-                        />
-                        <Switch
-                            checked={setting.push}
-                            label={t('notifications.delivery.pushLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
-                            onChange={(enabled) => setChannel(setting.type, 'push', enabled)}
-                        />
+                        {setting.email === undefined ? (
+                            // Сообщения чата письмом не приходят: у чата своя лента, а
+                            // переключатель, который ничего не делает, хуже пустой клетки.
+                            <span className="w-12 text-center text-fg-subtle" title={t('notifications.delivery.noEmail')}>
+                                <span aria-hidden="true">—</span>
+                                <span className="sr-only">{t('notifications.delivery.noEmail')}</span>
+                            </span>
+                        ) : (
+                            <Switch
+                                checked={setting.email && !prefs.emailUnsubscribed}
+                                disabled={prefs.emailUnsubscribed}
+                                label={t('notifications.delivery.emailLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
+                                onChange={(enabled) => setChannel(setting.type, 'email', enabled)}
+                            />
+                        )}
+                        <div className="flex w-16 justify-center">
+                            <Switch
+                                checked={setting.push}
+                                label={t('notifications.delivery.pushLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
+                                onChange={(enabled) => setChannel(setting.type, 'push', enabled)}
+                            />
+                        </div>
                     </div>
                 ))}
                 <p className="mt-3 text-xs text-fg-subtle">
                     {t('notifications.delivery.inAppNote')}
                 </p>
+                <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
+                    <div className="pr-4">
+                        <p className="type-headline text-fg">{t('notifications.delivery.showMessageText')}</p>
+                        <p className="mt-0.5 text-sm text-fg-muted">
+                            {t('notifications.delivery.showMessageTextExplanation')}
+                        </p>
+                    </div>
+                    <Switch
+                        checked={prefs.showMessageText}
+                        label={t('notifications.delivery.showMessageText')}
+                        onChange={(enabled) => void save({ ...prefs, showMessageText: enabled })}
+                    />
+                </div>
             </div>
         </div>
     )
