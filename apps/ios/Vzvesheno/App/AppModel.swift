@@ -272,6 +272,7 @@ final class AppModel {
             }
             model.observeDayChanges()
             today = model
+            Task { await model.load() }
         }
         if realtimeTask == nil { connectRealtime() }
     }

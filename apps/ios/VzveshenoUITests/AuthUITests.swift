@@ -83,10 +83,11 @@ final class AuthUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
         field.typeText("qwerty12")
+        XCTAssertTrue(app.descendants(matching: .any)["password.rule.length.met"].waitForExistence(timeout: 5), app.screenSummary)
         XCTAssertFalse(app.buttons["reset.save"].isEnabled)
         XCTAssertTrue(app.descendants(matching: .any)["password.rule.uppercase.unmet"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["password.rule.special.unmet"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["password.rule.length.met"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["password.rule.digit.met"].exists)
     }
 
     /// «Отмена удаления»: вход аккаунта, ждущего удаления, → экран → отмена → корень роли.
@@ -104,6 +105,6 @@ final class AuthUITests: XCTestCase {
         app.buttons["signIn.submit"].tap()
         XCTAssertTrue(app.staticTexts["Аккаунт будет удалён 31 октября"].waitForExistence(timeout: 10))
         app.buttons["deletion.cancel"].tap()
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10), app.screenSummary)
     }
 }

@@ -40,7 +40,7 @@ struct SourceCaption: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: DS.Space.s1) {
-            Image(systemName: "heart").font(.system(size: 10)).accessibilityHidden(true)
+            Image(systemName: "heart").font(.system(.caption2)).accessibilityHidden(true)
             Text(text).font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .caption2))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -81,7 +81,7 @@ struct NutritionTodayCard: View {
         VStack(alignment: .leading, spacing: DS.Space.s3) {
             HStack(alignment: .center, spacing: DS.Space.s4) {
                 HalfArc(fraction: summary.fraction)
-                    .frame(width: 104, height: 60)
+                    .frame(width: 132, height: 76)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(summary.headline)
@@ -101,6 +101,7 @@ struct NutritionTodayCard: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(summary.accessibilityLabel)
+            .accessibilityIdentifier("nutrition.summary")
             if let macros = summary.macros {
                 HStack(alignment: .top, spacing: DS.Space.s3) {
                     ForEach(macros, id: \.macro) { macro in
@@ -162,9 +163,10 @@ struct HalfArc: View {
 
     var body: some View {
         GeometryReader { proxy in
+            // Как на макете: дуга радиусом 56 в рамке 132 × 76, концы на 6 pt выше низа.
             let line: CGFloat = 12
-            let radius = min(proxy.size.width / 2, proxy.size.height) - line / 2
-            let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height - line / 2)
+            let radius = min(proxy.size.width / 2 - 10, proxy.size.height - 20)
+            let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height - 6)
             ZStack {
                 arc(center: center, radius: radius, progress: 1)
                     .stroke(DS.Color.track, style: StrokeStyle(lineWidth: line, lineCap: .round))
@@ -212,7 +214,7 @@ struct CuratorRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if case let .curator(_, _, unread) = summary.state, unread > 0 {
                     Text(verbatim: "\(unread)")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.custom(DS.FontFamily.sans, size: 12, relativeTo: .caption).weight(.semibold))
                         .foregroundStyle(DS.Color.primaryFg)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 1)
@@ -290,7 +292,7 @@ struct WaterTile: View {
                     Spacer()
                     Button(action: onAdd) {
                         Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.system(.callout, weight: .medium))
                             .foregroundStyle(DS.Color.primaryDefault)
                             .frame(width: 32, height: 32)
                             .background(Circle().fill(DS.Color.primarySoft))

@@ -29,7 +29,6 @@ struct TodayScreen: View {
         }
         .background(DS.Color.bgCanvas)
         .refreshable { await model.today?.load() }
-        .task { if model.today?.snapshot == nil { await model.today?.load() } }
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("screen.today")
         .sheet(item: $editor) { editor in

@@ -147,7 +147,7 @@ struct HealthExplainer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s4) {
             Image(systemName: "heart")
-                .font(.system(size: 28, weight: .medium))
+                .font(.system(.title, weight: .medium))
                 .foregroundStyle(DS.Color.primaryDefault)
                 .frame(width: 64, height: 64)
                 .background(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous).fill(DS.Color.bgSurface))

@@ -26,7 +26,7 @@ struct TasksCard: View {
                     Button { if !row.isDone { onToggle(row) } } label: {
                         HStack(spacing: DS.Space.s3) {
                             Image(systemName: row.isDone ? "checkmark.square.fill" : "square")
-                                .font(.system(size: 22))
+                                .font(.system(.title2))
                                 .foregroundStyle(row.isDone ? DS.Color.primaryDefault : DS.Color.fgSubtle)
                                 .accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 0) {

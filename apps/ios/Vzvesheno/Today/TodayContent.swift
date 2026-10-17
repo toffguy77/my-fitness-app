@@ -120,11 +120,14 @@ struct TodayHeader: View {
                 Text(subtitle)
                     .dsText(DS.Typography.caption)
                     .foregroundStyle(DS.Color.fgMuted)
+                    .frame(minHeight: 18)
                 Text(title)
                     .dsText(DS.Typography.display)
                     .foregroundStyle(DS.Color.fgDefault)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
+                    // Высота строки токена (34/40): своя у Literata выше.
+                    .frame(height: 40)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("today.title")
             }
@@ -135,7 +138,7 @@ struct TodayHeader: View {
             .overlay(alignment: .topTrailing) {
                 if unread > 0 {
                     Text(verbatim: unread > 99 ? "99+" : "\(unread)")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.custom(DS.FontFamily.sans, size: 10, relativeTo: .caption2).weight(.semibold))
                         .foregroundStyle(DS.Color.primaryFg)
                         .padding(.horizontal, 4)
                         .frame(minWidth: 16, minHeight: 16)
@@ -152,7 +155,7 @@ struct TodayHeader: View {
             .accessibilityIdentifier("header.chat")
             Button(action: actions.openProfile) {
                 Text(verbatim: avatarInitial)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .subheadline).weight(.semibold))
                     .foregroundStyle(DS.Color.fgDefault)
                     .frame(width: DS.Size.touch, height: DS.Size.touch)
                     .background(Circle().fill(DS.Color.bgSubtle))
@@ -173,7 +176,7 @@ private struct HeaderButton<Icon: View>: View {
     var body: some View {
         Button(action: action) {
             icon
-                .font(.system(size: 19, weight: .regular))
+                .font(.system(.title3))
                 .foregroundStyle(DS.Color.fgDefault)
                 .frame(width: DS.Size.touch, height: DS.Size.touch)
                 .background(Circle().fill(DS.Color.bgSurface))
@@ -217,7 +220,8 @@ struct WeekStripView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(day.isFuture)
+                // Будущий день не выбирается, но и не гаснет: на макете он обычный.
+                .allowsHitTesting(!day.isFuture)
                 .accessibilityLabel(day.accessibilityLabel)
                 .accessibilityAddTraits(day.isSelected ? .isSelected : [])
                 .accessibilityIdentifier("week.\(day.day)")

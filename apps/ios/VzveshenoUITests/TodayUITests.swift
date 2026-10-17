@@ -16,8 +16,9 @@ final class TodayUITests: XCTestCase {
 
     func testTodayShowsTheDay() {
         let app = launch()
-        XCTAssertTrue(app.staticTexts["nutrition.remaining"].waitForExistence(timeout: 10))
-        XCTAssertEqual(app.staticTexts["nutrition.remaining"].label, "1\u{00A0}923")
+        let summary = app.descendants(matching: .any)["nutrition.summary"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 10), app.screenSummary)
+        XCTAssertTrue(summary.label.hasPrefix("Осталось 1\u{00A0}923 ккал"), summary.label)
         XCTAssertEqual(app.staticTexts["today.title"].label, "Сегодня")
     }
 
@@ -25,7 +26,7 @@ final class TodayUITests: XCTestCase {
     func testGlassOfWater() {
         let app = launch()
         let count = app.staticTexts["water.count"]
-        XCTAssertTrue(count.waitForExistence(timeout: 10))
+        XCTAssertTrue(count.waitForExistence(timeout: 10), app.screenSummary)
         XCTAssertEqual(count.label, "5")
         app.buttons["water.add"].tap()
         XCTAssertEqual(count.label, "6")
@@ -40,7 +41,7 @@ final class TodayUITests: XCTestCase {
             app.swipeUp()
             swipes += 1
         }
-        XCTAssertTrue(task.exists)
+        XCTAssertTrue(task.exists, app.screenSummary)
         task.tap()
         let kind = app.descendants(matching: .any)["editor.kind"].firstMatch
         XCTAssertTrue(kind.waitForExistence(timeout: 5))

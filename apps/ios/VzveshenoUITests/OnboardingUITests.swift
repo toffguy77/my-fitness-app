@@ -23,6 +23,6 @@ final class OnboardingUITests: XCTestCase {
         XCTAssertEqual(app.buttons["health.continue"].label, "Подключить")
         later.tap()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["nutrition.noNorm"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["nutrition.noNorm"].waitForExistence(timeout: 10), app.screenSummary)
     }
 }

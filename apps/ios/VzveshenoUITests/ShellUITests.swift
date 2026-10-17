@@ -106,14 +106,19 @@ final class AccessibilityAuditUITests: XCTestCase {
     /// Аудит с описанием каждой находки в журнале: без него в CI видно лишь
     /// «Contrast failed», но не какой элемент.
     private func audit(_ app: XCUIApplication) throws {
+        var found: [String] = []
+        defer {
+            // Журнал CI оставляет только строки с «error:» — находки одной строкой.
+            if !found.isEmpty { XCTFail("аудит: " + found.joined(separator: " ;; ")) }
+        }
         try app.performAccessibilityAudit { issue in
-            print("ACCESSIBILITY AUDIT: \(issue.compactDescription) | \(issue.detailedDescription) | "
-                  + "\(issue.element?.debugDescription.prefix(300) ?? "нет элемента")")
             // Контраст недоступного элемента WCAG 1.4.3 не нормирует: кнопка
             // «Войти» до ввода почты и пароля и должна выглядеть погашенной.
             if issue.auditType == .contrast, let element = issue.element, !element.isEnabled {
                 return true
             }
+            let element = issue.element.map { "\($0.elementType.rawValue) «\($0.label)» [\($0.identifier)] \($0.frame)" } ?? "нет элемента"
+            found.append("\(issue.compactDescription): \(element)".replacingOccurrences(of: "\n", with: " "))
             return false
         }
     }

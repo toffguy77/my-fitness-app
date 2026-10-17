@@ -13,7 +13,7 @@ struct ProfileScreen: View {
             VStack(alignment: .leading, spacing: DS.Space.s5) {
                 HStack(spacing: DS.Space.s3) {
                     Text(verbatim: model.avatarInitial)
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(.custom(DS.FontFamily.sans, size: 22, relativeTo: .title2).weight(.semibold))
                         .foregroundStyle(DS.Color.fgDefault)
                         .frame(width: 56, height: 56)
                         .background(Circle().fill(DS.Color.bgSubtle))
