@@ -70,9 +70,15 @@ func TestSubscribeReplacesTheSameBrowsersRow(t *testing.T) {
 
 	// Browsers rotate endpoints on their own; a table that only grows is a
 	// table of addresses nobody can deliver to.
-	mock.ExpectExec(`INSERT INTO push_subscriptions`).
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO push_subscriptions`).
 		WithArgs(int64(7), "https://push.example/1", "key", "auth", "Firefox").
-		WillReturnResult(sqlmock.NewResult(1, 1))
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(3)))
+	// Pushes queued for whoever had this browser before are not for user 7.
+	mock.ExpectQuery(`UPDATE push_deliveries SET status = 'cancelled'`).
+		WithArgs(int64(3), int64(7)).
+		WillReturnRows(sqlmock.NewRows([]string{"notification_id"}))
+	mock.ExpectCommit()
 
 	require.NoError(t, service.Subscribe(context.Background(), 7, PushSubscription{
 		Endpoint: "https://push.example/1", P256dh: "key", Auth: "auth", UserAgent: "Firefox",
@@ -85,9 +91,15 @@ func TestSubscribeStoresNoUserAgentRatherThanAnEmptyOne(t *testing.T) {
 	defer cleanup()
 	service.WithPush(testPush())
 
-	mock.ExpectExec(`INSERT INTO push_subscriptions`).
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO push_subscriptions`).
 		WithArgs(int64(7), "https://push.example/1", "key", "auth", nil).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(3)))
+	// Pushes queued for whoever had this browser before are not for user 7.
+	mock.ExpectQuery(`UPDATE push_deliveries SET status = 'cancelled'`).
+		WithArgs(int64(3), int64(7)).
+		WillReturnRows(sqlmock.NewRows([]string{"notification_id"}))
+	mock.ExpectCommit()
 
 	require.NoError(t, service.Subscribe(context.Background(), 7, PushSubscription{
 		Endpoint: "https://push.example/1", P256dh: "key", Auth: "auth", UserAgent: "  ",

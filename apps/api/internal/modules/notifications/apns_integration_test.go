@@ -742,3 +742,76 @@ func TestChatPhotoFromAClient(t *testing.T) {
 	assert.Equal(t, "Фото", alerts[0].aps()["alert"].(map[string]any)["body"])
 	assert.Equal(t, "conversation:"+conversation, alerts[0].aps()["thread-id"])
 }
+
+// ------------------------------------------------- смена владельца устройства
+
+// Задание, поставленное для A, не уходит на телефон, который тем временем
+// зарегистрировал B: регистрация отменяет его в той же транзакции.
+func TestQueuedPushDoesNotFollowThePhoneToTheNextOwner(t *testing.T) {
+	s := newPushStand(t, "push_owner_change")
+	a, b := s.user("owner-a@e.test", "client", "A"), s.user("owner-b@e.test", "client", "B")
+	s.phone(a, tokenA, APNSProduction, phoneA)
+	n := s.notify(a, TypeFeedbackReceived, CategoryMain, IDs{"report_id": "r-1"})
+
+	s.phone(b, tokenA, APNSProduction, phoneA)
+	s.send()
+
+	assert.Empty(t, s.apple.alerts(), "текст для A ушёл на телефон B")
+	assert.Equal(t, map[string]string{"apns": StatusCancelled}, s.jobs("notification_id = $1", n.ID))
+	assert.Equal(t, StatusSkipped, s.summary(n.ID))
+}
+
+// Второй замок — у отправителя: владелец сменился мимо регистрации, а
+// задание всё равно не уходит. Так же — подписка браузера.
+func TestSenderRefusesAJobForAnAddresseeWithAnotherOwner(t *testing.T) {
+	s := newPushStand(t, "push_owner_sender")
+	a, b := s.user("sa@e.test", "client", "A"), s.user("sb@e.test", "client", "B")
+	s.phone(a, tokenA, APNSProduction, phoneA)
+	s.browserOf(a)
+	n := s.notify(a, TypeFeedbackReceived, CategoryMain, IDs{"report_id": "r-1"})
+	_, err := s.db.ExecContext(s.ctx, `UPDATE push_devices SET user_id = $1`, b)
+	require.NoError(t, err)
+	_, err = s.db.ExecContext(s.ctx, `UPDATE push_subscriptions SET user_id = $1`, b)
+	require.NoError(t, err)
+
+	s.send()
+	assert.Empty(t, s.apple.alerts())
+	assert.Zero(t, s.browser.delivered())
+	assert.Equal(t, map[string]string{"apns": StatusCancelled, "webpush": StatusCancelled}, s.jobs("notification_id = $1", n.ID))
+}
+
+// Подписка браузера, перешедшая к другому аккаунту через Subscribe, отменяет
+// задания прежнего владельца.
+func TestResubscribedBrowserDropsThePreviousOwnersJobs(t *testing.T) {
+	s := newPushStand(t, "push_owner_browser")
+	a, b := s.user("ba@e.test", "client", "A"), s.user("bb@e.test", "client", "B")
+	s.browserOf(a)
+	n := s.notify(a, TypeFeedbackReceived, CategoryMain, IDs{"report_id": "r-1"})
+
+	var sub PushSubscription
+	require.NoError(t, s.db.QueryRowContext(s.ctx,
+		`SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1`, a).
+		Scan(&sub.Endpoint, &sub.P256dh, &sub.Auth))
+	// Subscribe refuses loopback endpoints; the upsert itself is what is
+	// tested, so the address is moved to a public-looking one first.
+	public := "https://fcm.googleapis.com/fcm/send/moved"
+	_, err := s.db.ExecContext(s.ctx, `UPDATE push_subscriptions SET endpoint = $1`, public)
+	require.NoError(t, err)
+	sub.Endpoint = public
+	require.NoError(t, s.service.Subscribe(s.ctx, b, sub))
+
+	assert.Equal(t, map[string]string{"webpush": StatusCancelled}, s.jobs("notification_id = $1", n.ID))
+}
+
+// Выход из приложения удаляет устройство — вместе с его заданиями.
+func TestUnregisteredDeviceTakesItsJobsWithIt(t *testing.T) {
+	s := newPushStand(t, "push_owner_logout")
+	a := s.user("lo@e.test", "client", "A")
+	s.phone(a, tokenA, APNSProduction, phoneA)
+	n := s.notify(a, TypeFeedbackReceived, CategoryMain, IDs{"report_id": "r-1"})
+	require.NoError(t, s.service.UnregisterDevice(s.ctx, a, tokenA))
+
+	s.send()
+	assert.Empty(t, s.apple.alerts())
+	assert.Empty(t, s.jobs("notification_id = $1", n.ID))
+}

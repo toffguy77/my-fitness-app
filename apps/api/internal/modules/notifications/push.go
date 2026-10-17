@@ -77,7 +77,13 @@ func (s *Service) Subscribe(ctx context.Context, userID int64, sub PushSubscript
 		return err
 	}
 
-	_, err := s.db.ExecContext(ctx,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin push subscription: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	var subscriptionID int64
+	err = tx.QueryRowContext(ctx,
 		`INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent)
 		 VALUES ($1, $2, $3, $4, $5)
 		 ON CONFLICT (endpoint) DO UPDATE
@@ -85,10 +91,19 @@ func (s *Service) Subscribe(ctx context.Context, userID int64, sub PushSubscript
 		     p256dh = EXCLUDED.p256dh,
 		     auth = EXCLUDED.auth,
 		     user_agent = EXCLUDED.user_agent,
-		     failures = 0`,
-		userID, sub.Endpoint, sub.P256dh, sub.Auth, nullIfEmpty(sub.UserAgent))
+		     failures = 0
+		 RETURNING id`,
+		userID, sub.Endpoint, sub.P256dh, sub.Auth, nullIfEmpty(sub.UserAgent)).Scan(&subscriptionID)
 	if err != nil {
 		return fmt.Errorf("store push subscription: %w", err)
+	}
+	// Another account signed in on this browser: the previous one's queued
+	// pushes are not for it.
+	if err := cancelForeignJobs(ctx, tx, "subscription_id", subscriptionID, userID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit push subscription: %w", err)
 	}
 	return nil
 }

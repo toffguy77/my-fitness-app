@@ -225,6 +225,8 @@ type duePush struct {
 	subscription   PushSubscription
 	device         pushDevice
 	deviceDisabled bool
+	// foreign: the browser or phone now belongs to somebody else.
+	foreign bool
 }
 
 func (s *Service) duePushes(ctx context.Context) ([]duePush, error) {
@@ -234,7 +236,8 @@ func (s *Service) duePushes(ctx context.Context) ([]duePush, error) {
 		        u.deleted_at IS NOT NULL OR u.deletion_requested_at IS NOT NULL,
 		        COALESCE(s.endpoint, ''), COALESCE(s.p256dh, ''), COALESCE(s.auth, ''),
 		        COALESCE(d.id, 0), COALESCE(d.token, ''), COALESCE(d.environment, ''),
-		        d.disabled_at IS NOT NULL
+		        d.disabled_at IS NOT NULL,
+		        COALESCE(d.user_id <> p.user_id, FALSE) OR COALESCE(s.user_id <> p.user_id, FALSE)
 		 FROM push_deliveries p
 		 JOIN users u ON u.id = p.user_id
 		 LEFT JOIN push_subscriptions s ON s.id = p.subscription_id
@@ -251,7 +254,7 @@ func (s *Service) duePushes(ctx context.Context) ([]duePush, error) {
 		var d duePush
 		if err := rows.Scan(&d.id, &d.userID, &d.transport, &d.notificationID, &d.chatMessageID, &d.leaving,
 			&d.subscription.Endpoint, &d.subscription.P256dh, &d.subscription.Auth,
-			&d.device.id, &d.device.token, &d.device.environment, &d.deviceDisabled); err != nil {
+			&d.device.id, &d.device.token, &d.device.environment, &d.deviceDisabled, &d.foreign); err != nil {
 			return nil, fmt.Errorf("scan due push: %w", err)
 		}
 		due = append(due, d)
@@ -315,7 +318,10 @@ func (s *Service) SendDuePushes(ctx context.Context) (int, error) {
 // deliverPush sends one job and records the outcome. The error is for the
 // database only; a refusal by a push service is an outcome, not an error.
 func (s *Service) deliverPush(ctx context.Context, run *pushRun, item duePush) (bool, error) {
-	if item.leaving {
+	// A phone or browser that changed hands since the job was queued: the
+	// text was written for the previous owner. Registration cancels these
+	// already; this is the second lock.
+	if item.leaving || item.foreign {
 		return false, s.markPush(ctx, item.id, StatusCancelled, "")
 	}
 	if item.transport == transportAPNs && (item.deviceDisabled || !s.APNSReady()) {
@@ -539,7 +545,11 @@ func (s *Service) retryPush(ctx context.Context, id int64, failure string) error
 // while any is still due, skipped when every job was cancelled or skipped,
 // failed otherwise.
 func (s *Service) summarisePush(ctx context.Context, notificationID string) error {
-	if _, err := s.db.ExecContext(ctx, `
+	return summarisePush(ctx, s.db, notificationID)
+}
+
+func summarisePush(ctx context.Context, q execQueryer, notificationID string) error {
+	if _, err := q.ExecContext(ctx, `
 		UPDATE notification_deliveries d
 		SET status = CASE
 		        WHEN EXISTS (SELECT 1 FROM push_deliveries p WHERE p.notification_id = d.notification_id AND p.status = 'sent') THEN 'sent'

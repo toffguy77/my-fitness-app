@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
+	"database/sql"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -258,7 +259,14 @@ func (s *Service) RegisterDevice(ctx context.Context, userID int64, device APNSD
 	if !apnsInstallationID.MatchString(device.InstallationID) {
 		return fmt.Errorf("installation id is required: %w", apperrors.ErrValidation)
 	}
-	result, err := s.db.ExecContext(ctx,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin device registration: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var deviceID int64
+	err = tx.QueryRowContext(ctx,
 		`INSERT INTO push_devices (user_id, token, installation_id, environment, app_version, platform)
 		 VALUES ($1, $2, $3, $4, $5, 'ios')
 		 ON CONFLICT (token) DO UPDATE
@@ -268,18 +276,67 @@ func (s *Service) RegisterDevice(ctx context.Context, userID int64, device APNSD
 		     failures = 0,
 		     last_seen_at = NOW(),
 		     disabled_at = NULL
-		 WHERE push_devices.installation_id = EXCLUDED.installation_id`,
+		 WHERE push_devices.installation_id = EXCLUDED.installation_id
+		 RETURNING id`,
 		userID, strings.ToLower(device.Token), strings.ToLower(device.InstallationID),
-		device.Environment, nullIfEmpty(device.AppVersion))
-	if err != nil {
-		return fmt.Errorf("store APNs device: %w", err)
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("store APNs device: %w", err)
-	}
-	if affected == 0 {
+		device.Environment, nullIfEmpty(device.AppVersion)).Scan(&deviceID)
+	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("device token belongs to another installation: %w", apperrors.ErrForbidden)
+	}
+	if err != nil {
+		return fmt.Errorf("store APNs device: %w", err)
+	}
+	// The phone may have just changed hands. Whatever was queued for the
+	// previous owner must not land on the new owner's lock screen.
+	if err := cancelForeignJobs(ctx, tx, "device_id", deviceID, userID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit device registration: %w", err)
+	}
+	return nil
+}
+
+// cancelForeignJobs cancels pending pushes to an addressee (a device or a
+// browser subscription) that were queued for somebody other than its owner.
+func cancelForeignJobs(ctx context.Context, tx *sql.Tx, column string, addresseeID, ownerID int64) error {
+	query := `UPDATE push_deliveries SET status = 'cancelled', updated_at = NOW()
+		 WHERE status = 'pending' AND user_id <> $2 AND `
+	switch column {
+	case "device_id":
+		query += `device_id = $1`
+	case "subscription_id":
+		query += `subscription_id = $1`
+	default:
+		return fmt.Errorf("unknown addressee column %q", column)
+	}
+	query += ` RETURNING COALESCE(notification_id::text, '')`
+	rows, err := tx.QueryContext(ctx, query, addresseeID, ownerID)
+	if err != nil {
+		return fmt.Errorf("cancel pushes queued for the previous owner: %w", err)
+	}
+	notificationIDs, err := func() ([]string, error) {
+		defer rows.Close()
+		ids := []string{}
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return nil, err
+			}
+			if id != "" {
+				ids = append(ids, id)
+			}
+		}
+		return ids, rows.Err()
+	}()
+	if err != nil {
+		return fmt.Errorf("cancel pushes queued for the previous owner: %w", err)
+	}
+	// Their summaries move on now: nothing else will pick these jobs up.
+	for _, id := range notificationIDs {
+		if err := summarisePush(ctx, tx, id); err != nil {
+			return err
+		}
 	}
 	return nil
 }
