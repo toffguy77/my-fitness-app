@@ -134,18 +134,55 @@ func TestEveryAccountPathAssignsCurator(t *testing.T) {
 		requireNoCurator(t, db, result.User.ID)
 	})
 
-	t.Run("вход через внешнего провайдера", func(t *testing.T) {
-		db, service, _ := newFixture(t, "assign_path_provider")
-
+	// Через провайдера аккаунт заводится в два шага: колбэк паркует попытку
+	// и уводит на экран согласий, аккаунт появляется в CompleteWithConsents.
+	// Попытку паркуем той же строкой, что пишет колбэк (storePendingLink
+	// не экспортирован).
+	viaProvider := func(t *testing.T, db *database.DB, service *auth.Service, providerUserID, email string) int64 {
+		t.Helper()
 		outcome, err := service.SignInWithProvider(ctx, "yandex", &oauth.Profile{
-			ProviderUserID: "provider-user-1",
-			Email:          "by-provider@example.test",
+			ProviderUserID: providerUserID,
+			Email:          email,
 			Name:           "Через провайдера",
 		}, "127.0.0.1", "test")
 		require.NoError(t, err)
-		require.NotNil(t, outcome.User, "провайдер не завёл аккаунт: %s", outcome.Result)
+		require.Equal(t, auth.OAuthNeedsConsents, outcome.Result)
+		require.Nil(t, outcome.User, "аккаунт заведён до согласий")
 
-		requireNoCurator(t, db, outcome.User.User.ID)
+		var pendingID string
+		require.NoError(t, db.QueryRowContext(ctx, `
+			INSERT INTO oauth_pending_links (provider, provider_user_id, email, name, expires_at)
+			VALUES ('yandex', $1, $2, 'Через провайдера', NOW() + INTERVAL '10 minutes')
+			RETURNING id`, providerUserID, email).Scan(&pendingID))
+
+		completed, err := service.CompleteWithConsents(ctx, pendingID,
+			&auth.ConsentsInput{TermsOfService: true, PrivacyPolicy: true, DataProcessing: true},
+			"127.0.0.1", "test")
+		require.NoError(t, err)
+		require.Equal(t, auth.OAuthRegistered, completed.Result)
+		require.NotNil(t, completed.User, "провайдер не завёл аккаунт после согласий")
+		return completed.User.User.ID
+	}
+
+	t.Run("вход через внешнего провайдера", func(t *testing.T) {
+		db, service, _ := newFixture(t, "assign_path_provider")
+
+		clientID := viaProvider(t, db, service, "provider-user-1", "by-provider@example.test")
+
+		requireNoCurator(t, db, clientID)
+	})
+
+	// Живому клиенту куратор не назначается ни на одном пути, поэтому проверка
+	// выше прошла бы и без вызова assignCurator вовсе. Служебная учётка
+	// доказывает, что назначение на этом пути действительно вызывается.
+	t.Run("служебная учётка через провайдера получает куратора", func(t *testing.T) {
+		db, service, _ := newFixture(t, "assign_path_provider_service")
+		addServiceCurator(t, db)
+
+		clientID := viaProvider(t, db, service, "provider-user-2", "e2e-provider@burcev.team")
+
+		_, assigned := assignedCurator(t, db, clientID)
+		require.True(t, assigned, "путь через провайдера не назначает куратора вовсе")
 	})
 
 	t.Run("служебная учётка получает куратора бессрочно", func(t *testing.T) {

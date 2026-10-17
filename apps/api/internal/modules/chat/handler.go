@@ -103,6 +103,39 @@ func (h *Handler) GetConversations(c *gin.Context) {
 	response.Success(c, http.StatusOK, conversations)
 }
 
+// GetConversationWith handles GET /api/v1/conversations/by-participant/:userId
+//
+// Answers with the conversation between the caller and :userId, shaped like an
+// element of GET /conversations. No such conversation, or one the caller is
+// not part of, is 404 not_found either way: telling them apart would say who
+// talks to whom.
+func (h *Handler) GetConversationWith(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	otherID, err := strconv.ParseInt(c.Param("userId"), 10, 64)
+	if err != nil || otherID <= 0 {
+		response.NotFound(c, "Переписка не найдена")
+		return
+	}
+
+	conversation, err := h.service.GetConversationWith(c.Request.Context(), userID, otherID)
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrNotFound):
+		response.NotFound(c, "Переписка не найдена")
+		return
+	default:
+		h.log.Error("Failed to get conversation by participant", "error", err, "user_id", userID, "participant_id", otherID)
+		response.InternalError(c, "Не удалось загрузить переписку")
+		return
+	}
+
+	response.Success(c, http.StatusOK, conversation)
+}
+
 // GetAccess handles GET /api/v1/conversations/access
 //
 // Отвечает о праве обращающегося, а не о чужом: куратору здесь нечего спрашивать

@@ -96,9 +96,12 @@ func TestCarryArrival_SurvivesWithoutLeads(t *testing.T) {
 // a curator was once forgotten on one of three paths
 // (TestEveryAccountPathAssignsCurator); this holds the same line for where the
 // person came from. The provider callback cannot be driven end to end without
-// a provider, so the check is on the code: each handler calls carryArrival.
+// a provider, so the check is on the code: each handler calls carryArrival,
+// directly or through afterSignIn — which every handler finishing an external
+// sign-in goes through.
 func TestEveryAccountPathCarriesArrival(t *testing.T) {
 	found := map[string]bool{}
+	viaAfterSignIn := map[string]bool{}
 	fset := token.NewFileSet()
 	for _, file := range []string{"handler.go", "oauth_handler.go"} {
 		parsed, err := parser.ParseFile(fset, file, nil, 0)
@@ -115,13 +118,22 @@ func TestEveryAccountPathCarriesArrival(t *testing.T) {
 					if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "carryArrival" {
 						found[decl.Name.Name] = true
 					}
+					if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "afterSignIn" {
+						viaAfterSignIn[decl.Name.Name] = true
+					}
 				}
 				return true
 			})
 		}
 	}
 
-	for _, fn := range []string{"Register", "ConsumeMagicLink", "Callback"} {
+	for _, fn := range []string{"Register", "ConsumeMagicLink", "afterSignIn"} {
 		assert.True(t, found[fn], "%s creates accounts and does not call carryArrival", fn)
+	}
+	// Вход через провайдера завершается в двух местах: колбэк (сегодня он
+	// уводит на согласия, но ветка регистрации в нём осталась) и экран
+	// согласий. Ввод адреса, которого провайдер не дал, аккаунта не создаёт.
+	for _, fn := range []string{"Callback", "CompleteConsents"} {
+		assert.True(t, viaAfterSignIn[fn], "%s finishes an external sign-in and does not call afterSignIn", fn)
 	}
 }

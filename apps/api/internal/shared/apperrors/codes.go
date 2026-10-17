@@ -37,6 +37,9 @@ const (
 	// signs people out whenever a token simply aged.
 	CodeSessionEnded = "session_ended"
 	CodeInternal     = "internal"
+	// CodeDeliveryFailed: an external transport (Telegram) refused the
+	// message. Not internal: nothing here broke, and retrying later may work.
+	CodeDeliveryFailed = "delivery_failed"
 	// CodeRecognitionDailyLimit: distinct from rate_limited — waiting a moment
 	// will not help, the ceiling resets tomorrow, not in a few seconds. Named
 	// for the domain, not the sentinel: ErrDailyLimitReached is reusable for

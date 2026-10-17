@@ -281,25 +281,46 @@ func (s *Service) storeConsents(ctx context.Context, userID int64, consents *Con
 	if consents == nil {
 		return
 	}
-	consentTypes := []struct {
-		ctype   string
-		granted bool
-	}{
+	for _, c := range consentRows(consents) {
+		if err := insertConsent(ctx, s.db, userID, c.ctype, c.granted, ip, ua); err != nil {
+			s.log.Warnw("Failed to store consent", "user_id", userID, "type", c.ctype, "error", err)
+		}
+	}
+}
+
+// writeConsents is storeConsents for the paths where the consents are the
+// condition of entry — an account through a provider — so a row that fails
+// to write fails the step instead of being logged and forgotten.
+func writeConsents(ctx context.Context, db execer, userID int64, consents *ConsentsInput, ip, ua string) error {
+	for _, c := range consentRows(consents) {
+		if err := insertConsent(ctx, db, userID, c.ctype, c.granted, ip, ua); err != nil {
+			return fmt.Errorf("store consent %s: %w", c.ctype, err)
+		}
+	}
+	return nil
+}
+
+type consentRow struct {
+	ctype   string
+	granted bool
+}
+
+func consentRows(consents *ConsentsInput) []consentRow {
+	return []consentRow{
 		{"terms_of_service", consents.TermsOfService},
 		{"privacy_policy", consents.PrivacyPolicy},
 		{"data_processing", consents.DataProcessing},
 		{"marketing", consents.Marketing},
 	}
-	for _, c := range consentTypes {
-		_, err := s.db.ExecContext(ctx,
-			`INSERT INTO user_consents (user_id, consent_type, granted, granted_at, ip_address, user_agent)
-			 VALUES ($1, $2, $3, NOW(), $4::inet, $5)`,
-			userID, c.ctype, c.granted, ip, ua,
-		)
-		if err != nil {
-			s.log.Warnw("Failed to store consent", "user_id", userID, "type", c.ctype, "error", err)
-		}
-	}
+}
+
+func insertConsent(ctx context.Context, db execer, userID int64, ctype string, granted bool, ip, ua string) error {
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO user_consents (user_id, consent_type, granted, granted_at, ip_address, user_agent)
+		 VALUES ($1, $2, $3, NOW(), $4::inet, $5)`,
+		userID, ctype, granted, ip, ua,
+	)
+	return err
 }
 
 // dummyBcryptHash: хэш, с которым сравнивают, когда сравнивать не с чем: он

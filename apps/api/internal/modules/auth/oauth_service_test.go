@@ -62,6 +62,8 @@ func TestSignInWithProvider_KnownIdentitySignsIn(t *testing.T) {
 
 	mock.ExpectQuery("FROM external_identities").
 		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(42)))
+	mock.ExpectQuery("FROM user_consents").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
 	mock.ExpectExec("UPDATE external_identities SET last_login_at").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery("SELECT id, email").
@@ -76,6 +78,68 @@ func TestSignInWithProvider_KnownIdentitySignsIn(t *testing.T) {
 	assert.Equal(t, OAuthSignedIn, outcome.Result)
 	require.NotNil(t, outcome.User)
 	assert.Equal(t, int64(42), outcome.User.User.ID)
+}
+
+// external-identity: a sign-in that would create an account creates nothing.
+// The account appears only after the consents screen (CompleteWithConsents).
+func TestSignInWithProvider_NewAddressWaitsForConsents(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectQuery("FROM external_identities").
+		WillReturnRows(sqlmock.NewRows([]string{"user_id"}))
+	mock.ExpectQuery("SELECT id FROM users WHERE email").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	outcome, err := service.SignInWithProvider(context.Background(), "yandex", profile(), "127.0.0.1", "agent")
+
+	require.NoError(t, err)
+	assert.Equal(t, OAuthNeedsConsents, outcome.Result)
+	assert.Nil(t, outcome.User, "no session before the consents")
+	assert.Equal(t, "ext-1", outcome.ProviderUserID)
+	// No INSERT INTO users was expected: reaching one would fail the mock.
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// An account created through a provider before consents were asked for has
+// none on record; it goes through the same screen instead of straight in.
+func TestSignInWithProvider_LinkedAccountWithoutConsentsAsksForThem(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectQuery("FROM external_identities").
+		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow(int64(42)))
+	mock.ExpectQuery("FROM user_consents").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+
+	outcome, err := service.SignInWithProvider(context.Background(), "yandex", profile(), "127.0.0.1", "agent")
+
+	require.NoError(t, err)
+	assert.Equal(t, OAuthNeedsConsents, outcome.Result)
+	assert.Nil(t, outcome.User, "no session before the consents")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Without the consent to process personal data nothing is read and nothing is
+// written: the refusal comes before the attempt is even looked up.
+func TestCompleteWithConsents_RefusesWithoutEveryMandatoryConsent(t *testing.T) {
+	for name, consents := range map[string]*ConsentsInput{
+		"none":                {},
+		"no body":             nil,
+		"no data processing":  {TermsOfService: true, PrivacyPolicy: true, Marketing: true},
+		"no terms of service": {PrivacyPolicy: true, DataProcessing: true},
+		"no privacy policy":   {TermsOfService: true, DataProcessing: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			service, mock, cleanup := setupTestService(t)
+			defer cleanup()
+
+			_, err := service.CompleteWithConsents(context.Background(), "pending-1", consents, "127.0.0.1", "ua")
+
+			assert.ErrorIs(t, err, apperrors.ErrValidation)
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
 }
 
 // Losing the only way in must not be one click away for a user with a year of
@@ -138,8 +202,8 @@ func TestLinkProvider_RefusesAnAccountLinkedElsewhere(t *testing.T) {
 func nowUTC() time.Time { return time.Now().UTC() }
 
 func pendingRows(email string) *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url"}).
-		AddRow("yandex", "ext-1", email, "User", "")
+	return sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider"}).
+		AddRow("yandex", "ext-1", email, "User", "", email != "")
 }
 
 // The password is the proof of ownership. Without it, anyone who can make a
@@ -227,7 +291,7 @@ func TestConfirmLinkWithPassword_RefusesAnExpiredAttempt(t *testing.T) {
 	defer cleanup()
 
 	mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(
-		sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url"}))
+		sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider"}))
 
 	_, err := service.ConfirmLinkWithPassword(context.Background(), "stale", "pw", "ip", "ua")
 
@@ -257,30 +321,24 @@ func TestCompleteWithEmail_ExistingAddressStillNeedsProof(t *testing.T) {
 	assert.Nil(t, outcome.User)
 }
 
-// Nobody has proved this address belongs to the person typing it, so the
-// account starts unverified and gets the usual confirmation mail.
-func TestCompleteWithEmail_NewAddressCreatesAnUnverifiedAccount(t *testing.T) {
+// A typed address that nobody has yet creates no account: the attempt keeps
+// the address, marked as typed, and the account appears only after the
+// consents — unverified (see oauth_consents_integration_test.go).
+func TestCompleteWithEmail_NewAddressWaitsForConsents(t *testing.T) {
 	service, mock, cleanup := setupTestService(t)
 	defer cleanup()
 
 	mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows(""))
 	mock.ExpectQuery("SELECT id FROM users WHERE email").WillReturnRows(sqlmock.NewRows([]string{"id"}))
-	mock.ExpectBegin()
-	mock.ExpectQuery("INSERT INTO users").
-		WithArgs("new@example.com", "User", false).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(11)))
-	mock.ExpectExec("INSERT INTO external_identities").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectCommit()
-	mock.ExpectQuery("SELECT id, email").
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at", "token_version",
-		}).AddRow(int64(11), "new@example.com", "User", "client", false, false, nowUTC(), 0))
-	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("DELETE FROM oauth_pending_links").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("UPDATE oauth_pending_links SET email = \\$2, email_from_provider = false").
+		WithArgs("pending-1", "new@example.com").
+		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	outcome, err := service.CompleteWithEmail(context.Background(), "pending-1", "new@example.com", "ip", "ua")
 
 	require.NoError(t, err)
-	assert.Equal(t, OAuthRegistered, outcome.Result)
+	assert.Equal(t, OAuthNeedsConsents, outcome.Result)
+	assert.Nil(t, outcome.User, "no account and no session before the consents")
+	// No INSERT INTO users was expected: reaching one would fail the mock.
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

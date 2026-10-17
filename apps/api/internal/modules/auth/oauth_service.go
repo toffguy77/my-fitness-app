@@ -43,6 +43,14 @@ const (
 	OAuthNeedsLinkConfirmation OAuthResult = "needs_link_confirmation"
 	// OAuthNeedsEmail: the provider returned no address.
 	OAuthNeedsEmail OAuthResult = "needs_email"
+	// OAuthNeedsConsents: signing in would create an account, or would let in
+	// one that never gave the mandatory consents. The attempt is parked and
+	// finished by CompleteWithConsents.
+	//
+	// An account created first and asked afterwards would hold health data
+	// nobody agreed to the processing of — exactly what the registration form
+	// does not allow.
+	OAuthNeedsConsents OAuthResult = "needs_consents"
 )
 
 // SignInWithProvider completes an external sign-in.
@@ -54,6 +62,20 @@ func (s *Service) SignInWithProvider(ctx context.Context, provider string, profi
 		return nil, err
 	}
 	if userID != 0 {
+		// Accounts created through a provider before consents were asked for
+		// have none. They pass the same screen once, on the next sign-in.
+		consented, err := s.hasRequiredConsents(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if !consented {
+			return &OAuthOutcome{
+				Result:         OAuthNeedsConsents,
+				Provider:       provider,
+				ProviderUserID: profile.ProviderUserID,
+			}, nil
+		}
+
 		if _, err := s.db.ExecContext(ctx,
 			`UPDATE external_identities SET last_login_at = NOW()
 			 WHERE provider = $1 AND provider_user_id = $2`,
@@ -91,30 +113,129 @@ func (s *Service) SignInWithProvider(ctx context.Context, provider string, profi
 		}, nil
 	}
 
-	result, err := s.registerFromProvider(ctx, provider, profile, ip, ua)
+	// Nobody has this address: the account is created only once the person
+	// has given the mandatory consents (CompleteWithConsents).
+	return &OAuthOutcome{
+		Result:         OAuthNeedsConsents,
+		Provider:       provider,
+		ProviderUserID: profile.ProviderUserID,
+	}, nil
+}
+
+// requiredConsentTypes are the consents without which no account is created:
+// the offer, the privacy policy and the processing of personal data, health
+// data included. Marketing is optional.
+var requiredConsentTypes = []string{"terms_of_service", "privacy_policy", "data_processing"}
+
+// hasRequiredConsents reports whether the latest record of every mandatory
+// consent is a grant. The table is an audit trail, so a later revocation
+// outweighs an earlier grant.
+func (s *Service) hasRequiredConsents(ctx context.Context, userID int64) (bool, error) {
+	var granted int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM (
+			SELECT DISTINCT ON (consent_type) consent_type, granted
+			FROM user_consents
+			WHERE user_id = $1
+			  AND consent_type IN ('terms_of_service', 'privacy_policy', 'data_processing')
+			ORDER BY consent_type, granted_at DESC
+		) latest
+		WHERE granted`, userID).Scan(&granted)
+	if err != nil {
+		return false, fmt.Errorf("check consents: %w", err)
+	}
+	return granted == len(requiredConsentTypes), nil
+}
+
+// consentsComplete reports whether every mandatory consent is given.
+func consentsComplete(consents *ConsentsInput) bool {
+	return consents != nil && consents.TermsOfService && consents.PrivacyPolicy && consents.DataProcessing
+}
+
+// CompleteWithConsents finishes an external sign-in parked for consents.
+//
+// The core is keyed by the pending id alone, so the browser (which carries it
+// in the oauth_pending cookie) and a native client (which will send it in the
+// body) finish the same attempt the same way.
+//
+// Without all mandatory consents it fails with ErrValidation and writes
+// nothing. With them:
+//   - an identity already linked to an account (one created before consents
+//     were asked for) gets the consents recorded and a session: OAuthSignedIn;
+//   - an address that belongs to an account by now goes to the ownership
+//     proof, as in the callback: OAuthNeedsLinkConfirmation, attempt kept;
+//   - otherwise the account is created with the consents in the same
+//     transaction, a curator is assigned as on every other path in, and a
+//     session is issued: OAuthRegistered.
+func (s *Service) CompleteWithConsents(ctx context.Context, pendingID string, consents *ConsentsInput, ip, ua string) (*OAuthOutcome, error) {
+	if !consentsComplete(consents) {
+		return nil, fmt.Errorf("mandatory consents missing: %w", apperrors.ErrValidation)
+	}
+
+	provider, profile, emailFromProvider, err := s.pendingLink(ctx, pendingID)
 	if err != nil {
 		return nil, err
 	}
-	return &OAuthOutcome{Result: OAuthRegistered, User: result}, nil
+
+	userID, err := s.userIDForExternalIdentity(ctx, provider, profile.ProviderUserID)
+	if err != nil {
+		return nil, err
+	}
+	if userID != 0 {
+		if err := writeConsents(ctx, s.db, userID, consents, ip, ua); err != nil {
+			return nil, err
+		}
+		if _, err := s.db.ExecContext(ctx,
+			`UPDATE external_identities SET last_login_at = NOW()
+			 WHERE provider = $1 AND provider_user_id = $2`,
+			provider, profile.ProviderUserID); err != nil {
+			s.log.Errorw("Failed to record external login", "error", err, "user_id", userID)
+		}
+		s.deletePendingLink(ctx, pendingID)
+		result, err := s.issueTokensForUser(ctx, userID, ip, ua)
+		if err != nil {
+			return nil, err
+		}
+		return &OAuthOutcome{Result: OAuthSignedIn, User: result, Provider: provider}, nil
+	}
+
+	if profile.Email == "" {
+		// The address is asked for before the consents; an attempt without one
+		// did not come from the consents screen.
+		return nil, fmt.Errorf("pending sign-in carries no address: %w", apperrors.ErrTokenInvalid)
+	}
+
+	existingID, err := s.userIDForEmail(ctx, profile.Email)
+	if err != nil {
+		return nil, err
+	}
+	if existingID != 0 {
+		return &OAuthOutcome{
+			Result:         OAuthNeedsLinkConfirmation,
+			Email:          profile.Email,
+			Provider:       provider,
+			ProviderUserID: profile.ProviderUserID,
+		}, nil
+	}
+
+	// An address the provider reported is treated as verified: the provider
+	// authenticated the person against it, so sending our own confirmation
+	// mail would ask them to prove something they just proved. An address the
+	// person typed (the provider gave none) is not: nobody has proved it is
+	// theirs, so the account starts unverified and goes through the usual
+	// confirmation.
+	result, err := s.createUserFromProvider(ctx, provider, profile, ip, ua, emailFromProvider, consents)
+	if err != nil {
+		return nil, err
+	}
+	s.deletePendingLink(ctx, pendingID)
+	return &OAuthOutcome{Result: OAuthRegistered, User: result, Provider: provider}, nil
 }
 
-// registerFromProvider creates an account without a password.
-//
-// The address is treated as verified: the provider authenticated the person
-// against it, so sending our own confirmation mail would ask them to prove
-// something they just proved.
-func (s *Service) registerFromProvider(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string) (*LoginResult, error) {
-	return s.createUserFromProvider(ctx, provider, profile, ip, ua, true)
-}
-
-// registerFromProviderUnverified creates an account for an address the user
-// typed themselves. Nobody has proved it belongs to them, so it starts
-// unverified and goes through the usual confirmation mail.
-func (s *Service) registerFromProviderUnverified(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string) (*LoginResult, error) {
-	return s.createUserFromProvider(ctx, provider, profile, ip, ua, false)
-}
-
-func (s *Service) createUserFromProvider(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string, emailVerified bool) (*LoginResult, error) {
+// createUserFromProvider creates a passwordless account linked to the
+// provider. consents, when given, are written in the same transaction: an
+// account gated on consents must not exist without them.
+func (s *Service) createUserFromProvider(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string, emailVerified bool, consents *ConsentsInput) (*LoginResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin registration: %w", err)
@@ -126,11 +247,21 @@ func (s *Service) createUserFromProvider(ctx context.Context, provider string, p
 		INSERT INTO users (email, password, name, role, email_verified, onboarding_completed)
 		VALUES ($1, NULL, $2, 'client', $3, false)
 		RETURNING id`, profile.Email, nullIfEmpty(profile.Name), emailVerified).Scan(&userID); err != nil {
+		if isUniqueViolation(err) {
+			// Между колбэком и этим шагом адрес заняли другим путём.
+			return nil, fmt.Errorf("адрес уже зарегистрирован: %w", apperrors.ErrConflict)
+		}
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
 	if err := insertIdentity(ctx, tx, userID, provider, profile); err != nil {
 		return nil, err
+	}
+
+	if consents != nil {
+		if err := writeConsents(ctx, tx, userID, consents, ip, ua); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -347,12 +478,14 @@ func (s *Service) storePendingLink(ctx context.Context, provider string, profile
 	var id string
 	err := s.db.QueryRowContext(ctx, `
 		INSERT INTO oauth_pending_links
-			(provider, provider_user_id, email, name, avatar_url, expires_at)
-		VALUES ($1, $2, $3, $4, $5, NOW() + $6::interval)
+			(provider, provider_user_id, email, name, avatar_url, expires_at, email_from_provider)
+		VALUES ($1, $2, $3, $4, $5, NOW() + $6::interval, $7)
 		RETURNING id`,
 		provider, profile.ProviderUserID,
 		nullIfEmpty(profile.Email), nullIfEmpty(profile.Name), nullIfEmpty(profile.AvatarURL),
 		fmt.Sprintf("%d seconds", int(PendingLinkTTL.Seconds())),
+		// Адрес на этом шаге может прийти только от провайдера.
+		profile.Email != "",
 	).Scan(&id)
 	if err != nil {
 		return "", fmt.Errorf("store pending link: %w", err)
@@ -367,7 +500,8 @@ func (s *Service) storePendingLink(ctx context.Context, provider string, profile
 // базы, а не продолжает работу с той же структурой в памяти.
 func (s *Service) rememberPendingEmail(ctx context.Context, id, email string) error {
 	result, err := s.db.ExecContext(ctx,
-		`UPDATE oauth_pending_links SET email = $2 WHERE id = $1 AND expires_at > NOW()`,
+		`UPDATE oauth_pending_links SET email = $2, email_from_provider = false
+		 WHERE id = $1 AND expires_at > NOW()`,
 		id, email)
 	if err != nil {
 		return fmt.Errorf("remember pending email: %w", err)
@@ -383,27 +517,28 @@ func (s *Service) rememberPendingEmail(ctx context.Context, id, email string) er
 	return nil
 }
 
-func (s *Service) pendingLink(ctx context.Context, id string) (string, *oauth.Profile, error) {
-	var provider string
-	var profile oauth.Profile
+// emailFromProvider says whether the address on the attempt was reported by
+// the provider (and is therefore verified) rather than typed by the person.
+func (s *Service) pendingLink(ctx context.Context, id string) (provider string, profile *oauth.Profile, emailFromProvider bool, err error) {
+	var p oauth.Profile
 	var email, name, avatar sql.NullString
 
-	err := s.db.QueryRowContext(ctx, `
-		SELECT provider, provider_user_id, email, name, avatar_url
+	err = s.db.QueryRowContext(ctx, `
+		SELECT provider, provider_user_id, email, name, avatar_url, email_from_provider
 		FROM oauth_pending_links
 		WHERE id = $1 AND expires_at > NOW()`, id).
-		Scan(&provider, &profile.ProviderUserID, &email, &name, &avatar)
+		Scan(&provider, &p.ProviderUserID, &email, &name, &avatar, &emailFromProvider)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil, fmt.Errorf("pending link not found: %w", apperrors.ErrTokenInvalid)
+		return "", nil, false, fmt.Errorf("pending link not found: %w", apperrors.ErrTokenInvalid)
 	}
 	if err != nil {
-		return "", nil, fmt.Errorf("load pending link: %w", err)
+		return "", nil, false, fmt.Errorf("load pending link: %w", err)
 	}
 
-	profile.Email = email.String
-	profile.Name = name.String
-	profile.AvatarURL = avatar.String
-	return provider, &profile, nil
+	p.Email = email.String
+	p.Name = name.String
+	p.AvatarURL = avatar.String
+	return provider, &p, emailFromProvider, nil
 }
 
 func (s *Service) deletePendingLink(ctx context.Context, id string) {
@@ -428,7 +563,7 @@ func (s *Service) PurgeExpiredPendingLinks(ctx context.Context) (int64, error) {
 // The password is the proof. Without it, an attacker who can make a provider
 // assert our user's address would be signing in as them.
 func (s *Service) ConfirmLinkWithPassword(ctx context.Context, pendingID, password, ip, ua string) (*LoginResult, error) {
-	provider, profile, err := s.pendingLink(ctx, pendingID)
+	provider, profile, _, err := s.pendingLink(ctx, pendingID)
 	if err != nil {
 		return nil, err
 	}
@@ -469,14 +604,21 @@ func (s *Service) ConfirmLinkWithPassword(ctx context.Context, pendingID, passwo
 	return s.issueTokensForUser(ctx, userID, ip, ua)
 }
 
-// CompleteWithEmail finishes a sign-in whose provider returned no address.
+// CompleteWithEmail continues a sign-in whose provider returned no address.
 //
-// The address comes from the user, so it is unverified: an account created here
-// starts unverified and gets the usual confirmation mail. When the address
-// already exists, ownership has to be proved with a password first — otherwise
-// typing somebody else's address would be enough to take their account.
-func (s *Service) CompleteWithEmail(ctx context.Context, pendingID, email, ip, ua string) (*OAuthOutcome, error) {
-	provider, profile, err := s.pendingLink(ctx, pendingID)
+// The address comes from the user, so it is unverified. It never creates an
+// account by itself:
+//   - an address that already has an account has to be claimed with that
+//     account's password first — otherwise typing somebody else's address
+//     would be enough to take their account: OAuthNeedsLinkConfirmation;
+//   - a new address is remembered on the attempt, marked as typed, and the
+//     account is created by CompleteWithConsents once the mandatory consents
+//     are given — unverified, with the usual confirmation: OAuthNeedsConsents.
+//
+// In both cases the address is written to the attempt itself, not only to the
+// structure read from it: the next step reads the attempt again.
+func (s *Service) CompleteWithEmail(ctx context.Context, pendingID, email, _, _ string) (*OAuthOutcome, error) {
+	provider, profile, _, err := s.pendingLink(ctx, pendingID)
 	if err != nil {
 		return nil, err
 	}
@@ -485,18 +627,16 @@ func (s *Service) CompleteWithEmail(ctx context.Context, pendingID, email, ip, u
 	if err != nil {
 		return nil, err
 	}
+
+	// Без записи в попытку шаг подтверждения находил её без адреса, отвечал
+	// ErrTokenInvalid, и человек видел «попытка входа истекла» — хотя ничего
+	// не истекало. Ветка срабатывает только у провайдеров, не отдающих адрес:
+	// у Яндекса он приходит сам, поэтому вход через него работал, а через VK — нет.
+	if err := s.rememberPendingEmail(ctx, pendingID, email); err != nil {
+		return nil, err
+	}
+
 	if existingID != 0 {
-		// Записываем адрес в саму попытку, а не только в прочитанную из неё
-		// структуру. Шаг подтверждения читает попытку заново, и без этого он
-		// находил её без адреса, отвечал ErrTokenInvalid, а человек видел
-		// «попытка входа истекла» — хотя ничего не истекало.
-		//
-		// Ветка срабатывает только у провайдеров, не отдающих адрес. У Яндекса
-		// он приходит сам, поэтому вход через него работал, а через VK — нет.
-		if err := s.rememberPendingEmail(ctx, pendingID, email); err != nil {
-			return nil, err
-		}
-		profile.Email = email
 		return &OAuthOutcome{
 			Result:         OAuthNeedsLinkConfirmation,
 			Email:          email,
@@ -505,11 +645,10 @@ func (s *Service) CompleteWithEmail(ctx context.Context, pendingID, email, ip, u
 		}, nil
 	}
 
-	profile.Email = email
-	result, err := s.registerFromProviderUnverified(ctx, provider, profile, ip, ua)
-	if err != nil {
-		return nil, err
-	}
-	s.deletePendingLink(ctx, pendingID)
-	return &OAuthOutcome{Result: OAuthRegistered, User: result}, nil
+	return &OAuthOutcome{
+		Result:         OAuthNeedsConsents,
+		Email:          email,
+		Provider:       provider,
+		ProviderUserID: profile.ProviderUserID,
+	}, nil
 }

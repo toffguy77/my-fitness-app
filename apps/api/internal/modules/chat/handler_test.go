@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/ws"
@@ -22,6 +24,7 @@ import (
 // mockHandlerService implements ServiceInterface for testing
 type mockHandlerService struct {
 	getConversationsFunc    func(ctx context.Context, userID int64) ([]Conversation, error)
+	getConversationWithFunc func(ctx context.Context, userID, otherUserID int64) (*Conversation, error)
 	getMessagesFunc         func(ctx context.Context, conversationID string, userID int64, cursor string, limit int) ([]Message, error)
 	sendMessageFunc         func(ctx context.Context, conversationID string, senderID int64, req SendMessageRequest) (*Message, error)
 	markAsReadFunc          func(ctx context.Context, conversationID string, userID int64) error
@@ -39,6 +42,13 @@ func (m *mockHandlerService) GetConversations(ctx context.Context, userID int64)
 		return m.getConversationsFunc(ctx, userID)
 	}
 	return []Conversation{}, nil
+}
+
+func (m *mockHandlerService) GetConversationWith(ctx context.Context, userID, otherUserID int64) (*Conversation, error) {
+	if m.getConversationWithFunc != nil {
+		return m.getConversationWithFunc(ctx, userID, otherUserID)
+	}
+	return nil, apperrors.ErrNotFound
 }
 
 func (m *mockHandlerService) CuratorAccess(ctx context.Context, clientID int64) (Access, error) {
@@ -469,5 +479,61 @@ func TestHandler_GetUnreadCount(t *testing.T) {
 		handler.GetUnreadCount(c)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+func TestHandler_GetConversationWith(t *testing.T) {
+	run := func(handler *Handler, param string) (*httptest.ResponseRecorder, map[string]any) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/conversations/by-participant/"+param, nil)
+		c.Params = gin.Params{{Key: "userId", Value: param}}
+		c.Set("user_id", int64(7))
+		handler.GetConversationWith(c)
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return w, body
+	}
+
+	t.Run("found", func(t *testing.T) {
+		handler, mock := setupChatHandlerTest()
+		mock.getConversationWithFunc = func(_ context.Context, userID, otherID int64) (*Conversation, error) {
+			assert.Equal(t, int64(7), userID)
+			assert.Equal(t, int64(42), otherID)
+			return &Conversation{ID: "conv-1", ClientID: 42, CuratorID: 7, Participant: &User{ID: 42}}, nil
+		}
+		w, body := run(handler, "42")
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "conv-1", body["data"].(map[string]any)["id"])
+	})
+
+	t.Run("not found is matched with errors.Is", func(t *testing.T) {
+		handler, mock := setupChatHandlerTest()
+		mock.getConversationWithFunc = func(context.Context, int64, int64) (*Conversation, error) {
+			return nil, fmt.Errorf("wrapped: %w", apperrors.ErrNotFound)
+		}
+		w, body := run(handler, "42")
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Equal(t, apperrors.CodeNotFound, body["code"])
+	})
+
+	t.Run("other failures are 500", func(t *testing.T) {
+		handler, mock := setupChatHandlerTest()
+		mock.getConversationWithFunc = func(context.Context, int64, int64) (*Conversation, error) {
+			return nil, errors.New("db down")
+		}
+		w, _ := run(handler, "42")
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("non-numeric id is 404 without a query", func(t *testing.T) {
+		handler, mock := setupChatHandlerTest()
+		mock.getConversationWithFunc = func(context.Context, int64, int64) (*Conversation, error) {
+			t.Fatal("service must not be called")
+			return nil, nil
+		}
+		w, body := run(handler, "abc")
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Equal(t, apperrors.CodeNotFound, body["code"])
 	})
 }

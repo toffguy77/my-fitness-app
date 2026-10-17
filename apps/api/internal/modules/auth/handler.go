@@ -193,6 +193,13 @@ const rememberMeLifetime = 30 * 24 * time.Hour
 // would withhold the cookie on exactly that navigation, leaving the person
 // signed out immediately after signing in.
 func (h *Handler) setRefreshCookie(c *gin.Context, token string, rememberMe bool) {
+	setSessionCookies(c, token, rememberMe)
+}
+
+// setSessionCookies is setRefreshCookie for every handler that issues a
+// session, the external sign-in ones included: a JSON response carrying only
+// the access token leaves the browser signed out at the next reload.
+func setSessionCookies(c *gin.Context, token string, rememberMe bool) {
 	if token == "" {
 		return
 	}

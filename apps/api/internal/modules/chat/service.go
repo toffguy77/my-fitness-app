@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/modules/analytics"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/curatoraccess"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
@@ -18,6 +19,7 @@ import (
 // ServiceInterface defines the contract for the chat service
 type ServiceInterface interface {
 	GetConversations(ctx context.Context, userID int64) ([]Conversation, error)
+	GetConversationWith(ctx context.Context, userID, otherUserID int64) (*Conversation, error)
 	GetOrCreateConversation(ctx context.Context, clientID, curatorID int64) (*Conversation, error)
 	GetMessages(ctx context.Context, conversationID string, userID int64, cursor string, limit int) ([]Message, error)
 	SendMessage(ctx context.Context, conversationID string, senderID int64, req SendMessageRequest) (*Message, error)
@@ -75,26 +77,65 @@ func NewService(db *database.DB, log *logger.Logger) *Service {
 	return &Service{db: db.DB, log: log}
 }
 
-// GetConversations retrieves all conversations for a user with last message and unread count
-func (s *Service) GetConversations(ctx context.Context, userID int64) ([]Conversation, error) {
-	startTime := time.Now()
-
-	query := `
+// conversationSelect reads conversations as the caller sees them: the joined
+// user is always the other participant. $1 is the caller's id.
+const conversationSelect = `
 		SELECT c.id, c.client_id, c.curator_id, c.created_at, c.updated_at,
 		       u.id AS participant_id, COALESCE(u.name, '') AS participant_name,
 		       COALESCE(u.avatar_url, '') AS participant_avatar
 		FROM conversations c
 		JOIN users u ON u.id = CASE WHEN c.client_id = $1 THEN c.curator_id ELSE c.client_id END
+`
+
+// GetConversations retrieves all conversations for a user with last message and unread count
+func (s *Service) GetConversations(ctx context.Context, userID int64) ([]Conversation, error) {
+	query := conversationSelect + `
 		WHERE c.client_id = $1 OR c.curator_id = $1
 		ORDER BY c.updated_at DESC
 	`
+	conversations, err := s.queryConversations(ctx, userID, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversations: %w", err)
+	}
+	return conversations, nil
+}
 
-	rows, err := s.db.QueryContext(ctx, query, userID)
+// GetConversationWith returns the conversation between the caller and another
+// user, in the same shape as an element of GetConversations.
+//
+// The caller's id is part of the query itself, so a conversation the caller
+// does not take part in is indistinguishable from one that does not exist:
+// both are ErrNotFound. The curator's screen used to search the whole list
+// for the client and, finding nothing, showed a spinner forever.
+func (s *Service) GetConversationWith(ctx context.Context, userID, otherUserID int64) (*Conversation, error) {
+	query := conversationSelect + `
+		WHERE (c.client_id = $1 AND c.curator_id = $2)
+		   OR (c.client_id = $2 AND c.curator_id = $1)
+		ORDER BY c.updated_at DESC
+		LIMIT 1
+	`
+	conversations, err := s.queryConversations(ctx, userID, query, otherUserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversation with participant: %w", err)
+	}
+	if len(conversations) == 0 {
+		return nil, fmt.Errorf("no conversation between %d and %d: %w", userID, otherUserID, apperrors.ErrNotFound)
+	}
+	return &conversations[0], nil
+}
+
+// queryConversations runs a conversationSelect query and fills in the last
+// message and the unread count for the caller. The caller's id is $1; extra
+// arguments follow it.
+func (s *Service) queryConversations(ctx context.Context, userID int64, query string, extra ...any) ([]Conversation, error) {
+	startTime := time.Now()
+
+	rows, err := s.db.QueryContext(ctx, query, append([]any{userID}, extra...)...)
 	if err != nil {
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
 			"user_id": userID,
 		})
-		return nil, fmt.Errorf("failed to get conversations: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 

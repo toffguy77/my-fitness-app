@@ -89,6 +89,7 @@ var supportConversationRoutes = []struct {
 	{http.MethodGet, "/api/v1/curator/support/conversations"},
 	{http.MethodGet, "/api/v1/curator/support/conversations/1"},
 	{http.MethodPost, "/api/v1/curator/support/conversations/1/reply"},
+	{http.MethodPost, "/api/v1/curator/support/conversations/1/messages/1/retry"},
 	{http.MethodPost, "/api/v1/curator/support/conversations/1/close"},
 }
 

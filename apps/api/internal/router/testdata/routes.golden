@@ -36,6 +36,7 @@ GET /api/v1/content/feed/:id
 GET /api/v1/conversations
 GET /api/v1/conversations/:id/messages
 GET /api/v1/conversations/access
+GET /api/v1/conversations/by-participant/:userId
 GET /api/v1/conversations/unread
 GET /api/v1/curator/analytics
 GET /api/v1/curator/analytics/benchmark
@@ -118,6 +119,7 @@ POST /api/v1/auth/logout
 POST /api/v1/auth/magic-link/consume
 POST /api/v1/auth/magic-link/request
 POST /api/v1/auth/oauth/app-exchange
+POST /api/v1/auth/oauth/consents
 POST /api/v1/auth/oauth/email
 POST /api/v1/auth/oauth/link
 POST /api/v1/auth/refresh
@@ -142,6 +144,7 @@ POST /api/v1/curator/leads/:id/handled
 POST /api/v1/curator/recipes/:id/approve
 POST /api/v1/curator/recipes/:id/return
 POST /api/v1/curator/support/conversations/:id/close
+POST /api/v1/curator/support/conversations/:id/messages/:messageId/retry
 POST /api/v1/curator/support/conversations/:id/reply
 POST /api/v1/dashboard/daily
 POST /api/v1/dashboard/photo-upload
