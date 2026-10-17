@@ -210,6 +210,7 @@ services:
       - APPLE_BUNDLE_ID=${APPLE_BUNDLE_ID:-}
       - APPLE_KEY_ID=${APPLE_KEY_ID:-}
       - APPLE_PRIVATE_KEY=${APPLE_PRIVATE_KEY:-}
+      - APPLE_TOKEN_ENCRYPTION_KEY=${APPLE_TOKEN_ENCRYPTION_KEY:-}
       - IOS_MIN_SUPPORTED_VERSION=${IOS_MIN_SUPPORTED_VERSION:-}
       - APP_VERSION=${APP_VERSION:-dev}
       # Наблюдаемость. Обе выключаются отсутствием значения — см. .env.example.

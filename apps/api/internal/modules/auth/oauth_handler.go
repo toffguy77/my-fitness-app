@@ -29,6 +29,20 @@ type OAuthHandler struct {
 	leads LeadClaimer
 	// analytics may be nil; nothing depends on it being there.
 	analytics EventRecorder
+	// apple is nil when Sign in with Apple is not configured; its endpoints
+	// then answer 503 feature_unavailable.
+	apple AppleAuthenticator
+}
+
+// AppleAuthenticator is what the Apple endpoints need; *oauth.Apple is one.
+type AppleAuthenticator interface {
+	Authenticate(ctx context.Context, in oauth.AppleCredential) (*oauth.Profile, error)
+}
+
+// WithApple attaches Sign in with Apple.
+func (h *OAuthHandler) WithApple(apple AppleAuthenticator) *OAuthHandler {
+	h.apple = apple
+	return h
 }
 
 // WithAnalytics attaches the recorder for facts a browser cannot report.
@@ -112,7 +126,13 @@ const (
 // The sign-in screen asks rather than assuming: a deployment without
 // credentials for a provider must not offer a button that cannot work.
 func (h *OAuthHandler) Providers(c *gin.Context) {
-	response.Success(c, http.StatusOK, gin.H{"providers": h.registry.Names()})
+	names := h.registry.Names()
+	// Apple signs in from the app only (no browser flow), but the app reads
+	// this same list; the site's buttons leave out what it cannot start.
+	if h.apple != nil {
+		names = append(names, "apple")
+	}
+	response.Success(c, http.StatusOK, gin.H{"providers": names})
 }
 
 // Start handles GET /api/v1/auth/oauth/:provider.

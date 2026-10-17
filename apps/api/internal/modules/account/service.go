@@ -32,6 +32,10 @@ type Service struct {
 	notifier Notifier
 	// topics may be nil: без моста закрывать нечего.
 	topics TopicCloser
+	// appleRevocations отзывает доступ у Apple после стирания. nil, когда
+	// Sign in with Apple не настроен: токены тогда остаются в очереди до
+	// настройки, стирание от этого не зависит.
+	appleRevocations AppleRevocationAttempter
 	// deletionCoder may be nil; without it a passwordless account cannot
 	// complete RequestDeletion (there is nothing else to check instead of a
 	// password), but every other call in this service is unaffected.
@@ -98,6 +102,18 @@ func NewService(db *database.DB, log *logger.Logger, buckets map[string]*storage
 // Узкий интерфейс: стиранию не нужно знать ни про Telegram, ни про форумы.
 type TopicCloser interface {
 	Close(ctx context.Context, clientID int64) error
+}
+
+// AppleRevocationAttempter tries queued Apple revocations at once;
+// *auth.AppleRevocations is one.
+type AppleRevocationAttempter interface {
+	Attempt(ctx context.Context, ids []int64)
+}
+
+// WithAppleRevocations подключает отзыв доступа у Apple при стирании.
+func (s *Service) WithAppleRevocations(revocations AppleRevocationAttempter) *Service {
+	s.appleRevocations = revocations
+	return s
 }
 
 // WithTopics подключает закрытие тем. Без него стирание работает по-прежнему.

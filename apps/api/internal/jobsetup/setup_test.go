@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/shared/jobs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -122,4 +123,19 @@ func TestOrphanCleanupJobsAreManual(t *testing.T) {
 		delete(manual, j.Name)
 	}
 	assert.Empty(t, manual, "these manual jobs were not registered at all: %v", manual)
+}
+
+// Повтор отзыва у Apple объявляется ровно тогда, когда есть очередь: без
+// неё задача искала бы то, что некому отозвать.
+func TestAppleRevokeRetryOnlyWithApple(t *testing.T) {
+	without := jobs.NewRegistry()
+	Register(without, Deps{})
+	_, ok := without.Get("auth.apple-revoke-retry")
+	assert.False(t, ok)
+
+	with := jobs.NewRegistry()
+	Register(with, Deps{AppleRevocations: auth.NewAppleRevocations(nil, nil, nil)})
+	job, ok := with.Get("auth.apple-revoke-retry")
+	require.True(t, ok, "очередь отзыва есть, а задачи повтора нет — неудачный отзыв не повторится")
+	assert.Equal(t, 15*time.Minute, job.Interval)
 }

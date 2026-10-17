@@ -122,4 +122,12 @@ func registerNativeAuthRoutes(auth *gin.RouterGroup, d Deps) {
 	// через провайдера из приложения проходит здесь ровно один раз, а за
 	// одним мобильным NAT их сотни.
 	g.POST("/oauth/exchange", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeOAuthExchange)
+
+	// Sign in with Apple. Веб-двойника нет. Identity token проверяется
+	// подписью Apple, nonce и одноразовым authorization_code — угадывать
+	// нечего; потолок на IP с NAT-поправкой, как у native/login. Привязка —
+	// только с access-токеном; отвязка — общий DELETE /providers/apple.
+	g.POST("/apple", d.AuthRateLimiter.Limit("native-apple"), d.OAuth.NativeApple)
+	g.POST("/apple/link", d.AuthRateLimiter.Limit("native-apple"),
+		middleware.RequireAuth(d.Cfg, d.TokenVersions), d.OAuth.NativeAppleLink)
 }

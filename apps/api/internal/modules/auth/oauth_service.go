@@ -338,7 +338,12 @@ func (s *Service) LinkProvider(ctx context.Context, userID int64, provider strin
 		provider, profile.ProviderUserID).Scan(&ownerID)
 	switch {
 	case err == nil && ownerID == userID:
-		return nil // already linked
+		// Already linked. A fresh provider token (Apple issues one with every
+		// authorization) replaces the stored one.
+		if profile.SealedRefreshToken != "" {
+			s.touchIdentity(ctx, provider, profile, userID)
+		}
+		return nil
 	case err == nil:
 		return fmt.Errorf("external account belongs to another user: %w", apperrors.ErrConflict)
 	case !errors.Is(err, sql.ErrNoRows):

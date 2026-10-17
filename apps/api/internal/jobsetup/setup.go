@@ -74,6 +74,9 @@ type Deps struct {
 	// every environment except production. Its job is then not registered at
 	// all rather than running hourly to find nothing.
 	Metrika *metrika.Service
+	// AppleRevocations is nil without Sign in with Apple; the retry job is
+	// then not declared.
+	AppleRevocations *auth.AppleRevocations
 }
 
 // Register declares every periodic job. It panics on an invalid declaration:
@@ -320,6 +323,21 @@ func Register(registry *jobs.Registry, d Deps) {
 	// даже если о нём некому сообщить.
 	//
 	// Раз в час: конверсия ценна не срочностью, а тем, что она вообще дошла.
+	// Повтор отзыва доступа у Apple (Guideline 5.1.1(v)). Удаление аккаунта
+	// и отвязка Apple пробуют отозвать сразу; неудача остаётся строкой
+	// apple_token_revocations со своей отсрочкой (минута, удваиваясь, не
+	// больше суток), и эта задача берёт созревшие.
+	if d.AppleRevocations != nil {
+		registry.MustRegister(jobs.Job{
+			Name:     "auth.apple-revoke-retry",
+			Interval: 15 * time.Minute,
+			Timeout:  2 * time.Minute,
+			Run: func(ctx context.Context) (int, error) {
+				return d.AppleRevocations.RetryDue(ctx)
+			},
+		})
+	}
+
 	if d.Metrika != nil {
 		registry.MustRegister(jobs.Job{
 			Name:     "metrika.upload-conversions",

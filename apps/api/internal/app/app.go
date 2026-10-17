@@ -61,6 +61,11 @@ type App struct {
 	// Metrics is the recorder the router instruments with. Installing it as
 	// the process-wide default is the caller's decision.
 	Metrics *telemetry.Metrics
+	// Jobs is the registry the scheduler runs; exposed so the wiring of an
+	// optional job can be checked.
+	Jobs *jobs.Registry
+	// AppleRevocations is nil when Sign in with Apple is off.
+	AppleRevocations *auth.AppleRevocations
 }
 
 // Build wires every service and handler. It writes to the database once —
@@ -170,6 +175,24 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 	}
 	authService := auth.NewService(db.DB, cfg, log)
 
+	// Sign in with Apple. Ключ, который не разбирается, — ошибка настройки:
+	// говорим громко и выключаем возможность, как у APNs.
+	var appleAdapter *oauth.Apple
+	var appleRevocations *auth.AppleRevocations
+	if cfg.Features.AppleSignIn {
+		adapter, err := newAppleAdapter(cfg)
+		if err != nil {
+			log.Error("Sign in with Apple is configured but unusable", "error", err)
+			cfg.Features.AppleSignIn = false
+		} else {
+			appleAdapter = adapter
+			// Отзыв доступа у Apple при отвязке и при стирании аккаунта;
+			// неудачи повторяет задача auth.apple-revoke-retry.
+			appleRevocations = auth.NewAppleRevocations(db.DB, appleAdapter, log)
+			authService.WithAppleRevocations(appleRevocations)
+		}
+	}
+
 	var contentS3Uploader content.S3Uploader
 	if contentS3 != nil {
 		contentS3Uploader = contentS3
@@ -192,6 +215,9 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		// mailed through the same mechanism email verification already
 		// uses — see account.DeletionCodeService for why one is required.
 		WithCodeVerifier(verificationService)
+	if appleRevocations != nil {
+		accountService.WithAppleRevocations(appleRevocations)
+	}
 
 	analyticsService := analytics.NewService(db.DB, log)
 	// Назначение куратора происходит в сервисе аутентификации на всех трёх
@@ -421,6 +447,8 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		Scheduler:     scheduler,
 		Capabilities:  capabilityVerifier,
 		Metrika:       metrikaService,
+		// nil без Sign in with Apple: задача повтора отзыва не объявляется.
+		AppleRevocations: appleRevocations,
 	})
 
 	// Access tokens carry the account's token version; this is what checks it.
@@ -459,7 +487,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		Analytics:     analytics.NewHandler(analyticsService, log),
 		Auth:          auth.NewHandler(authService, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService).WithDevices(notificationsSvc),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
-		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService).WithAnalytics(analyticsService),
+		OAuth:         newOAuthHandler(cfg, log, authService, oauthRegistry, appleAdapter).WithLeads(leadsService).WithAnalytics(analyticsService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),
 		Account:       account.NewHandler(accountService, log),
 		Notifications: notifications.NewHandler(notificationsSvc, cfg, log),
@@ -483,7 +511,33 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		MealPlan:     mealplan.NewHandler(log, mealPlanService),
 	}
 
-	return &App{Deps: deps, Scheduler: scheduler, Metrics: metrics}
+	return &App{Deps: deps, Scheduler: scheduler, Metrics: metrics, Jobs: jobRegistry, AppleRevocations: appleRevocations}
+}
+
+// newAppleAdapter builds Sign in with Apple from APPLE_*.
+func newAppleAdapter(cfg *config.Config) (*oauth.Apple, error) {
+	sealer, err := oauth.NewSealer(cfg.AppleTokenEncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+	return oauth.NewApple(oauth.AppleConfig{
+		TeamID:     cfg.AppleTeamID,
+		BundleID:   cfg.AppleBundleID,
+		KeyID:      cfg.AppleKeyID,
+		PrivateKey: cfg.ApplePrivateKey,
+		Sealer:     sealer,
+	})
+}
+
+// newOAuthHandler attaches Apple only when it is there: a typed nil in the
+// interface would read as configured.
+func newOAuthHandler(cfg *config.Config, log *logger.Logger, service *auth.Service,
+	registry *oauth.Registry, apple *oauth.Apple) *auth.OAuthHandler {
+	h := auth.NewOAuthHandler(cfg, log, service, registry)
+	if apple != nil {
+		h.WithApple(apple)
+	}
+	return h
 }
 
 // appOrigin turns the configured domain into the origin links in email point

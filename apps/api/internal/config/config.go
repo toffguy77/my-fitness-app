@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -248,6 +249,12 @@ type Config struct {
 	AppleBundleID   string
 	AppleKeyID      string
 	ApplePrivateKey string
+	// AppleTokenEncryptionKey — 32 байта в base64, ключ AES-256-GCM, которым
+	// зашифрованы refresh-токены Apple в базе (external_identities,
+	// oauth_pending_links, apple_token_revocations). Отдельный секрет, а не
+	// производная JWT_SECRET: смена того не должна осиротить сохранённые
+	// токены, без которых доступ у Apple не отозвать.
+	AppleTokenEncryptionKey string
 
 	// IOSMinSupportedVersion — минимальная версия iOS-приложения, с которой
 	// сервер ещё работает (MAJOR.MINOR.PATCH). Отдаётся в GET /api/v1/config;
@@ -464,6 +471,7 @@ func Load() (*Config, error) {
 		AppleBundleID:             getEnv("APPLE_BUNDLE_ID", ""),
 		AppleKeyID:                getEnv("APPLE_KEY_ID", ""),
 		ApplePrivateKey:           getEnv("APPLE_PRIVATE_KEY", ""),
+		AppleTokenEncryptionKey:   getEnv("APPLE_TOKEN_ENCRYPTION_KEY", ""),
 		IOSMinSupportedVersion:    getEnv("IOS_MIN_SUPPORTED_VERSION", DefaultIOSMinSupportedVersion),
 		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
@@ -537,6 +545,13 @@ func vkusvillMCPURL(value string) string {
 	return value
 }
 
+// ValidAppleTokenEncryptionKey reports whether value is 32 bytes in standard
+// base64 — an AES-256 key.
+func ValidAppleTokenEncryptionKey(value string) bool {
+	key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(value))
+	return err == nil && len(key) == 32
+}
+
 // DefaultIOSMinSupportedVersion — значение без IOS_MIN_SUPPORTED_VERSION:
 // обновляться не требуется никому.
 const DefaultIOSMinSupportedVersion = "0.0.0"
@@ -588,8 +603,11 @@ func deriveFeatures(c *Config) Features {
 		IOSPush: c.APNSKeyID != "" && c.APNSTeamID != "" && c.APNSPrivateKey != "",
 		// Без команды и ключа не подписать client secret для обмена кода и
 		// отзыва, без bundle id не проверить audience identity token'а.
+		// Без ключа шифрования токен Apple негде хранить, а без него не
+		// отозвать доступ при удалении аккаунта (Guideline 5.1.1(v)).
 		AppleSignIn: c.AppleTeamID != "" && c.AppleBundleID != "" &&
-			c.AppleKeyID != "" && c.ApplePrivateKey != "",
+			c.AppleKeyID != "" && c.ApplePrivateKey != "" &&
+			ValidAppleTokenEncryptionKey(c.AppleTokenEncryptionKey),
 
 		// Обе разом: токен без счётчика некуда загружать, счётчик без токена
 		// не пишется.
@@ -635,6 +653,15 @@ func (c *Config) validate() error {
 		problems = append(problems, fmt.Errorf(
 			"IOS_MIN_SUPPORTED_VERSION must be MAJOR.MINOR.PATCH (e.g. 1.2.0), got %q",
 			c.IOSMinSupportedVersion))
+	}
+
+	// Apple настроена, а ключа шифрования нет или он не того вида: вход
+	// через Apple молча выключился бы, и в проде это ошибка, а не WARN.
+	appleConfigured := c.AppleTeamID != "" && c.AppleBundleID != "" &&
+		c.AppleKeyID != "" && c.ApplePrivateKey != ""
+	if c.IsProduction() && appleConfigured && !ValidAppleTokenEncryptionKey(c.AppleTokenEncryptionKey) {
+		problems = append(problems, errors.New(
+			"APPLE_TOKEN_ENCRYPTION_KEY must be 32 random bytes in base64 (openssl rand -base64 32) when Sign in with Apple is configured"))
 	}
 
 	if c.IsProduction() {

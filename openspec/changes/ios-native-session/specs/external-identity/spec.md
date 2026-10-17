@@ -2,11 +2,19 @@
 
 ### Requirement: Apple — провайдер общего потока
 
-Провайдер `apple` SHALL реализовывать тот же интерфейс адаптера, что Яндекс и
-VK. Регистрация, привязка, отвязка, правило подтверждения владения адресом и
-выпуск токенов MUST проходить через общий поток без отдельных веток для Apple.
-Провайдер без `APPLE_TEAM_ID`, `APPLE_BUNDLE_ID`, `APPLE_KEY_ID` и
-`APPLE_PRIVATE_KEY` MUST считаться выключенным.
+Провайдер `apple` SHALL отдавать тот же нормализованный профиль, что Яндекс
+и VK, но получает его не переходом браузера и колбэком, а identity token'ом в
+теле `POST /api/v1/auth/native/apple` (адаптер `oauth.Apple`: `Name` и
+`Authenticate` вместо `AuthorizationURL` и `Exchange`, — вход через Apple в
+вебе в это изменение не входит). Регистрация через согласия, привязка,
+отвязка, правило подтверждения владения адресом и выпуск токенов MUST
+проходить через общий поток без отдельных веток для Apple. Привязка к
+аккаунту, в который уже вошли, — `POST /api/v1/auth/native/apple/link` с
+access-токеном; отвязка — общий `DELETE /api/v1/auth/providers/apple`.
+Провайдер без `APPLE_TEAM_ID`, `APPLE_BUNDLE_ID`, `APPLE_KEY_ID`,
+`APPLE_PRIVATE_KEY` и `APPLE_TOKEN_ENCRYPTION_KEY` MUST считаться выключенным;
+настроенный провайдер `GET /api/v1/auth/providers` SHALL перечислять, а
+веб-кнопки входа и привязки для него MUST NOT показываться.
 
 #### Scenario: Привязка Apple к существующему аккаунту
 

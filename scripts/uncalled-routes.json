@@ -80,6 +80,14 @@
     "reason": "Согласия до создания аккаунта для входа из iOS-приложения через Apple, Яндекс или VK; попытка передаётся pending_token в теле. У сайта свой путь — /auth/oauth/consents с cookie oauth_pending."
   },
   {
+    "route": "POST /api/v1/auth/native/apple",
+    "reason": "Sign in with Apple из iOS-приложения (apple-sign-in): identity token от AuthenticationServices. Вход через Apple в вебе не делается (design.md, Non-Goals)."
+  },
+  {
+    "route": "POST /api/v1/auth/native/apple/link",
+    "reason": "Привязка Apple к аккаунту из «Способов входа» в iOS-приложении. Веб Apple не привязывает: identity token есть только у приложения."
+  },
+  {
     "route": "GET /api/v1/config",
     "reason": "Публичная конфигурация для iOS-приложения: включённые возможности, минимальная версия, адреса поддержки и документов. Веб знает это из собственной сборки."
   }

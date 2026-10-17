@@ -122,6 +122,10 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// на IP с NAT-поправкой, как у native/login. Продолжения с паролем и
 	// согласиями стоят на oauth-link, как их веб-двойники.
 	"native-oauth": {maxRequests: 100, window: 15 * time.Minute},
+	// Sign in with Apple: identity token подписан Apple, nonce и одноразовый
+	// authorization_code не угадать; каждый вход дёргает Apple, так что
+	// потолок нужен от расходов, а не от перебора. NAT-поправка — как у входа.
+	"native-apple": {maxRequests: 100, window: 15 * time.Minute},
 }
 
 // KeyFunc picks what a limit counts by. The endpoint name is prepended by the

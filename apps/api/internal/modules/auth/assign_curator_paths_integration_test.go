@@ -185,6 +185,58 @@ func TestEveryAccountPathAssignsCurator(t *testing.T) {
 		require.True(t, assigned, "путь через провайдера не назначает куратора вовсе")
 	})
 
+	// Четвёртый и пятый пути внутрь — из приложения: Sign in with Apple и
+	// нативные согласия (native/consents) для Яндекса и VK. Аккаунт и здесь
+	// заводит CompleteWithConsentsFor, но с нативной сессией; проверяем, что
+	// путь остаётся тем же — со служебной учёткой назначение обязано
+	// случиться, с живой — нет.
+	viaNativeConsents := func(t *testing.T, db *database.DB, service *auth.Service, provider, providerUserID, email string) int64 {
+		t.Helper()
+		outcome, err := service.SignInWithProviderFor(ctx, auth.NativeSession("iPhone"), provider, &oauth.Profile{
+			ProviderUserID: providerUserID,
+			Email:          email,
+			Name:           "Из приложения",
+		}, "127.0.0.1", "test")
+		require.NoError(t, err)
+		require.Equal(t, auth.OAuthNeedsConsents, outcome.Result)
+		require.Nil(t, outcome.User, "аккаунт заведён до согласий")
+
+		var pendingID string
+		require.NoError(t, db.QueryRowContext(ctx, `
+			INSERT INTO oauth_pending_links (provider, provider_user_id, email, name, expires_at, email_from_provider)
+			VALUES ($1, $2, $3, 'Из приложения', NOW() + INTERVAL '10 minutes', true)
+			RETURNING id`, provider, providerUserID, email).Scan(&pendingID))
+
+		completed, err := service.CompleteWithConsentsFor(ctx, auth.NativeSession("iPhone"), pendingID,
+			&auth.ConsentsInput{TermsOfService: true, PrivacyPolicy: true, DataProcessing: true},
+			"127.0.0.1", "test")
+		require.NoError(t, err)
+		require.Equal(t, auth.OAuthRegistered, completed.Result)
+		require.NotNil(t, completed.User)
+
+		var kind string
+		require.NoError(t, db.QueryRowContext(ctx,
+			`SELECT client_kind FROM refresh_tokens WHERE user_id = $1`, completed.User.User.ID).Scan(&kind))
+		require.Equal(t, "ios", kind, "нативные согласия выдали веб-сессию")
+		return completed.User.User.ID
+	}
+
+	for _, provider := range []string{"apple", "vk"} {
+		t.Run("приложение: "+provider+" через native/consents", func(t *testing.T) {
+			db, service, _ := newFixture(t, "assign_path_native_"+provider)
+			clientID := viaNativeConsents(t, db, service, provider, provider+"-live-1", provider+"-live@example.test")
+			requireNoCurator(t, db, clientID)
+		})
+
+		t.Run("приложение: служебная учётка через "+provider+" получает куратора", func(t *testing.T) {
+			db, service, _ := newFixture(t, "assign_path_native_service_"+provider)
+			addServiceCurator(t, db)
+			clientID := viaNativeConsents(t, db, service, provider, provider+"-svc-1", "e2e-"+provider+"@burcev.team")
+			_, assigned := assignedCurator(t, db, clientID)
+			require.True(t, assigned, "путь приложения через %s не назначает куратора вовсе", provider)
+		})
+	}
+
 	t.Run("служебная учётка получает куратора бессрочно", func(t *testing.T) {
 		db, service, _ := newFixture(t, "assign_path_service_account")
 		// Служебный куратор в прогоне тоже есть; кого из двух незагруженных

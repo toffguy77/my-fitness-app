@@ -4,8 +4,11 @@ package account
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/burcev/api/internal/modules/auth"
 )
 
 // Strategy describes what happens to one table's rows when a user is erased.
@@ -195,6 +198,15 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// Токен Apple — в очередь отзыва до того, как стратегии удалят привязку:
+	// иначе он исчез бы вместе со строкой, и отзывать стало бы нечего
+	// (Guideline 5.1.1(v)). В той же транзакции: откат стирания не оставит
+	// в очереди токен живого аккаунта.
+	appleQueued, err := queueAppleRevocations(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
+
 	for _, ts := range strategies {
 		if ts.Column == "" || ts.Strategy == StrategyKeep {
 			continue
@@ -252,6 +264,13 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 		}
 	}
 
+	// Отзыв у Apple — после фиксации и по возможности: Apple недоступна —
+	// аккаунт всё равно удалён, а строка очереди ждёт задачу
+	// auth.apple-revoke-retry.
+	if s.appleRevocations != nil {
+		s.appleRevocations.Attempt(ctx, appleQueued)
+	}
+
 	// Тема в Telegram закрывается, но не удаляется: решение не трогать историю
 	// переписки принято отдельно и записано в проектировании. Закрытие — то
 	// единственное, что бот умеет надёжно, и оно означает, что новых сообщений
@@ -266,6 +285,23 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 	}
 
 	return nil
+}
+
+func queueAppleRevocations(ctx context.Context, tx *sql.Tx, userID int64) ([]int64, error) {
+	rows, err := tx.QueryContext(ctx, auth.QueueAppleRevocationSQL, userID)
+	if err != nil {
+		return nil, fmt.Errorf("queue apple revocation: %w", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("queue apple revocation: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // systemUserID resolves the placeholder account anonymised rows point at.
