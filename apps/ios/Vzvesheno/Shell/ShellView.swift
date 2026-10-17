@@ -50,7 +50,7 @@ struct ShellView: View {
     }
 }
 
-extension Tab {
+extension AppTab {
     var title: String {
         switch self {
         case .today: return String(localized: "tab.today")
@@ -96,7 +96,7 @@ extension Tab {
 /// следующими изменениями (ios-client-app, ios-curator-app).
 private struct TabRoot: View {
     @Environment(AppModel.self) private var model
-    let tab: Tab
+    let tab: AppTab
     let shell: Shell
     let offline: Bool
 

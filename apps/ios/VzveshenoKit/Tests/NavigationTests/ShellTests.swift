@@ -46,7 +46,7 @@ final class ShellTests: XCTestCase {
     /// Подписи вкладок есть в каталоге строк приложения.
     func testTabTitlesAreInCatalog() throws {
         let catalog = try StringCatalog(relativePath: "apps/ios/Vzvesheno/Resources/Localizable.xcstrings")
-        for tab in Tab.allCases {
+        for tab in AppTab.allCases {
             XCTAssertNotNil(catalog.value(tab.titleKey), tab.titleKey)
         }
     }

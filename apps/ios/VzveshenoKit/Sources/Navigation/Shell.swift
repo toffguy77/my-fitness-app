@@ -37,7 +37,7 @@ public enum Role: Equatable, Sendable, Codable {
 }
 
 /// Вкладка таббара.
-public enum Tab: String, CaseIterable, Sendable, Hashable {
+public enum AppTab: String, CaseIterable, Sendable, Hashable {
     // Клиент.
     case today, diary, menu, more
     // Куратор.
@@ -70,7 +70,7 @@ public enum Shell: Equatable, Sendable {
         }
     }
 
-    public var tabs: [Tab] {
+    public var tabs: [AppTab] {
         switch self {
         case .client: return [.today, .diary, .menu, .more]
         case .curator: return [.clients, .chats, .leads, .support]
@@ -80,7 +80,7 @@ public enum Shell: Equatable, Sendable {
     }
 
     /// Корневая вкладка роли.
-    public var rootTab: Tab? { tabs.first }
+    public var rootTab: AppTab? { tabs.first }
 }
 
 /// Что показывать вместо оболочки, пока она не выбрана.

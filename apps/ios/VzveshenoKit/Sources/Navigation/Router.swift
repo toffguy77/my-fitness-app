@@ -28,10 +28,10 @@ public enum Destination: Hashable, Sendable {
 
 /// Куда перейти: вкладка и путь внутри неё.
 public struct NavigationTarget: Equatable, Sendable {
-    public let tab: Tab?
+    public let tab: AppTab?
     public let path: [Destination]
 
-    public init(tab: Tab?, path: [Destination] = []) {
+    public init(tab: AppTab?, path: [Destination] = []) {
         self.tab = tab
         self.path = path
     }

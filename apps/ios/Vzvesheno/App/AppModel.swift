@@ -41,8 +41,8 @@ final class AppModel {
     private(set) var user: SessionUser?
     private(set) var offline = false
     private(set) var config: ClientConfig?
-    var selectedTab: Tab?
-    var paths: [Tab: [Destination]] = [:]
+    var selectedTab: AppTab?
+    var paths: [AppTab: [Destination]] = [:]
     /// Текст над формой входа: «Сессия завершена, войдите снова».
     var sessionMessage: String?
     var signInStep: SignInStep = .form
