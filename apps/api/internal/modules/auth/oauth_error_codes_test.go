@@ -73,8 +73,8 @@ func TestConfirmLink_NamesTheAccountWithoutAPassword(t *testing.T) {
 	handler, mock := oauthHandlerWithService(t)
 
 	mock.ExpectQuery("FROM oauth_pending_links").
-		WillReturnRows(sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider"}).
-			AddRow("vk", "vk-1", "user@example.com", "User", nil, true))
+		WillReturnRows(sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider", "provider_refresh_token_enc"}).
+			AddRow("vk", "vk-1", "user@example.com", "User", nil, true, nil))
 	mock.ExpectQuery("SELECT id, password FROM users WHERE email").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), nil))
 

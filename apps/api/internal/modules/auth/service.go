@@ -72,6 +72,21 @@ type Service struct {
 	// events records curator assignment. Optional: nil in tests and in any
 	// environment without analytics, and nothing here depends on it.
 	events AssignmentRecorder
+	// now is the clock refresh-token lifetimes are measured against. A field
+	// so a test can stand on a date — the day after bodyRefreshSunset, the
+	// ninety-first day of a native session — instead of waiting for it.
+	now func() time.Time
+	// appleRevocations revokes Apple's access when Apple is unlinked. nil
+	// when Sign in with Apple is not configured; Attempt is nil-safe.
+	appleRevocations *AppleRevocations
+}
+
+// clock returns the service's notion of the current time.
+func (s *Service) clock() time.Time {
+	if s.now == nil {
+		return time.Now()
+	}
+	return s.now()
 }
 
 // AssignmentRecorder records the assignment of a curator.
@@ -114,6 +129,13 @@ func (s *Service) WithSessionCache(cache SessionCache) *Service {
 // method a magic link needs to send. *email.Service satisfies it on its own.
 type MagicLinkSender interface {
 	SendMagicLink(ctx context.Context, data email.MagicLinkEmailData) error
+}
+
+// WithAppleRevocations attaches the queue that unlinking Apple revokes
+// through. Optional: without Apple configured there is nothing to revoke.
+func (s *Service) WithAppleRevocations(revocations *AppleRevocations) *Service {
+	s.appleRevocations = revocations
+	return s
 }
 
 // WithEmailService supplies the sender for letters this service triggers.
@@ -163,6 +185,9 @@ type LoginResult struct {
 	// уводил переезд в cookie, а тело ответа сводило его на нет. Клиент его
 	// не читал ни разу: он был объявлен в типе и больше нигде.
 	RefreshToken string `json:"-"`
+	// RefreshExpiresAt — когда истекает RefreshToken. Внутреннее, как и сам
+	// токен: нативный ответ сообщает его клиенту как refresh_expires_in.
+	RefreshExpiresAt time.Time `json:"-"`
 	// PendingDeletion is set when this account is inside its cancellation
 	// window. Somebody who signs in during those thirty days has almost
 	// certainly changed their mind, and the app has to be able to say so
@@ -187,6 +212,12 @@ func isUniqueViolation(err error) bool {
 }
 
 func (s *Service) Register(ctx context.Context, email, password, name, ip, ua string, consents *ConsentsInput) (*LoginResult, error) {
+	return s.RegisterFor(ctx, WebSession(false), email, password, name, ip, ua, consents)
+}
+
+// RegisterFor is Register issuing the session spec describes: the web form's
+// is a 24-hour browser session, the app's a 90-day native one.
+func (s *Service) RegisterFor(ctx context.Context, spec SessionSpec, email, password, name, ip, ua string, consents *ConsentsInput) (*LoginResult, error) {
 	s.log.Infow("User registration", "email", email)
 
 	// Validate password policy
@@ -255,15 +286,16 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	}
 
 	// Generate refresh token
-	refreshToken, err := s.createRefreshToken(ctx, user.ID, ip, ua, false)
+	refreshToken, expiresAt, err := s.createRefreshToken(ctx, user.ID, ip, ua, spec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
 
 	return &LoginResult{
-		User:         &user,
-		Token:        token,
-		RefreshToken: refreshToken,
+		User:             &user,
+		Token:            token,
+		RefreshToken:     refreshToken,
+		RefreshExpiresAt: expiresAt,
 	}, nil
 }
 
@@ -330,6 +362,11 @@ const dummyBcryptHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL1
 
 // Login authenticates a user
 func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rememberMe bool) (*LoginResult, error) {
+	return s.LoginFor(ctx, WebSession(rememberMe), email, password, ip, ua)
+}
+
+// LoginFor is Login issuing the session spec describes.
+func (s *Service) LoginFor(ctx context.Context, spec SessionSpec, email, password, ip, ua string) (*LoginResult, error) {
 	s.log.Infow("User login", "email", email)
 
 	// Look up user by email
@@ -398,15 +435,16 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 	}
 
 	// Generate refresh token
-	refreshToken, err := s.createRefreshToken(ctx, user.ID, ip, ua, rememberMe)
+	refreshToken, expiresAt, err := s.createRefreshToken(ctx, user.ID, ip, ua, spec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
 
 	result := &LoginResult{
-		User:         &user,
-		Token:        token,
-		RefreshToken: refreshToken,
+		User:             &user,
+		Token:            token,
+		RefreshToken:     refreshToken,
+		RefreshExpiresAt: expiresAt,
 	}
 
 	// Signing in during the cancellation window is almost always somebody
@@ -428,8 +466,19 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 // TestCancellationWindowsAgree.
 const accountCancellationWindow = 30 * 24 * time.Hour
 
-// RefreshTokens validates a refresh token, rotates it, and returns new tokens
+// RefreshTokens validates a web refresh token, rotates it, and returns new
+// tokens.
 func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) (*LoginResult, error) {
+	return s.RefreshTokensFor(ctx, ClientWeb, plainToken, ip, ua)
+}
+
+// RefreshTokensFor rotates a refresh token issued to the given kind of client.
+//
+// A token of another kind is refused as invalid, without touching it: see
+// ClientKind. The replacement keeps the kind, the device and "remember me" of
+// the token it replaces, and gets that kind's full lifetime again — which, for
+// the app, is what makes its 90 days sliding.
+func (s *Service) RefreshTokensFor(ctx context.Context, want ClientKind, plainToken, ip, ua string) (*LoginResult, error) {
 	tokenHash := s.tokens.HashToken(plainToken)
 
 	// Look up the refresh token
@@ -438,13 +487,15 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	var revokedAt sql.NullTime
 	var replacedBy sql.NullString
 	var rememberMe bool
+	var kind string
+	var deviceName sql.NullString
 
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me
+		`SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me, client_kind, device_name
 		 FROM refresh_tokens WHERE token_hash = $1`,
 		tokenHash,
-	).Scan(&id, &userID, &expiresAt, &revokedAt, &replacedBy, &rememberMe)
+	).Scan(&id, &userID, &expiresAt, &revokedAt, &replacedBy, &rememberMe, &kind, &deviceName)
 	s.log.LogDatabaseQuery("Refresh.LookupToken", time.Since(startTime), err, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -452,6 +503,11 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 		}
 		return nil, fmt.Errorf("failed to look up refresh token: %w", err)
 	}
+
+	if ClientKind(kind) != want {
+		return nil, fmt.Errorf("Refresh.ClientKind: %s token presented as %s: %w", kind, want, apperrors.ErrTokenInvalid)
+	}
+	spec := SessionSpec{Kind: want, RememberMe: rememberMe, DeviceName: deviceName.String}
 
 	// Reuse detection: if the token was already revoked, check if it was a recent
 	// rotation (grace period for concurrent requests from multiple tabs).
@@ -466,20 +522,31 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 		// the old refresh token still bought a working session, which is
 		// exactly the token they changed their password to defeat.
 		rotated := replacedBy.Valid && replacedBy.String != ""
-		if rotated && time.Since(revokedAt.Time) < gracePeriod {
+		if rotated && s.clock().Sub(revokedAt.Time) < gracePeriod {
 			// Recent revocation — likely a race condition from multiple tabs.
 			// Look up the replacement token's result instead of revoking everything.
 			s.log.Infow("Refresh token reuse within grace period, looking up replacement",
-				"user_id", userID, "revoked_ago_ms", time.Since(revokedAt.Time).Milliseconds())
-			return s.handleGracefulReuse(ctx, id, userID, ip, ua, rememberMe)
+				"user_id", userID, "revoked_ago_ms", s.clock().Sub(revokedAt.Time).Milliseconds())
+			return s.handleGracefulReuse(ctx, id, userID, ip, ua, spec)
 		}
+		if !rotated {
+			// Revoked for safety — sign-out, a password change, a reset, or
+			// reuse detection itself. Presenting it again says the session is
+			// over and nothing more. Ending the owner's other sessions too
+			// would let anyone holding a signed-out token (an old backup, a
+			// shared computer) sign the owner out everywhere, and it proves no
+			// theft: rotation never handed this token's successor to anybody.
+			return nil, fmt.Errorf("refresh token was revoked: %w", apperrors.ErrSessionEnded)
+		}
+		// Replaced by rotation, outside the grace window: two parties hold
+		// the same session, and one of them is not its owner. Everything ends.
 		s.log.Warnw("Refresh token reuse detected, revoking all tokens for user", "user_id", userID)
 		s.revokeAllUserRefreshTokens(ctx, userID)
-		return nil, fmt.Errorf("refresh token reuse detected")
+		return nil, fmt.Errorf("refresh token reuse detected: %w", apperrors.ErrSessionEnded)
 	}
 
 	// Check expiry
-	if time.Now().After(expiresAt) {
+	if s.clock().After(expiresAt) {
 		return nil, fmt.Errorf("Refresh.CheckExpiry: %w", apperrors.ErrTokenExpired)
 	}
 
@@ -513,15 +580,9 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	}
 
 	// Insert new refresh token
-	ttl := RefreshTokenTTLDefault
-	if rememberMe {
-		ttl = RefreshTokenTTLRememberMe
-	}
-	expiresAtNew := time.Now().Add(ttl)
-	_, err = tx.ExecContext(dbCtx,
-		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, remember_me, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-		userID, newHash, expiresAtNew, ip, ua, rememberMe,
+	expiresAtNew := s.clock().Add(spec.TTL())
+	_, err = tx.ExecContext(dbCtx, insertRefreshTokenSQL,
+		userID, newHash, expiresAtNew, ip, ua, rememberMe, string(spec.kind()), spec.deviceName(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert new refresh token: %w", err)
@@ -548,18 +609,19 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	}
 
 	return &LoginResult{
-		User:         &user,
-		Token:        accessToken,
-		RefreshToken: newPlain,
+		User:             &user,
+		Token:            accessToken,
+		RefreshToken:     newPlain,
+		RefreshExpiresAt: expiresAtNew,
 	}, nil
 }
 
 // handleGracefulReuse handles the case where a refresh token was recently rotated
 // (e.g., by another browser tab). Instead of revoking all tokens, it issues new
 // tokens for the user, treating it as a benign race condition.
-func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID int64, ip, ua string, rememberMe bool) (*LoginResult, error) {
+func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID int64, ip, ua string, spec SessionSpec) (*LoginResult, error) {
 	// Issue a brand new refresh token for this client
-	newPlain, err := s.createRefreshToken(ctx, userID, ip, ua, rememberMe)
+	newPlain, expiresAt, err := s.createRefreshToken(ctx, userID, ip, ua, spec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create replacement refresh token: %w", err)
 	}
@@ -580,9 +642,10 @@ func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID in
 	}
 
 	return &LoginResult{
-		User:         &user,
-		Token:        accessToken,
-		RefreshToken: newPlain,
+		User:             &user,
+		Token:            accessToken,
+		RefreshToken:     newPlain,
+		RefreshExpiresAt: expiresAt,
 	}, nil
 }
 
@@ -594,6 +657,12 @@ func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID in
 // `replacement` is filled with a fresh token pair for the caller's own session:
 // see endAllSessions for why every other one is destroyed and this one is not.
 func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string, replacement *LoginResult) error {
+	return s.ChangePasswordFor(ctx, WebSession(false), userID, currentPassword, newPassword, replacement)
+}
+
+// ChangePasswordFor is ChangePassword whose replacement session is the kind
+// spec describes: the app keeps a native session, the browser a web one.
+func (s *Service) ChangePasswordFor(ctx context.Context, spec SessionSpec, userID int64, currentPassword, newPassword string, replacement *LoginResult) error {
 	var storedHash sql.NullString
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx,
@@ -668,12 +737,12 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 	if err != nil {
 		return fmt.Errorf("failed to issue a replacement access token: %w", err)
 	}
-	refreshToken, err := s.createRefreshToken(ctx, userID, "", "", false)
+	refreshToken, expiresAt, err := s.createRefreshToken(ctx, userID, "", "", spec)
 	if err != nil {
 		return fmt.Errorf("failed to issue a replacement refresh token: %w", err)
 	}
 
-	*replacement = LoginResult{User: &user, Token: accessToken, RefreshToken: refreshToken}
+	*replacement = LoginResult{User: &user, Token: accessToken, RefreshToken: refreshToken, RefreshExpiresAt: expiresAt}
 	return nil
 }
 
@@ -722,31 +791,55 @@ func (s *Service) RevokeRefreshToken(ctx context.Context, plainToken string) err
 	return err
 }
 
-// createRefreshToken generates and stores a new refresh token
-func (s *Service) createRefreshToken(ctx context.Context, userID int64, ip, ua string, rememberMe bool) (string, error) {
+// insertRefreshTokenSQL is the one shape a refresh token is stored in, shared
+// by issuing and by rotation so the two cannot drift apart on a column.
+const insertRefreshTokenSQL = `INSERT INTO refresh_tokens
+	(user_id, token_hash, expires_at, ip_address, user_agent, remember_me, client_kind, device_name, created_at)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`
+
+// EndNativeSession revokes an app's refresh token and reports whose it was, so
+// the caller can forget the device that signed out. Already revoked is not an
+// error: signing out twice, or after the session ended elsewhere, still signs
+// out. found is false for a token that is unknown or not an app's.
+func (s *Service) EndNativeSession(ctx context.Context, plainToken string) (userID int64, found bool, err error) {
+	tokenHash := s.tokens.HashToken(plainToken)
+	err = s.db.QueryRowContext(ctx,
+		`SELECT user_id FROM refresh_tokens WHERE token_hash = $1 AND client_kind = $2`,
+		tokenHash, string(ClientIOS)).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("look up native session: %w", err)
+	}
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = $1 AND revoked_at IS NULL`,
+		tokenHash); err != nil {
+		return userID, true, fmt.Errorf("revoke native session: %w", err)
+	}
+	return userID, true, nil
+}
+
+// createRefreshToken generates and stores a new refresh token of the kind and
+// lifetime spec describes, and returns it with its expiry.
+func (s *Service) createRefreshToken(ctx context.Context, userID int64, ip, ua string, spec SessionSpec) (string, time.Time, error) {
 	plainToken, hashedToken, err := s.tokens.GenerateToken()
 	if err != nil {
-		return "", fmt.Errorf("failed to generate refresh token: %w", err)
+		return "", time.Time{}, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
-	ttl := RefreshTokenTTLDefault
-	if rememberMe {
-		ttl = RefreshTokenTTLRememberMe
-	}
-	expiresAt := time.Now().Add(ttl)
+	expiresAt := s.clock().Add(spec.TTL())
 
 	startTime := time.Now()
-	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, remember_me, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-		userID, hashedToken, expiresAt, ip, ua, rememberMe,
+	_, err = s.db.ExecContext(ctx, insertRefreshTokenSQL,
+		userID, hashedToken, expiresAt, ip, ua, spec.RememberMe, string(spec.kind()), spec.deviceName(),
 	)
 	s.log.LogDatabaseQuery("RefreshToken.Insert", time.Since(startTime), err, map[string]any{"user_id": userID})
 	if err != nil {
-		return "", fmt.Errorf("failed to store refresh token: %w", err)
+		return "", time.Time{}, fmt.Errorf("failed to store refresh token: %w", err)
 	}
 
-	return plainToken, nil
+	return plainToken, expiresAt, nil
 }
 
 // revokeAllUserRefreshTokens revokes all refresh tokens for a user (reuse detection)
@@ -834,7 +927,7 @@ func (s *Service) generateToken(user *User) (string, error) {
 		// minutes — exactly the fifteen minutes the password change was meant
 		// to take away.
 		"tv":  user.TokenVersion,
-		"exp": time.Now().Add(15 * time.Minute).Unix(),
+		"exp": time.Now().Add(AccessTokenTTL).Unix(),
 		"iat": time.Now().Unix(),
 	}
 

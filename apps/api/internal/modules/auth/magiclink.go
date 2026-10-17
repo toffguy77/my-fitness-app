@@ -127,6 +127,13 @@ func (s *Service) RequestMagicLink(ctx context.Context, recipient string, consen
 //
 // Второе значение — true, если аккаунт был создан этим вызовом.
 func (s *Service) ConsumeMagicLink(ctx context.Context, token, ip, ua string) (*LoginResult, bool, error) {
+	return s.ConsumeMagicLinkFor(ctx, WebSession(false), token, ip, ua)
+}
+
+// ConsumeMagicLinkFor is ConsumeMagicLink issuing the session spec describes:
+// the same letter opens a browser session on the site and a native one in the
+// app.
+func (s *Service) ConsumeMagicLinkFor(ctx context.Context, spec SessionSpec, token, ip, ua string) (*LoginResult, bool, error) {
 	hash := s.tokens.HashToken(token)
 
 	var recipient string
@@ -150,7 +157,7 @@ func (s *Service) ConsumeMagicLink(ctx context.Context, token, ip, ua string) (*
 	}
 
 	if userID != nil {
-		result, err := s.issueTokensForUser(ctx, *userID, ip, ua)
+		result, err := s.issueTokens(ctx, spec, *userID, ip, ua)
 		if err != nil {
 			return result, false, err
 		}
@@ -172,7 +179,7 @@ func (s *Service) ConsumeMagicLink(ctx context.Context, token, ip, ua string) (*
 		return result, false, nil
 	}
 
-	result, err := s.createAccountFromMagicLink(ctx, recipient, consents, ip, ua)
+	result, err := s.createAccountFromMagicLink(ctx, spec, recipient, consents, ip, ua)
 	return result, true, err
 }
 
@@ -183,7 +190,7 @@ func (s *Service) ConsumeMagicLink(ctx context.Context, token, ip, ua string) (*
 // этой функции: сервис auth о заявках не знает, а узкий интерфейс LeadClaimer
 // в handler.go существует ровно затем, чтобы auth и leads не зависели от
 // типов друг друга.
-func (s *Service) createAccountFromMagicLink(ctx context.Context, recipient string, consents []byte, ip, ua string) (*LoginResult, error) {
+func (s *Service) createAccountFromMagicLink(ctx context.Context, spec SessionSpec, recipient string, consents []byte, ip, ua string) (*LoginResult, error) {
 	var parsed ConsentsInput
 	if len(consents) > 0 {
 		if err := json.Unmarshal(consents, &parsed); err != nil {
@@ -256,7 +263,7 @@ func (s *Service) createAccountFromMagicLink(ctx context.Context, recipient stri
 	// повторяется, а на посадочной вход по ссылке — главный путь внутрь.
 	s.assignCurator(ctx, userID, recipient)
 
-	return s.issueTokensForUser(ctx, userID, ip, ua)
+	return s.issueTokens(ctx, spec, userID, ip, ua)
 }
 
 // PurgeExpiredMagicLinks drops links that can no longer be redeemed.

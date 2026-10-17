@@ -177,7 +177,7 @@ func TestOAuthConsents_RefusesWithoutMandatoryConsents(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/oauth/consents", strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
-			req.AddCookie(&http.Cookie{Name: pendingCookie, Value: "pending-1"})
+			req.AddCookie(&http.Cookie{Name: pendingCookie, Value: "0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11"})
 			w := httptest.NewRecorder()
 
 			r.ServeHTTP(w, req)

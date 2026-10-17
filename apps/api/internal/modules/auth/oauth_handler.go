@@ -29,6 +29,20 @@ type OAuthHandler struct {
 	leads LeadClaimer
 	// analytics may be nil; nothing depends on it being there.
 	analytics EventRecorder
+	// apple is nil when Sign in with Apple is not configured; its endpoints
+	// then answer 503 feature_unavailable.
+	apple AppleAuthenticator
+}
+
+// AppleAuthenticator is what the Apple endpoints need; *oauth.Apple is one.
+type AppleAuthenticator interface {
+	Authenticate(ctx context.Context, in oauth.AppleCredential) (*oauth.Profile, error)
+}
+
+// WithApple attaches Sign in with Apple.
+func (h *OAuthHandler) WithApple(apple AppleAuthenticator) *OAuthHandler {
+	h.apple = apple
+	return h
 }
 
 // WithAnalytics attaches the recorder for facts a browser cannot report.
@@ -65,6 +79,12 @@ func (h *OAuthHandler) WithLeads(claimer LeadClaimer) *OAuthHandler {
 // and carries no request body. What happened before the sign-up therefore
 // stays anonymous on this path.
 func (h *OAuthHandler) recordOutcome(ctx context.Context, outcome *OAuthOutcome, provider string) {
+	h.recordOutcomeFor(ctx, outcome, provider, ClientWeb)
+}
+
+// recordOutcomeFor is recordOutcome naming the client: the app's sign-ins
+// carry client=ios, so the funnel can tell them from the site's.
+func (h *OAuthHandler) recordOutcomeFor(ctx context.Context, outcome *OAuthOutcome, provider string, client ClientKind) {
 	if h.analytics == nil || outcome == nil {
 		return
 	}
@@ -79,8 +99,11 @@ func (h *OAuthHandler) recordOutcome(ctx context.Context, outcome *OAuthOutcome,
 		return
 	}
 
-	h.analytics.RecordServerEvent(ctx, name, outcome.User.User.ID,
-		map[string]any{"method": provider})
+	properties := map[string]any{"method": provider}
+	if client == ClientIOS {
+		properties["client"] = string(ClientIOS)
+	}
+	h.analytics.RecordServerEvent(ctx, name, outcome.User.User.ID, properties)
 }
 
 func NewOAuthHandler(cfg *config.Config, log *logger.Logger, service *Service, registry *oauth.Registry) *OAuthHandler {
@@ -112,7 +135,13 @@ const (
 // The sign-in screen asks rather than assuming: a deployment without
 // credentials for a provider must not offer a button that cannot work.
 func (h *OAuthHandler) Providers(c *gin.Context) {
-	response.Success(c, http.StatusOK, gin.H{"providers": h.registry.Names()})
+	names := h.registry.Names()
+	// Apple signs in from the app only (no browser flow), but the app reads
+	// this same list; the site's buttons leave out what it cannot start.
+	if h.apple != nil {
+		names = append(names, "apple")
+	}
+	response.Success(c, http.StatusOK, gin.H{"providers": names})
 }
 
 // Start handles GET /api/v1/auth/oauth/:provider.
@@ -131,15 +160,32 @@ func (h *OAuthHandler) Start(c *gin.Context) {
 		return
 	}
 
+	// Вход из приложения: client=ios и PKCE-вызов приложения (см.
+	// native_oauth.go). Без client — обычный вход сайта. Неизвестный client
+	// или ios без верного вызова — ошибка, а не тихий вход сайта: приложение
+	// иначе получило бы cookie, которую не может прочитать.
+	challenge := ""
+	switch client := c.Query("client"); client {
+	case "":
+	case string(ClientIOS):
+		challenge = c.Query("app_challenge")
+		if !appChallengePattern.MatchString(challenge) {
+			response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation,
+				"Нужен app_challenge: BASE64URL(SHA256(code_verifier))")
+			return
+		}
+	default:
+		response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation, "Неизвестный client")
+		return
+	}
+
 	h.setFlowCookie(c, stateCookie, pkce.State)
 	h.setFlowCookie(c, verifierCookie, pkce.Verifier)
 	h.setFlowCookie(c, providerCookie, name)
-	// Вход из iOS-приложения: хэш его секрета, см. oauth_app.go. Без него —
-	// обычный вход сайта; чужая строка вместо хэша просто не принимается.
-	if challenge := c.Query("app_challenge"); appChallengePattern.MatchString(challenge) {
-		h.setFlowCookie(c, appChallengeCookie, challenge)
+	if challenge != "" {
+		h.setFlowCookie(c, nativeChallengeCookie, challenge)
 	} else {
-		c.SetCookie(appChallengeCookie, "", -1, "/api/v1/auth", "", true, true)
+		c.SetCookie(nativeChallengeCookie, "", -1, "/api/v1/auth", "", true, true)
 	}
 
 	c.Redirect(http.StatusFound,
@@ -149,6 +195,9 @@ func (h *OAuthHandler) Start(c *gin.Context) {
 // Callback handles GET /api/v1/auth/oauth/:provider/callback.
 func (h *OAuthHandler) Callback(c *gin.Context) {
 	name := c.Param("provider")
+	// Read before clearFlowCookies: whether the attempt belongs to the app
+	// decides where every outcome below goes, failures included.
+	challenge := nativeChallenge(c)
 
 	// The user declined at the provider; that is a choice, not a failure.
 	if reason := c.Query("error"); reason != "" {
@@ -201,6 +250,11 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 	if err != nil {
 		h.log.Error("Failed to exchange authorization code", "error", err, "provider", name)
 		h.redirectToApp(c, "/auth?oauth=failed")
+		return
+	}
+
+	if challenge != "" {
+		h.handOffToApp(c, name, profile, challenge)
 		return
 	}
 
@@ -341,20 +395,16 @@ func (h *OAuthHandler) appOrigin() string {
 }
 
 func (h *OAuthHandler) redirectToApp(c *gin.Context, path string) {
-	// Вход, начатый из iOS-приложения, возвращается туда же, а не на сайт.
-	if appChallenge(c) != "" {
-		redirectToAppClient(c, h.appOrigin(), path)
+	// Вход, начатый из iOS-приложения, и отказ возвращает туда же.
+	if nativeChallenge(c) != "" {
+		h.redirectToNativeFailure(c, path)
 		return
 	}
 	c.Redirect(http.StatusFound, h.appOrigin()+path)
 }
 
-// redirectWithSession hands the session to the app.
+// redirectWithSession hands the session to the site.
 func (h *OAuthHandler) redirectWithSession(c *gin.Context, outcome *OAuthOutcome) {
-	if challenge := appChallenge(c); challenge != "" {
-		h.handoffToApp(c, outcome, challenge)
-		return
-	}
 	// The refresh token goes in an HttpOnly cookie so it never reaches
 	// JavaScript, the URL, or anything that logs URLs.
 	c.SetSameSite(http.SameSiteLaxMode)
@@ -396,7 +446,7 @@ func (h *OAuthHandler) setFlowCookie(c *gin.Context, name, value string) {
 }
 
 func (h *OAuthHandler) clearFlowCookies(c *gin.Context) {
-	for _, name := range []string{stateCookie, verifierCookie, providerCookie, appChallengeCookie} {
+	for _, name := range []string{stateCookie, verifierCookie, providerCookie, nativeChallengeCookie} {
 		c.SetCookie(name, "", -1, "/api/v1/auth", "", true, true)
 	}
 }
@@ -430,6 +480,9 @@ func (h *OAuthHandler) ConfirmLink(c *gin.Context) {
 	}
 
 	pendingID, err := c.Cookie(pendingCookie)
+	if err == nil && pendingID != "" && !requireCanonicalPending(c, pendingID) {
+		return
+	}
 	if err != nil || pendingID == "" {
 		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
 		return
@@ -486,6 +539,9 @@ func (h *OAuthHandler) CompleteEmail(c *gin.Context) {
 	}
 
 	pendingID, err := c.Cookie(pendingCookie)
+	if err == nil && pendingID != "" && !requireCanonicalPending(c, pendingID) {
+		return
+	}
 	if err != nil || pendingID == "" {
 		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
 		return
@@ -555,6 +611,9 @@ func (h *OAuthHandler) CompleteConsents(c *gin.Context) {
 	}
 
 	pendingID, err := c.Cookie(pendingCookie)
+	if err == nil && pendingID != "" && !requireCanonicalPending(c, pendingID) {
+		return
+	}
 	if err != nil || pendingID == "" {
 		response.Fail(c, http.StatusBadRequest, apperrors.ErrTokenInvalid,
 			"Попытка входа истекла. Начните заново.")

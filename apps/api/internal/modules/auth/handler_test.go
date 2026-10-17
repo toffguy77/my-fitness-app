@@ -64,7 +64,7 @@ func TestRegister(t *testing.T) {
 		// услуга, и право выдаёт администратор после оплаты. Запроса выбора
 		// здесь поэтому нет, и ожидания идут подряд.
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false).
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false, "web", nil).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		w := httptest.NewRecorder()
@@ -146,7 +146,7 @@ func TestLogin(t *testing.T) {
 				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false).
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false, "web", nil).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		w := httptest.NewRecorder()
@@ -233,7 +233,7 @@ func TestLoginWithRememberMe(t *testing.T) {
 				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), true).
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), true, "web", nil).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		w := httptest.NewRecorder()
@@ -274,7 +274,7 @@ func TestLoginWithRememberMe(t *testing.T) {
 				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false).
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false, "web", nil).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		w := httptest.NewRecorder()

@@ -134,7 +134,7 @@ func TestCompleteWithConsents_RefusesWithoutEveryMandatoryConsent(t *testing.T) 
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
 
-			_, err := service.CompleteWithConsents(context.Background(), "pending-1", consents, "127.0.0.1", "ua")
+			_, err := service.CompleteWithConsents(context.Background(), "0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11", consents, "127.0.0.1", "ua")
 
 			assert.ErrorIs(t, err, apperrors.ErrValidation)
 			assert.NoError(t, mock.ExpectationsWereMet())
@@ -180,8 +180,10 @@ func TestUnlinkProvider_AllowedWhenAPasswordExists(t *testing.T) {
 
 	mock.ExpectQuery("SELECT u.password").
 		WillReturnRows(sqlmock.NewRows([]string{"password", "link_count"}).AddRow("$2a$10$somehash", 1))
+	mock.ExpectBegin()
 	mock.ExpectExec("DELETE FROM external_identities").
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 
 	require.NoError(t, service.UnlinkProvider(context.Background(), 1, "yandex"))
 }
@@ -202,8 +204,8 @@ func TestLinkProvider_RefusesAnAccountLinkedElsewhere(t *testing.T) {
 func nowUTC() time.Time { return time.Now().UTC() }
 
 func pendingRows(email string) *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider"}).
-		AddRow("yandex", "ext-1", email, "User", "", email != "")
+	return sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider", "provider_refresh_token_enc"}).
+		AddRow("yandex", "ext-1", email, "User", "", email != "", nil)
 }
 
 // The password is the proof of ownership. Without it, anyone who can make a
@@ -219,8 +221,10 @@ func TestConfirmLinkWithPassword_LinksOnlyOnTheRightPassword(t *testing.T) {
 		mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows("user@example.com"))
 		mock.ExpectQuery("SELECT id, password FROM users WHERE email").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), string(hash)))
+		mock.ExpectQuery("UPDATE oauth_pending_links SET failed_attempts").
+			WillReturnRows(sqlmock.NewRows([]string{"failed_attempts"}).AddRow(1))
 
-		_, err := service.ConfirmLinkWithPassword(context.Background(), "pending-1", "guess", "ip", "ua")
+		_, err := service.ConfirmLinkWithPassword(context.Background(), "0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11", "guess", "ip", "ua")
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, apperrors.ErrInvalidCredentials)
@@ -235,6 +239,8 @@ func TestConfirmLinkWithPassword_LinksOnlyOnTheRightPassword(t *testing.T) {
 		mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows("user@example.com"))
 		mock.ExpectQuery("SELECT id, password FROM users WHERE email").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), string(hash)))
+		mock.ExpectQuery("UPDATE oauth_pending_links SET failed_attempts").
+			WillReturnRows(sqlmock.NewRows([]string{"failed_attempts"}).AddRow(1))
 		mock.ExpectExec("INSERT INTO external_identities").WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectExec("DELETE FROM oauth_pending_links").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectQuery("SELECT id, email").
@@ -243,7 +249,7 @@ func TestConfirmLinkWithPassword_LinksOnlyOnTheRightPassword(t *testing.T) {
 			}).AddRow(int64(7), "user@example.com", "User", "client", true, true, nowUTC(), 0))
 		mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
 
-		result, err := service.ConfirmLinkWithPassword(context.Background(), "pending-1", "correct horse", "ip", "ua")
+		result, err := service.ConfirmLinkWithPassword(context.Background(), "0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11", "correct horse", "ip", "ua")
 
 		require.NoError(t, err)
 		assert.Equal(t, int64(7), result.User.ID)
@@ -261,7 +267,7 @@ func TestConfirmLinkWithPassword_RefusesAnAccountWithoutAPassword(t *testing.T) 
 	mock.ExpectQuery("SELECT id, password FROM users WHERE email").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), nil))
 
-	_, err := service.ConfirmLinkWithPassword(context.Background(), "pending-1", "anything", "ip", "ua")
+	_, err := service.ConfirmLinkWithPassword(context.Background(), "0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11", "anything", "ip", "ua")
 
 	assert.ErrorIs(t, err, apperrors.ErrConflict)
 }
@@ -279,7 +285,7 @@ func TestConfirmLinkWithPassword_EmptyStoredPasswordIsNotAPassword(t *testing.T)
 	mock.ExpectQuery("SELECT id, password FROM users WHERE email").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), ""))
 
-	_, err := service.ConfirmLinkWithPassword(context.Background(), "pending-1", "anything", "ip", "ua")
+	_, err := service.ConfirmLinkWithPassword(context.Background(), "0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11", "anything", "ip", "ua")
 
 	assert.ErrorIs(t, err, apperrors.ErrConflict)
 }
@@ -291,9 +297,9 @@ func TestConfirmLinkWithPassword_RefusesAnExpiredAttempt(t *testing.T) {
 	defer cleanup()
 
 	mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(
-		sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider"}))
+		sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider", "provider_refresh_token_enc"}))
 
-	_, err := service.ConfirmLinkWithPassword(context.Background(), "stale", "pw", "ip", "ua")
+	_, err := service.ConfirmLinkWithPassword(context.Background(), "5d0e7a8b-1c2d-4e3f-8a9b-0c1d2e3f4a5b", "pw", "ip", "ua")
 
 	assert.ErrorIs(t, err, apperrors.ErrTokenInvalid)
 }
@@ -314,7 +320,7 @@ func TestCompleteWithEmail_ExistingAddressStillNeedsProof(t *testing.T) {
 	mock.ExpectExec("UPDATE oauth_pending_links SET email").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	outcome, err := service.CompleteWithEmail(context.Background(), "pending-1", "taken@example.com", "ip", "ua")
+	outcome, err := service.CompleteWithEmail(context.Background(), "0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11", "taken@example.com", "ip", "ua")
 
 	require.NoError(t, err)
 	assert.Equal(t, OAuthNeedsLinkConfirmation, outcome.Result)
@@ -331,10 +337,10 @@ func TestCompleteWithEmail_NewAddressWaitsForConsents(t *testing.T) {
 	mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows(""))
 	mock.ExpectQuery("SELECT id FROM users WHERE email").WillReturnRows(sqlmock.NewRows([]string{"id"}))
 	mock.ExpectExec("UPDATE oauth_pending_links SET email = \\$2, email_from_provider = false").
-		WithArgs("pending-1", "new@example.com").
+		WithArgs("0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11", "new@example.com").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	outcome, err := service.CompleteWithEmail(context.Background(), "pending-1", "new@example.com", "ip", "ua")
+	outcome, err := service.CompleteWithEmail(context.Background(), "0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11", "new@example.com", "ip", "ua")
 
 	require.NoError(t, err)
 	assert.Equal(t, OAuthNeedsConsents, outcome.Result)

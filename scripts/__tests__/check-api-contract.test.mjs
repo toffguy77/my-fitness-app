@@ -125,6 +125,21 @@ test('a plain /api/... literal is still not flagged when it exists', () => {
     assert.match(result.stdout, /API contract OK/)
 })
 
+// apple-app-site-association names `/api/*` as a path the app must not open.
+// A glob is a pattern, not a call — but a real call in the same file still is.
+test('a glob path pattern is not taken for a call', () => {
+    const result = runAgainst({
+        goldenLines: GOLDEN,
+        sourceFile: 'app/.well-known/apple-app-site-association/association.ts',
+        sourceText: [
+            "export const APP_LINK_EXCLUSIONS = ['/api/*', '/unsubscribe*'] as const",
+            "apiClient.get('/api/v1/admin/leads')",
+            '',
+        ].join('\n'),
+    })
+    assert.equal(result.status, 0, `expected the script to pass:\n${result.stdout}${result.stderr}`)
+})
+
 test('an API_BASE that falls back to an empty string does not create a false alarm', () => {
     const result = runAgainst({
         goldenLines: GOLDEN,

@@ -1,25 +1,60 @@
 /**
- * Какие ссылки сайта открывает iOS-приложение, а не браузер (Universal Links).
+ * apple-app-site-association: какие адреса сайта открывает iOS-приложение
+ * «Взвешено» (universal links) и для какого приложения сайт хранит пароли
+ * (webcredentials).
  *
- * Только ссылки из писем, по которым человек входит: вход по ссылке и сброс
- * пароля. `/auth/link` без `/consume` — подтверждение привязки внешнего
- * входа, оно живёт в браузерной сессии и приложению не принадлежит. Отписку
- * из писем тоже не забираем: она должна работать и без приложения.
+ * Идентификатор приложения собирается из переменных окружения контейнера
+ * Next — APPLE_TEAM_ID и APPLE_BUNDLE_ID, тех же, что у API, — а не
+ * зашивается в репозиторий: у dev и прода разные bundle id
+ * (team.burcev.app.dev и team.burcev.app). Переменные серверные, без
+ * NEXT_PUBLIC: файл собирается на запрос, в сборку они не попадают.
+ *
+ * Пути — design.md изменения ios-native-session:
+ * - вход и восстановление: ссылка из письма, возврат входа через провайдера
+ *   (/auth/native-complete), сброс пароля;
+ * - экраны, на которые ведут письма и уведомления.
+ * Исключения стоят первыми — Apple берёт первое совпавшее правило: /api/*
+ * приложению не принадлежит вовсе, отписка из писем обязана работать в
+ * браузере без входа.
  */
-export const IOS_APP_ID = '3GWRDGA8B7.team.burcev.app'
 
-export const APP_LINK_PATHS = ['/auth/link/consume', '/reset-password'] as const
+export interface AppLinkComponent {
+    '/': string
+    exclude?: true
+    comment: string
+}
 
-export function appleAppSiteAssociation() {
+export const APP_LINK_EXCLUSIONS = ['/api/*', '/unsubscribe*'] as const
+
+export const APP_LINK_PATHS = [
+    '/auth/link/consume*',
+    '/auth/native-complete*',
+    '/reset-password*',
+    '/content/*',
+    '/dashboard*',
+    '/food-tracker*',
+    '/chat*',
+    '/notifications*',
+    '/curator/*',
+] as const
+
+/** `<APPLE_TEAM_ID>.<APPLE_BUNDLE_ID>`, или null, если приложение не настроено. */
+export function appID(env: { APPLE_TEAM_ID?: string; APPLE_BUNDLE_ID?: string }): string | null {
+    const team = env.APPLE_TEAM_ID?.trim()
+    const bundle = env.APPLE_BUNDLE_ID?.trim()
+    if (!team || !bundle) return null
+    return `${team}.${bundle}`
+}
+
+export function appleAppSiteAssociation(id: string) {
+    const components: AppLinkComponent[] = [
+        ...APP_LINK_EXCLUSIONS.map((path) => ({ '/': path, exclude: true as const, comment: `not the app: ${path}` })),
+        ...APP_LINK_PATHS.map((path) => ({ '/': path, comment: path })),
+    ]
     return {
         applinks: {
-            details: [
-                {
-                    appIDs: [IOS_APP_ID],
-                    components: APP_LINK_PATHS.map((path) => ({ '/': path, comment: path })),
-                },
-            ],
+            details: [{ appIDs: [id], components }],
         },
-        webcredentials: { apps: [IOS_APP_ID] },
+        webcredentials: { apps: [id] },
     }
 }

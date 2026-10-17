@@ -103,7 +103,7 @@ func TestEveryAccountPathCarriesArrival(t *testing.T) {
 	found := map[string]bool{}
 	viaAfterSignIn := map[string]bool{}
 	fset := token.NewFileSet()
-	for _, file := range []string{"handler.go", "oauth_handler.go"} {
+	for _, file := range []string{"handler.go", "oauth_handler.go", "native_session.go", "native_oauth.go", "native_apple.go"} {
 		parsed, err := parser.ParseFile(fset, file, nil, 0)
 		if !assert.NoError(t, err) {
 			return
@@ -127,7 +127,11 @@ func TestEveryAccountPathCarriesArrival(t *testing.T) {
 		}
 	}
 
-	for _, fn := range []string{"Register", "ConsumeMagicLink", "afterSignIn"} {
+	// NativeConsents — где аккаунт появляется у входа через Apple, Яндекс и
+	// VK из приложения: native/apple и native/oauth/exchange аккаунтов не
+	// создают, а отвечают needs_consents. lead_token приходит в теле — cookie
+	// гостя у ASWebAuthenticationSession и у приложения нет.
+	for _, fn := range []string{"Register", "ConsumeMagicLink", "afterSignIn", "NativeRegister", "NativeConsumeMagicLink", "NativeConsents"} {
 		assert.True(t, found[fn], "%s creates accounts and does not call carryArrival", fn)
 	}
 	// Вход через провайдера завершается в двух местах: колбэк (сегодня он

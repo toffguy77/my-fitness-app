@@ -8,6 +8,8 @@ INDEX analytics_identities idx_analytics_identities_user btree (user_id)
 INDEX apns_devices apns_devices_pkey btree (id)
 INDEX apns_devices apns_devices_token_key btree (token)
 INDEX apns_devices idx_apns_devices_user_id btree (user_id)
+INDEX apple_token_revocations apple_token_revocations_pkey btree (id)
+INDEX apple_token_revocations idx_apple_token_revocations_next_attempt_at btree (next_attempt_at)
 INDEX article_audience article_audience_pkey btree (article_id, client_id)
 INDEX article_audience idx_article_audience_client btree (client_id)
 INDEX articles articles_pkey btree (id)
@@ -120,8 +122,9 @@ INDEX nutrient_recommendations nutrient_recommendations_pkey btree (id)
 INDEX nutrients idx_nutrients_group btree (nutrient_group)
 INDEX nutrients idx_nutrients_product btree (product_id)
 INDEX nutrients nutrients_pkey btree (id)
-INDEX oauth_app_handoffs idx_oauth_app_handoffs_user_id btree (user_id)
-INDEX oauth_app_handoffs oauth_app_handoffs_pkey btree (code_hash)
+INDEX oauth_handoff_codes idx_oauth_handoff_codes_expires_at btree (expires_at)
+INDEX oauth_handoff_codes idx_oauth_handoff_codes_user_id btree (user_id) WHERE (user_id IS NOT NULL)
+INDEX oauth_handoff_codes oauth_handoff_codes_pkey btree (code_hash)
 INDEX oauth_pending_links idx_oauth_pending_links_expires_at btree (expires_at)
 INDEX oauth_pending_links oauth_pending_links_pkey btree (id)
 INDEX password_reset_attempts idx_reset_attempts_email_time btree (email, attempted_at DESC)
@@ -253,6 +256,12 @@ apns_devices.installation_id text NOT NULL
 apns_devices.last_used_at timestamp with time zone
 apns_devices.token text NOT NULL
 apns_devices.user_id bigint NOT NULL
+apple_token_revocations.attempts integer NOT NULL DEFAULT 0
+apple_token_revocations.created_at timestamp with time zone NOT NULL DEFAULT now()
+apple_token_revocations.id bigint NOT NULL DEFAULT nextval('apple_token_revocations_id_seq')
+apple_token_revocations.last_error text
+apple_token_revocations.next_attempt_at timestamp with time zone NOT NULL DEFAULT now()
+apple_token_revocations.token_enc text NOT NULL
 article_audience.article_id uuid NOT NULL
 article_audience.client_id bigint NOT NULL
 articles.audience_scope USER-DEFINED NOT NULL DEFAULT 'my_clients'_type
@@ -394,6 +403,7 @@ external_identities.id uuid NOT NULL DEFAULT gen_random_uuid()
 external_identities.last_login_at timestamp with time zone
 external_identities.name text
 external_identities.provider text NOT NULL
+external_identities.provider_refresh_token_enc text
 external_identities.provider_user_id text NOT NULL
 external_identities.user_id bigint NOT NULL
 food_entries.calories numeric NOT NULL
@@ -626,19 +636,23 @@ nutrients.nutrient_group text NOT NULL
 nutrients.nutrient_name text NOT NULL
 nutrients.product_id bigint NOT NULL
 nutrients.unit text NOT NULL
-oauth_app_handoffs.challenge text NOT NULL
-oauth_app_handoffs.code_hash text NOT NULL
-oauth_app_handoffs.created_at timestamp with time zone NOT NULL DEFAULT now()
-oauth_app_handoffs.expires_at timestamp with time zone NOT NULL
-oauth_app_handoffs.user_id bigint NOT NULL
+oauth_handoff_codes.app_challenge text NOT NULL
+oauth_handoff_codes.code_hash text NOT NULL
+oauth_handoff_codes.created_at timestamp with time zone NOT NULL DEFAULT now()
+oauth_handoff_codes.expires_at timestamp with time zone NOT NULL
+oauth_handoff_codes.result jsonb NOT NULL
+oauth_handoff_codes.used_at timestamp with time zone
+oauth_handoff_codes.user_id bigint
 oauth_pending_links.avatar_url text
 oauth_pending_links.created_at timestamp with time zone NOT NULL DEFAULT now()
 oauth_pending_links.email text
 oauth_pending_links.email_from_provider boolean NOT NULL DEFAULT false
 oauth_pending_links.expires_at timestamp with time zone NOT NULL
+oauth_pending_links.failed_attempts integer NOT NULL DEFAULT 0
 oauth_pending_links.id uuid NOT NULL DEFAULT gen_random_uuid()
 oauth_pending_links.name text
 oauth_pending_links.provider text NOT NULL
+oauth_pending_links.provider_refresh_token_enc text
 oauth_pending_links.provider_user_id text NOT NULL
 password_reset_attempts.attempted_at timestamp without time zone NOT NULL DEFAULT now()
 password_reset_attempts.email character varying NOT NULL
@@ -725,7 +739,9 @@ recipes.source text NOT NULL DEFAULT 'manual'
 recipes.source_ref text
 recipes.status text NOT NULL DEFAULT 'published'
 recipes.updated_at timestamp with time zone NOT NULL DEFAULT now()
+refresh_tokens.client_kind text NOT NULL DEFAULT 'web'
 refresh_tokens.created_at timestamp without time zone NOT NULL DEFAULT now()
+refresh_tokens.device_name text
 refresh_tokens.expires_at timestamp without time zone NOT NULL
 refresh_tokens.id bigint NOT NULL DEFAULT nextval('refresh_tokens_id_seq')
 refresh_tokens.ip_address character varying

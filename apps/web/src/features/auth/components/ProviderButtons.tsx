@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { providersApi, providerLabel } from '@/features/auth/api/providers'
+import { providersApi, providerLabel, startsInBrowser } from '@/features/auth/api/providers'
 import { t } from '@/shared/i18n'
 import { buttonBase, buttonSizes, buttonVariants } from '@/shared/components/ui/Button'
 import { cn } from '@/shared/utils/cn'
@@ -17,7 +17,10 @@ export function ProviderButtons({ mode }: { mode: 'login' | 'register' }) {
     const [providers, setProviders] = useState<string[]>([])
 
     useEffect(() => {
-        providersApi.list().then(setProviders).catch(() => setProviders([]))
+        providersApi
+            .list()
+            .then((names) => setProviders(names.filter(startsInBrowser)))
+            .catch(() => setProviders([]))
     }, [])
 
     if (providers.length === 0) return null

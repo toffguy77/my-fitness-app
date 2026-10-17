@@ -45,4 +45,20 @@ describe('ProviderButtons', () => {
         expect(container.querySelector('form')).toBeNull()
         expect(container.querySelector('button')).toBeNull()
     })
+
+    // Apple signs in from the app only: GET /auth/oauth/apple does not exist.
+    it('does not offer Apple, which the server lists for the app', async () => {
+        list.mockResolvedValue(['yandex', 'apple'])
+        render(<ProviderButtons mode="login" />)
+
+        expect(await screen.findByTestId('oauth-yandex')).toBeInTheDocument()
+        expect(screen.queryByTestId('oauth-apple')).toBeNull()
+    })
+
+    it('shows nothing when Apple is the only provider', async () => {
+        list.mockResolvedValue(['apple'])
+        const { container } = render(<ProviderButtons mode="register" />)
+        await waitFor(() => expect(list).toHaveBeenCalled())
+        expect(container).toBeEmptyDOMElement()
+    })
 })

@@ -1610,6 +1610,7 @@ export const ru = {
         // Дословно то, что отдаёт ConsumeMagicLink на гонку регистрации:
         // адрес заняли между выдачей ссылки и переходом по ней.
         magic_link_account_exists: 'Этот адрес уже зарегистрирован. Запросите ссылку для входа ещё раз.',
+        consents_required: 'Нужно согласие на условия, политику конфиденциальности и обработку данных',
         gone: 'Больше недоступно',
         validation: 'Проверьте введённые данные',
         // Distinct from token_expired: refreshing will not help, because the

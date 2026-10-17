@@ -17,6 +17,20 @@ export const providerLabels: Record<string, string> = {
     yandex: 'Яндекс ID', // i18n-exempt: brand name
     vk: 'VK ID',
     max: 'MAX',
+    apple: 'Apple',
+}
+
+/**
+ * Providers the site can start a sign-in or a link with. The server lists
+ * every configured provider, and the app reads the same list; Apple signs in
+ * only from the app (an identity token from AuthenticationServices, no
+ * browser flow), so the site neither shows its button nor offers to link it.
+ * A linked Apple still shows in settings and can be unlinked.
+ */
+const appOnlyProviders = new Set(['apple'])
+
+export function startsInBrowser(provider: string): boolean {
+    return !appOnlyProviders.has(provider)
 }
 
 export function providerLabel(provider: string): string {

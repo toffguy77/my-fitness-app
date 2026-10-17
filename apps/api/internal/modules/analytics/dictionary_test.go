@@ -213,3 +213,19 @@ func TestValidate_ArticleCtaClicked(t *testing.T) {
 	err = Validate(Event{Name: EventArticleCtaClicked}, true)
 	assert.ErrorIs(t, err, apperrors.ErrValidation)
 }
+
+// Вход и регистрация из приложения несут client=ios и method провайдера —
+// Apple в том числе. Необъявленное свойство отбросило бы событие целиком, и
+// доля входов из приложения читалась бы как ноль.
+func TestValidate_AcceptsSignInsFromTheApp(t *testing.T) {
+	for _, name := range []string{EventSignedIn, EventRegistered} {
+		for _, method := range []string{"password", "apple", "yandex", "vk"} {
+			assert.NoError(t, Validate(Event{Name: name, Properties: map[string]any{
+				"method": method, "client": "ios",
+			}}, false), "%s %s", name, method)
+		}
+		assert.Error(t, Validate(Event{Name: name, Properties: map[string]any{
+			"method": "password", "client": "android",
+		}}, false))
+	}
+}

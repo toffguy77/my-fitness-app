@@ -57,7 +57,7 @@ func newConsentsFlow(t *testing.T, name string, profile oauth.Profile) consentsF
 func newProviderFlow(t *testing.T, name, provider string, profile oauth.Profile) consentsFlow {
 	t.Helper()
 	db := testsupport.SchemaWithMigrations(t, name)
-	cfg := &config.Config{AppDomain: "app.example.com"}
+	cfg := &config.Config{AppDomain: "app.example.com", JWTSecret: "integration-secret-that-is-long-enough-32"}
 	log := logger.New()
 	service := auth.NewService(db.DB, cfg, log)
 
@@ -71,6 +71,11 @@ func newProviderFlow(t *testing.T, name, provider string, profile oauth.Profile)
 	r.POST("/api/v1/auth/oauth/consents", h.CompleteConsents)
 	r.POST("/api/v1/auth/oauth/email", h.CompleteEmail)
 	r.POST("/api/v1/auth/oauth/link", h.ConfirmLink)
+	r.GET("/api/v1/auth/oauth/:provider", h.Start)
+	r.POST("/api/v1/auth/native/oauth/exchange", h.NativeOAuthExchange)
+	r.POST("/api/v1/auth/native/oauth/email", h.NativeOAuthEmail)
+	r.POST("/api/v1/auth/native/oauth/link", h.NativeOAuthLink)
+	r.POST("/api/v1/auth/native/consents", h.NativeConsents)
 	return consentsFlow{db: db, engine: r, provider: provider}
 }
 
@@ -446,34 +451,4 @@ func TestCompleteEmail_ExistingAddressAsksForThePassword(t *testing.T) {
 	assert.Equal(t, map[string]any{"result": "needs_link_confirmation", "email": email}, decode(t, res)["data"])
 	assert.Nil(t, liveCookie(res, "refresh_token"))
 	assert.False(t, expiredCookie(res, "oauth_pending"))
-}
-
-// appCallback — тот же возврат от провайдера, но вход начат из приложения.
-func (f consentsFlow) appCallback(t *testing.T) *http.Response {
-	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/"+f.provider+"/callback?code=c&state=s", nil)
-	req.AddCookie(&http.Cookie{Name: "oauth_state", Value: "s"})
-	req.AddCookie(&http.Cookie{Name: "oauth_verifier", Value: "v"})
-	req.AddCookie(&http.Cookie{Name: "oauth_provider", Value: f.provider})
-	req.AddCookie(&http.Cookie{Name: "oauth_app", Value: challengeFor("секрет-приложения-достаточно-длинный-0123456789")})
-	w := httptest.NewRecorder()
-	f.engine.ServeHTTP(w, req)
-	require.Equal(t, http.StatusFound, w.Code)
-	return w.Result()
-}
-
-// Вход из приложения, который создал бы аккаунт, без согласий его не создаёт:
-// приложение получает error=consents_required. Нативный экран согласий —
-// POST /auth/native/consents (ios-native-session).
-func TestAppSignIn_NoAccountWithoutConsents(t *testing.T) {
-	const email = "app-new@example.test"
-	f := newConsentsFlow(t, "oauth_app_no_consents", oauth.Profile{
-		ProviderUserID: "ya-3004", Email: email, Name: "Новый",
-	})
-
-	location, err := url.Parse(f.appCallback(t).Header.Get("Location"))
-	require.NoError(t, err)
-	assert.Equal(t, auth.AppCallbackPath, location.Path)
-	assert.Equal(t, "consents_required", location.Query().Get("error"))
-	assert.Equal(t, 0, f.users(t, email), "аккаунт создан без согласий")
 }

@@ -150,9 +150,13 @@ var Dictionary = map[string]Definition{
 	// password or through a named provider, and an event that does not say
 	// which is counted as neither. When it was optional the provider path
 	// recorded nothing and the funnel read as if everyone used a password.
-	EventRegistered:    {Required: []string{"method"}, ServerOnly: true},
+	//
+	// client — «ios» у входа и регистрации из приложения; у сайта его нет.
+	// Без объявления событие приложения с этим свойством молча отбрасывалось
+	// бы целиком — ровно та тишина, ради которой method сделан обязательным.
+	EventRegistered:    {Required: []string{"method"}, Optional: []string{"client"}, Values: map[string][]string{"client": {"ios"}}, ServerOnly: true},
 	EventEmailVerified: {ServerOnly: true},
-	EventSignedIn:      {Required: []string{"method"}, ServerOnly: true},
+	EventSignedIn:      {Required: []string{"method"}, Optional: []string{"client"}, Values: map[string][]string{"client": {"ios"}}, ServerOnly: true},
 	EventCuratorAssign: {ServerOnly: true},
 	EventWeeklyReport:  {ServerOnly: true},
 	// reason отличает истечение срока от снятия вручную: это разные причины

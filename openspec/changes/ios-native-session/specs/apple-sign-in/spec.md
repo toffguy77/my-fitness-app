@@ -9,10 +9,24 @@
 - `iss` равен `https://appleid.apple.com`;
 - `aud` равен настроенному `APPLE_BUNDLE_ID`;
 - срок `exp` не истёк;
-- `nonce` равен SHA-256 от переданного `nonce`.
+- `nonce` равен SHA-256 от переданного `nonce`: приложение генерирует случайный
+  исходный nonce, кладёт в `ASAuthorizationAppleIDRequest.nonce` его SHA-256
+  в виде шестнадцатеричной строки строчными буквами и передаёт серверу
+  исходное значение; Apple копирует nonce запроса в токен без изменений;
+- `authorization_code` принят `https://appleid.apple.com/auth/token`
+  (client secret — ES256 JWT с `kid = APPLE_KEY_ID`, `iss = APPLE_TEAM_ID`,
+  `sub = APPLE_BUNDLE_ID`, `aud = https://appleid.apple.com`); полученный
+  refresh-токен Apple хранится зашифрованным AES-256-GCM ключом
+  `APPLE_TOKEN_ENCRYPTION_KEY`.
 
 При нарушении любого условия запрос MUST отклоняться с `401` и кодом
-`token_invalid`.
+`token_invalid`. Адрес из токена используется, только если
+`email_verified` истинно (Apple отдаёт его и логическим значением, и строкой
+`"true"`); адрес Private Relay (`@privaterelay.appleid.com`) Apple
+подтверждает сама. Без подтверждённого адреса ответ — `needs_email`.
+Совпадение адреса с существующим аккаунтом SHALL отвечать
+`{status: "needs_link_confirmation", pending_token, email}`, и вход
+продолжается `POST /api/v1/auth/native/oauth/link` с паролем этого аккаунта.
 
 #### Scenario: Чужая аудитория
 
@@ -66,6 +80,10 @@
 При необратимом удалении аккаунта с привязкой `apple` сервер SHALL вызывать
 `https://appleid.apple.com/auth/revoke` с сохранённым refresh-токеном Apple.
 Неудачный отзыв MUST повторяться фоновой задачей и MUST NOT отменять удаление.
+Токен MUST попадать в очередь отзыва (`apple_token_revocations`) в той же
+транзакции, что удаляет привязку, — до её удаления; задача
+`auth.apple-revoke-retry` повторяет неудачи с отсрочкой от минуты, удваивая
+её, не больше суток. Отвязка Apple отзывает токен тем же способом.
 
 #### Scenario: Отзыв при удалении
 
@@ -77,3 +95,9 @@
 - **WHEN** запрос отзыва завершился ошибкой сети
 - **THEN** аккаунт удалён
 - **AND** в очереди фоновых задач есть задача повторить отзыв
+
+#### Scenario: Совпадение адреса с существующим аккаунтом
+
+- **WHEN** адрес из токена принадлежит аккаунту с паролем, а `sub` не привязан
+- **THEN** ответ — `needs_link_confirmation` с `pending_token`
+- **AND** `native/oauth/link` с верным паролем возвращает пару токенов и привязывает Apple
