@@ -2,7 +2,7 @@
 
 ### Requirement: Ссылки и пуши открывают экран через один маршрутизатор
 
-Universal link, `target` пуша и App Intent SHALL превращаться в путь навигации одним маршрутизатором: `/content/<slug>` — статья (у клиента — во вкладке «Ещё»); `/dashboard?task=<id>` — «Сегодня» с подсвеченной задачей; `/food-tracker?date=<d>&add=<способ>` — «Дневник» на дате с открытым листом записи; `/chat` — переписка с куратором (экран значка в шапке «Сегодня»); `/notifications` — уведомления; `/curator/clients/<id>?tab=<t>` — карточка клиента на вкладке; `/curator/chat/<id>` — переписка; `/curator/support?conversation=<id>` — обращение.
+Universal link, `target` пуша и App Intent SHALL превращаться в путь навигации одним маршрутизатором: `/content/<slug>` — статья (у клиента — во вкладке «Статьи»); `/dashboard?task=<id>` — «Сегодня» с подсвеченной задачей; `/food-tracker?date=<d>&add=<способ>` — «Дневник» на дате с открытым листом записи; `/chat` — переписка с куратором (экран значка в шапке «Сегодня»); `/notifications` — уведомления; `/curator/clients/<id>?tab=<t>` — карточка клиента на вкладке; `/curator/chat/<id>` — переписка; `/curator/support?conversation=<id>` — обращение.
 
 #### Scenario: Ссылка на день и способ
 
