@@ -25,10 +25,6 @@ type OAuthOutcome struct {
 	// link, so the confirmation step knows what to attach.
 	Provider       string
 	ProviderUserID string
-	// LinkedUserID is set with OAuthNeedsConsents when the external account is
-	// already linked to an account here — one created before consents were
-	// asked for — as opposed to an account that does not exist yet.
-	LinkedUserID int64
 }
 
 // OAuthResult enumerates the outcomes of an external sign-in.
@@ -94,7 +90,6 @@ func (s *Service) SignInWithProvider(ctx context.Context, provider string, profi
 				Result:         OAuthNeedsConsents,
 				Provider:       provider,
 				ProviderUserID: profile.ProviderUserID,
-				LinkedUserID:   userID,
 			}, nil
 		}
 		return s.SignInLinked(ctx, provider, profile.ProviderUserID, userID, ip, ua)

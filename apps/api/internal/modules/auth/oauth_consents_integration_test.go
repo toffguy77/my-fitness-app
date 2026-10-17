@@ -462,43 +462,18 @@ func (f consentsFlow) appCallback(t *testing.T) *http.Response {
 	return w.Result()
 }
 
-// Приложение 0.3.x экрана согласий не знает. Аккаунт, заведённый через
-// провайдера до согласий, входит в него, как входил, — иначе такие люди
-// остались бы без приложения до выхода нативного экрана. Новый аккаунт из
-// приложения без согласий не создаётся.
-func TestAppSignIn_ConsentsBridgeUntilNativeScreen(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("существующий аккаунт без согласий получает код приложения", func(t *testing.T) {
-		const email = "app-old@example.test"
-		f := newConsentsFlow(t, "oauth_app_bridge_old", oauth.Profile{
-			ProviderUserID: "ya-3003", Email: email, Name: "Из приложения",
-		})
-		var userID int64
-		require.NoError(t, f.db.QueryRowContext(ctx, `
-			INSERT INTO users (email, password, name, role, email_verified, onboarding_completed)
-			VALUES ($1, NULL, 'Из приложения', 'client', true, true) RETURNING id`, email).Scan(&userID))
-		_, err := f.db.ExecContext(ctx, `
-			INSERT INTO external_identities (user_id, provider, provider_user_id, email)
-			VALUES ($1, 'yandex', 'ya-3003', $2)`, userID, email)
-		require.NoError(t, err)
-
-		location, err := url.Parse(f.appCallback(t).Header.Get("Location"))
-		require.NoError(t, err)
-		assert.Equal(t, auth.AppCallbackPath, location.Path)
-		assert.NotEmpty(t, location.Query().Get("code"), "приложение не получило код входа")
-		assert.Empty(t, location.Query().Get("error"))
+// Вход из приложения, который создал бы аккаунт, без согласий его не создаёт:
+// приложение получает error=consents_required. Нативный экран согласий —
+// POST /auth/native/consents (ios-native-session).
+func TestAppSignIn_NoAccountWithoutConsents(t *testing.T) {
+	const email = "app-new@example.test"
+	f := newConsentsFlow(t, "oauth_app_no_consents", oauth.Profile{
+		ProviderUserID: "ya-3004", Email: email, Name: "Новый",
 	})
 
-	t.Run("новый аккаунт из приложения не создаётся", func(t *testing.T) {
-		const email = "app-new@example.test"
-		f := newConsentsFlow(t, "oauth_app_bridge_new", oauth.Profile{
-			ProviderUserID: "ya-3004", Email: email, Name: "Новый",
-		})
-
-		location, err := url.Parse(f.appCallback(t).Header.Get("Location"))
-		require.NoError(t, err)
-		assert.Equal(t, "consents_required", location.Query().Get("error"))
-		assert.Equal(t, 0, f.users(t, email), "аккаунт создан без согласий")
-	})
+	location, err := url.Parse(f.appCallback(t).Header.Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, auth.AppCallbackPath, location.Path)
+	assert.Equal(t, "consents_required", location.Query().Get("error"))
+	assert.Equal(t, 0, f.users(t, email), "аккаунт создан без согласий")
 }
