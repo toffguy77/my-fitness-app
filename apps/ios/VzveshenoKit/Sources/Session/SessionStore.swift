@@ -30,6 +30,11 @@ public final class UserDefaultsInstallMarker: InstallMarker, @unchecked Sendable
     public func mark() { defaults.set(true, forKey: key) }
 }
 
+/// Вход в другой аккаунт поверх открытой сессии без подтверждения человека.
+public struct AccountSwitchNotConfirmed: Error, Equatable, Sendable {
+    public init() {}
+}
+
 /// Почему сессии больше нет — для текста на экране входа.
 public enum SessionEndReason: Sendable, Equatable {
     /// Сервер закончил сессию: отозвана, истекла, сменён пароль.
@@ -93,10 +98,30 @@ public actor SessionStore: AccessTokenProvider {
 
     public var user: SessionUser? { session?.user }
 
+    /// Есть ли сессия на устройстве — в памяти или в Keychain, даже если
+    /// `restore()` ещё не вызывался (холодный запуск по ссылке).
+    public func hasStoredSession() -> Bool {
+        if session != nil { return true }
+        guard installMarker.isMarked() else { return false }
+        return (try? secure.read(Self.sessionKey)) != nil
+    }
+
     /// Сессия после входа: в Keychain до того, как кто-то её получит.
-    public func adopt(_ newSession: NativeSession) throws {
+    ///
+    /// Сессию другого пользователя молча не заменяет: без `replacingAccount`
+    /// (человек подтвердил вход в другой аккаунт) — `AccountSwitchNotConfirmed`.
+    public func adopt(_ newSession: NativeSession, replacingAccount: Bool = false) throws {
+        if !replacingAccount, let existing = currentOrStoredSession(), existing.user.id != newSession.user.id {
+            throw AccountSwitchNotConfirmed()
+        }
         try persist(newSession)
         session = newSession
+    }
+
+    private func currentOrStoredSession() -> NativeSession? {
+        if let session { return session }
+        guard installMarker.isMarked(), let data = try? secure.read(Self.sessionKey) else { return nil }
+        return try? JSONDecoder().decode(NativeSession.self, from: data)
     }
 
     /// Обновляет пользователя (например, ответом `/auth/me`), не трогая токены.

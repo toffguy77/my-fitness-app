@@ -208,6 +208,8 @@ final class AppModel {
         case let .pending(pending):
             signInStep = .pending(pending)
         case let .signedIn(newSession, _):
+            // Сессию другого человека молча не заменяет (AccountSwitchNotConfirmed);
+            // смену аккаунта человек подтверждает до этого — confirmSwitchingAccount.
             try await session.adopt(newSession)
             user = newSession.user
             sessionMessage = nil
@@ -262,7 +264,10 @@ final class AppModel {
         guard let link = Router.parse(url) else { return }
         switch link {
         case let .auth(authLink):
-            switch AuthLinkDecision.decide(authLink, hasSession: user != nil) {
+            // Не `user`: при холодном запуске по ссылке restore() ещё не
+            // прошёл, и сессия есть только в Keychain.
+            let hasSession = await session.hasStoredSession()
+            switch AuthLinkDecision.decide(authLink, hasSession: hasSession) {
             case .handle:
                 await handle(authLink)
             case .confirmSwitchingAccount:

@@ -183,6 +183,43 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertFalse(pending)
     }
 
+    /// Сессия другого пользователя не заменяется без подтверждения — даже до restore().
+    func testAdoptRefusesSilentAccountSwitch() async throws {
+        let secure = InMemorySecureStore()
+        let marker = MemoryInstallMarker()
+        let (_, first) = await make(StubTransport { _ in .success("{}") }, secure: secure, marker: marker)
+        try await first.adopt(NativeSession(accessToken: "a", refreshToken: "r", user: anna))
+
+        // Холодный запуск: restore() ещё не вызывался.
+        let (_, coldStart) = await make(StubTransport { _ in .success("{}") }, secure: secure, marker: marker)
+        let stored = await coldStart.hasStoredSession()
+        XCTAssertTrue(stored)
+        let attacker = SessionUser(id: 666, email: "x@example.com", role: "client")
+        do {
+            try await coldStart.adopt(NativeSession(accessToken: "b", refreshToken: "r2", user: attacker))
+            XCTFail("сессия заменена молча")
+        } catch {
+            XCTAssertEqual(error as? AccountSwitchNotConfirmed, AccountSwitchNotConfirmed())
+        }
+        let kept = try JSONDecoder().decode(NativeSession.self, from: XCTUnwrap(secure.read(SessionStore.sessionKey)))
+        XCTAssertEqual(kept.user.id, 7)
+
+        // Тот же человек вошёл заново — можно; подтверждённая смена — тоже.
+        try await coldStart.adopt(NativeSession(accessToken: "c", refreshToken: "r3", user: anna))
+        try await coldStart.adopt(NativeSession(accessToken: "d", refreshToken: "r4", user: attacker), replacingAccount: true)
+        let user = await coldStart.user
+        XCTAssertEqual(user?.id, 666)
+    }
+
+    func testNoStoredSessionAfterReinstall() async throws {
+        let secure = InMemorySecureStore()
+        try secure.write(try JSONEncoder().encode(NativeSession(accessToken: "a", refreshToken: "r", user: anna)),
+                         for: SessionStore.sessionKey)
+        let (_, store) = await make(StubTransport { _ in .success("{}") }, secure: secure, marker: MemoryInstallMarker(marked: false))
+        let stored = await store.hasStoredSession()
+        XCTAssertFalse(stored)
+    }
+
     // ios-session-storage: атрибуты записи.
     func testKeychainPolicyAttributes() {
         let policy = KeychainPolicy(service: "team.burcev.app.dev.session", accessGroup: "3GWRDGA8B7.team.burcev.app.dev.shared")

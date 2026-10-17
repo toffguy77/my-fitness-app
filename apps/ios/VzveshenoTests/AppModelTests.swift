@@ -74,6 +74,16 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(user?.id, 7)
     }
 
+    /// Холодный запуск по ссылке: сессия ещё только в Keychain — всё равно вопрос.
+    func testColdStartLinkWithStoredSessionAsksFirst() async throws {
+        let model = UITestScenario.client.makeModel(environment: AppEnvironment.current())
+        await model.open(try XCTUnwrap(URL(string: "https://new.burcev.team/auth/link/consume?token=attacker")))
+        XCTAssertEqual(model.authLinkAwaitingConfirmation, .magicLink(token: "attacker"))
+        await model.start()
+        let user = await model.session.user
+        XCTAssertEqual(user?.id, 7, "сессия не заменена")
+    }
+
     func testResetLinkWhileSignedOutOpensImmediately() async throws {
         let model = await started(.signedOut)
         await model.open(try XCTUnwrap(URL(string: "https://new.burcev.team/reset-password?token=r1")))
