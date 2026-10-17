@@ -126,20 +126,68 @@ type KeyFunc func(c *gin.Context) string
 // ByIP counts by the client address — the default.
 func ByIP(c *gin.Context) string { return c.ClientIP() }
 
-// ByEmail counts by the address in the JSON body alone, whatever the IP:
+// ByEmail counts by the mailbox in the JSON body alone, whatever the IP:
 // attempts against one account, or letters to one mailbox. A body without an
 // address counts against the IP.
+//
+// The key is the canonical mailbox (CanonicalMailbox), not the string as
+// typed: Victim+1@Gmail.com, v.i.c.t.i.m@googlemail.com and victim@gmail.com
+// land in one inbox, and spelling the address differently must not buy a
+// fresh bucket.
 func ByEmail(c *gin.Context) string {
 	var body struct {
 		Email string `json:"email"`
 	}
 	peekJSON(c, &body)
-	email := strings.ToLower(strings.TrimSpace(body.Email))
+	email := CanonicalMailbox(body.Email)
 	if email == "" {
 		return "ip:" + c.ClientIP()
 	}
 	return "email:" + email
 }
+
+// CanonicalMailbox reduces an address to the inbox it delivers to, for
+// counting only — never for storing or for finding an account.
+//
+//   - lower case, surrounding spaces trimmed;
+//   - a "+tag" suffix of the local part dropped, for every domain: the
+//     convention is near universal (Gmail, Yandex, Fastmail, iCloud), and a
+//     domain that does not follow it only shares a bucket between two
+//     neighbouring addresses — a limit tighter by a little, never looser;
+//   - for gmail.com and googlemail.com, dots in the local part dropped and
+//     googlemail.com mapped to gmail.com: Google ignores both.
+func CanonicalMailbox(email string) string {
+	email = strings.ToLower(strings.TrimSpace(email))
+	at := strings.LastIndex(email, "@")
+	if at <= 0 || at == len(email)-1 {
+		return email
+	}
+	local, domain := email[:at], email[at+1:]
+	if plus := strings.Index(local, "+"); plus > 0 {
+		local = local[:plus]
+	}
+	if domain == "googlemail.com" {
+		domain = "gmail.com"
+	}
+	if domain == "gmail.com" {
+		local = strings.ReplaceAll(local, ".", "")
+	}
+	if local == "" {
+		return email
+	}
+	return local + "@" + domain
+}
+
+// FailedCredentials is the outcome a per-account login limit counts: the
+// password was wrong. A successful sign-in does not use up the account's
+// allowance, or anybody could lock its owner out by signing in as themselves
+// — and anybody who knows the address could by failing, which is the point.
+func FailedCredentials(status int) bool { return status == http.StatusUnauthorized }
+
+// LetterSent is the outcome a per-recipient letter limit counts: the request
+// passed validation and was answered as sent. A rejected request (no consents,
+// mail switched off, an error) put nothing in the mailbox.
+func LetterSent(status int) bool { return status >= 200 && status < 300 }
 
 // ByEmailAndIP counts by the address in the JSON body together with the
 // client IP. The body is read and put back for the handler. A body without an
@@ -224,6 +272,21 @@ func (rl *AuthRateLimiter) Limit(endpoint string) gin.HandlerFunc {
 // LimitBy is Limit counting by key instead of by IP alone. The endpoint name
 // is checked the same way, and by the same test.
 func (rl *AuthRateLimiter) LimitBy(endpoint string, key KeyFunc) gin.HandlerFunc {
+	return rl.limit(endpoint, key, nil)
+}
+
+// LimitOutcomesBy is LimitBy that counts only the requests whose response
+// status counts reports as consuming the allowance (FailedCredentials,
+// LetterSent). A full bucket still refuses every request, counted or not.
+//
+// The slot is taken before the handler runs and given back after it if the
+// outcome does not count: checking afterwards instead would let a burst of
+// concurrent requests all pass the check before any of them was recorded.
+func (rl *AuthRateLimiter) LimitOutcomesBy(endpoint string, key KeyFunc, counts func(status int) bool) gin.HandlerFunc {
+	return rl.limit(endpoint, key, counts)
+}
+
+func (rl *AuthRateLimiter) limit(endpoint string, key KeyFunc, counts func(status int) bool) gin.HandlerFunc {
 	cfg, ok := authLimitConfigs[endpoint]
 	if !ok {
 		panic("middleware: no rate limit configured for endpoint " + strconv.Quote(endpoint) +
@@ -282,5 +345,27 @@ func (rl *AuthRateLimiter) LimitBy(endpoint string, key KeyFunc) gin.HandlerFunc
 		bucket.Store(ip, valid)
 
 		c.Next()
+
+		if counts != nil && !counts(c.Writer.Status()) {
+			release(bucket, ip, now)
+		}
+	}
+}
+
+// release gives back the slot a request took at the given moment.
+func release(bucket *sync.Map, key string, at time.Time) {
+	raw, ok := bucket.Load(key)
+	if !ok {
+		return
+	}
+	timestamps, _ := raw.([]time.Time)
+	for i, t := range timestamps {
+		if t.Equal(at) {
+			kept := make([]time.Time, 0, len(timestamps)-1)
+			kept = append(kept, timestamps[:i]...)
+			kept = append(kept, timestamps[i+1:]...)
+			bucket.Store(key, kept)
+			return
+		}
 	}
 }

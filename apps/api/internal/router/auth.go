@@ -13,10 +13,12 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/auth")
 
 	g.POST("/register", d.AuthRateLimiter.Limit("register"), d.Auth.Register)
-	// Попытки в один аккаунт считаются по адресу с любого IP, общим счётчиком
-	// с native/login: иначе пароль одного человека перебирают с многих IP.
+	// Неудачные попытки в один аккаунт считаются по ящику с любого IP, общим
+	// счётчиком с native/login: иначе пароль одного человека перебирают с
+	// многих IP. Удачный вход счётчик не тратит — иначе любой, кто знает
+	// адрес, мог бы запереть владельца.
 	g.POST("/login", d.AuthRateLimiter.Limit("login"),
-		d.AuthRateLimiter.LimitBy("login-account", middleware.ByEmail), d.Auth.Login)
+		d.AuthRateLimiter.LimitOutcomesBy("login-account", middleware.ByEmail, middleware.FailedCredentials), d.Auth.Login)
 	g.POST("/refresh", d.Auth.Refresh)
 	g.POST("/logout", d.Auth.Logout)
 
@@ -55,9 +57,10 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 
 	// Вход по одноразовой ссылке. Оба эндпоинта ограничены по частоте: первый
 	// шлёт письма на чужой адрес, второй — угадываемая цель.
-	// Письма одному адресату — общим счётчиком с native/magic-link/request.
+	// Письма одному адресату — общим счётчиком с native/magic-link/request;
+	// считаются только отправленные, отклонённый запрос ящик не засоряет.
 	g.POST("/magic-link/request", d.AuthRateLimiter.Limit("magic-link-request"),
-		d.AuthRateLimiter.LimitBy("magic-link-recipient", middleware.ByEmail), d.Auth.RequestMagicLink)
+		d.AuthRateLimiter.LimitOutcomesBy("magic-link-recipient", middleware.ByEmail, middleware.LetterSent), d.Auth.RequestMagicLink)
 	g.POST("/magic-link/consume", d.AuthRateLimiter.Limit("magic-link-consume"), d.Auth.ConsumeMagicLink)
 
 	registerNativeAuthRoutes(g, d)
@@ -83,7 +86,7 @@ func registerNativeAuthRoutes(auth *gin.RouterGroup, d Deps) {
 
 	g.POST("/login", d.AuthRateLimiter.Limit("native-login-ip"),
 		d.AuthRateLimiter.LimitBy("native-login", middleware.ByEmailAndIP),
-		d.AuthRateLimiter.LimitBy("login-account", middleware.ByEmail), d.Auth.NativeLogin)
+		d.AuthRateLimiter.LimitOutcomesBy("login-account", middleware.ByEmail, middleware.FailedCredentials), d.Auth.NativeLogin)
 	g.POST("/register", d.AuthRateLimiter.Limit("register"), d.Auth.NativeRegister)
 	g.POST("/refresh", d.AuthRateLimiter.LimitBy("native-refresh", middleware.ByRefreshToken), d.Auth.NativeRefresh)
 	// Без access-токена: приложение выходит и тогда, когда тот давно истёк.
@@ -91,7 +94,7 @@ func registerNativeAuthRoutes(auth *gin.RouterGroup, d Deps) {
 	// Письмо то же, что у сайта: ссылка открывает приложение через universal
 	// link, и оно гасит токен на native/magic-link/consume.
 	g.POST("/magic-link/request", d.AuthRateLimiter.Limit("native-magic-link-ip"),
-		d.AuthRateLimiter.LimitBy("magic-link-recipient", middleware.ByEmail), d.Auth.RequestMagicLink)
+		d.AuthRateLimiter.LimitOutcomesBy("magic-link-recipient", middleware.ByEmail, middleware.LetterSent), d.Auth.RequestMagicLink)
 	g.POST("/magic-link/consume", d.AuthRateLimiter.Limit("magic-link-consume"), d.Auth.NativeConsumeMagicLink)
 	g.POST("/change-password", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.Auth.NativeChangePassword)
 }

@@ -13,7 +13,7 @@ import (
 // limitCallPattern matches every call site of the form
 // `<something>.Limit("name")` or `<something>.LimitBy("name", key)`, wherever
 // it appears in a call chain such as `d.AuthRateLimiter.Limit("unsubscribe")`.
-var limitCallPattern = regexp.MustCompile(`\.Limit(?:By)?\(\s*"([^"]+)"\s*[,)]`)
+var limitCallPattern = regexp.MustCompile(`\.Limit(?:By|OutcomesBy)?\(\s*"([^"]+)"\s*[,)]`)
 
 // TestEveryRouterLimitCallHasAConfig guards the defect that shipped: Limit
 // silently passes a request through when asked for a name absent from

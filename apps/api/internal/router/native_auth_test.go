@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
+	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/gin-gonic/gin"
@@ -101,14 +103,21 @@ func postFromIP(engine *gin.Engine, path, ip, body string) *httptest.ResponseRec
 	return w
 }
 
-// Ниже база не отвечает ни на что (у sqlmock нет ожиданий): вход отвечает
-// 401, запрос ссылки — 500. Проверяется только одно — дошёл ли запрос до
-// обработчика или остановлен лимитом (429).
+// unknownAccounts makes every sign-in below a failed one (401): the account
+// is not found. The per-account limit counts failures only, so a database
+// error (500) would not reach it.
+func unknownAccounts(mock sqlmock.Sqlmock, n int) {
+	mock.MatchExpectationsInOrder(false)
+	for range n {
+		mock.ExpectQuery("SELECT id, email").WillReturnError(sql.ErrNoRows)
+	}
+}
 
 // Пара «адрес + IP» не мешает перебирать пароль одного аккаунта с многих IP:
 // это делает лимит на аккаунт — 20 попыток за 15 минут с любых адресов.
 func TestLoginAccountCapStopsOneAddressFromManyIPs(t *testing.T) {
-	engine, _ := nativeAuthEngine(t)
+	engine, mock := nativeAuthEngine(t)
+	unknownAccounts(mock, 21)
 	body := `{"email":"victim@example.com","password":"guess"}`
 
 	for i := range 20 {
@@ -118,7 +127,7 @@ func TestLoginAccountCapStopsOneAddressFromManyIPs(t *testing.T) {
 	}
 
 	w := postFromIP(engine, "/api/v1/auth/native/login", "198.51.100.9",
-		`{"email":"Victim@Example.com ","password":"guess"}`)
+		`{"email":"Victim+1@Example.com","password":"guess"}`)
 	assert.Equal(t, http.StatusTooManyRequests, w.Code, "21-я попытка в аккаунт с нового IP")
 	assert.NotEmpty(t, w.Header().Get("Retry-After"))
 
@@ -130,15 +139,16 @@ func TestLoginAccountCapStopsOneAddressFromManyIPs(t *testing.T) {
 // Веб и приложение считают попытки в один аккаунт одним счётчиком: иначе
 // перебор просто делится на два пути.
 func TestLoginAccountCapIsSharedByWebAndNative(t *testing.T) {
-	engine, _ := nativeAuthEngine(t)
+	engine, mock := nativeAuthEngine(t)
+	unknownAccounts(mock, 20)
 	body := `{"email":"shared@example.com","password":"guess"}`
 
 	for i := range 10 {
-		require.NotEqual(t, http.StatusTooManyRequests,
+		require.Equal(t, http.StatusUnauthorized,
 			postFromIP(engine, "/api/v1/auth/login", "203.0.113.1", body).Code, "веб %d", i+1)
 	}
 	for i := range 10 {
-		require.NotEqual(t, http.StatusTooManyRequests,
+		require.Equal(t, http.StatusUnauthorized,
 			postFromIP(engine, "/api/v1/auth/native/login", "203.0.113.2", body).Code, "приложение %d", i+1)
 	}
 
@@ -150,29 +160,63 @@ func TestLoginAccountCapIsSharedByWebAndNative(t *testing.T) {
 	assert.NotEmpty(t, web.Header().Get("Retry-After"))
 }
 
+type sentLetters struct{ to []string }
+
+func (s *sentLetters) SendMagicLink(_ context.Context, data email.MagicLinkEmailData) error {
+	s.to = append(s.to, data.UserEmail)
+	return nil
+}
+
 // Письма одному адресату — 5 за 15 минут с любых IP, общим счётчиком веба и
-// приложения.
+// приложения. Считаются только отправленные: запросы без согласий (400) ящик
+// не засоряют и счётчик не тратят.
 func TestMagicLinkRecipientCapIsSharedByWebAndNative(t *testing.T) {
-	engine, _ := nativeAuthEngine(t)
-	body := `{"email":"inbox@example.com"}`
+	gin.SetMode(gin.TestMode)
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	cfg := &config.Config{Env: "test", JWTSecret: "test-secret"}
+	log := logger.New()
+	letters := &sentLetters{}
+	engine := New(Deps{
+		Cfg:             cfg,
+		Log:             log,
+		AuthRateLimiter: middleware.NewAuthRateLimiter(),
+		Auth:            auth.NewHandler(auth.NewService(db, cfg, log).WithEmailService(letters), cfg, log, nil),
+	})
+
+	const consents = `"consents":{"terms_of_service":true,"privacy_policy":true,"data_processing":true}`
+	for i := range 6 {
+		w := postFromIP(engine, "/api/v1/auth/magic-link/request", "192.0.2.10"+string(rune('0'+i)),
+			`{"email":"inbox@example.com"}`)
+		require.Equal(t, http.StatusBadRequest, w.Code, "без согласий %d", i+1)
+	}
 
 	for i, path := range []string{
 		"/api/v1/auth/magic-link/request", "/api/v1/auth/native/magic-link/request",
 		"/api/v1/auth/magic-link/request", "/api/v1/auth/native/magic-link/request",
 		"/api/v1/auth/native/magic-link/request",
 	} {
-		w := postFromIP(engine, path, "192.0.2."+string(rune('1'+i)), body)
-		require.NotEqual(t, http.StatusTooManyRequests, w.Code, "письмо %d", i+1)
+		mock.ExpectQuery("SELECT id FROM users").WillReturnRows(sqlmock.NewRows([]string{"id"}))
+		mock.ExpectExec("INSERT INTO magic_links").WillReturnResult(sqlmock.NewResult(1, 1))
+		w := postFromIP(engine, path, "192.0.2."+string(rune('1'+i)), `{"email":"inbox@example.com",`+consents+`}`)
+		require.Equal(t, http.StatusOK, w.Code, "письмо %d", i+1)
 	}
+	require.Len(t, letters.to, 5)
 
 	for _, path := range []string{"/api/v1/auth/native/magic-link/request", "/api/v1/auth/magic-link/request"} {
-		w := postFromIP(engine, path, "192.0.2.9", body)
+		w := postFromIP(engine, path, "192.0.2.9", `{"email":"Inbox+1@Example.com",`+consents+`}`)
 		assert.Equal(t, http.StatusTooManyRequests, w.Code, path)
 		assert.NotEmpty(t, w.Header().Get("Retry-After"))
 	}
+	assert.Len(t, letters.to, 5, "шестое письмо ушло")
 
-	other := postFromIP(engine, "/api/v1/auth/native/magic-link/request", "192.0.2.9", `{"email":"another@example.com"}`)
-	assert.NotEqual(t, http.StatusTooManyRequests, other.Code, "другой адресат не задет")
+	mock.ExpectQuery("SELECT id FROM users").WillReturnRows(sqlmock.NewRows([]string{"id"}))
+	mock.ExpectExec("INSERT INTO magic_links").WillReturnResult(sqlmock.NewResult(1, 1))
+	other := postFromIP(engine, "/api/v1/auth/native/magic-link/request", "192.0.2.9",
+		`{"email":"another@example.com",`+consents+`}`)
+	assert.Equal(t, http.StatusOK, other.Code, "другой адресат не задет")
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 // Потолок на IP у нативного запроса ссылки — рядом с веб-лимитом, без
