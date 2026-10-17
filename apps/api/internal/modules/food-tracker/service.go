@@ -1797,15 +1797,15 @@ func (s *Service) GetWaterIntake(ctx context.Context, userID int64, date time.Ti
 	return &waterLog, nil
 }
 
-// AddWater adds water intake for a user on a specific date
-// Creates a new record if none exists, otherwise increments the glasses count
+// AddWater changes water intake for a user on a specific date: a positive
+// count adds glasses, a negative one removes them, never below zero; 0 adds
+// one, as callers did before removal existed (water-decrement).
 func (s *Service) AddWater(ctx context.Context, userID int64, date time.Time, glasses int) (*WaterLog, error) {
 	startTime := time.Now()
 
 	dateStr := date.Format("2006-01-02")
 
-	// Validate glasses
-	if glasses <= 0 {
+	if glasses == 0 {
 		glasses = 1
 	}
 
@@ -1819,9 +1819,9 @@ func (s *Service) AddWater(ctx context.Context, userID int64, date time.Time, gl
 	// Use UPSERT to create or update water log
 	query := `
 		INSERT INTO water_logs (id, user_id, date, glasses, goal, glass_size, updated_at)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, 250, NOW())
+		VALUES (gen_random_uuid(), $1, $2, GREATEST($3::int, 0), $4, 250, NOW())
 		ON CONFLICT (user_id, date) DO UPDATE
-		SET glasses = water_logs.glasses + $3, goal = $4, updated_at = NOW()
+		SET glasses = GREATEST(water_logs.glasses + $3::int, 0), goal = $4, updated_at = NOW()
 		RETURNING id, user_id, date, glasses, goal, glass_size, updated_at
 	`
 
