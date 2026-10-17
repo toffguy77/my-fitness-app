@@ -4,6 +4,13 @@
 
 `POST /api/v1/health/import {items: [...]}` SHALL принимать от авторизованного клиента до 500 записей видов `steps {date, value}`, `weight {date, value_kg}` и `workout {external_id, date, started_at, type, duration_min}`, а также `workout_deleted {external_id}`. Ответ MUST иметь вид `{accepted, rejected: [{index, code}]}`; более 500 записей отклоняются целиком с `400` и кодом `validation`.
 
+Вид записи задаёт поле `kind`. `date` — `YYYY-MM-DD` в часовом поясе профиля, `started_at` — RFC 3339. `type` тренировки — имя случая `HKWorkoutActivityType` (`running`, `traditionalStrengthTraining`…); сервер SHALL переводить его в код вида тренировки по таблице из design.md, незнакомое — в `other`. `rejected` MUST быть массивом и тогда, когда он пуст.
+
+#### Scenario: Вид тренировки из Здоровья
+
+- **WHEN** приходят тренировки `traditionalStrengthTraining` на 40 минут, `functionalStrengthTraining` на 20, `elliptical` на 30 и `dance` на 15 за одну дату
+- **THEN** тренировка дня — `strength:60`, `cardio:30`, `other:15` и 105 минут
+
 #### Scenario: Смешанная пачка
 
 - **WHEN** приходит пачка из записи шагов, записи веса и тренировки
@@ -34,7 +41,7 @@
 
 ### Requirement: Повторная пачка ничего не меняет
 
-Импорт SHALL быть идемпотентным: шаги и вес — по ключу (пользователь, вид, дата), тренировка — по (пользователь, `external_id`). Повторная отправка той же пачки MUST оставлять данные без изменений.
+Импорт SHALL быть идемпотентным: шаги и вес — по ключу (пользователь, вид, дата), тренировка — по (пользователь, `external_id`), `workout_deleted` для незнакомого `external_id` — принятая запись без изменений. Повторная отправка той же пачки MUST оставлять данные без изменений. Пачка пишется одной транзакцией: при отказе `5xx` не сохраняется ничего, и её можно отправить снова целиком.
 
 #### Scenario: Двойная отправка после обрыва сети
 
