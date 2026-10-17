@@ -192,6 +192,10 @@ function frontendCalls(files) {
                 .replace(/\$\{[^}]*\}/g, '')
                 .replace(/\/$/, '')
             if (!normalized.startsWith('/api/')) continue
+            // A glob is a path pattern, not a request: apple-app-site-association
+            // lists `/api/*` to say the iOS app does not open API addresses.
+            // No call site writes `*` into a path.
+            if (normalized.includes('*')) continue
             if (!found.has(normalized)) found.set(normalized, file)
         }
     }

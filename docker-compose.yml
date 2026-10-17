@@ -28,6 +28,12 @@ services:
       # контейнера. Без неё оба стенда получили бы burcev-dev-api, и путаница
       # вернулась бы в обратную сторону.
       - INTERNAL_API_URL=http://burcev-${APP_ENV:-dev}-api:4000
+      # apple-app-site-association (/.well-known/…): идентификатор
+      # iOS-приложения собирается на запрос из тех же переменных, что у API.
+      # Не NEXT_PUBLIC — в сборку не попадают; без любой из двух файл
+      # отвечает 404, и сайт приложению ничего не обещает.
+      - APPLE_TEAM_ID=${APPLE_TEAM_ID:-}
+      - APPLE_BUNDLE_ID=${APPLE_BUNDLE_ID:-}
     depends_on:
       - api
     networks:

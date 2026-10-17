@@ -183,6 +183,9 @@ export default defineConfig<SessionOptions>({
         // Регистрация через Яндекс (заглушка scripts/oauth-stub.mjs): каждый
         // раз свежий адрес, вход начинается без сессии.
         'tests/oauth-registration.spec.ts',
+        // Возврат входа в iOS-приложение: страница /auth/native-complete и
+        // вход через ту же заглушку Яндекса с client=ios — без сессии.
+        'tests/native-complete.spec.ts',
       ],
     },
   ],
