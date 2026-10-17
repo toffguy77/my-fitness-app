@@ -42,6 +42,8 @@ public struct DiaryEntryForHealth: Equatable, Sendable {
 public actor HealthSync {
     /// Досылка очереди аккаунта, чьё это подключение.
     public typealias Drain = @Sendable (Int64) async -> Void
+    /// Кто сейчас вошёл (сессия), `nil` — никто.
+    public typealias CurrentUser = @Sendable () async -> Int64?
 
     /// Виды изменений в очереди.
     public static let importKind = "health.import"
@@ -53,17 +55,30 @@ public actor HealthSync {
     private let stateStore: HealthStateStore
     private let now: @Sendable () -> Date
     private let drain: Drain
+    private let currentUser: CurrentUser
     private var state: HealthState
     private var chain: Task<Void, Never>?
+    /// Поколение аккаунта: `erase()` его увеличивает. Actor допускает
+    /// повторный вход на каждом `await`, поэтому подключение, проход чтения
+    /// и запись, начатые до выхода, после каждого `await` сверяют поколение и
+    /// ничего не ставят в очередь и не сохраняют для прежнего аккаунта.
+    private var generation = 0
 
     public init(store: HealthStore, outbox: Outbox, stateStore: HealthStateStore,
-                now: @escaping @Sendable () -> Date = { Date() }, drain: @escaping Drain) {
+                now: @escaping @Sendable () -> Date = { Date() },
+                currentUser: @escaping CurrentUser, drain: @escaping Drain) {
         self.store = store
         self.outbox = outbox
         self.stateStore = stateStore
         self.now = now
+        self.currentUser = currentUser
         self.drain = drain
         state = stateStore.load()
+    }
+
+    /// Поколение не сменилось, и подключение всё ещё этого аккаунта.
+    private func stillCurrent(_ started: Int, userID: Int64) -> Bool {
+        started == generation && state.connected && state.userID == userID
     }
 
     public var isAvailable: Bool { store.isAvailable }
@@ -91,8 +106,12 @@ public actor HealthSync {
     @discardableResult
     public func connect(userID: Int64) async throws -> Bool {
         guard store.isAvailable else { return false }
+        let started = generation
         try await store.requestAuthorization()
+        // Пока было открыто системное окно, человек мог выйти из аккаунта.
+        guard started == generation else { return false }
         try await enqueueSettings(enabled: true, userID: userID)
+        guard started == generation else { return false }
 
         var fresh = HealthState()
         fresh.timeZoneID = state.timeZoneID
@@ -104,22 +123,27 @@ public actor HealthSync {
         persist()
 
         try? await store.startObserving(observerHandler())
+        guard stillCurrent(started, userID: userID) else {
+            // Выход случился, пока регистрировались наблюдатели.
+            await store.stopObserving()
+            return false
+        }
         await sync(HealthReadKind.allCases)
         await drainQueue()
-        return true
+        return stillCurrent(started, userID: userID)
     }
 
     /// Выключение в профиле: наблюдатели и фоновая доставка остановлены,
     /// признак снят, запись прекращена. Записанное в Здоровье остаётся там.
     public func disconnect() async {
         guard state.connected else { return }
-        await store.stopObserving()
         let userID = state.userID
         state.connected = false
         state.anchors = [:]
         state.connectedAt = nil
         state.lastDataAt = nil
         persist()
+        await store.stopObserving()
         if let userID {
             try? await enqueueSettings(enabled: false, userID: userID)
         }
@@ -135,7 +159,12 @@ public actor HealthSync {
             await erase()
             return
         }
+        let started = generation
         try? await store.startObserving(observerHandler())
+        guard stillCurrent(started, userID: userID) else {
+            await store.stopObserving()
+            return
+        }
         await sync(HealthReadKind.allCases)
         await drainQueue()
     }
@@ -147,11 +176,20 @@ public actor HealthSync {
         await drainQueue()
     }
 
-    /// Выход из аккаунта.
+    /// Выход из аккаунта. Возвращается, когда начатый проход чтения
+    /// завершён и ничего больше не поставит в очередь: `AccountEraser`
+    /// стирает очередь уже после этого.
     public func erase() async {
-        await store.stopObserving()
-        stateStore.erase()
+        // До первого `await`: всё начатое раньше увидит новое поколение.
+        generation += 1
         state = HealthState()
+        stateStore.erase()
+        let inFlight = chain
+        await inFlight?.value
+        await store.stopObserving()
+        // Состояние — ещё раз: запись, прерванная на `await`, не вернёт его.
+        state = HealthState()
+        stateStore.erase()
     }
 
     private func observerHandler() -> @Sendable (HealthReadKind) async -> Void {
@@ -162,8 +200,10 @@ public actor HealthSync {
         }
     }
 
+    /// Досылает очередь, только если вошёл тот же человек, чьё подключение:
+    /// чужой сессией изменения прежнего аккаунта не отправляются.
     private func drainQueue() async {
-        guard let userID = state.userID else { return }
+        guard let userID = state.userID, await currentUser() == userID, state.userID == userID else { return }
         await drain(userID)
     }
 
@@ -186,6 +226,7 @@ public actor HealthSync {
 
     private func performSync(_ kinds: [HealthReadKind]) async {
         guard state.connected, let userID = state.userID else { return }
+        let started = generation
         let builder = HealthRecordBuilder(timeZone: state.timeZone)
         let moment = now()
         let window = SyncWindow(builder: builder, cutoff: builder.profile.backfillStart(now: moment), now: moment)
@@ -201,12 +242,13 @@ public actor HealthSync {
             }
             items += built
             if let next = changes.anchor { anchors[kind] = next }
+            // Пока шёл запрос к Здоровью, человек мог отключить его или выйти.
+            guard stillCurrent(started, userID: userID) else { return }
         }
 
-        // Пока шёл запрос к Здоровью, человек мог отключить его или выйти.
-        guard state.connected, state.userID == userID else { return }
         do {
             for chunk in HealthImportLimits.chunk(items) {
+                guard stillCurrent(started, userID: userID) else { return }
                 let endpoint = try Endpoint.post(HealthImportLimits.path, body: HealthImportBatch(items: chunk))
                 try await outbox.enqueue(kind: Self.importKind, endpoint: endpoint, userID: userID)
             }
@@ -214,6 +256,7 @@ public actor HealthSync {
             // Якоря не сдвигаются: следующий проход прочитает то же заново.
             return
         }
+        guard stillCurrent(started, userID: userID) else { return }
         state.anchors.merge(anchors) { $1 }
         if items.contains(where: \.carriesStepsOrWeight) {
             state.lastDataAt = moment
@@ -271,6 +314,7 @@ public actor HealthSync {
         let fingerprint = entry.fingerprint
         let previous = state.written[id]
         guard previous?.fingerprint != fingerprint else { return }
+        let started = generation
         let version = (previous?.version ?? 0) + 1
         let sample = FoodSample(syncIdentifier: id, version: version, date: entry.date, name: entry.name,
                                 kilocalories: entry.kilocalories, protein: entry.protein, fat: entry.fat,
@@ -280,6 +324,7 @@ public actor HealthSync {
         } catch {
             return
         }
+        guard started == generation, state.connected else { return }
         state.written[id] = WrittenSample(version: version, fingerprint: fingerprint,
                                           day: ProfileCalendar(timeZone: state.timeZone).dateString(entry.date))
         persist()
@@ -311,6 +356,7 @@ public actor HealthSync {
         guard state.connected, glasses >= 0, glassMilliliters > 0 else { return }
         let prefix = "water:\(day):"
         let fingerprint = String(glassMilliliters)
+        let started = generation
         if glasses > 0 {
             for index in 1...glasses {
                 let id = prefix + String(index)
@@ -323,6 +369,7 @@ public actor HealthSync {
                 } catch {
                     continue
                 }
+                guard started == generation, state.connected else { return }
                 state.written[id] = WrittenSample(version: version, fingerprint: fingerprint, day: day)
             }
             persist()
@@ -336,11 +383,13 @@ public actor HealthSync {
     }
 
     private func remove(_ syncIdentifier: String) async {
+        let started = generation
         do {
             try await store.deleteSamples(syncIdentifier: syncIdentifier)
         } catch {
             return
         }
+        guard started == generation else { return }
         state.written[syncIdentifier] = nil
         persist()
     }

@@ -31,6 +31,17 @@ struct AccountEraser: AccountDataEraser {
     }
 }
 
+/// Ссылка на сессию для Здоровья: кто вошёл сейчас.
+final class SessionRef: @unchecked Sendable {
+    private let lock = NSLock()
+    private weak var _store: SessionStore?
+
+    var store: SessionStore? {
+        get { lock.withLock { _store } }
+        set { lock.withLock { _store = newValue } }
+    }
+}
+
 /// Состояние приложения: сессия, выбор оболочки, навигация и вход.
 @MainActor
 @Observable
@@ -96,11 +107,15 @@ final class AppModel {
         let outboxStore: OutboxStore = (try? SQLiteOutboxStore(url: directory.appendingPathComponent("outbox.sqlite")))
             ?? InMemoryOutboxStore()
         let outbox = Outbox(store: outboxStore, api: api)
+        // Сессия создаётся после Здоровья (её стиратели включают Здоровье),
+        // а Здоровью нужен вошедший пользователь — ссылка заполняется ниже.
+        let sessionRef = SessionRef()
         // Состояние Здоровья — в каталоге аккаунта: фоновая доставка читает
         // якоря и часовой пояс профиля на заблокированном телефоне.
         let health = HealthSync(
             store: healthStore, outbox: outbox,
             stateStore: FileHealthStateStore(url: directory.appendingPathComponent("health-state.json")),
+            currentUser: { [sessionRef] in await sessionRef.store?.user?.id },
             drain: { [outbox] userID in await outbox.drain(userID: userID) }
         )
         self.cache = cache
@@ -110,6 +125,7 @@ final class AppModel {
         self.healthStore = healthStore
         session = SessionStore(api: api, secure: secure, installMarker: installMarker,
                                erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health)])
+        sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
         let configCache = FileConfigCache(url: directory.appendingPathComponent("config.json"))
         self.configCache = configCache

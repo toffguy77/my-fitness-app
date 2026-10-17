@@ -21,6 +21,21 @@ final class TestClock: @unchecked Sendable {
     }
 }
 
+/// Кто вошёл: тест меняет его посреди сценария.
+final class SignedInUser: @unchecked Sendable {
+    private let lock = NSLock()
+    private var current: Int64?
+
+    init(_ id: Int64?) {
+        current = id
+    }
+
+    var id: Int64? {
+        get { lock.withLock { current } }
+        set { lock.withLock { current = newValue } }
+    }
+}
+
 /// 4.2–4.5 на подделке Здоровья и настоящей очереди с заглушкой сервера.
 final class HealthSyncTests: XCTestCase {
     private let moscow = TimeZone(identifier: "Europe/Moscow")!
@@ -32,11 +47,12 @@ final class HealthSyncTests: XCTestCase {
         let transport: StubTransport
         let state: InMemoryHealthStateStore
         let clock: TestClock
+        let signedIn: SignedInUser
         let sync: HealthSync
     }
 
     private func make(now: Date = ISO8601DateFormatter().date(from: "2026-10-17T09:00:00Z")!,
-                      health: InMemoryHealthStore = InMemoryHealthStore(),
+                      health: HealthStore = InMemoryHealthStore(),
                       state: InMemoryHealthStateStore = InMemoryHealthStateStore(),
                       drains: Bool = false,
                       respond: @escaping StubTransport.Handler = { _ in .success("{}") }) -> Harness {
@@ -44,10 +60,14 @@ final class HealthSyncTests: XCTestCase {
         let api = APIClient(baseURL: URL(string: "https://burcev.team")!, clientHeader: "ios/1.0.0/1", transport: transport)
         let outbox = Outbox(store: InMemoryOutboxStore(), api: api)
         let clock = TestClock(now)
-        let sync = HealthSync(store: health, outbox: outbox, stateStore: state, now: { clock.now }, drain: { id in
-            if drains { await outbox.drain(userID: id) }
-        })
-        return Harness(health: health, outbox: outbox, transport: transport, state: state, clock: clock, sync: sync)
+        let signedIn = SignedInUser(userID)
+        let sync = HealthSync(store: health, outbox: outbox, stateStore: state, now: { clock.now },
+                              currentUser: { signedIn.id }, drain: { id in
+                                  if drains { await outbox.drain(userID: id) }
+                              })
+        let fake = (health as? InMemoryHealthStore) ?? (health as? GatedHealthStore)?.inner ?? InMemoryHealthStore()
+        return Harness(health: fake, outbox: outbox, transport: transport, state: state, clock: clock,
+                       signedIn: signedIn, sync: sync)
     }
 
     private var profile: ProfileCalendar { ProfileCalendar(timeZone: moscow) }
