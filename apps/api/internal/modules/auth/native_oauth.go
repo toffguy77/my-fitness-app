@@ -291,7 +291,7 @@ func (h *OAuthHandler) NativeOAuthExchange(c *gin.Context) {
 		response.Fail(c, http.StatusInternalServerError, err, "Не удалось завершить вход")
 		return
 	}
-	h.recordOutcome(ctx, &OAuthOutcome{Result: OAuthSignedIn, User: session}, result.Provider)
+	h.recordOutcomeFor(ctx, &OAuthOutcome{Result: OAuthSignedIn, User: session}, result.Provider, ClientIOS)
 	body := nativeSessionBody(session)
 	body.Status = string(HandoffSignedIn)
 	response.Success(c, http.StatusOK, body)
@@ -385,7 +385,6 @@ func (h *OAuthHandler) NativeOAuthLink(c *gin.Context) {
 		return
 	}
 
-	h.recordOutcome(c.Request.Context(), &OAuthOutcome{Result: OAuthSignedIn, User: result}, "link")
 	body := nativeSessionBody(result)
 	body.Status = string(HandoffSignedIn)
 	response.Success(c, http.StatusOK, body)
@@ -462,7 +461,7 @@ func (h *OAuthHandler) NativeConsents(c *gin.Context) {
 	if created {
 		carryArrival(c, h.leads, h.log, outcome.User.User.ID, req.LeadToken)
 	}
-	h.recordOutcome(c.Request.Context(), outcome, outcome.Provider)
+	h.recordOutcomeFor(c.Request.Context(), outcome, outcome.Provider, ClientIOS)
 
 	body := nativeSessionBody(outcome.User)
 	body.Status = string(outcome.Result)

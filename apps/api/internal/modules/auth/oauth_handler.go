@@ -79,6 +79,12 @@ func (h *OAuthHandler) WithLeads(claimer LeadClaimer) *OAuthHandler {
 // and carries no request body. What happened before the sign-up therefore
 // stays anonymous on this path.
 func (h *OAuthHandler) recordOutcome(ctx context.Context, outcome *OAuthOutcome, provider string) {
+	h.recordOutcomeFor(ctx, outcome, provider, ClientWeb)
+}
+
+// recordOutcomeFor is recordOutcome naming the client: the app's sign-ins
+// carry client=ios, so the funnel can tell them from the site's.
+func (h *OAuthHandler) recordOutcomeFor(ctx context.Context, outcome *OAuthOutcome, provider string, client ClientKind) {
 	if h.analytics == nil || outcome == nil {
 		return
 	}
@@ -93,8 +99,11 @@ func (h *OAuthHandler) recordOutcome(ctx context.Context, outcome *OAuthOutcome,
 		return
 	}
 
-	h.analytics.RecordServerEvent(ctx, name, outcome.User.User.ID,
-		map[string]any{"method": provider})
+	properties := map[string]any{"method": provider}
+	if client == ClientIOS {
+		properties["client"] = string(ClientIOS)
+	}
+	h.analytics.RecordServerEvent(ctx, name, outcome.User.User.ID, properties)
 }
 
 func NewOAuthHandler(cfg *config.Config, log *logger.Logger, service *Service, registry *oauth.Registry) *OAuthHandler {

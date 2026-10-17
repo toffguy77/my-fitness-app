@@ -99,7 +99,7 @@ func (h *OAuthHandler) NativeApple(c *gin.Context) {
 			response.Fail(c, http.StatusInternalServerError, err, "Не удалось войти через Apple")
 			return
 		}
-		h.recordOutcome(ctx, signedIn, provider)
+		h.recordOutcomeFor(ctx, signedIn, provider, ClientIOS)
 		body := nativeSessionBody(signedIn.User)
 		body.Status = string(HandoffSignedIn)
 		response.Success(c, http.StatusOK, body)
