@@ -233,6 +233,23 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 		}
 		h.redirectToApp(c, "/auth/email?"+url.Values{"provider": {name}}.Encode())
 	case OAuthNeedsConsents:
+		// Мост до POST /auth/native/consents (изменение ios-native-session):
+		// приложение 0.3.x экрана согласий не знает, и аккаунт, заведённый
+		// через провайдера до того, как согласия стали спрашивать, иначе не
+		// вошёл бы в него вовсе. Такой аккаунт уже существует — пускаем, как
+		// пускали; согласия он даст на сайте или в версии с нативным экраном.
+		// Новый аккаунт из приложения по-прежнему не создаётся без согласий.
+		if outcome.LinkedUserID != 0 && appChallenge(c) != "" {
+			signedIn, err := h.service.SignInLinked(c.Request.Context(), name,
+				outcome.ProviderUserID, outcome.LinkedUserID, c.ClientIP(), c.Request.UserAgent())
+			if err != nil {
+				h.log.Error("External sign-in failed", "error", err, "provider", name)
+				h.redirectToApp(c, "/auth?oauth=failed")
+				return
+			}
+			h.redirectWithSession(c, signedIn)
+			return
+		}
 		// No account yet — or one without the mandatory consents. The screen
 		// asks for them and POST /auth/oauth/consents finishes the attempt.
 		if !h.parkPending(c, name, profile) {
@@ -329,6 +346,11 @@ func (h *OAuthHandler) redirectURI(provider string) string {
 }
 
 func (h *OAuthHandler) appOrigin() string {
+	// Local runs and the end-to-end suite: back through the routing proxy,
+	// not Next, which drops the flow's Set-Cookie. Refused in production.
+	if h.cfg.OAuthAppOrigin != "" {
+		return h.cfg.OAuthAppOrigin
+	}
 	if h.cfg.AppDomain == "" {
 		return "http://localhost:3069"
 	}

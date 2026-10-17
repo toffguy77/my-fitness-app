@@ -25,6 +25,10 @@ type OAuthOutcome struct {
 	// link, so the confirmation step knows what to attach.
 	Provider       string
 	ProviderUserID string
+	// LinkedUserID is set with OAuthNeedsConsents when the external account is
+	// already linked to an account here — one created before consents were
+	// asked for — as opposed to an account that does not exist yet.
+	LinkedUserID int64
 }
 
 // OAuthResult enumerates the outcomes of an external sign-in.
@@ -53,6 +57,23 @@ const (
 	OAuthNeedsConsents OAuthResult = "needs_consents"
 )
 
+// SignInLinked issues a session to the account an external identity is
+// already linked to.
+func (s *Service) SignInLinked(ctx context.Context, provider, providerUserID string, userID int64, ip, ua string) (*OAuthOutcome, error) {
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE external_identities SET last_login_at = NOW()
+		 WHERE provider = $1 AND provider_user_id = $2`,
+		provider, providerUserID); err != nil {
+		s.log.Errorw("Failed to record external login", "error", err, "user_id", userID)
+	}
+
+	result, err := s.issueTokensForUser(ctx, userID, ip, ua)
+	if err != nil {
+		return nil, err
+	}
+	return &OAuthOutcome{Result: OAuthSignedIn, User: result}, nil
+}
+
 // SignInWithProvider completes an external sign-in.
 func (s *Service) SignInWithProvider(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string) (*OAuthOutcome, error) {
 	// Identity is the (provider, provider_user_id) pair, so a person who
@@ -73,21 +94,10 @@ func (s *Service) SignInWithProvider(ctx context.Context, provider string, profi
 				Result:         OAuthNeedsConsents,
 				Provider:       provider,
 				ProviderUserID: profile.ProviderUserID,
+				LinkedUserID:   userID,
 			}, nil
 		}
-
-		if _, err := s.db.ExecContext(ctx,
-			`UPDATE external_identities SET last_login_at = NOW()
-			 WHERE provider = $1 AND provider_user_id = $2`,
-			provider, profile.ProviderUserID); err != nil {
-			s.log.Errorw("Failed to record external login", "error", err, "user_id", userID)
-		}
-
-		result, err := s.issueTokensForUser(ctx, userID, ip, ua)
-		if err != nil {
-			return nil, err
-		}
-		return &OAuthOutcome{Result: OAuthSignedIn, User: result}, nil
+		return s.SignInLinked(ctx, provider, profile.ProviderUserID, userID, ip, ua)
 	}
 
 	if profile.Email == "" {

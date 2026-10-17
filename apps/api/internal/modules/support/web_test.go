@@ -146,17 +146,16 @@ func TestAnswerAsOperatorInTelegramConversationStillSends(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// MessagesFor отдаёт переписку в порядке появления и не путает входящие
-// (доставлять некуда, Delivered == nil) с исходящими, для которых доставка —
-// осмысленный факт.
-func TestMessagesForOrdersByCreationAndMarksDelivery(t *testing.T) {
+// MessagesFor отдаёт посетителю сайта переписку в порядке появления и без
+// признака доставки: у веб-разговора транспорта, который мог бы отказать, нет.
+func TestMessagesForOrdersByCreationWithoutDeliveryMark(t *testing.T) {
 	svc, _, mock := setupSupport(t, &fakeAnswerer{})
 
 	now := time.Now()
 	mock.ExpectQuery(`FROM support_messages`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "author", "text", "created_at", "delivered_at"}).
-			AddRow("m1", "user", "Привет", now, nil).
-			AddRow("m2", "bot", "Здравствуйте", now.Add(time.Second), now.Add(time.Second)))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "author", "text", "created_at", "delivered_at", "delivery_unknown"}).
+			AddRow("m1", "user", "Привет", now, nil, false).
+			AddRow("m2", "bot", "Здравствуйте", now.Add(time.Second), now.Add(time.Second), false))
 
 	messages, err := svc.MessagesFor(context.Background(), "conv-1")
 
@@ -164,8 +163,9 @@ func TestMessagesForOrdersByCreationAndMarksDelivery(t *testing.T) {
 	require.Len(t, messages, 2)
 	assert.Equal(t, "Привет", messages[0].Text)
 	assert.Nil(t, messages[0].Delivered, "у входящего доставлять некуда")
-	require.NotNil(t, messages[1].Delivered)
-	assert.True(t, *messages[1].Delivered)
+	// Посетителю сайта о доставке в Telegram сказать нечего — и у ответа бота
+	// поля нет (спека support-delivery-indicator, «Обращение с сайта»).
+	assert.Nil(t, messages[1].Delivered, "веб-посетителю признак доставки не отдаётся")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -202,13 +202,13 @@ func TestThreadHandlesWebConversationWithNullChatID(t *testing.T) {
 
 	mock.ExpectQuery(`FROM support_conversations WHERE id`).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "chat_id", "lead_id", "user_id", "status",
+			"id", "chat_id", "lead_id", "user_id", "status", "channel",
 			"telegram_username", "telegram_name", "escalation_reason",
 			"escalated_at", "last_message_at", "created_at",
-		}).AddRow("conv-web-1", nil, nil, nil, "open", "", "", "", nil, time.Now(), time.Now()))
+		}).AddRow("conv-web-1", nil, nil, nil, "open", ChannelWeb, "", "", "", nil, time.Now(), time.Now()))
 	mock.ExpectQuery(`FROM support_messages`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "author", "text", "created_at", "delivered_at"}).
-			AddRow("m1", "user", "Привет", time.Now(), nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "author", "text", "created_at", "delivered_at", "delivery_unknown"}).
+			AddRow("m1", "user", "Привет", time.Now(), nil, false))
 
 	conversation, messages, lead, err := svc.Thread(context.Background(), "conv-web-1")
 
@@ -393,8 +393,8 @@ func TestWebMessages_ReturnsTranscriptAndStatus(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "chat_id", "lead_id", "user_id", "status", "channel"}).
 			AddRow("conv-1", nil, nil, nil, "escalated", ChannelWeb))
 	mock.ExpectQuery(`FROM support_messages`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "author", "text", "created_at", "delivered_at"}).
-			AddRow("m1", "user", "Привет", time.Now(), nil))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "author", "text", "created_at", "delivered_at", "delivery_unknown"}).
+			AddRow("m1", "user", "Привет", time.Now(), nil, false))
 
 	w := get(r, "/public/support/web/messages?token=good")
 
