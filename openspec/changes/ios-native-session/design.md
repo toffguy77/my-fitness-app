@@ -102,7 +102,10 @@ App Store требует Sign in with Apple, если приложение пр�
 создаёт его сразу. Он отвечает `{status: "needs_consents", pending_token}`.
 Приложение показывает экран согласий и вызывает
 `POST /auth/native/consents {pending_token, consents}`, после чего аккаунт
-создаётся с сохранёнными согласиями и назначенным куратором.
+создаётся с сохранёнными согласиями и назначенным куратором. Это тот же
+сервис, что веб-шаг `/auth/consents` из `web-fixes-before-ios`; нативный
+вариант отличается только тем, что ожидающий вход передаётся `pending_token` в
+теле, а не cookie.
 
 Отвергнуто:
 - **Согласия в первом же запросе Apple.** Приложение ещё не знает, новый ли
@@ -161,7 +164,7 @@ pending-токеном в теле (`POST /auth/native/oauth/email`, `/oauth/lin
 Отвергнуто:
 - **Статический файл в `public/`.** Team ID пришлось бы зашивать в
   репозиторий, а у dev и прода разные bundle id
-  (`team.burcev.vzvesheno.dev`).
+  (`team.burcev.app.dev`).
 - **Отдельный location в nginx на Go.** Лишний маршрут ради одного JSON.
 
 Пути `applinks`:
@@ -231,6 +234,6 @@ verifier. Аттестация добавляет защиту от автома
 
 ## Open Questions
 
-- Bundle id прода и dev: предлагается `team.burcev.vzvesheno` и
-  `team.burcev.vzvesheno.dev`. Нужен Team ID аккаунта разработчика.
+- Bundle id прода — `team.burcev.app` (заведён). Для dev-сборки предлагается `team.burcev.app.dev`. Team ID аккаунта нужен для AASA и `APPLE_TEAM_ID`.
+- Ключ Sign in with Apple: можно включить эту возможность у существующего ключа «Weighted» (Key ID `743P3Y36VM`) или завести отдельный. Отдельный ключ проще отозвать, не задев пуши.
 - Показывать ли в профиле список устройств с выходом — следующим изменением.

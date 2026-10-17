@@ -44,3 +44,12 @@
 
 - **WHEN** VoiceOver фокусируется на дуге карточки «Питание»
 - **THEN** озвучивается «Съедено 549 из 2 472 килокалорий»
+
+### Requirement: Аналитика без сторонних SDK
+
+Приложение SHALL отправлять события только в `POST /api/v1/public/analytics/events` и MUST NOT включать сторонние SDK аналитики, рекламы или атрибуции; `NSUserTrackingUsageDescription` MUST отсутствовать.
+
+#### Scenario: Проверка зависимостей
+
+- **WHEN** тест CI перечисляет пакеты SPM приложения
+- **THEN** среди них нет пакетов из списка запрещённых (AppMetrica, Firebase Analytics, Adjust, AppsFlyer), а в `Info.plist` нет `NSUserTrackingUsageDescription`

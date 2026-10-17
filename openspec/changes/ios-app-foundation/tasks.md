@@ -44,7 +44,8 @@
 
 ## 8. Требования платформы
 
-- [ ] 8.0 `PrivacyInfo.xcprivacy` в приложении и расширении, `ITSAppUsesNonExemptEncryption`, фоновые режимы и `BGTaskSchedulerPermittedIdentifiers`, класс защиты и исключение из резервной копии для кэша, очереди и снимка, String Catalog с формами множественного числа. Проверка: скрипт CI проверяет манифест и `Info.plist` в собранных `.app` и `.appex`; юнит-тесты атрибутов файла и склонений; `performAccessibilityAudit()` на перечисленных экранах.
+- [ ] 8.1 `PrivacyInfo.xcprivacy` в приложении и расширении, `ITSAppUsesNonExemptEncryption`, фоновые режимы и `BGTaskSchedulerPermittedIdentifiers`, класс защиты и исключение из резервной копии для кэша, очереди и снимка, String Catalog с формами множественного числа. Проверка: скрипт CI проверяет манифест и `Info.plist` в собранных `.app` и `.appex`; юнит-тесты атрибутов файла и склонений; `performAccessibilityAudit()` на перечисленных экранах.
+- [ ] 8.2 События только в `/public/analytics/events`, без сторонних SDK; ярлыки приватности App Store. Проверка: тест списка пакетов и `Info.plist`.
 
 ## 9. CI и документация
 

@@ -19,8 +19,8 @@
   - SwiftUI, минимальная iOS 18, проект собирается XcodeGen из `project.yml`.
   - Цели: приложение, расширение виджетов, локальный Swift-пакет `VzveshenoKit`
     (модули `DesignSystem`, `API`, `Session`, `Outbox`, `Navigation`), тесты.
-  - Конфигурации dev (`new.burcev.team`) и prod (`burcev.team`) с разными
-    bundle id.
+  - Конфигурации dev (`new.burcev.team`, `team.burcev.app.dev`) и prod
+    (`burcev.team`, `team.burcev.app`).
 - **Токены дизайн-системы для Swift.**
   - Сборка токенов дополнительно выпускает `dist/ios/Tokens.swift` и каталог
     цветов `dist/ios/Colors.xcassets` (светлый и тёмный вариант каждой роли).

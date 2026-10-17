@@ -33,7 +33,7 @@
   контентом и админка, куда его тоже пускает бэкенд, остаются в вебе.
 - **Контент куратора остаётся в вебе.** В профиле куратора есть ссылка
   «Статьи — в веб-версии».
-- **Бэкенд:**
+- **Бэкенд — в `web-fixes-before-ios`, которое выполняется раньше:**
   - `GET /api/v1/conversations/by-participant/:userId` — переписка с
     конкретным клиентом без загрузки всего списка (сейчас страница ищет её в
     `GET /conversations`, и если не находит, «Загрузка…» висит вечно);
@@ -47,10 +47,8 @@
 - `ios-curator-hub`: экран «Клиенты».
 - `ios-curator-client-card`: карточка клиента и её вкладки.
 - `ios-curator-chat`: список переписок, переписка, КБЖУ по фото.
-- `curator-conversation-lookup`: бэкенд — переписка по id участника.
 - `ios-curator-leads`: очередь заявок.
 - `ios-curator-support`: очередь обращений и тред.
-- `support-reply-retry`: бэкенд — повтор недоставленного ответа.
 
 ### Modified Capabilities
 <!-- нет -->
@@ -58,14 +56,5 @@
 ## Impact
 
 - **iOS** — `apps/ios/Vzvesheno/Curator/*`: модули `Hub`, `ClientCard`, `CuratorChat`, `Leads`, `Support`.
-- **Бэкенд, маршруты:**
-  - `apps/api/internal/router/chat.go:20-27` — маршрут `by-participant`;
-  - `authorization_matrix_test.go` — защита `participant`;
-  - `routes.golden`.
-- **Бэкенд, чат** — `apps/api/internal/modules/chat/`: поиск переписки, где оба участника — вызывающий и `:userId`.
-- **Бэкенд, поддержка:**
-  - `apps/api/internal/router/support.go` — маршрут `retry` под `RequireRole("coordinator","super_admin")`;
-  - `apps/api/internal/modules/support/service.go:395-430` — `reply` и `markDelivered`, повтор переиспользует отправку;
-  - `support/types.go:44-54` — `Message.Delivered` уже отдаётся, веб его не показывает.
-- **Веб** (вне этого изменения): `apps/web/src/app/curator/chat/[clientId]/page.tsx` может перейти на `by-participant` и показать «Переписка не найдена».
+- **Бэкенд** — ничего сверх `web-fixes-before-ios` (переписка по клиенту, повтор ответа) и `ios-push-notifications`.
 - **Документация** — `docs/curator-guide/` — раздел «Приложение для iPhone».

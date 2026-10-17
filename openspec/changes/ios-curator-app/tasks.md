@@ -1,7 +1,6 @@
-## 1. Бэкенд
+## 1. Зависимость
 
-- [ ] 1.1 `GET /conversations/by-participant/:userId` (`router/chat.go`, `modules/chat`), запись в `protectedRoutes` с `participant`, `routes.golden`. Проверка: тесты сценариев `curator-conversation-lookup`; `go test ./internal/router/`; `node scripts/check-api-contract.mjs`.
-- [ ] 1.2 `POST …/support/conversations/:id/messages/:messageId/retry` (`router/support.go`, `support/service.go:395-430`). Проверка: тесты сценариев `support-reply-retry` с фальшивым отправителем Telegram.
+- [ ] 1.1 Убедиться, что `web-fixes-before-ios` выкачено: `GET /conversations/by-participant/:userId` и `POST …/support/conversations/:id/messages/:messageId/retry` есть в `routes.golden` на ветке и отвечают на dev. Проверка: `curl` обоих маршрутов на dev с токеном куратора.
 
 ## 2. Клиенты
 
