@@ -195,8 +195,11 @@ never string matching on error text.
 
 `config.Features` derives which capabilities are on from the presence of
 credentials: `email`, `food_recognition`, `weekly_photos`, `profile_avatars`,
-`chat_attachments`, `content_media`. A disabled capability answers `503`
-consistently and is listed in a startup `WARN` and in `GET /health`.
+`chat_attachments`, `content_media` and others — the full list is
+`Features.Map()` in `internal/config/config.go`. A disabled capability answers
+`503` consistently and is listed in a startup `WARN` and in the `features`
+object of `GET /ready`. `GET /health` is the liveness probe: it touches no
+dependency and does not list capabilities.
 
 In production, missing required variables are fatal at startup: `config.Load()`
 reports every problem at once rather than failing on the first. See

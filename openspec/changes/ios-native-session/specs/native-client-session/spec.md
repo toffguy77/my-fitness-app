@@ -1,0 +1,130 @@
+## ADDED Requirements
+
+### Requirement: Нативный вход отдаёт пару токенов в теле и не ставит cookie
+
+Нативные эндпоинты входа SHALL — `POST /api/v1/auth/native/login`,
+`/native/register`, `/native/magic-link/consume`, `/native/apple`,
+`/native/oauth/exchange` и `/native/consents` — при успехе отвечать телом
+`{access_token, refresh_token, expires_in, refresh_expires_in, user}`. Ответ
+MUST NOT содержать заголовок `Set-Cookie` с `refresh_token` или
+`session_present`.
+
+#### Scenario: Вход по паролю из приложения
+
+- **WHEN** приложение вызывает `POST /api/v1/auth/native/login` с верными почтой и паролем
+- **THEN** ответ `200` содержит непустые `access_token` и `refresh_token`
+- **AND** в ответе нет заголовка `Set-Cookie`
+
+#### Scenario: Аккаунт ожидает удаления
+
+- **WHEN** приложение входит в аккаунт, удаление которого запрошено
+- **THEN** ответ содержит пару токенов и `pending_deletion {requested_at, scheduled_for}`
+- **AND** с этой парой `DELETE /api/v1/users/me/deletion` отменяет удаление
+
+### Requirement: Нативные эндпоинты не читают refresh-cookie
+
+`POST /api/v1/auth/native/refresh` и `POST /api/v1/auth/native/logout` SHALL
+брать refresh-токен только из поля `refresh_token` тела. Cookie
+`refresh_token` в запросе MUST игнорироваться.
+
+#### Scenario: Запрос с cookie браузера без токена в теле
+
+- **WHEN** на `POST /api/v1/auth/native/refresh` приходит запрос с действующей веб-cookie `refresh_token` и пустым телом
+- **THEN** ответ `400` с кодом `validation`
+- **AND** новый токен не выпущен и cookie не ротирована
+
+#### Scenario: Обновление нативной сессии
+
+- **WHEN** приложение вызывает `POST /api/v1/auth/native/refresh {refresh_token}` с действующим нативным токеном
+- **THEN** ответ содержит новые `access_token` и `refresh_token`
+- **AND** предъявленный токен помечен заменённым
+
+### Requirement: Нативная сессия живёт 90 дней со скользящим окном
+
+Refresh-токен с `client_kind = ios` SHALL действовать 90 дней с момента
+выпуска; каждое обновление MUST выпускать токен с новым 90-дневным сроком.
+Срок MUST NOT зависеть от `remember_me` и от даты `bodyRefreshSunset`.
+
+#### Scenario: Токен старше 90 дней
+
+- **WHEN** приложение предъявляет нативный refresh-токен, выпущенный 91 день назад и не обновлявшийся
+- **THEN** ответ `401` с кодом `token_expired`
+
+#### Scenario: Сборка после даты отключения тела у веба
+
+- **WHEN** тесты запускаются после `bodyRefreshSunset`
+- **THEN** тесты нативного обновления проходят
+
+### Requirement: Повторное использование нативного токена завершает все сессии
+
+Предъявление уже заменённого нативного refresh-токена вне grace-окна SHALL
+отзывать все refresh-токены пользователя — веб и нативные — тем же
+механизмом, что у веба.
+
+#### Scenario: Украденный токен предъявлен после ротации
+
+- **WHEN** заменённый нативный токен предъявлен через минуту после ротации
+- **THEN** ответ `401` с кодом `session_ended`
+- **AND** все refresh-токены пользователя отозваны
+
+### Requirement: Выход из приложения отзывает токен на сервере
+
+`POST /api/v1/auth/native/logout {refresh_token, device_token?}` SHALL помечать токен
+отозванным, удалять устройство `device_token` из пушей пользователя и отвечать `204`
+и для действующего, и для уже отозванного токена; access-токен для вызова MUST NOT требоваться.
+
+#### Scenario: Выход
+
+- **WHEN** приложение вызывает выход с действующим токеном
+- **THEN** ответ `204`
+- **AND** последующий `native/refresh` с этим токеном отвечает `401`
+
+#### Scenario: Выход с отпиской устройства
+
+- **WHEN** выход вызван с `device_token` устройства пользователя
+- **THEN** устройство удалено, и пуши на него больше не уходят
+
+### Requirement: Смена пароля из приложения возвращает новую нативную пару
+
+`POST /api/v1/auth/native/change-password` SHALL после успешной смены отзывать
+все сессии пользователя и возвращать новую пару токенов для вызвавшего
+устройства.
+
+#### Scenario: Смена пароля
+
+- **WHEN** приложение меняет пароль, указав верный текущий
+- **THEN** ответ содержит новую пару токенов
+- **AND** прежний нативный refresh-токен и веб-сессии пользователя отозваны
+
+### Requirement: Секреты нативных запросов не попадают в журналы
+
+Журнал запросов SHALL заменять маской значения полей `refresh_token`,
+`identity_token`, `authorization_code`, `code_verifier`, `password` и
+`current_password`.
+
+#### Scenario: Журнал обновления
+
+- **WHEN** обрабатывается `native/refresh`
+- **THEN** запись журнала запроса не содержит значение токена
+
+### Requirement: Частота нативного входа ограничивается по паре «адрес + IP»
+
+Для `native/login` и `native/magic-link/request` лимит SHALL считаться по
+ключу «адрес почты + IP» (10 попыток за 15 минут), а общий потолок на IP MUST
+быть не ниже 100 попыток за 15 минут. Ответ `429` MUST содержать заголовок
+`Retry-After`.
+
+#### Scenario: Два человека за одним NAT
+
+- **WHEN** с одного IP 10 раз неудачно входят под адресом A
+- **THEN** вход под адресом B с того же IP проходит
+
+#### Scenario: Частое обновление
+
+- **WHEN** один refresh-токен предъявлен 61 раз за 15 минут
+- **THEN** ответ `429` с кодом `too_many_attempts`
+
+#### Scenario: Превышение лимита
+
+- **WHEN** под одним адресом с одного IP сделана 11-я попытка за 15 минут
+- **THEN** ответ `429` с кодом `too_many_attempts` и заголовком `Retry-After`
