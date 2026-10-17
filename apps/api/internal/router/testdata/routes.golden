@@ -120,13 +120,16 @@ POST /api/v1/auth/logout
 POST /api/v1/auth/magic-link/consume
 POST /api/v1/auth/magic-link/request
 POST /api/v1/auth/native/change-password
+POST /api/v1/auth/native/consents
 POST /api/v1/auth/native/login
 POST /api/v1/auth/native/logout
 POST /api/v1/auth/native/magic-link/consume
 POST /api/v1/auth/native/magic-link/request
+POST /api/v1/auth/native/oauth/email
+POST /api/v1/auth/native/oauth/exchange
+POST /api/v1/auth/native/oauth/link
 POST /api/v1/auth/native/refresh
 POST /api/v1/auth/native/register
-POST /api/v1/auth/oauth/app-exchange
 POST /api/v1/auth/oauth/consents
 POST /api/v1/auth/oauth/email
 POST /api/v1/auth/oauth/link

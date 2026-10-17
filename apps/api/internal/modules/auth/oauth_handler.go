@@ -131,15 +131,32 @@ func (h *OAuthHandler) Start(c *gin.Context) {
 		return
 	}
 
+	// Вход из приложения: client=ios и PKCE-вызов приложения (см.
+	// native_oauth.go). Без client — обычный вход сайта. Неизвестный client
+	// или ios без верного вызова — ошибка, а не тихий вход сайта: приложение
+	// иначе получило бы cookie, которую не может прочитать.
+	challenge := ""
+	switch client := c.Query("client"); client {
+	case "":
+	case string(ClientIOS):
+		challenge = c.Query("app_challenge")
+		if !appChallengePattern.MatchString(challenge) {
+			response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation,
+				"Нужен app_challenge: BASE64URL(SHA256(code_verifier))")
+			return
+		}
+	default:
+		response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation, "Неизвестный client")
+		return
+	}
+
 	h.setFlowCookie(c, stateCookie, pkce.State)
 	h.setFlowCookie(c, verifierCookie, pkce.Verifier)
 	h.setFlowCookie(c, providerCookie, name)
-	// Вход из iOS-приложения: хэш его секрета, см. oauth_app.go. Без него —
-	// обычный вход сайта; чужая строка вместо хэша просто не принимается.
-	if challenge := c.Query("app_challenge"); appChallengePattern.MatchString(challenge) {
-		h.setFlowCookie(c, appChallengeCookie, challenge)
+	if challenge != "" {
+		h.setFlowCookie(c, nativeChallengeCookie, challenge)
 	} else {
-		c.SetCookie(appChallengeCookie, "", -1, "/api/v1/auth", "", true, true)
+		c.SetCookie(nativeChallengeCookie, "", -1, "/api/v1/auth", "", true, true)
 	}
 
 	c.Redirect(http.StatusFound,
@@ -149,6 +166,9 @@ func (h *OAuthHandler) Start(c *gin.Context) {
 // Callback handles GET /api/v1/auth/oauth/:provider/callback.
 func (h *OAuthHandler) Callback(c *gin.Context) {
 	name := c.Param("provider")
+	// Read before clearFlowCookies: whether the attempt belongs to the app
+	// decides where every outcome below goes, failures included.
+	challenge := nativeChallenge(c)
 
 	// The user declined at the provider; that is a choice, not a failure.
 	if reason := c.Query("error"); reason != "" {
@@ -201,6 +221,11 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 	if err != nil {
 		h.log.Error("Failed to exchange authorization code", "error", err, "provider", name)
 		h.redirectToApp(c, "/auth?oauth=failed")
+		return
+	}
+
+	if challenge != "" {
+		h.handOffToApp(c, name, profile, challenge)
 		return
 	}
 
@@ -341,20 +366,16 @@ func (h *OAuthHandler) appOrigin() string {
 }
 
 func (h *OAuthHandler) redirectToApp(c *gin.Context, path string) {
-	// Вход, начатый из iOS-приложения, возвращается туда же, а не на сайт.
-	if appChallenge(c) != "" {
-		redirectToAppClient(c, h.appOrigin(), path)
+	// Вход, начатый из iOS-приложения, и отказ возвращает туда же.
+	if nativeChallenge(c) != "" {
+		h.redirectToNativeFailure(c, path)
 		return
 	}
 	c.Redirect(http.StatusFound, h.appOrigin()+path)
 }
 
-// redirectWithSession hands the session to the app.
+// redirectWithSession hands the session to the site.
 func (h *OAuthHandler) redirectWithSession(c *gin.Context, outcome *OAuthOutcome) {
-	if challenge := appChallenge(c); challenge != "" {
-		h.handoffToApp(c, outcome, challenge)
-		return
-	}
 	// The refresh token goes in an HttpOnly cookie so it never reaches
 	// JavaScript, the URL, or anything that logs URLs.
 	c.SetSameSite(http.SameSiteLaxMode)
@@ -396,7 +417,7 @@ func (h *OAuthHandler) setFlowCookie(c *gin.Context, name, value string) {
 }
 
 func (h *OAuthHandler) clearFlowCookies(c *gin.Context) {
-	for _, name := range []string{stateCookie, verifierCookie, providerCookie, appChallengeCookie} {
+	for _, name := range []string{stateCookie, verifierCookie, providerCookie, nativeChallengeCookie} {
 		c.SetCookie(name, "", -1, "/api/v1/auth", "", true, true)
 	}
 }

@@ -45,6 +45,10 @@ func (h *Handler) WithDevices(devices DeviceUnregisterer) *Handler {
 // Unlike LoginResult the refresh token is in it: the app has nowhere else to
 // receive it from.
 type NativeSessionResponse struct {
+	// Status is set by the provider sign-ins (Apple, oauth/exchange,
+	// oauth/link, consents): signed_in or registered, so one response type
+	// tells a session from {status, pending_token}.
+	Status       string `json:"status,omitempty"`
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	// ExpiresIn and RefreshExpiresIn are seconds from now.
@@ -58,6 +62,10 @@ type NativeSessionResponse struct {
 }
 
 func (h *Handler) nativeSession(result *LoginResult) NativeSessionResponse {
+	return nativeSessionBody(result)
+}
+
+func nativeSessionBody(result *LoginResult) NativeSessionResponse {
 	refreshIn := int(time.Until(result.RefreshExpiresAt).Seconds())
 	if result.RefreshExpiresAt.IsZero() || refreshIn < 0 {
 		refreshIn = 0

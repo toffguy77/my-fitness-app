@@ -96,6 +96,12 @@ const (
 	// «действие невозможно», а куда пойти заполнить. Как и выше, обработчик
 	// ставит код сам; в карту ниже он не входит.
 	CodeTargetMissing = "target_missing"
+
+	// CodeConsentsRequired: вход приложения создал бы аккаунт, а
+	// обязательных согласий в запросе нет (native/consents). Не общий
+	// validation: приложению нужно не «проверьте данные», а показать экран
+	// согласий. Сентинел — общий ErrValidation, код ставит обработчик.
+	CodeConsentsRequired = "consents_required"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -159,5 +165,5 @@ func AllCodes() []string {
 		CodeRecognitionUnclear, CodeRecognitionFailed,
 		CodeProviderOnlyWayIn, CodePasswordNotSet, CodeDeletionAlreadyRequested,
 		CodeExportAlreadyPending, CodeLastCurator, CodeJobAlreadyRunning,
-		CodeLeadAlreadyClaimed, CodeMagicLinkAccountExists)
+		CodeLeadAlreadyClaimed, CodeMagicLinkAccountExists, CodeConsentsRequired)
 }

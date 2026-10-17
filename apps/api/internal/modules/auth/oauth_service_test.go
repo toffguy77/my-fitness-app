@@ -202,8 +202,8 @@ func TestLinkProvider_RefusesAnAccountLinkedElsewhere(t *testing.T) {
 func nowUTC() time.Time { return time.Now().UTC() }
 
 func pendingRows(email string) *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider"}).
-		AddRow("yandex", "ext-1", email, "User", "", email != "")
+	return sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider", "provider_refresh_token_enc"}).
+		AddRow("yandex", "ext-1", email, "User", "", email != "", nil)
 }
 
 // The password is the proof of ownership. Without it, anyone who can make a
@@ -291,7 +291,7 @@ func TestConfirmLinkWithPassword_RefusesAnExpiredAttempt(t *testing.T) {
 	defer cleanup()
 
 	mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(
-		sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider"}))
+		sqlmock.NewRows([]string{"provider", "provider_user_id", "email", "name", "avatar_url", "email_from_provider", "provider_refresh_token_enc"}))
 
 	_, err := service.ConfirmLinkWithPassword(context.Background(), "stale", "pw", "ip", "ua")
 

@@ -47,7 +47,6 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	// Согласия до создания аккаунта через провайдера: колбэк уводит на экран
 	// согласий, а аккаунт появляется здесь.
 	g.POST("/oauth/consents", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.CompleteConsents)
-	g.POST("/oauth/app-exchange", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.AppExchange)
 	g.GET("/providers/linked", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.OAuth.LinkedProviders)
 	g.DELETE("/providers/:provider", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.OAuth.Unlink)
 
@@ -97,4 +96,16 @@ func registerNativeAuthRoutes(auth *gin.RouterGroup, d Deps) {
 		d.AuthRateLimiter.LimitOutcomesBy("magic-link-recipient", middleware.ByEmail, middleware.LetterSent), d.Auth.RequestMagicLink)
 	g.POST("/magic-link/consume", d.AuthRateLimiter.Limit("magic-link-consume"), d.Auth.NativeConsumeMagicLink)
 	g.POST("/change-password", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.Auth.NativeChangePassword)
+
+	// Вход через провайдера, начатый из приложения (native-oauth-handoff):
+	// обмен одноразового кода из universal link и продолжения незавершённого
+	// входа с pending_token в теле. Код и pending_token — 32 байта и UUID,
+	// угадывать нечего; пароль в oauth/link — цель перебора, но только для
+	// того, у кого есть pending_token от входа через провайдера. Потолок на
+	// IP с NAT-поправкой, как у native/login.
+	g.POST("/oauth/exchange", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeOAuthExchange)
+	g.POST("/oauth/email", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeOAuthEmail)
+	g.POST("/oauth/link", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeOAuthLink)
+	// Согласия до создания аккаунта — общий шаг Apple, Яндекса и VK.
+	g.POST("/consents", d.AuthRateLimiter.Limit("native-oauth"), d.OAuth.NativeConsents)
 }

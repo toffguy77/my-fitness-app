@@ -36,10 +36,6 @@
     "reason": "Снятие iPhone с рассылки при выходе из аккаунта. Зовёт iOS-приложение, браузер снимает подписку через /notifications/push."
   },
   {
-    "route": "POST /api/v1/auth/oauth/app-exchange",
-    "reason": "Обмен одноразового кода входа через Яндекс/VK на сессию. Зовёт iOS-приложение (apps/ios/Burcev/Sources/Auth/ProviderSignIn.swift), браузер получает сессию cookie прямо в обратном вызове."
-  },
-  {
     "route": "POST /api/v1/auth/native/login",
     "reason": "Нативная сессия iOS-приложения (ios-native-session): refresh-токен только в теле, cookie не читаются и не ставятся. Браузер этот путь не зовёт намеренно — у него свой, с HttpOnly-cookie, на /auth/*."
   },
@@ -66,6 +62,22 @@
   {
     "route": "POST /api/v1/auth/native/change-password",
     "reason": "Нативная сессия iOS-приложения (ios-native-session): refresh-токен только в теле, cookie не читаются и не ставятся. Браузер этот путь не зовёт намеренно — у него свой, с HttpOnly-cookie, на /auth/*."
+  },
+  {
+    "route": "POST /api/v1/auth/native/oauth/exchange",
+    "reason": "Вход через провайдера, начатый из iOS-приложения (native-oauth-handoff): обмен одноразового кода из universal link /auth/native-complete и продолжения входа с pending_token в теле. Браузер завершает тот же вход своими путями /auth/oauth/* с cookie oauth_pending."
+  },
+  {
+    "route": "POST /api/v1/auth/native/oauth/email",
+    "reason": "Вход через провайдера, начатый из iOS-приложения (native-oauth-handoff): обмен одноразового кода из universal link /auth/native-complete и продолжения входа с pending_token в теле. Браузер завершает тот же вход своими путями /auth/oauth/* с cookie oauth_pending."
+  },
+  {
+    "route": "POST /api/v1/auth/native/oauth/link",
+    "reason": "Вход через провайдера, начатый из iOS-приложения (native-oauth-handoff): обмен одноразового кода из universal link /auth/native-complete и продолжения входа с pending_token в теле. Браузер завершает тот же вход своими путями /auth/oauth/* с cookie oauth_pending."
+  },
+  {
+    "route": "POST /api/v1/auth/native/consents",
+    "reason": "Согласия до создания аккаунта для входа из iOS-приложения через Apple, Яндекс или VK; попытка передаётся pending_token в теле. У сайта свой путь — /auth/oauth/consents с cookie oauth_pending."
   },
   {
     "route": "GET /api/v1/config",

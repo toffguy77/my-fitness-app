@@ -25,6 +25,9 @@ type OAuthOutcome struct {
 	// link, so the confirmation step knows what to attach.
 	Provider       string
 	ProviderUserID string
+	// UserID is the account the sign-in finished in, set together with
+	// OAuthSignedIn by ResolveProviderSignIn, which issues no session.
+	UserID int64
 }
 
 // OAuthResult enumerates the outcomes of an external sign-in.
@@ -56,22 +59,56 @@ const (
 // SignInLinked issues a session to the account an external identity is
 // already linked to.
 func (s *Service) SignInLinked(ctx context.Context, provider, providerUserID string, userID int64, ip, ua string) (*OAuthOutcome, error) {
-	if _, err := s.db.ExecContext(ctx,
-		`UPDATE external_identities SET last_login_at = NOW()
-		 WHERE provider = $1 AND provider_user_id = $2`,
-		provider, providerUserID); err != nil {
-		s.log.Errorw("Failed to record external login", "error", err, "user_id", userID)
-	}
+	return s.SignInLinkedFor(ctx, WebSession(false), provider, &oauth.Profile{ProviderUserID: providerUserID}, userID, ip, ua)
+}
 
-	result, err := s.issueTokensForUser(ctx, userID, ip, ua)
+// SignInLinkedFor is SignInLinked issuing a session of the kind spec
+// describes. A profile carrying a fresh sealed provider refresh token (Apple
+// hands out a new one with every sign-in) replaces the stored one.
+func (s *Service) SignInLinkedFor(ctx context.Context, spec SessionSpec, provider string, profile *oauth.Profile, userID int64, ip, ua string) (*OAuthOutcome, error) {
+	s.touchIdentity(ctx, provider, profile, userID)
+
+	result, err := s.issueTokens(ctx, spec, userID, ip, ua)
 	if err != nil {
 		return nil, err
 	}
-	return &OAuthOutcome{Result: OAuthSignedIn, User: result}, nil
+	return &OAuthOutcome{Result: OAuthSignedIn, User: result, Provider: provider, UserID: userID}, nil
 }
 
-// SignInWithProvider completes an external sign-in.
+// touchIdentity records a sign-in through a linked identity.
+func (s *Service) touchIdentity(ctx context.Context, provider string, profile *oauth.Profile, userID int64) {
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE external_identities
+		    SET last_login_at = NOW(),
+		        provider_refresh_token_enc = COALESCE($3, provider_refresh_token_enc)
+		 WHERE provider = $1 AND provider_user_id = $2`,
+		provider, profile.ProviderUserID, nullIfEmpty(profile.SealedRefreshToken)); err != nil {
+		s.log.Errorw("Failed to record external login", "error", err, "user_id", userID)
+	}
+}
+
+// SignInWithProvider completes an external sign-in with a web session.
 func (s *Service) SignInWithProvider(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string) (*OAuthOutcome, error) {
+	return s.SignInWithProviderFor(ctx, WebSession(false), provider, profile, ip, ua)
+}
+
+// SignInWithProviderFor completes an external sign-in, issuing a session of
+// the kind spec describes when one is due.
+func (s *Service) SignInWithProviderFor(ctx context.Context, spec SessionSpec, provider string, profile *oauth.Profile, ip, ua string) (*OAuthOutcome, error) {
+	outcome, err := s.ResolveProviderSignIn(ctx, provider, profile)
+	if err != nil || outcome.Result != OAuthSignedIn {
+		return outcome, err
+	}
+	return s.SignInLinkedFor(ctx, spec, provider, profile, outcome.UserID, ip, ua)
+}
+
+// ResolveProviderSignIn decides what an external sign-in leads to without
+// issuing anything: OAuthSignedIn with UserID for a linked identity whose
+// account has the consents, or the step still missing.
+//
+// The app's callback uses it directly: the session goes to the app at the
+// code exchange, so the callback mints none it would have to throw away.
+func (s *Service) ResolveProviderSignIn(ctx context.Context, provider string, profile *oauth.Profile) (*OAuthOutcome, error) {
 	// Identity is the (provider, provider_user_id) pair, so a person who
 	// changes their address at the provider keeps their account here.
 	userID, err := s.userIDForExternalIdentity(ctx, provider, profile.ProviderUserID)
@@ -92,7 +129,12 @@ func (s *Service) SignInWithProvider(ctx context.Context, provider string, profi
 				ProviderUserID: profile.ProviderUserID,
 			}, nil
 		}
-		return s.SignInLinked(ctx, provider, profile.ProviderUserID, userID, ip, ua)
+		return &OAuthOutcome{
+			Result:         OAuthSignedIn,
+			Provider:       provider,
+			ProviderUserID: profile.ProviderUserID,
+			UserID:         userID,
+		}, nil
 	}
 
 	if profile.Email == "" {
@@ -173,6 +215,13 @@ func consentsComplete(consents *ConsentsInput) bool {
 //     transaction, a curator is assigned as on every other path in, and a
 //     session is issued: OAuthRegistered.
 func (s *Service) CompleteWithConsents(ctx context.Context, pendingID string, consents *ConsentsInput, ip, ua string) (*OAuthOutcome, error) {
+	return s.CompleteWithConsentsFor(ctx, WebSession(false), pendingID, consents, ip, ua)
+}
+
+// CompleteWithConsentsFor is CompleteWithConsents issuing a session of the
+// kind spec describes: the browser's consents screen and the app's
+// native/consents finish the same attempt the same way.
+func (s *Service) CompleteWithConsentsFor(ctx context.Context, spec SessionSpec, pendingID string, consents *ConsentsInput, ip, ua string) (*OAuthOutcome, error) {
 	if !consentsComplete(consents) {
 		return nil, fmt.Errorf("mandatory consents missing: %w", apperrors.ErrValidation)
 	}
@@ -190,18 +239,13 @@ func (s *Service) CompleteWithConsents(ctx context.Context, pendingID string, co
 		if err := writeConsents(ctx, s.db, userID, consents, ip, ua); err != nil {
 			return nil, err
 		}
-		if _, err := s.db.ExecContext(ctx,
-			`UPDATE external_identities SET last_login_at = NOW()
-			 WHERE provider = $1 AND provider_user_id = $2`,
-			provider, profile.ProviderUserID); err != nil {
-			s.log.Errorw("Failed to record external login", "error", err, "user_id", userID)
-		}
+		s.touchIdentity(ctx, provider, profile, userID)
 		s.deletePendingLink(ctx, pendingID)
-		result, err := s.issueTokensForUser(ctx, userID, ip, ua)
+		result, err := s.issueTokens(ctx, spec, userID, ip, ua)
 		if err != nil {
 			return nil, err
 		}
-		return &OAuthOutcome{Result: OAuthSignedIn, User: result, Provider: provider}, nil
+		return &OAuthOutcome{Result: OAuthSignedIn, User: result, Provider: provider, UserID: userID}, nil
 	}
 
 	if profile.Email == "" {
@@ -229,18 +273,18 @@ func (s *Service) CompleteWithConsents(ctx context.Context, pendingID string, co
 	// person typed (the provider gave none) is not: nobody has proved it is
 	// theirs, so the account starts unverified and goes through the usual
 	// confirmation.
-	result, err := s.createUserFromProvider(ctx, provider, profile, ip, ua, emailFromProvider, consents)
+	result, err := s.createUserFromProvider(ctx, spec, provider, profile, ip, ua, emailFromProvider, consents)
 	if err != nil {
 		return nil, err
 	}
 	s.deletePendingLink(ctx, pendingID)
-	return &OAuthOutcome{Result: OAuthRegistered, User: result, Provider: provider}, nil
+	return &OAuthOutcome{Result: OAuthRegistered, User: result, Provider: provider, UserID: result.User.ID}, nil
 }
 
 // createUserFromProvider creates a passwordless account linked to the
 // provider. consents, when given, are written in the same transaction: an
 // account gated on consents must not exist without them.
-func (s *Service) createUserFromProvider(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string, emailVerified bool, consents *ConsentsInput) (*LoginResult, error) {
+func (s *Service) createUserFromProvider(ctx context.Context, spec SessionSpec, provider string, profile *oauth.Profile, ip, ua string, emailVerified bool, consents *ConsentsInput) (*LoginResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin registration: %w", err)
@@ -278,7 +322,7 @@ func (s *Service) createUserFromProvider(ctx context.Context, provider string, p
 	s.assignCurator(ctx, userID, profile.Email)
 
 	s.log.Info("Registered via external provider", "user_id", userID, "provider", provider)
-	return s.issueTokensForUser(ctx, userID, ip, ua)
+	return s.issueTokens(ctx, spec, userID, ip, ua)
 }
 
 // LinkProvider attaches an external account to an existing user.
@@ -402,10 +446,11 @@ type execer interface {
 func insertIdentity(ctx context.Context, db execer, userID int64, provider string, profile *oauth.Profile) error {
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO external_identities
-			(user_id, provider, provider_user_id, email, name, avatar_url, last_login_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+			(user_id, provider, provider_user_id, email, name, avatar_url, last_login_at, provider_refresh_token_enc)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)`,
 		userID, provider, profile.ProviderUserID,
-		nullIfEmpty(profile.Email), nullIfEmpty(profile.Name), nullIfEmpty(profile.AvatarURL))
+		nullIfEmpty(profile.Email), nullIfEmpty(profile.Name), nullIfEmpty(profile.AvatarURL),
+		nullIfEmpty(profile.SealedRefreshToken))
 	if err != nil {
 		return fmt.Errorf("create external identity: %w", err)
 	}
@@ -488,14 +533,16 @@ func (s *Service) storePendingLink(ctx context.Context, provider string, profile
 	var id string
 	err := s.db.QueryRowContext(ctx, `
 		INSERT INTO oauth_pending_links
-			(provider, provider_user_id, email, name, avatar_url, expires_at, email_from_provider)
-		VALUES ($1, $2, $3, $4, $5, NOW() + $6::interval, $7)
+			(provider, provider_user_id, email, name, avatar_url, expires_at, email_from_provider,
+			 provider_refresh_token_enc)
+		VALUES ($1, $2, $3, $4, $5, NOW() + $6::interval, $7, $8)
 		RETURNING id`,
 		provider, profile.ProviderUserID,
 		nullIfEmpty(profile.Email), nullIfEmpty(profile.Name), nullIfEmpty(profile.AvatarURL),
 		fmt.Sprintf("%d seconds", int(PendingLinkTTL.Seconds())),
 		// Адрес на этом шаге может прийти только от провайдера.
 		profile.Email != "",
+		nullIfEmpty(profile.SealedRefreshToken),
 	).Scan(&id)
 	if err != nil {
 		return "", fmt.Errorf("store pending link: %w", err)
@@ -531,13 +578,14 @@ func (s *Service) rememberPendingEmail(ctx context.Context, id, email string) er
 // the provider (and is therefore verified) rather than typed by the person.
 func (s *Service) pendingLink(ctx context.Context, id string) (provider string, profile *oauth.Profile, emailFromProvider bool, err error) {
 	var p oauth.Profile
-	var email, name, avatar sql.NullString
+	var email, name, avatar, sealed sql.NullString
 
 	err = s.db.QueryRowContext(ctx, `
-		SELECT provider, provider_user_id, email, name, avatar_url, email_from_provider
+		SELECT provider, provider_user_id, email, name, avatar_url, email_from_provider,
+		       provider_refresh_token_enc
 		FROM oauth_pending_links
 		WHERE id = $1 AND expires_at > NOW()`, id).
-		Scan(&provider, &p.ProviderUserID, &email, &name, &avatar, &emailFromProvider)
+		Scan(&provider, &p.ProviderUserID, &email, &name, &avatar, &emailFromProvider, &sealed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil, false, fmt.Errorf("pending link not found: %w", apperrors.ErrTokenInvalid)
 	}
@@ -548,6 +596,7 @@ func (s *Service) pendingLink(ctx context.Context, id string) (provider string, 
 	p.Email = email.String
 	p.Name = name.String
 	p.AvatarURL = avatar.String
+	p.SealedRefreshToken = sealed.String
 	return provider, &p, emailFromProvider, nil
 }
 
@@ -573,6 +622,12 @@ func (s *Service) PurgeExpiredPendingLinks(ctx context.Context) (int64, error) {
 // The password is the proof. Without it, an attacker who can make a provider
 // assert our user's address would be signing in as them.
 func (s *Service) ConfirmLinkWithPassword(ctx context.Context, pendingID, password, ip, ua string) (*LoginResult, error) {
+	return s.ConfirmLinkWithPasswordFor(ctx, WebSession(false), pendingID, password, ip, ua)
+}
+
+// ConfirmLinkWithPasswordFor is ConfirmLinkWithPassword issuing a session of
+// the kind spec describes.
+func (s *Service) ConfirmLinkWithPasswordFor(ctx context.Context, spec SessionSpec, pendingID, password, ip, ua string) (*LoginResult, error) {
 	provider, profile, _, err := s.pendingLink(ctx, pendingID)
 	if err != nil {
 		return nil, err
@@ -611,7 +666,7 @@ func (s *Service) ConfirmLinkWithPassword(ctx context.Context, pendingID, passwo
 	s.log.Info("Linked external provider after password confirmation",
 		"user_id", userID, "provider", provider)
 
-	return s.issueTokensForUser(ctx, userID, ip, ua)
+	return s.issueTokens(ctx, spec, userID, ip, ua)
 }
 
 // CompleteWithEmail continues a sign-in whose provider returned no address.

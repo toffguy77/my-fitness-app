@@ -117,6 +117,10 @@ var authLimitConfigs = map[string]authLimitConfig{
 	"native-magic-link-ip": {maxRequests: 10, window: 15 * time.Minute},
 	"magic-link-recipient": {maxRequests: 5, window: 15 * time.Minute},
 	"native-refresh":       {maxRequests: 60, window: 15 * time.Minute},
+	// Продолжения входа через провайдера из приложения: обмен кода,
+	// адрес, пароль для привязки, согласия. Секрет каждого — код на 32
+	// байта или pending_token — не угадать; потолок на IP с NAT-поправкой.
+	"native-oauth": {maxRequests: 100, window: 15 * time.Minute},
 }
 
 // KeyFunc picks what a limit counts by. The endpoint name is prepended by the
