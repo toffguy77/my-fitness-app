@@ -1,9 +1,16 @@
 package middleware
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"io"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -88,6 +95,68 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// unauthenticated, and it writes to the database on every success) cannot
 	// be hammered by a script the way a person never would.
 	"unsubscribe": {maxRequests: 5, window: 15 * time.Minute},
+
+	// Нативный вход и запрос ссылки считаются по паре «адрес + IP»
+	// (LimitBy с ByEmailAndIP): сотни абонентов одного мобильного NAT делили
+	// бы 10 попыток веба на всех. Перебор пароля к одному адресу упирается в
+	// те же 10 попыток, а перебор адресов с одного IP — в общий потолок,
+	// в десять раз выше веб-лимита.
+	"native-login":              {maxRequests: 10, window: 15 * time.Minute},
+	"native-login-ip":           {maxRequests: 100, window: 15 * time.Minute},
+	"native-magic-link-request": {maxRequests: 10, window: 15 * time.Minute},
+	"native-magic-link-ip":      {maxRequests: 100, window: 15 * time.Minute},
+	// Обновление нативной сессии — на один refresh-токен (ByRefreshToken).
+	// Приложение обновляется раз в 15 минут; 60 — запас на сбои сети, а не
+	// разрешение крутить обновление в цикле.
+	"native-refresh": {maxRequests: 60, window: 15 * time.Minute},
+}
+
+// KeyFunc picks what a limit counts by. The endpoint name is prepended by the
+// limiter, so two keys never collide across endpoints.
+type KeyFunc func(c *gin.Context) string
+
+// ByIP counts by the client address — the default.
+func ByIP(c *gin.Context) string { return c.ClientIP() }
+
+// ByEmailAndIP counts by the address in the JSON body together with the
+// client IP. The body is read and put back for the handler. A body without an
+// address counts against the IP alone.
+func ByEmailAndIP(c *gin.Context) string {
+	var body struct {
+		Email string `json:"email"`
+	}
+	peekJSON(c, &body)
+	return strings.ToLower(strings.TrimSpace(body.Email)) + "|" + c.ClientIP()
+}
+
+// ByRefreshToken counts by the refresh token in the JSON body — by its hash,
+// so the limiter's memory never holds a usable credential. A body without one
+// counts against the IP.
+func ByRefreshToken(c *gin.Context) string {
+	var body struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	peekJSON(c, &body)
+	if body.RefreshToken == "" {
+		return "ip:" + c.ClientIP()
+	}
+	sum := sha256.Sum256([]byte(body.RefreshToken))
+	return "token:" + hex.EncodeToString(sum[:])
+}
+
+// peekJSON decodes the request body into dst and restores it, so the handler
+// binds the same bytes. A body that is not JSON leaves dst empty.
+func peekJSON(c *gin.Context, dst any) {
+	if c.Request.Body == nil {
+		return
+	}
+	raw, err := io.ReadAll(c.Request.Body)
+	_ = c.Request.Body.Close()
+	c.Request.Body = io.NopCloser(bytes.NewReader(raw))
+	if err != nil || len(raw) == 0 {
+		return
+	}
+	_ = json.Unmarshal(raw, dst)
 }
 
 // AuthRateLimiter is an in-memory sliding window rate limiter for auth endpoints.
@@ -126,6 +195,12 @@ func NewAuthRateLimiter() *AuthRateLimiter {
 // caught earlier, by TestEveryRouterLimitCallHasAConfig, which fails the
 // build before the binary is ever run.
 func (rl *AuthRateLimiter) Limit(endpoint string) gin.HandlerFunc {
+	return rl.LimitBy(endpoint, ByIP)
+}
+
+// LimitBy is Limit counting by key instead of by IP alone. The endpoint name
+// is checked the same way, and by the same test.
+func (rl *AuthRateLimiter) LimitBy(endpoint string, key KeyFunc) gin.HandlerFunc {
 	cfg, ok := authLimitConfigs[endpoint]
 	if !ok {
 		panic("middleware: no rate limit configured for endpoint " + strconv.Quote(endpoint) +
@@ -142,7 +217,7 @@ func (rl *AuthRateLimiter) Limit(endpoint string) gin.HandlerFunc {
 	rl.mu.Unlock()
 
 	return func(c *gin.Context) {
-		ip := c.ClientIP()
+		ip := key(c)
 		now := time.Now()
 		cutoff := now.Add(-cfg.window)
 
@@ -161,6 +236,14 @@ func (rl *AuthRateLimiter) Limit(endpoint string) gin.HandlerFunc {
 		if len(valid) >= cfg.maxRequests {
 			// Store pruned slice (without the new request) and reject.
 			bucket.Store(ip, valid)
+			// Когда освободится место: самая старая попытка в окне выйдет из
+			// него. Без заголовка клиент может только гадать — и приложение
+			// повторяет сразу, продлевая собственный запрет.
+			retryAfter := int(math.Ceil(valid[0].Add(cfg.window).Sub(now).Seconds()))
+			if retryAfter < 1 {
+				retryAfter = 1
+			}
+			c.Header("Retry-After", strconv.Itoa(retryAfter))
 			// Через общий помощник: ответ без кода вынуждает клиента
 			// показывать серверную фразу, а это единственный текст, который
 			// нельзя перевести.
