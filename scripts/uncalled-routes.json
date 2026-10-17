@@ -38,5 +38,37 @@
   {
     "route": "POST /api/v1/auth/oauth/app-exchange",
     "reason": "Обмен одноразового кода входа через Яндекс/VK на сессию. Зовёт iOS-приложение (apps/ios/Burcev/Sources/Auth/ProviderSignIn.swift), браузер получает сессию cookie прямо в обратном вызове."
+  },
+  {
+    "route": "POST /api/v1/auth/native/login",
+    "reason": "Нативная сессия iOS-приложения (ios-native-session): refresh-токен только в теле, cookie не читаются и не ставятся. Браузер этот путь не зовёт намеренно — у него свой, с HttpOnly-cookie, на /auth/*."
+  },
+  {
+    "route": "POST /api/v1/auth/native/register",
+    "reason": "Нативная сессия iOS-приложения (ios-native-session): refresh-токен только в теле, cookie не читаются и не ставятся. Браузер этот путь не зовёт намеренно — у него свой, с HttpOnly-cookie, на /auth/*."
+  },
+  {
+    "route": "POST /api/v1/auth/native/refresh",
+    "reason": "Нативная сессия iOS-приложения (ios-native-session): refresh-токен только в теле, cookie не читаются и не ставятся. Браузер этот путь не зовёт намеренно — у него свой, с HttpOnly-cookie, на /auth/*."
+  },
+  {
+    "route": "POST /api/v1/auth/native/logout",
+    "reason": "Нативная сессия iOS-приложения (ios-native-session): refresh-токен только в теле, cookie не читаются и не ставятся. Браузер этот путь не зовёт намеренно — у него свой, с HttpOnly-cookie, на /auth/*."
+  },
+  {
+    "route": "POST /api/v1/auth/native/magic-link/request",
+    "reason": "Нативная сессия iOS-приложения (ios-native-session): refresh-токен только в теле, cookie не читаются и не ставятся. Браузер этот путь не зовёт намеренно — у него свой, с HttpOnly-cookie, на /auth/*."
+  },
+  {
+    "route": "POST /api/v1/auth/native/magic-link/consume",
+    "reason": "Нативная сессия iOS-приложения (ios-native-session): refresh-токен только в теле, cookie не читаются и не ставятся. Браузер этот путь не зовёт намеренно — у него свой, с HttpOnly-cookie, на /auth/*."
+  },
+  {
+    "route": "POST /api/v1/auth/native/change-password",
+    "reason": "Нативная сессия iOS-приложения (ios-native-session): refresh-токен только в теле, cookie не читаются и не ставятся. Браузер этот путь не зовёт намеренно — у него свой, с HttpOnly-cookie, на /auth/*."
+  },
+  {
+    "route": "GET /api/v1/config",
+    "reason": "Публичная конфигурация для iOS-приложения: включённые возможности, минимальная версия, адреса поддержки и документов. Веб знает это из собственной сборки."
   }
 ]

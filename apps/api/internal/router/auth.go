@@ -54,4 +54,32 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	// шлёт письма на чужой адрес, второй — угадываемая цель.
 	g.POST("/magic-link/request", d.AuthRateLimiter.Limit("magic-link-request"), d.Auth.RequestMagicLink)
 	g.POST("/magic-link/consume", d.AuthRateLimiter.Limit("magic-link-consume"), d.Auth.ConsumeMagicLink)
+
+	registerNativeAuthRoutes(g, d)
+}
+
+// registerNativeAuthRoutes wires the app's session: /auth/native/*.
+//
+// The refresh token travels in the body here and nowhere else; none of these
+// handlers reads or sets the refresh cookie (see auth/native_session.go).
+//
+// Sign-in and the sign-in letter are limited per address and IP, with a
+// per-IP ceiling ten times the web's: a mobile carrier's NAT puts hundreds of
+// people behind one address, and an IP-only limit would make them share ten
+// attempts.
+func registerNativeAuthRoutes(auth *gin.RouterGroup, d Deps) {
+	g := auth.Group("/native")
+
+	g.POST("/login", d.AuthRateLimiter.Limit("native-login-ip"),
+		d.AuthRateLimiter.LimitBy("native-login", middleware.ByEmailAndIP), d.Auth.NativeLogin)
+	g.POST("/register", d.AuthRateLimiter.Limit("register"), d.Auth.NativeRegister)
+	g.POST("/refresh", d.AuthRateLimiter.LimitBy("native-refresh", middleware.ByRefreshToken), d.Auth.NativeRefresh)
+	// Без access-токена: приложение выходит и тогда, когда тот давно истёк.
+	g.POST("/logout", d.Auth.NativeLogout)
+	// Письмо то же, что у сайта: ссылка открывает приложение через universal
+	// link, и оно гасит токен на native/magic-link/consume.
+	g.POST("/magic-link/request", d.AuthRateLimiter.Limit("native-magic-link-ip"),
+		d.AuthRateLimiter.LimitBy("native-magic-link-request", middleware.ByEmailAndIP), d.Auth.RequestMagicLink)
+	g.POST("/magic-link/consume", d.AuthRateLimiter.Limit("magic-link-consume"), d.Auth.NativeConsumeMagicLink)
+	g.POST("/change-password", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.Auth.NativeChangePassword)
 }
