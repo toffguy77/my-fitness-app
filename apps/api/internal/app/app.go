@@ -457,7 +457,7 @@ func Build(cfg *config.Config, db *database.DB, log *logger.Logger, ext External
 		AuthRateLimiter: authRateLimiter,
 
 		Analytics:     analytics.NewHandler(analyticsService, log),
-		Auth:          auth.NewHandler(authService, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService),
+		Auth:          auth.NewHandler(authService, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService).WithDevices(notificationsSvc),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
 		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService).WithAnalytics(analyticsService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),

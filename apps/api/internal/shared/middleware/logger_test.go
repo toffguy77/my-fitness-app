@@ -158,3 +158,16 @@ func TestMaskSecrets_KeepsTheShapeOfTheRequest(t *testing.T) {
 	assert.NotContains(t, masked, "abc")
 	assert.Contains(t, masked, "date=2026-03-01")
 }
+
+// Секреты нативного входа маскируются в адресе так же, как токены веба:
+// native/refresh несёт refresh_token, native/apple — identity_token и
+// authorization_code, native/oauth/exchange — code_verifier.
+func TestMaskSecretsCoversNativeSignInFields(t *testing.T) {
+	for _, name := range []string{
+		"refresh_token", "identity_token", "authorization_code", "code_verifier",
+		"verifier", "password", "current_password", "new_password",
+	} {
+		masked := maskSecrets(name + "=value-that-must-not-leak&page=2")
+		assert.Equal(t, name+"=***&page=2", masked, name)
+	}
+}

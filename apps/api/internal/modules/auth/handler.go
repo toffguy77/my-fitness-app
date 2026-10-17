@@ -25,6 +25,9 @@ type Handler struct {
 	leads LeadClaimer
 	// analytics may be nil; nothing depends on it being there.
 	analytics EventRecorder
+	// devices may be nil; native sign-out then ends the session and leaves
+	// the push registration alone.
+	devices DeviceUnregisterer
 }
 
 // EventRecorder records a product fact. Declared here as the narrowest thing

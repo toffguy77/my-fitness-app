@@ -448,6 +448,11 @@ func nullIfEmpty(value string) any {
 // issueTokensForUser loads a user and mints the same token pair a password
 // login would, so an external sign-in produces an identical session.
 func (s *Service) issueTokensForUser(ctx context.Context, userID int64, ip, ua string) (*LoginResult, error) {
+	return s.issueTokens(ctx, WebSession(false), userID, ip, ua)
+}
+
+// issueTokens is issueTokensForUser for a session of the kind spec describes.
+func (s *Service) issueTokens(ctx context.Context, spec SessionSpec, userID int64, ip, ua string) (*LoginResult, error) {
 	var user User
 	err := s.db.QueryRowContext(ctx, `
 		SELECT id, email, COALESCE(name, ''), role,
@@ -464,12 +469,12 @@ func (s *Service) issueTokensForUser(ctx context.Context, userID int64, ip, ua s
 		return nil, fmt.Errorf("generate token: %w", err)
 	}
 
-	refreshToken, err := s.createRefreshToken(ctx, user.ID, ip, ua, false)
+	refreshToken, expiresAt, err := s.createRefreshToken(ctx, user.ID, ip, ua, spec)
 	if err != nil {
 		return nil, fmt.Errorf("create refresh token: %w", err)
 	}
 
-	return &LoginResult{User: &user, Token: token, RefreshToken: refreshToken}, nil
+	return &LoginResult{User: &user, Token: token, RefreshToken: refreshToken, RefreshExpiresAt: expiresAt}, nil
 }
 
 // PendingLinkTTL bounds how long an unfinished external sign-in can be resumed.

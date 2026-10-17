@@ -119,6 +119,7 @@ var codes = map[error]string{
 	ErrConflict:           CodeConflict,
 	ErrGone:               CodeGone,
 	ErrValidation:         CodeValidation,
+	ErrSessionEnded:       CodeSessionEnded,
 	ErrDailyLimitReached:  CodeRecognitionDailyLimit,
 }
 
@@ -154,7 +155,7 @@ func AllCodes() []string {
 	// который знает, о каком именно отказе речь. CodeLeadAlreadyClaimed —
 	// из того же ряда: очередь заявок общая, и «её уже взяли» читается
 	// иначе, чем «не удалось».
-	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded,
+	return append(all, CodeInternal, CodePasswordIncorrect,
 		CodeRecognitionUnclear, CodeRecognitionFailed,
 		CodeProviderOnlyWayIn, CodePasswordNotSet, CodeDeletionAlreadyRequested,
 		CodeExportAlreadyPending, CodeLastCurator, CodeJobAlreadyRunning,

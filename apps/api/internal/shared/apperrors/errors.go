@@ -24,6 +24,10 @@ var (
 	ErrConflict           = errors.New("conflicting state")
 	ErrGone               = errors.New("no longer available")
 	ErrValidation         = errors.New("invalid input")
+	// ErrSessionEnded: сессию завершили намеренно — повтор уже заменённого
+	// refresh-токена, смена пароля, выход со всех устройств. В отличие от
+	// ErrTokenExpired обновление тут не поможет, нужно войти заново.
+	ErrSessionEnded = errors.New("session ended")
 	// ErrDailyLimitReached: снимков на сегодня больше нет. Отличается от
 	// ErrRateLimited не только текстом — "попробуйте через секунду" тут не
 	// поможет и подталкивает нажать ещё раз без толку, ждать нужно до завтра.

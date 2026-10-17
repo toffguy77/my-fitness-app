@@ -103,7 +103,7 @@ func TestEveryAccountPathCarriesArrival(t *testing.T) {
 	found := map[string]bool{}
 	viaAfterSignIn := map[string]bool{}
 	fset := token.NewFileSet()
-	for _, file := range []string{"handler.go", "oauth_handler.go"} {
+	for _, file := range []string{"handler.go", "oauth_handler.go", "native_session.go"} {
 		parsed, err := parser.ParseFile(fset, file, nil, 0)
 		if !assert.NoError(t, err) {
 			return
@@ -127,7 +127,7 @@ func TestEveryAccountPathCarriesArrival(t *testing.T) {
 		}
 	}
 
-	for _, fn := range []string{"Register", "ConsumeMagicLink", "afterSignIn"} {
+	for _, fn := range []string{"Register", "ConsumeMagicLink", "afterSignIn", "NativeRegister", "NativeConsumeMagicLink"} {
 		assert.True(t, found[fn], "%s creates accounts and does not call carryArrival", fn)
 	}
 	// Вход через провайдера завершается в двух местах: колбэк (сегодня он
