@@ -3,6 +3,7 @@
  */
 
 import type { LucideIcon } from 'lucide-react'
+import type { MetricSource } from '@/shared/components/ui/HealthSourceLabel'
 import { z } from 'zod'
 import { t } from '@/shared/i18n'
 
@@ -90,6 +91,12 @@ export interface DailyMetrics {
     // Activity
     steps: number
     workout: WorkoutData
+
+    // Откуда шаги, вес и тренировка: manual | healthkit; null — значения нет.
+    // Необязательны: кэш и фикстуры, собранные до healthkit-sync, их не несут.
+    stepsSource?: MetricSource | null
+    weightSource?: MetricSource | null
+    workoutSource?: MetricSource | null
 
     // Completion status
     completionStatus: CompletionStatus

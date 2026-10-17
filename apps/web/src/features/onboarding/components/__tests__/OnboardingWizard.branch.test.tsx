@@ -92,7 +92,9 @@ describe('OnboardingWizard - branch coverage', () => {
             expect(state.fitnessGoal).toBe('gain')
             expect(state.telegram).toBe('@user')
             expect(state.instagram).toBe('insta')
-            expect(state.appleHealthEnabled).toBe(true)
+            // Признак Здоровья принадлежит приложению на iPhone (healthkit-sync):
+            // мастер его не перенимает и потому не может отправить обратно.
+            expect(state.appleHealthEnabled).toBe(false)
         })
     })
 
@@ -273,6 +275,11 @@ describe('OnboardingWizard - branch coverage', () => {
         })
         // Текущий вес — замер, а не цель (onboarding-body-step).
         expect(mockUpdateSettings.mock.calls[0][0]).not.toHaveProperty('target_weight')
+        // apple_health_enabled ставит и снимает приложение; веб, отправив своё
+        // значение, отключил бы импорт за спиной у телефона.
+        for (const [payload] of mockUpdateSettings.mock.calls) {
+            expect(payload).not.toHaveProperty('apple_health_enabled')
+        }
     })
 
     // Branch: buildBodyPayload with no body values (lines 137-143 all false)

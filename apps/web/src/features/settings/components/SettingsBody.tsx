@@ -79,7 +79,6 @@ function BodyForm({
                 timezone: settings?.timezone,
                 telegram_username: settings?.telegram_username,
                 instagram_username: settings?.instagram_username,
-                apple_health_enabled: settings?.apple_health_enabled,
                 birth_date: birthDate || null,
                 biological_sex: biologicalSex || null,
                 height: parsedHeight,

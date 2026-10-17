@@ -86,4 +86,12 @@ describe('WorkoutsSection', () => {
 
         expect(screen.getByText(/90 мин/)).toBeInTheDocument()
     })
+
+    it('подписывает тренировку из Здоровья', () => {
+        render(<WorkoutsSection days={[
+            makeDay({ date: '2026-03-06', workout: { completed: true, type: 'running:45', duration: 45 }, workout_source: 'healthkit' }),
+            makeDay({ date: '2026-03-05', workout: { completed: true, type: 'strength', duration: 30 }, workout_source: 'manual' }),
+        ]} />)
+        expect(screen.getAllByText('из Здоровья')).toHaveLength(1)
+    })
 })

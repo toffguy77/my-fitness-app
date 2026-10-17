@@ -20,6 +20,7 @@ import { Plus, Pencil, Check, TrendingUp, TrendingDown, Minus, Target } from 'lu
 import { Card, CardTitle } from '@/shared/components/ui/Card'
 import { Button, IconButton } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
+import { HealthSourceLabel } from '@/shared/components/ui/HealthSourceLabel'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import { formatLocalDate, formatDecimal } from '@/shared/utils/format'
@@ -273,6 +274,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                             {formatWeight(currentWeight)}
                         </span>
                         <span className="text-base text-fg-muted" aria-hidden="true">{t('dashboard.weight.kg')}</span>
+                        <HealthSourceLabel source={dayData?.weightSource} className="ml-auto" />
                     </div>
 
                     <div

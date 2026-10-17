@@ -6,6 +6,7 @@ import { TrendingUp, TrendingDown, Minus, Droplets } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { KBZHUProgress } from './KBZHUProgress'
 import { AlertBadge } from './AlertBadge'
+import { HealthSourceLabel } from '@/shared/components/ui/HealthSourceLabel'
 import type { ClientCard as ClientCardType } from '../types'
 
 import { t } from '@/shared/i18n'
@@ -86,6 +87,7 @@ export function ClientCard({ client }: ClientCardProps) {
                 <div className="mt-3 flex items-center gap-2 text-sm tabular-nums">
                     <span className="text-fg-muted">{t('curator.card.weightLabel')}</span>
                     <span className="font-semibold text-fg">{t('curator.card.kilograms', { value: client.last_weight })}</span>
+                    <HealthSourceLabel source={client.last_weight_source} />
                     {client.weight_trend === 'down' && (
                         <TrendingDown className="h-4 w-4 text-success-fg" aria-hidden="true" />
                     )}
