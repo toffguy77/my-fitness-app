@@ -165,7 +165,7 @@ private struct MessageBubble: View {
                     .frame(width: 200, height: 116)
                     .clipShape(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous))
                     .overlay(alignment: .bottomTrailing) {
-                        Text(time).dsText(DS.Typography.micro).foregroundStyle(DS.Color.fgDefault)
+                        Text(time).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgDefault)
                             .padding(.horizontal, DS.Space.s2).padding(.vertical, 2)
                             .background(Capsule().fill(DS.Color.bgSurface.opacity(0.9)))
                             .padding(DS.Space.s2)
@@ -210,7 +210,7 @@ private struct MessageBubble: View {
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(time)
-                .dsText(DS.Typography.micro)
+                .dsText(DS.Typography.caption)
                 .foregroundStyle(mine ? DS.Color.primaryFg : DS.Color.fgMuted)
                 .accessibilityHidden(true)
         }

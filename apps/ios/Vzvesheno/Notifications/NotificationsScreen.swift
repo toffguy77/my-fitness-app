@@ -85,12 +85,17 @@ struct NotificationsContent: View {
                 }
                 // «Прочитать все» — в содержимом, а не в панели навигации: кнопки
                 // панели не растут с Dynamic Type.
-                Button("Прочитать все", action: onReadAll)
-                    .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout).weight(.medium))
-                    .foregroundStyle((tab == .main ? counts.main : counts.content) == 0 ? DS.Color.fgMuted : DS.Color.primaryDefault)
-                    .frame(minHeight: DS.Size.touch)
-                    .disabled((tab == .main ? counts.main : counts.content) == 0)
-                    .accessibilityIdentifier("notifications.readAll")
+                let unread = tab == .main ? counts.main : counts.content
+                Button(action: onReadAll) {
+                    Text("Прочитать все")
+                        .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout).weight(.medium))
+                        .foregroundStyle(unread == 0 ? DS.Color.fgMuted : DS.Color.primaryDefault)
+                        .frame(minHeight: DS.Size.touch)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(unread == 0)
+                .accessibilityIdentifier("notifications.readAll")
                 if items.isEmpty {
                     Text("Пока ничего нового.")
                         .dsText(DS.Typography.body)

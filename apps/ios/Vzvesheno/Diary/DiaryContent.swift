@@ -278,6 +278,10 @@ struct EntryRow: View {
         .background(DS.Color.bgSurface)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
+        // Текст строки VoiceOver не читает по частям: элемент — вся строка
+        // (`.accessibilityElement` снаружи свайпа); без этого SwiftUI
+        // показывал название, подпись и калории ещё и отдельными текстами.
+        .accessibilityHidden(true)
     }
 }
 

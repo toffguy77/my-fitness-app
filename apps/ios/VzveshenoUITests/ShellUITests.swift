@@ -149,6 +149,13 @@ final class AccessibilityAuditUITests: XCTestCase {
                element.frame.maxY > accessory.frame.minY - 4, element.frame.minY < accessory.frame.maxY + 4 {
                 return true
             }
+            // Панель «Записать еду» — как таббар: высота постоянная, шрифт
+            // растёт до xxxLarge, дальше — увеличенный вид долгим нажатием
+            // (Large Content Viewer, HIG). Аудит называет это «частичной»
+            // поддержкой Dynamic Type.
+            if issue.auditType == .dynamicType, let element = issue.element, element.identifier.hasPrefix("accessory.") {
+                return true
+            }
             let element = issue.element.map { "\($0.elementType.rawValue) «\($0.label)» [\($0.identifier)] \($0.frame)" } ?? "нет элемента"
             found.append("\(issue.compactDescription): \(element)".replacingOccurrences(of: "\n", with: " "))
             return false

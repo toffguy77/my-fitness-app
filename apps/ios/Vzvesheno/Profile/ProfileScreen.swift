@@ -260,18 +260,33 @@ private struct AppearanceRow: View {
     @Binding var appearance: Appearance
 
     var body: some View {
-        HStack(spacing: DS.Space.s3) {
-            Text("Оформление").dsText(DS.Typography.body).foregroundStyle(DS.Color.fgDefault)
-            Spacer(minLength: DS.Space.s2)
-            Picker("Оформление", selection: $appearance) {
-                ForEach(Appearance.allCases) { Text($0.title).tag($0) }
+        // В строку, как на макете; на крупном шрифте — переключатель под подписью.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: DS.Space.s3) {
+                title.fixedSize()
+                Spacer(minLength: 0)
+                picker.fixedSize()
             }
-            .pickerStyle(.segmented)
-            .fixedSize()
-            .accessibilityIdentifier("profile.appearance")
+            VStack(alignment: .leading, spacing: DS.Space.s2) {
+                title
+                picker
+            }
+            .padding(.vertical, DS.Space.s2)
         }
         .padding(.horizontal, DS.Space.s4)
         .frame(minHeight: 50)
+    }
+
+    private var title: some View {
+        Text("Оформление").dsText(DS.Typography.body).foregroundStyle(DS.Color.fgDefault)
+    }
+
+    private var picker: some View {
+        Picker("Оформление", selection: $appearance) {
+            ForEach(Appearance.allCases) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("profile.appearance")
     }
 }
 

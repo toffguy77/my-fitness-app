@@ -68,11 +68,15 @@ final class ClientScreenSnapshotTests: XCTestCase {
             Article(id: "a3", title: "Вода и вес: почему цифра скачет по утрам", coverImageURL: "https://storage.yandexcloud.net/curator-content/3.jpg",
                     category: "health", publishedAt: "2025-10-14T09:00:00Z"),
         ]
-        // Без NavigationStack: его фон закрывал холст; ссылки и без него рисуются.
-        let content = ScrollView {
-            ArticlesContent(category: nil, articles: articles, loading: false, error: nil, image: placeholderImage)
+        // В NavigationStack: вне стека ссылки рисуются погашенными.
+        let content = NavigationStack {
+            ScrollView {
+                ArticlesContent(category: nil, articles: articles, loading: false, error: nil, image: placeholderImage)
+            }
+            .scrollDisabled(true)
+            .background(DS.Color.bgCanvas)
+            .toolbar(.hidden, for: .navigationBar)
         }
-        .scrollDisabled(true)
         assertScreenSnapshot(content, named: "light")
     }
 
@@ -104,9 +108,17 @@ final class ClientScreenSnapshotTests: XCTestCase {
         let summary = ProfileSummary(name: "Дмитрий", email: "dmitry@yandex.ru", body: "78,4 → 74 кг", health: "шаги, вес, тренировки",
                                      healthConnected: true, telegram: "не привязан", password: "изменить",
                                      signInMethods: "Apple, Яндекс")
-        // Без NavigationStack: с ним высота по содержимому выходила нулевой.
-        assertScreenSnapshot(ProfileContent(summary: summary, avatarInitial: "Д", appearance: .constant(.auto)),
-                             named: "light", height: nil)
+        // В NavigationStack (вне стека ссылки погашены); высота — вся страница:
+        // по содержимому стек меряется нулём.
+        let content = NavigationStack {
+            ScrollView {
+                ProfileContent(summary: summary, avatarInitial: "Д", appearance: .constant(.auto))
+            }
+            .scrollDisabled(true)
+            .background(DS.Color.bgCanvas)
+            .toolbar(.hidden, for: .navigationBar)
+        }
+        assertScreenSnapshot(content, named: "light", height: 1000)
     }
 
     func testNotifications() {
