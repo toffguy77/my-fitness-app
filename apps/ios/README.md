@@ -78,12 +78,16 @@ xcodebuild test -scheme Vzvesheno-Dev -destination 'platform=iOS Simulator,name=
 Эталоны компонентов — `VzveshenoKit/Tests/DesignSystemTests/__Snapshots__/*.png`,
 экранов — `VzveshenoTests/__Snapshots__/*.png` (экран в окне приложения 390 ×
 844 pt, как макеты: так рисуются и поля ввода, и кнопка Apple). Нет
-эталона — тест записывает его и падает; при расхождении рядом кладётся
-`*.actual.png`. CI всегда выкладывает каталог артефактом `ios-snapshots`:
+эталона — на Mac тест записывает его и падает; при расхождении рядом
+кладётся `*.actual.png`. В CI (`TEST_RUNNER_CI`) снимок без эталона ложится
+рядом как `*.new.png`, и тест падает при каждом повторе: иначе повтор нашёл
+бы только что записанный эталон и прогон стал бы зелёным с эталоном, которого
+нет в git. CI всегда выкладывает каталог артефактом `ios-snapshots`:
 
 ```bash
 gh run download <id> -n ios-snapshots -D /tmp/snap
-# просмотреть, затем скопировать эталоны (без *.actual.png) и закоммитить
+# просмотреть *.new.png, переименовать без .new (*.actual.png — не эталоны)
+# и закоммитить в __Snapshots__
 ```
 
 Перезаписать все эталоны: `TEST_RUNNER_SNAPSHOT_RECORD=1 xcodebuild test …`.

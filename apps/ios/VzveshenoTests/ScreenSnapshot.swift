@@ -10,8 +10,10 @@ import XCTest
 /// Размер — как у макетов (390 × 844 pt, @2x); верхние 54 pt — место строки
 /// состояния, как на макетах. Эталон — `__Snapshots__/<тест>.<имя>.png`
 /// рядом с файлом; нет эталона (или `SNAPSHOT_RECORD=1`) — записывается и
-/// тест падает, расхождение — рядом `.actual.png`. CI выкладывает каталог
-/// артефактом `ios-snapshots`.
+/// тест падает, расхождение — рядом `.actual.png`. В CI (`CI` из
+/// `TEST_RUNNER_CI`) снимок без эталона ложится как `.new.png` и тест падает
+/// при каждом повторе: записанный эталон повтор нашёл бы и прошёл. CI
+/// выкладывает каталог артефактом `ios-snapshots`.
 @MainActor
 func assertScreenSnapshot<V: View>(
     _ view: V,
@@ -67,10 +69,21 @@ func assertScreenSnapshot<V: View>(
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     try? FileManager.default.removeItem(at: actual)
 
-    let record = ProcessInfo.processInfo.environment["SNAPSHOT_RECORD"] == "1"
-    guard !record, let stored = try? Data(contentsOf: reference), let expected = UIImage(data: stored)?.cgImage else {
-        try? png.write(to: reference)
-        XCTFail("записан эталон \(reference.lastPathComponent) — сверьте с макетом и закоммитьте", file: file, line: line)
+    let fresh = directory.appendingPathComponent("\(test).\(name).new.png")
+    try? FileManager.default.removeItem(at: fresh)
+    let environment = ProcessInfo.processInfo.environment
+    let stored = (try? Data(contentsOf: reference)).flatMap { UIImage(data: $0)?.cgImage }
+    let record = environment["SNAPSHOT_RECORD"] == "1"
+    let ci = environment["CI"].map { !$0.isEmpty && $0 != "0" && $0.lowercased() != "false" } ?? false
+    guard !record, let expected = stored else {
+        if ci && !record {
+            try? png.write(to: fresh)
+            XCTFail("нет эталона \(reference.lastPathComponent): снимок — \(fresh.lastPathComponent) в артефакте "
+                    + "ios-snapshots; сверьте с макетом, переименуйте без .new и закоммитьте", file: file, line: line)
+        } else {
+            try? png.write(to: reference)
+            XCTFail("записан эталон \(reference.lastPathComponent) — сверьте с макетом и закоммитьте", file: file, line: line)
+        }
         return
     }
     guard let difference = ScreenImageDifference.compare(expected, cgImage) else {
