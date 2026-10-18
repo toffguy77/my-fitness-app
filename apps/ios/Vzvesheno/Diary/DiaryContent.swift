@@ -219,15 +219,11 @@ struct MealGroupCard: View {
             } else {
                 ForEach(group.rows) { row in
                     SwipeToDeleteRow(revealed: row.id == revealedEntryID, onDelete: { actions.delete(row.entry) }, content: {
-                        // Меню — у самой строки, под скрытием от VoiceOver: снаружи
-                        // свайпа его обёртка снова открывала тексты строки.
+                        // Без контекстного меню: его платформенная обёртка
+                        // открывала VoiceOver тексты строки даже под скрытием.
+                        // «Повторить сегодня» и «Сохранить как своё» — в листе
+                        // правки записи и действиями VoiceOver строки.
                         EntryRow(row: row) { actions.edit(row.entry) }
-                            .contextMenu {
-                                Button("Повторить сегодня", systemImage: "arrow.uturn.forward") { actions.repeatToday(row.entry) }
-                                Button("Сохранить как своё", systemImage: "star") { actions.saveAsOwn(row.entry) }
-                                    .disabled(row.pending)
-                                Button("Удалить", systemImage: "trash", role: .destructive) { actions.delete(row.entry) }
-                            }
                             .accessibilityHidden(true)
                     })
                     .overlay(alignment: .top) { Rectangle().fill(DS.Color.lineDefault).frame(height: 1) }
@@ -240,6 +236,7 @@ struct MealGroupCard: View {
                     .accessibilityAction(.default) { actions.edit(row.entry) }
                     .accessibilityAction(named: "Удалить") { actions.delete(row.entry) }
                     .accessibilityAction(named: "Повторить сегодня") { actions.repeatToday(row.entry) }
+                    .accessibilityAction(named: "Сохранить как своё") { actions.saveAsOwn(row.entry) }
                     .accessibilityIdentifier("entry.\(row.entry.foodName)")
                 }
             }
