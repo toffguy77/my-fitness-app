@@ -7,7 +7,17 @@ import Foundation
 /// грузим: её мог вписать собеседник или автор статьи, и тогда запрос уходил
 /// бы на чужой сервер с адресом и временем открытия (перенесено из 0.3.x).
 public enum TrustedMedia {
-    public static let hosts: Set<String> = ["storage.yandexcloud.net", "burcev.team", "www.burcev.team", "new.burcev.team"]
+    /// Object Storage Яндекса — общий хост всех клиентов облака: сам по себе
+    /// он ничего не гарантирует, проверяется ещё и бакет.
+    public static let storageHost = "storage.yandexcloud.net"
+
+    /// Наши бакеты — те же имена на dev и проде (значения по умолчанию в
+    /// `apps/api/internal/config/config.go`; сверяет `TrustedMediaTests`).
+    public static let buckets: Set<String> = ["weekly-progress-photos", "profiles-photos", "chats", "curator-content",
+                                              "food-photos", "data-exports"]
+
+    /// Свои домены: файлы, которые отдаёт API.
+    public static let ownHosts: Set<String> = ["burcev.team", "www.burcev.team", "new.burcev.team"]
 
     /// Проверенная ссылка, собранная заново только из проверенных частей:
     /// загружается ровно то, что прошло проверку, а не исходная строка,
@@ -17,8 +27,10 @@ public enum TrustedMedia {
               parts.scheme?.lowercased() == "https",
               parts.user == nil, parts.password == nil,
               parts.port == nil || parts.port == 443,
-              let host = parts.host?.lowercased(), hosts.contains(host),
-              parts.fragment == nil else {
+              let host = parts.host?.lowercased(),
+              parts.fragment == nil,
+              isCleanPath(parts.percentEncodedPath),
+              isTrusted(host: host, path: parts.percentEncodedPath) else {
             return nil
         }
         var clean = URLComponents()
@@ -27,6 +39,28 @@ public enum TrustedMedia {
         clean.percentEncodedPath = parts.percentEncodedPath
         clean.percentEncodedQuery = parts.percentEncodedQuery
         return clean.url
+    }
+
+    /// Путь без `.`/`..`, закодированных разделителей и пустых сегментов.
+    static func isCleanPath(_ path: String) -> Bool {
+        let lowered = path.lowercased()
+        guard path.hasPrefix("/"), !lowered.contains("%2f"), !lowered.contains("%5c"), !lowered.contains("%2e"),
+              !path.contains("\\") else { return false }
+        let segments = path.split(separator: "/", omittingEmptySubsequences: false).dropFirst()
+        return !segments.contains { $0 == "." || $0 == ".." || $0.isEmpty }
+    }
+
+    static func isTrusted(host: String, path: String) -> Bool {
+        if ownHosts.contains(host) { return true }
+        if host == storageHost {
+            // Путь: /<бакет>/<ключ>.
+            let bucket = path.split(separator: "/").first.map(String.init) ?? ""
+            return buckets.contains(bucket) && path.split(separator: "/").count >= 2
+        }
+        // Виртуальный хост: <бакет>.storage.yandexcloud.net.
+        let suffix = "." + storageHost
+        guard host.hasSuffix(suffix) else { return false }
+        return buckets.contains(String(host.dropLast(suffix.count)))
     }
 }
 
