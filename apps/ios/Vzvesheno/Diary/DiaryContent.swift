@@ -219,11 +219,17 @@ struct MealGroupCard: View {
             } else {
                 ForEach(group.rows) { row in
                     SwipeToDeleteRow(revealed: row.id == revealedEntryID, onDelete: { actions.delete(row.entry) }, content: {
-                        // Без контекстного меню: его платформенная обёртка
-                        // открывала VoiceOver тексты строки даже под скрытием.
-                        // «Повторить сегодня» и «Сохранить как своё» — в листе
-                        // правки записи и действиями VoiceOver строки.
+                        // Контекстное меню (ios-food-diary); для VoiceOver его
+                        // пункты — действия строки в accessibilityRepresentation.
                         EntryRow(row: row) { actions.edit(row.entry) }
+                            .contextMenu {
+                                Button("Повторить сегодня", systemImage: "arrow.uturn.forward") {
+                                    actions.repeatToday(row.entry)
+                                }
+                                Button("Сохранить как своё", systemImage: "star") { actions.saveAsOwn(row.entry) }
+                                    .disabled(row.pending)
+                                Button("Удалить", systemImage: "trash", role: .destructive) { actions.delete(row.entry) }
+                            }
                     })
                     .overlay(alignment: .top) { Rectangle().fill(DS.Color.lineDefault).frame(height: 1) }
                     // Строка целиком — один элемент VoiceOver: представление
