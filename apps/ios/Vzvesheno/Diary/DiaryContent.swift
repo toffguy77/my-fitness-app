@@ -201,10 +201,16 @@ struct MealGroupCard: View {
                 HStack {
                     Text("Нет записей").dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                     Spacer()
-                    Button("Добавить") { actions.addTo(group.meal) }
-                        .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout).weight(.medium))
-                        .foregroundStyle(DS.Color.primaryDefault)
-                        .frame(minHeight: DS.Size.touch)
+                    Button { actions.addTo(group.meal) } label: {
+                        // Высота 44 — у подписи кнопки: рамка снаружи кнопки
+                        // область нажатия не увеличивала.
+                        Text("Добавить")
+                            .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout).weight(.medium))
+                            .foregroundStyle(DS.Color.primaryDefault)
+                            .frame(minWidth: DS.Size.touch, minHeight: DS.Size.touch)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                         .accessibilityLabel("Добавить в \(group.meal.accusative)")
                         .accessibilityIdentifier("diary.add.\(group.meal.rawValue)")
                 }
@@ -222,6 +228,15 @@ struct MealGroupCard: View {
                             .disabled(row.pending)
                         Button("Удалить", systemImage: "trash", role: .destructive) { actions.delete(row.entry) }
                     }
+                    // Строка целиком — один элемент VoiceOver: снаружи свайпа и
+                    // контекстного меню (внутри них SwiftUI снова открывал
+                    // название, подпись и калории по отдельности).
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(row.accessibilityLabel)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction(.default) { actions.edit(row.entry) }
+                    .accessibilityAction(named: "Удалить") { actions.delete(row.entry) }
+                    .accessibilityIdentifier("entry.\(row.entry.foodName)")
                 }
             }
         }
@@ -234,11 +249,8 @@ struct MealGroupCard: View {
 
 /// Строка записи: название, «250 г · 08:10», калории.
 ///
-/// Для VoiceOver строка — один элемент-кнопка с идентификатором
-/// `entry.<название>` и действием «Удалить» (свайп). Раньше это была `Button`
-/// с `.accessibilityElement(children: .ignore)`: внутри жеста свайпа кнопка не
-/// схлопывалась, VoiceOver читал название, подпись и калории по отдельности,
-/// а идентификатор строки был недостижим.
+/// Для VoiceOver строку схлопывает `DiaryMealCard` снаружи свайпа и меню:
+/// один элемент-кнопка `entry.<название>` с действием «Удалить».
 struct EntryRow: View {
     let row: DiaryRow
     let onTap: () -> Void
@@ -266,12 +278,13 @@ struct EntryRow: View {
         .background(DS.Color.bgSurface)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(row.entry.foodName), \(row.entry.caption), \(row.entry.nutrition.kcal) ккал"
-                            + (row.pending ? ", ждёт отправки" : ""))
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction(.default, onTap)
-        .accessibilityIdentifier("entry.\(row.entry.foodName)")
+    }
+}
+
+extension DiaryRow {
+    /// «Овсянка на молоке, 250 г · 08:10, 280 ккал».
+    var accessibilityLabel: String {
+        "\(entry.foodName), \(entry.caption), \(entry.nutrition.kcal) ккал" + (pending ? ", ждёт отправки" : "")
     }
 }
 
@@ -302,8 +315,6 @@ struct SwipeToDeleteRow<Content: View>: View {
             .accessibilityHidden(!(open || revealed))
             .accessibilityIdentifier("entry.delete")
             content
-                // Действие — у самой строки: она и есть элемент VoiceOver.
-                .accessibilityAction(named: "Удалить", onDelete)
                 .offset(x: revealed ? -width : offset)
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 20)

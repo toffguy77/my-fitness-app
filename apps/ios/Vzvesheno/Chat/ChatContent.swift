@@ -35,10 +35,14 @@ struct ChatContent: View {
             ChatHeader(name: curatorName, typing: typing)
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: DS.Space.s3) {
+                    // Не ленивый: аудит Dynamic Type не видел роста текста в
+                    // ленивых ячейках; 50–100 сообщений — без потерь.
+                    VStack(spacing: DS.Space.s3) {
                         if hasEarlier {
+                            // Начало переписки на экране — следующие 50 (видимость в
+                            // прокрутке, а не onAppear: стопка не ленивая).
                             Color.clear.frame(height: 1)
-                                .onAppear(perform: actions.loadEarlier)
+                                .onScrollVisibilityChange(threshold: 0.01) { visible in if visible { actions.loadEarlier() } }
                                 .accessibilityHidden(true)
                         }
                         ForEach(items) { item in
@@ -101,7 +105,7 @@ private struct ChatHeader: View {
                     Text(name)
                         .dsText(DS.Typography.title3)
                         .foregroundStyle(DS.Color.fgDefault)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("chat.curator")
                     Text(typing ? "куратор · печатает…" : "куратор")
                         .dsText(DS.Typography.caption)
@@ -161,9 +165,9 @@ private struct MessageBubble: View {
                     .frame(width: 200, height: 116)
                     .clipShape(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous))
                     .overlay(alignment: .bottomTrailing) {
-                        Text(time).dsText(DS.Typography.micro).foregroundStyle(DS.Color.primaryFg)
+                        Text(time).dsText(DS.Typography.micro).foregroundStyle(DS.Color.fgDefault)
                             .padding(.horizontal, DS.Space.s2).padding(.vertical, 2)
-                            .background(Capsule().fill(DS.Color.bgScrim))
+                            .background(Capsule().fill(DS.Color.bgSurface.opacity(0.9)))
                             .padding(DS.Space.s2)
                     }
             }

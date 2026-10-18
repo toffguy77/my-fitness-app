@@ -138,6 +138,17 @@ final class AccessibilityAuditUITests: XCTestCase {
                element.frame.maxY > tabBar.frame.minY {
                 return true
             }
+            // Под плавающей панелью «Записать еду» (iOS 18) аудит сравнивает
+            // цвет подписи карточки, прокрученной под панель, с тем, что
+            // за ней в иерархии, а не с непрозрачной подложкой панели (пара
+            // токенов fgDefault/bgSurface — контраст выше 12:1). Проверено в
+            // фазе C: без исключения падает «Записать тренировку» под панелью.
+            // Обрезку подписи панели исключение больше не прячет.
+            let accessory = app.buttons["accessory.open"]
+            if issue.auditType == .contrast, let element = issue.element, accessory.exists,
+               element.frame.maxY > accessory.frame.minY - 4, element.frame.minY < accessory.frame.maxY + 4 {
+                return true
+            }
             let element = issue.element.map { "\($0.elementType.rawValue) «\($0.label)» [\($0.identifier)] \($0.frame)" } ?? "нет элемента"
             found.append("\(issue.compactDescription): \(element)".replacingOccurrences(of: "\n", with: " "))
             return false

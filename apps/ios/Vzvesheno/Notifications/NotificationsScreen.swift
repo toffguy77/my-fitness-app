@@ -19,20 +19,15 @@ struct NotificationsScreen: View {
                     onAppear: { notifications.appeared($0) },
                     onDisappear: { notifications.disappeared($0.id) },
                     onOpen: { open($0) },
-                    onMore: { Task { await notifications.loadMore() } })
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Прочитать все") { Task { await notifications.markAllRead() } }
-                                .disabled(notifications.count(notifications.tab) == 0)
-                                .accessibilityIdentifier("notifications.readAll")
-                        }
-                    }
+                    onMore: { Task { await notifications.loadMore() } },
+                    onReadAll: { Task { await notifications.markAllRead() } })
             } else {
                 LoadingView()
             }
         }
         .navigationTitle("Уведомления")
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.notifications")
         .task {
             if model.notifications == nil {
@@ -67,10 +62,11 @@ struct NotificationsContent: View {
     var onDisappear: (AppNotification) -> Void = { _ in }
     var onOpen: (AppNotification) -> Void = { _ in }
     var onMore: () -> Void = {}
+    var onReadAll: () -> Void = {}
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: DS.Space.s3) {
+            VStack(alignment: .leading, spacing: DS.Space.s3) {
                 HStack(spacing: DS.Space.s2) {
                     ForEach(NotificationsModel.Tab.allCases, id: \.self) { item in
                         let count = item == .main ? counts.main : counts.content
@@ -87,6 +83,14 @@ struct NotificationsContent: View {
                         .accessibilityIdentifier("notifications.tab.\(item.rawValue)")
                     }
                 }
+                // «Прочитать все» — в содержимом, а не в панели навигации: кнопки
+                // панели не растут с Dynamic Type.
+                Button("Прочитать все", action: onReadAll)
+                    .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout).weight(.medium))
+                    .foregroundStyle((tab == .main ? counts.main : counts.content) == 0 ? DS.Color.fgMuted : DS.Color.primaryDefault)
+                    .frame(minHeight: DS.Size.touch)
+                    .disabled((tab == .main ? counts.main : counts.content) == 0)
+                    .accessibilityIdentifier("notifications.readAll")
                 if items.isEmpty {
                     Text("Пока ничего нового.")
                         .dsText(DS.Typography.body)
@@ -97,11 +101,16 @@ struct NotificationsContent: View {
                     Button { onOpen(item) } label: { NotificationRow(item: item) }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("notification.\(item.id)")
-                        .onAppear {
-                            onAppear(item)
-                            if item.id == items.last?.id, hasMore { onMore() }
+                        // «На экране» — видимость в прокрутке, а не onAppear:
+                        // стопка не ленивая, и onAppear сработал бы у всех сразу.
+                        .onScrollVisibilityChange(threshold: 0.5) { visible in
+                            if visible {
+                                onAppear(item)
+                                if item.id == items.last?.id, hasMore { onMore() }
+                            } else {
+                                onDisappear(item)
+                            }
                         }
-                        .onDisappear { onDisappear(item) }
                 }
             }
             .padding(.horizontal, DS.Space.screenX)

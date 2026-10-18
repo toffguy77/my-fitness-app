@@ -38,7 +38,7 @@ struct ArticlesContent: View {
     var onReachEnd: () -> Void = {}
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: DS.Space.s4) {
+        VStack(alignment: .leading, spacing: DS.Space.s4) {
             Text("Статьи")
                 .dsText(DS.Typography.display)
                 .foregroundStyle(DS.Color.fgDefault)
@@ -65,7 +65,10 @@ struct ArticlesContent: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, DS.Space.screenX)
                 .accessibilityIdentifier("article.\(article.id)")
-                .onAppear { if index == articles.count - 1 { onReachEnd() } }
+                // Последняя статья на экране — следующая страница.
+                .onScrollVisibilityChange(threshold: 0.2) { visible in
+                    if visible, index == articles.count - 1 { onReachEnd() }
+                }
             }
             if loading, !articles.isEmpty {
                 DSSpinner("Загружаем статьи").frame(maxWidth: .infinity)

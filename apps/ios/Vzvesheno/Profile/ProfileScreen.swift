@@ -239,8 +239,8 @@ struct ProfileRow: View {
                 Text(value)
                     .dsText(DS.Typography.callout)
                     .foregroundStyle(valueColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if chevron {
                 Image(systemName: "chevron.right")

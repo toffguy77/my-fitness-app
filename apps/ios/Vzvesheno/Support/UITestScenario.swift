@@ -130,6 +130,8 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
     var readNotifications: Set<String> = []
     var exportRequested = false
     var deletionCodeSent = false
+    /// Вход «deleting@…»: удаление запрошено, пока его не отменили.
+    var deletionScheduledFor: String?
 
     init(scenario: UITestScenario, providers: [String]) {
         self.scenario = scenario
@@ -203,11 +205,13 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
         case "/api/v1/auth/native/login":
             // «deleting@…» — аккаунт, ждущий удаления: вход успешен, сессия выдана.
             let deleting = (body["email"] as? String)?.hasPrefix("deleting") == true
+            deletionScheduledFor = deleting ? "2026-10-31T10:00:00Z" : nil
             let deletion = deleting
                 ? #","pending_deletion":{"requested_at":"2026-10-01T10:00:00Z","scheduled_for":"2026-10-31T10:00:00Z"}"#
                 : ""
             return Self.ok(#"{"access_token":"a2","refresh_token":"r2","expires_in":900,"user":\#(user)\#(deletion)}"#)
         case "/api/v1/users/me/deletion" where method == "DELETE":
+            deletionScheduledFor = nil
             return Self.ok(#"{"cancelled":true}"#)
         case "/api/v1/auth/native/magic-link/consume":
             return Self.error(400, "token_invalid")

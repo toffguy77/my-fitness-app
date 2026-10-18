@@ -162,7 +162,8 @@ public final class ArticleModel {
 
     public func load() async {
         do {
-            let endpoint: Endpoint = Self.isUUID(reference)
+            // Из ленты — по id в личной ленте; по ссылке — slug в публичной.
+            let endpoint: Endpoint = Self.isUUID(reference) || article?.id == reference
                 ? .get("/api/v1/content/feed/\(reference)")
                 : .get("/api/v1/public/content/\(reference)", requiresAuth: false)
             let loaded: Article = try await api.send(endpoint)

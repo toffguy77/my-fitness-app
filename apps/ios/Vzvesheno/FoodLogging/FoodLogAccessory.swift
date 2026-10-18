@@ -14,13 +14,12 @@ struct FoodLogAccessory: View {
             Button { onOpen(.search) } label: {
                 Text("Записать еду")
                     .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .subheadline).weight(.medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
                     .foregroundStyle(DS.Color.fgDefault)
                     .frame(maxWidth: .infinity, minHeight: DS.Size.touch, alignment: .leading)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityShowsLargeContentViewer()
             .accessibilityIdentifier("accessory.open")
             item("magnifyingglass", "Найти продукт", .search)
             item("barcode.viewfinder", "Сканировать штрихкод", .barcode)
@@ -28,6 +27,9 @@ struct FoodLogAccessory: View {
         }
         .padding(.leading, DS.Space.s4)
         .padding(.trailing, 6)
+        // Панель — как таббар: высота постоянная, шрифт растёт до xxxLarge,
+        // крупнее — увеличенный вид долгим нажатием (Large Content Viewer).
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("accessory.foodLog")
     }

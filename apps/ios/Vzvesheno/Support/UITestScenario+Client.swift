@@ -208,7 +208,8 @@ extension ScenarioTransport {
         case ("POST", "/api/v1/users/me/export"):
             return Self.error(429, "rate_limited")
         case ("GET", "/api/v1/users/me/deletion"):
-            return Self.ok(#"{"requested":false}"#)
+            guard let scheduled = deletionScheduledFor else { return Self.ok(#"{"requested":false}"#) }
+            return Self.ok(#"{"requested":true,"requested_at":"2026-10-01T10:00:00Z","scheduled_for":"\#(scheduled)"}"#)
         case ("POST", "/api/v1/users/me/deletion/code"):
             deletionCodeSent = true
             return Self.ok(#"{"sent":true}"#)
@@ -237,7 +238,8 @@ final class UITestCounters {
 struct UITestRequestCounter: View {
     var body: some View {
         if UITestScenario.current != nil {
-            Text(verbatim: "content.writes=\(UITestCounters.shared.contentWrites)")
+            // Подпись — по-русски: аудит доступности проверяет и её.
+            Text(verbatim: "Изменений во вкладке «Контент»: \(UITestCounters.shared.contentWrites)")
                 .dsText(DS.Typography.caption)
                 .foregroundStyle(DS.Color.fgMuted)
                 .accessibilityIdentifier("uitest.content.writes")

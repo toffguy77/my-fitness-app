@@ -183,7 +183,7 @@ final class NotificationsUITests: ClientUITestCase {
         XCTAssertTrue(element(app, "notification.n1").waitForExistence(timeout: 10), app.screenSummary)
         // Дольше 2 с на экране: «Основные» прочитаны, «Контент» — нет.
         RunLoop.current.run(until: Date().addingTimeInterval(3))
-        XCTAssertEqual(element(app, "uitest.content.writes").label, "content.writes=0")
+        XCTAssertEqual(element(app, "uitest.content.writes").label, "Изменений во вкладке «Контент»: 0")
         let content = app.buttons["notifications.tab.content"]
         XCTAssertTrue(content.label.hasSuffix("· 1"), content.label)
     }
@@ -215,7 +215,7 @@ final class NotificationsUITests: ClientUITestCase {
         XCTAssertTrue(element(app, "notification.n1").waitForExistence(timeout: 10), app.screenSummary)
         app.buttons["notifications.readAll"].tap()
         RunLoop.current.run(until: Date().addingTimeInterval(1))
-        XCTAssertEqual(element(app, "uitest.content.writes").label, "content.writes=0")
+        XCTAssertEqual(element(app, "uitest.content.writes").label, "Изменений во вкладке «Контент»: 0")
     }
 
     /// «Выполнено» в пуше тренировки: приложение на листе вида и длительности.

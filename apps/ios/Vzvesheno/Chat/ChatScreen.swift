@@ -32,6 +32,8 @@ struct ChatScreen: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
+        // Контейнер: иначе идентификатор экрана достаётся кнопкам и тексту внутри.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.chat")
         .task {
             model.chat?.isVisible = true

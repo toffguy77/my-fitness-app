@@ -68,13 +68,11 @@ final class ClientScreenSnapshotTests: XCTestCase {
             Article(id: "a3", title: "Вода и вес: почему цифра скачет по утрам", coverImageURL: "https://storage.yandexcloud.net/curator-content/3.jpg",
                     category: "health", publishedAt: "2025-10-14T09:00:00Z"),
         ]
-        let content = NavigationStack {
-            ScrollView {
-                ArticlesContent(category: nil, articles: articles, loading: false, error: nil, image: placeholderImage)
-            }
-            .scrollDisabled(true)
-            .toolbar(.hidden, for: .navigationBar)
+        // Без NavigationStack: его фон закрывал холст; ссылки и без него рисуются.
+        let content = ScrollView {
+            ArticlesContent(category: nil, articles: articles, loading: false, error: nil, image: placeholderImage)
         }
+        .scrollDisabled(true)
         assertScreenSnapshot(content, named: "light")
     }
 
@@ -106,11 +104,9 @@ final class ClientScreenSnapshotTests: XCTestCase {
         let summary = ProfileSummary(name: "Дмитрий", email: "dmitry@yandex.ru", body: "78,4 → 74 кг", health: "шаги, вес, тренировки",
                                      healthConnected: true, telegram: "не привязан", password: "изменить",
                                      signInMethods: "Apple, Яндекс")
-        let content = NavigationStack {
-            ProfileContent(summary: summary, avatarInitial: "Д", appearance: .constant(.auto))
-                .toolbar(.hidden, for: .navigationBar)
-        }
-        assertScreenSnapshot(content, named: "light", height: nil)
+        // Без NavigationStack: с ним высота по содержимому выходила нулевой.
+        assertScreenSnapshot(ProfileContent(summary: summary, avatarInitial: "Д", appearance: .constant(.auto)),
+                             named: "light", height: nil)
     }
 
     func testNotifications() {

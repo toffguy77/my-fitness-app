@@ -10,15 +10,18 @@ struct SegmentedTabs<Value: Hashable>: View {
     var fontSize: CGFloat = 14
     var identifier: (Value) -> String
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(spacing: 0) {
+        // На крупнейших размерах шрифта — столбиком: слово «Нутриенты» в
+        // половину ширины не помещается.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
+        layout {
             ForEach(items, id: \.value) { item in
                 let selected = item.value == selection
                 Button { selection = item.value } label: {
                     Text(item.title)
                         .font(.custom(DS.FontFamily.sans, size: fontSize, relativeTo: .subheadline).weight(.medium))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
                         .foregroundStyle(selected ? DS.Color.fgDefault : DS.Color.fgMuted)
                         .frame(maxWidth: .infinity, minHeight: 32)
                         .background {

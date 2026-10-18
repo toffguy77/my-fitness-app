@@ -24,6 +24,7 @@ struct SettingsSectionView: View {
         }
         .navigationTitle(section.title)
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.settings.\(section.rawValue)")
     }
 }
