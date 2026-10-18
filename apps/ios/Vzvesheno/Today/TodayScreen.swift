@@ -234,22 +234,6 @@ struct TodayEditorSheet: View {
     }
 }
 
-/// Снимок для сервера: JPEG 0,8, длинная сторона до 1280 px, без EXIF
-/// (`UIImage.jpegData` метаданные не пишет). Сервер HEIC не принимает.
-enum PhotoPreparation {
-    static func jpeg(from image: UIImage, maxSide: CGFloat = 1280, quality: CGFloat = 0.8) -> Data? {
-        let size = image.size
-        let scale = min(1, maxSide / max(size.width, size.height, 1))
-        let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = 1
-        let resized = UIGraphicsImageRenderer(size: target, format: format).image { _ in
-            image.draw(in: CGRect(origin: .zero, size: target))
-        }
-        return resized.jpegData(compressionQuality: quality)
-    }
-}
-
 /// Камера системы (`UIImagePickerController`).
 struct CameraPicker: UIViewControllerRepresentable {
     let onPick: (UIImage?) -> Void

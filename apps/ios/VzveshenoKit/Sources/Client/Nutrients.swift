@@ -22,8 +22,8 @@ public enum NutrientUnit: String, Codable, Sendable, CaseIterable, Identifiable 
 }
 
 /// Рекомендация по нутриенту (строка списка и основа деталей).
-public struct NutrientRecommendation: Decodable, Sendable, Equatable, Identifiable {
-    public struct Source: Decodable, Sendable, Equatable {
+public struct NutrientRecommendation: Decodable, Sendable, Hashable, Identifiable {
+    public struct Source: Decodable, Sendable, Hashable {
         public var foodName: String
         public var amount: Double
         public var unit: String

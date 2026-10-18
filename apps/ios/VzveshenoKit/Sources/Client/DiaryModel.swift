@@ -56,7 +56,7 @@ public struct DiaryRow: Sendable, Equatable, Identifiable {
 }
 
 /// Удалённая запись, которую ещё можно вернуть.
-public struct PendingDeletion: Sendable, Equatable {
+public struct DiaryDeletion: Sendable, Equatable {
     public let entry: FoodEntry
 }
 
@@ -81,7 +81,7 @@ public final class DiaryModel {
     public private(set) var isLoading = false
     public private(set) var loadError: APIError?
     /// Удалённая запись в окне отмены (5 с).
-    public private(set) var deletion: PendingDeletion?
+    public private(set) var deletion: DiaryDeletion?
     /// Сообщение после отказа сервера или «Сохранено в своих».
     public var notice: String?
     /// Записи, поставленные в очередь и ещё не принятые: id изменения → запись.
@@ -244,6 +244,18 @@ public final class DiaryModel {
         onTotalsChanged?(selected, totals)
     }
 
+    /// День изменился не через дневник («Съел» в «Меню»): показанный день
+    /// перечитывается, другой — сверяется со Здоровьем.
+    public func syncDay(_ day: String) async {
+        if day == selected {
+            await load()
+            return
+        }
+        guard health != nil, case let .success(entries) = await fetch(DayEntries.self, "/api/v1/food-tracker/entries",
+                                                                       ["date": day]) else { return }
+        await reconcileHealth(day, entries)
+    }
+
     // MARK: Добавление
 
     /// Время записи: сейчас для сегодняшнего дня, иначе полдень.
@@ -357,7 +369,7 @@ public final class DiaryModel {
             deletionTask?.cancel()
             await commitDeletion(previous.entry)
         }
-        deletion = PendingDeletion(entry: entry)
+        deletion = DiaryDeletion(entry: entry)
         notifyTotals()
         deletionTask = Task { [weak self, sleeper] in
             do {

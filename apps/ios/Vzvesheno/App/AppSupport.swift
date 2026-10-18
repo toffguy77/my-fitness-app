@@ -15,6 +15,8 @@ struct AccountEraser: AccountDataEraser {
     let snapshot: DaySnapshotStore
     let health: HealthSync
     let photoWeeks: FilePhotoWeekStore
+    let barcodes: BarcodeCache
+    let shoppingMarks: FileShoppingMarks
 
     func eraseAccountData() async {
         // Наблюдатели и фоновая доставка Здоровья останавливаются: иначе
@@ -24,6 +26,8 @@ struct AccountEraser: AccountDataEraser {
         await outbox.eraseAll()
         snapshot.erase()
         photoWeeks.erase()
+        barcodes.eraseAll()
+        shoppingMarks.erase()
         #if canImport(WidgetKit)
         // Виджет не показывает данные прежнего аккаунта ни минуты.
         WidgetCenter.shared.reloadAllTimelines()
@@ -72,5 +76,27 @@ final class SessionRef: @unchecked Sendable {
     var store: SessionStore? {
         get { lock.withLock { _store } }
         set { lock.withLock { _store = newValue } }
+    }
+}
+
+/// Отметки «куплено» списка покупок — только на устройстве, в каталоге аккаунта.
+final class FileShoppingMarks: ShoppingMarksStore, @unchecked Sendable {
+    private let url: URL
+    private let lock = NSLock()
+
+    init(url: URL) { self.url = url }
+
+    func load() -> Set<String> {
+        lock.withLock { (try? Data(contentsOf: url)).flatMap { try? JSONDecoder().decode(Set<String>.self, from: $0) } ?? [] }
+    }
+
+    func save(_ marks: Set<String>) {
+        lock.withLock {
+            if let data = try? JSONEncoder().encode(marks) { try? ProtectedFiles.write(data, to: url) }
+        }
+    }
+
+    func erase() {
+        lock.withLock { _ = try? FileManager.default.removeItem(at: url) }
     }
 }

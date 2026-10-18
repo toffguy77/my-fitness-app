@@ -11,7 +11,9 @@ import Session
 /// - `-uiTestProviders yandex,apple` — ответ `GET /auth/providers`;
 /// - `-uiTestOpenURL <адрес>` — universal link сразу после запуска;
 /// - `-uiTestPendingConsents` — вход через провайдера создаёт аккаунт:
-///   открыт экран согласий.
+///   открыт экран согласий;
+/// - `-uiTestFoodOffline` — изменения дневника не доходят до сервера (нет
+///   сети), чтения работают: запись остаётся «ждёт отправки».
 enum UITestScenario: String {
     case client
     case coordinator
@@ -91,6 +93,15 @@ private final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
     private var glasses = 5
     private var taskDone = false
     private var workout: (kind: String, minutes: Int)?
+    /// Дневник сценария: записи по датам.
+    var entries: [String: [[String: Any]]] = [:]
+    var seeded: Set<String> = []
+    var favorites: Set<String> = ["p1"]
+    var planEaten = false
+    var planRecipe = "r1"
+    var planLocked = false
+    var nextEntry = 100
+    let foodOffline = ProcessInfo.processInfo.arguments.contains("-uiTestFoodOffline")
 
     init(scenario: UITestScenario, providers: [String]) {
         self.scenario = scenario
@@ -103,7 +114,15 @@ private final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
             throw URLError(.notConnectedToInternet)
         }
         let body = request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
-        let (status, text) = lock.withLock { respond(request.httpMethod ?? "GET", path, body) }
+        let method = request.httpMethod ?? "GET"
+        if foodOffline && method != "GET" && path.hasPrefix("/api/v1/food-tracker/") {
+            throw URLError(.notConnectedToInternet)
+        }
+        let query = Dictionary((URLComponents(url: request.url ?? URL(fileURLWithPath: "/"), resolvingAgainstBaseURL: false)?
+            .queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
+        let (status, text) = lock.withLock {
+            foodResponse(method, path, body, query) ?? menuResponse(method, path, body) ?? respond(method, path, body)
+        }
         let response = HTTPURLResponse(url: request.url ?? URL(fileURLWithPath: "/"), statusCode: status,
                                        httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])
         guard let response else { throw URLError(.badServerResponse) }
@@ -219,6 +238,179 @@ private final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
             return Self.ok(#"{"weight_trend":[],"nutrition_adherence":71,"target_weight":null}"#)
         case "/api/v1/nutrition-calc/history":
             return Self.ok(#"{"days":[]}"#)
+        default:
+            return nil
+        }
+    }
+}
+// MARK: Дневник, запись еды и «Меню» сценария
+
+extension ScenarioTransport {
+    /// Сегодня по Москве — пояс профиля сценария.
+    static var today: String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Moscow") ?? .current
+        let parts = calendar.dateComponents([.year, .month, .day], from: Date())
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    static func json(_ value: Any) -> String {
+        (try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])).flatMap { String(data: $0, encoding: .utf8) }
+            ?? "null"
+    }
+
+    /// Запись дневника: `slot` — приём, время и день.
+    static func entry(_ id: String, _ name: String, portion: (unit: String, amount: Double), nutrition: [Double],
+                      slot: (meal: String, time: String, date: String)) -> [String: Any] {
+        ["id": id, "foodId": "f-\(id)", "foodName": name, "mealType": slot.meal, "portionType": portion.unit,
+         "portionAmount": portion.amount,
+         "nutrition": ["calories": nutrition[0], "protein": nutrition[1], "fat": nutrition[2], "carbs": nutrition[3]],
+         "time": slot.time, "date": slot.date]
+    }
+
+    /// День как на макете Diary.png: завтрак и обед, ужин пуст.
+    func seed(_ date: String) {
+        guard !seeded.contains(date) else { return }
+        seeded.insert(date)
+        guard date == Self.today else { return }
+        entries[date] = [
+            Self.entry("e1", "Овсянка на молоке", portion: ("grams", 250), nutrition: [280, 25, 40, 14],
+                       slot: ("breakfast", "08:10", date)),
+            Self.entry("e2", "Кофе с молоком", portion: ("milliliters", 200), nutrition: [40, 5, 4, 4],
+                       slot: ("breakfast", "08:12", date)),
+            Self.entry("e3", "Куриная грудка запечённая", portion: ("grams", 150), nutrition: [229, 46, 5, 0],
+                       slot: ("lunch", "13:20", date)),
+        ]
+    }
+
+    static let buckwheat = #"{"id":"p1","name":"Гречка отварная","servingSize":100,"servingUnit":"g","#
+        + #""nutritionPer100":{"calories":110,"protein":4,"fat":1,"carbs":21},"source":"database"}"#
+    static let yogurt = #"{"id":"y1","name":"Йогурт греческий 2%","brand":"Теос","servingSize":140,"servingUnit":"g","#
+        + #""nutritionPer100":{"calories":66,"protein":7,"fat":2,"carbs":4},"source":"openfoodfacts","barcode":"4607012345678"}"#
+
+    func foodResponse(_ method: String, _ path: String, _ body: [String: Any], _ query: [String: String]) -> (Int, String)? {
+        switch (method, path) {
+        case ("GET", "/api/v1/food-tracker/entries"):
+            let date = query["date"] ?? Self.today
+            seed(date)
+            let list = entries[date] ?? []
+            let grouped = Dictionary(grouping: list) { $0["mealType"] as? String ?? "snack" }
+            let byMeal = ["breakfast", "lunch", "dinner", "snack"].reduce(into: [String: Any]()) { $0[$1] = grouped[$1] ?? [] }
+            return Self.ok(Self.json(["entries": byMeal]))
+        case ("POST", "/api/v1/food-tracker/entries"):
+            let date = body["date"] as? String ?? Self.today
+            seed(date)
+            nextEntry += 1
+            let entry = Self.entry("e\(nextEntry)", body["foodName"] as? String ?? "Продукт",
+                                   portion: (body["portionType"] as? String ?? "grams", body["portionAmount"] as? Double ?? 100),
+                                   nutrition: [body["calories"] as? Double ?? 0, body["protein"] as? Double ?? 0,
+                                               body["fat"] as? Double ?? 0, body["carbs"] as? Double ?? 0],
+                                   slot: (body["mealType"] as? String ?? "snack", body["time"] as? String ?? "12:00", date))
+            entries[date, default: []].append(entry)
+            return (201, #"{"status":"success","data":\#(Self.json(entry))}"#)
+        case let ("PUT", path) where path.hasPrefix("/api/v1/food-tracker/entries/"):
+            return Self.ok(#"{"success":true}"#)
+        case let ("DELETE", path) where path.hasPrefix("/api/v1/food-tracker/entries/"):
+            let id = String(path.dropFirst("/api/v1/food-tracker/entries/".count))
+            for date in entries.keys { entries[date]?.removeAll { $0["id"] as? String == id } }
+            return Self.ok(#"{"success":true,"message":"Запись успешно удалена"}"#)
+        case ("GET", "/api/v1/food-tracker/search"):
+            return Self.ok(#"{"items":[\#(Self.buckwheat)],"total":1}"#)
+        case ("GET", "/api/v1/food-tracker/recent"):
+            return Self.ok(#"{"foods":[\#(Self.buckwheat)]}"#)
+        case ("GET", "/api/v1/food-tracker/favorites"):
+            return Self.ok(favorites.contains("p1") ? #"{"foods":[\#(Self.buckwheat)]}"# : #"{"foods":[]}"#)
+        case let (verb, path) where path.hasPrefix("/api/v1/food-tracker/favorites/"):
+            if verb == "POST" { favorites.insert("p1") } else { favorites.remove("p1") }
+            return Self.ok(#"{"success":true}"#)
+        case let ("GET", path) where path.hasPrefix("/api/v1/food-tracker/barcode/"):
+            return path.hasSuffix("4607012345678")
+                ? Self.ok(#"{"found":true,"cached":false,"food":\#(Self.yogurt)}"#)
+                : Self.ok(#"{"found":false,"cached":false,"message":"Продукт не найден. Попробуйте ввести вручную."}"#)
+        case ("POST", "/api/v1/food-tracker/recognize"):
+            return Self.ok(#"{"foods":[{"name":"Курица с рисом","confidence":0.4,"estimated_weight":360,"#
+                           + #""nutrition":{"calories":140,"protein":18,"fat":2,"carbs":14}}],"composition":["#
+                           + #"{"name":"Куриная грудка запечённая","confidence":0.95,"estimated_weight":150,"#
+                           + #""nutrition":{"calories":152.7,"protein":30.7,"fat":3.3,"carbs":0}},"#
+                           + #"{"name":"Рис басмати","confidence":0.92,"estimated_weight":180,"#
+                           + #""nutrition":{"calories":127,"protein":2.7,"fat":0.3,"carbs":28}},"#
+                           + #"{"name":"Соус, похож на сливочный","confidence":0.4,"estimated_weight":30,"#
+                           + #""nutrition":{"calories":300,"protein":2,"fat":30,"carbs":5}}],"#
+                           + #""success":true,"remaining_recognitions":2}"#)
+        case ("POST", "/api/v1/food-tracker/user-foods"), ("POST", "/api/v1/food-tracker/user-foods/clone"):
+            let name = body["name"] as? String ?? "Овсянка на молоке"
+            return (201, #"{"status":"success","data":{"id":"u1","user_id":7,"name":"\#(name)","calories_per_100":112,"#
+                    + #""protein_per_100":4,"fat_per_100":4,"carbs_per_100":15}}"#)
+        case ("GET", "/api/v1/food-tracker/recommendations"):
+            return Self.ok(#"{"daily":{"vitamins":[\#(Self.vitaminD)]},"weekly":[],"custom":[]}"#)
+        case let ("GET", path) where path.hasPrefix("/api/v1/food-tracker/recommendations/"):
+            return Self.ok(Self.vitaminD)
+        default:
+            return nil
+        }
+    }
+
+    static let vitaminD = #"{"id":"d1","name":"Витамин D","category":"vitamins","unit":"mcg","is_weekly":false,"#
+        + #""description":"Жирорастворимый витамин, который кожа вырабатывает на солнце.","#
+        + #""benefits":"Помогает усваивать кальций, поддерживает кости, мышцы и иммунитет.","#
+        + #""effects":"Слабость, боли в мышцах, ломкость костей, частые простуды.","#
+        + #""daily_target":15,"norm_source":"МР 2.3.1.0253-21","norm_needs_profile":false,"current_intake":4.2,"#
+        + #""percentage":28,"intake_counted_entries":3,"intake_total_entries":5,"is_tracked":true,"sources":[]}"#
+
+    func plan(_ date: String) -> String {
+        let name = planRecipe == "r2" ? "Омлет" : "Сырники"
+        return #"{"date":"\#(date)","meal_types":["breakfast","lunch"],"target":{"kcal":2472,"protein":125,"fat":80,"carbs":230},"#
+            + #""target_changed":false,"items":[{"meal_type":"breakfast","recipe_id":"\#(planRecipe)","recipe_version_id":"v","#
+            + #""name":"\#(name)","photo_url":null,"grams":180,"portion_grams":180,"nutrition":{"kcal":420,"protein":30,"#
+            + #""fat":15,"carbs":40},"percent_of_target":{"kcal":17,"protein":24,"fat":19,"carbs":17},"locked":\#(planLocked),"#
+            + #""manual_grams":false,"unavailable":false,"eaten":\#(planEaten),"eaten_grams":null,"food_entry_id":null}],"#
+            + #""empty":[{"meal_type":"lunch","reason":"no_recipes"}],"totals":{"kcal":420,"protein":30,"fat":15,"carbs":40},"#
+            + #""percent_of_target":{"kcal":17,"protein":24,"fat":19,"carbs":17},"remaining":{"kcal":2052,"protein":95,"#
+            + #""fat":65,"carbs":190},"calorie_split":{"protein":29,"fat":32,"carbs":38},"deviations":[]}"#
+    }
+
+    func menuResponse(_ method: String, _ path: String, _ body: [String: Any]) -> (Int, String)? {
+        guard path.hasPrefix("/api/v1/meal-plans/") || path.hasPrefix("/api/v1/recipes") || path == "/api/v1/shopping-list"
+            || path == "/api/v1/meal-plan-settings" else { return nil }
+        let parts = path.split(separator: "/").map(String.init)
+        switch (method, path) {
+        case let ("GET", path) where path.hasSuffix("/alternatives"):
+            return Self.ok(#"{"items":[{"recipe_id":"r2","name":"Омлет","photo_url":null,"grams":200,"#
+                           + #""nutrition":{"kcal":320,"protein":24,"fat":20,"carbs":5},"day_totals":{"kcal":320}}]}"#)
+        case let ("POST", path) where path.hasSuffix("/eat"):
+            let date = parts[3]
+            seed(date)
+            planEaten = true
+            nextEntry += 1
+            let name = planRecipe == "r2" ? "Омлет" : "Сырники"
+            entries[date, default: []].append(Self.entry("e\(nextEntry)", name, portion: ("grams", body["grams"] as? Double ?? 180),
+                                                         nutrition: [420, 30, 15, 40],
+                                                         slot: ("breakfast", body["time"] as? String ?? "12:00", date)))
+            return (201, #"{"status":"success","data":{"entry_id":"e\#(nextEntry)","plan":\#(plan(date))}}"#)
+        case let ("PUT", path) where path.contains("/items/"):
+            if let recipe = body["recipe_id"] as? String { planRecipe = recipe }
+            if let locked = body["locked"] as? Bool { planLocked = locked }
+            return Self.ok(plan(parts[3]))
+        case let (_, path) where path.hasPrefix("/api/v1/meal-plans/"):
+            return Self.ok(plan(parts[3]))
+        case ("GET", "/api/v1/recipes"):
+            return Self.ok(#"{"items":[{"id":"r1","name":"Сырники","cook_minutes":25,"meal_types":["breakfast"],"#
+                           + #""portion_grams":180,"per_portion":{"kcal":420,"protein":30,"fat":15,"carbs":40}}],"#
+                           + #""total":1,"limit":20,"offset":0}"#)
+        case let ("GET", path) where path.hasPrefix("/api/v1/recipes/"):
+            return Self.ok(#"{"id":"v","recipe_id":"r1","name":"Сырники","description":"Нежные, из творога 5%.","#
+                           + #""cook_minutes":25,"portion_grams":180,"per_portion":{"kcal":420,"protein":30,"fat":15,"carbs":40},"#
+                           + #""ingredients":[{"position":1,"food_name":"Творог 5%","grams":400,"to_taste":false},"#
+                           + #"{"position":2,"food_name":"Соль","to_taste":true}],"#
+                           + #""steps":[{"position":1,"text":"Смешайте творог с яйцом и мукой."}]}"#)
+        case let (_, path) where path.hasSuffix("/reject"):
+            return (204, "")
+        case ("GET", "/api/v1/shopping-list"):
+            return Self.ok(#"{"from":"2026-10-17","to":"2026-10-19","has_plans":true,"departments":[{"name":"Молочное","#
+                           + #""items":[{"food_id":"t1","name":"Творог 5%","grams":400,"pieces":null,"piece_grams":null,"#
+                           + #""quantity_text":"400 г"}]}],"at_home":["Соль"]}"#)
+        case (_, "/api/v1/meal-plan-settings"):
+            return Self.ok(#"{"meal_types":["breakfast","lunch","dinner"]}"#)
         default:
             return nil
         }

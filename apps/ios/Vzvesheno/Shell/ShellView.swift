@@ -1,3 +1,4 @@
+import Client
 import DesignSystem
 import Navigation
 import SwiftUI
@@ -22,10 +23,21 @@ struct ShellView: View {
                             DestinationView(destination: destination)
                         }
                 }
+                // iOS 18: «Записать еду» — плавающая панель над таббаром.
+                .floatingFoodLogAccessory(visible: shell == .client && model.showsFoodAccessory(on: tab)) { method in
+                    model.openFoodLog(method)
+                }
                 .tabItem { Label(tab.title, systemImage: tab.systemImage) }
                 .tag(Optional(tab))
                 .accessibilityIdentifier("tab.\(tab.rawValue)")
             }
+        }
+        // iOS 26: системный аксессуар таббара с Liquid Glass.
+        .foodLogBottomAccessory(enabled: shell == .client) { method in model.openFoodLog(method) }
+        .sheet(item: $model.foodLog) { request in
+            AddFoodSheet(request: request)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(DS.Color.bgCanvas)
         }
         .accessibilityIdentifier("shell.\(shellName)")
         #if DEV_BUILD
@@ -106,10 +118,11 @@ private struct TabRoot: View {
     let offline: Bool
 
     var body: some View {
-        if shell == .client && tab == .today {
-            TodayScreen(offline: offline)
-        } else {
-            placeholder
+        switch (shell, tab) {
+        case (.client, .today): TodayScreen(offline: offline)
+        case (.client, .diary): DiaryScreen(offline: offline)
+        case (.client, .menu): MenuScreen(offline: offline)
+        default: placeholder
         }
     }
 

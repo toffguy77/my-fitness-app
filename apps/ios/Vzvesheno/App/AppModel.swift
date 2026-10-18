@@ -41,6 +41,14 @@ final class AppModel {
     private(set) var profileName: String?
     /// Модель «Сегодня» вошедшего клиента.
     private(set) var today: TodayModel?
+    /// «Дневник», нутриенты и «Меню» вошедшего клиента.
+    internal(set) var diary: DiaryModel?
+    internal(set) var nutrients: NutrientsModel?
+    internal(set) var mealPlan: MealPlanModel?
+    internal(set) var recipes: RecipeCatalogModel?
+    internal(set) var shopping: ShoppingModel?
+    /// Открытый лист «Записать еду».
+    var foodLog: FoodLogRequest?
     var profileTimeZone = TimeZone.current
     /// Ссылка входа пришла при открытой сессии — ждёт подтверждения
     /// «Войти в другой аккаунт? Текущий сеанс завершится».
@@ -70,6 +78,9 @@ final class AppModel {
     let messages = ErrorMessages()
     let realtime: RealtimeConnection
     let photoWeeks: PhotoWeekStore
+    /// Найденные по штрихкоду продукты — на 90 дней.
+    let barcodeCache: BarcodeCache
+    let shoppingMarks: FileShoppingMarks
     private var realtimeTask: Task<Void, Never>?
     private let pendingLinks = PendingLinkStore()
     private let configLoader: ConfigLoader
@@ -106,9 +117,14 @@ final class AppModel {
         self.healthStore = healthStore
         let photoWeeks = FilePhotoWeekStore(url: directory.appendingPathComponent("photo-weeks.json"))
         self.photoWeeks = photoWeeks
+        let barcodeCache = BarcodeCache(url: directory.appendingPathComponent("barcodes.json"))
+        self.barcodeCache = barcodeCache
+        let shoppingMarks = FileShoppingMarks(url: directory.appendingPathComponent("shopping-marks.json"))
+        self.shoppingMarks = shoppingMarks
         session = SessionStore(api: api, secure: secure, installMarker: installMarker,
                                erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health,
-                                                       photoWeeks: photoWeeks)])
+                                                       photoWeeks: photoWeeks, barcodes: barcodeCache,
+                                                       shoppingMarks: shoppingMarks)])
         sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
         realtime = RealtimeConnection(api: api)
@@ -230,6 +246,7 @@ final class AppModel {
             if let zone = TimeZone(identifier: timezone), zone != profileTimeZone {
                 profileTimeZone = zone
                 today = nil
+                diary = nil
             }
         }
         if let completed = profile.onboardingCompleted, var current = await session.user, current.onboardingCompleted != completed {
@@ -274,10 +291,12 @@ final class AppModel {
             today = model
             Task { await model.load() }
         }
+        if diary == nil { startFood() }
         if realtimeTask == nil { connectRealtime() }
     }
 
     private func stopClient() {
+        stopFood()
         today = nil
         realtimeTask?.cancel()
         realtimeTask = nil
@@ -361,15 +380,6 @@ final class AppModel {
         try await complete(try await auth.exchange(code: code, pkce: pkce))
     }
 
-    /// Причина отказа из `/auth/native-complete?error=…` — человеческими словами.
-    static func providerFailureMessage(_ reason: String?) -> String {
-        switch reason {
-        case "cancelled": return "Вход отменён."
-        case "unavailable": return "Вход через этот сервис сейчас недоступен."
-        default: return "Не получилось войти. Попробуйте ещё раз или войдите по ссылке из письма."
-        }
-    }
-
     func signOut() async {
         await session.signOut()
     }
@@ -447,6 +457,7 @@ final class AppModel {
             Task { await pendingLinks.remember(link) }
             return
         }
+        if shell == .client, openFoodTracker(link) { return }
         let target = Router.target(for: link, shell: shell)
         selectedTab = target.tab
         if let tab = target.tab {
@@ -463,6 +474,7 @@ final class AppModel {
             connectRealtime()
             await today?.refresh()
         }
+        await refreshFood()
         await refreshConfig()
         await health.refresh()
         await refreshHealthState()

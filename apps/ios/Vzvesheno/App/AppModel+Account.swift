@@ -6,6 +6,15 @@ import Session
 /// Шаги после входа (`ios-auth-flows`, `ios-onboarding`): почта, удаление
 /// аккаунта, онбординг.
 extension AppModel {
+    /// Причина отказа из `/auth/native-complete?error=…` — человеческими словами.
+    static func providerFailureMessage(_ reason: String?) -> String {
+        switch reason {
+        case "cancelled": return "Вход отменён."
+        case "unavailable": return "Вход через этот сервис сейчас недоступен."
+        default: return "Не получилось войти. Попробуйте ещё раз или войдите по ссылке из письма."
+        }
+    }
+
     /// `POST /auth/verify-email` — сразу после шестой цифры.
     func verifyEmail(code: String) async throws {
         let _: EmptyResponse = try await api.send(try .post("/api/v1/auth/verify-email", body: ["code": code]))
