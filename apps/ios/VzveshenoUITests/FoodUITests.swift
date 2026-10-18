@@ -85,11 +85,12 @@ final class FoodUITests: XCTestCase {
         add.tap()
 
         openTab(app, "Дневник")
-        let chicken = app.staticTexts.matching(NSPredicate(format: "label == %@", "Куриная грудка запечённая"))
+        // Строка дневника — один элемент-кнопка entry.<название>.
+        let chicken = app.buttons.matching(identifier: "entry.Куриная грудка запечённая")
         let deadline = Date().addingTimeInterval(10)
         while chicken.count < 2 && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.25)) }
         XCTAssertEqual(chicken.count, 2, "к утренней грудке добавилась распознанная")
-        XCTAssertFalse(app.staticTexts["Рис басмати"].exists, "позиция без веса не добавлена")
+        XCTAssertFalse(app.buttons["entry.Рис басмати"].exists, "позиция без веса не добавлена")
     }
 
     // MARK: 3.5

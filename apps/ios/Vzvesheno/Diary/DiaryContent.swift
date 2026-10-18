@@ -230,7 +230,12 @@ struct MealGroupCard: View {
                     // заменяет всё поддерево (`.accessibilityElement(children:
                     // .ignore)` и скрытие оставляли тексты строки отдельными).
                     .accessibilityRepresentation {
-                        Button(row.accessibilityLabel) { actions.edit(row.entry) }
+                        // Без текста внутри: подпись — только для VoiceOver, и
+                        // аудит не меряет её как видимый текст кнопки.
+                        Rectangle()
+                            .accessibilityLabel(row.accessibilityLabel)
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { actions.edit(row.entry) }
                             .accessibilityIdentifier("entry.\(row.entry.foodName)")
                             .accessibilityAction(named: "Удалить") { actions.delete(row.entry) }
                             .accessibilityAction(named: "Повторить сегодня") { actions.repeatToday(row.entry) }
