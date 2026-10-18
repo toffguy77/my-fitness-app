@@ -214,11 +214,11 @@ struct CuratorRow: View {
                         .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .subheadline).weight(.semibold))
                         .foregroundStyle(DS.Color.coachFg)
                         .fixedSize(horizontal: false, vertical: true)
-                    // До двух строк: обрезанный текст аудит доступности считает ошибкой.
+                    // Без обрезки: обрезанный текст аудит доступности считает ошибкой.
                     Text(subtitle)
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.coachFgMuted)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if case let .curator(_, _, unread) = summary.state, unread > 0 {

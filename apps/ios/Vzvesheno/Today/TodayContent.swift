@@ -221,6 +221,7 @@ struct WeekStripView: View {
                 .buttonStyle(.plain)
                 // Будущий день не выбирается, но и не гаснет: на макете он обычный.
                 .allowsHitTesting(!day.isFuture)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel(day.accessibilityLabel)
                 .accessibilityAddTraits(day.isSelected ? .isSelected : [])
                 .accessibilityIdentifier("week.\(day.day)")

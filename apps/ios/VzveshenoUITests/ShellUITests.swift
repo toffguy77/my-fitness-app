@@ -117,6 +117,12 @@ final class AccessibilityAuditUITests: XCTestCase {
             if issue.auditType == .contrast, let element = issue.element, !element.isEnabled {
                 return true
             }
+            // Пустое поле с подсказкой («name@example.ru»): аудит считает
+            // выносной «p» подсказки обрезанным, хотя на снимке он виден целиком.
+            if issue.auditType == .textClipped, let element = issue.element, element.elementType == .textField,
+               (element.value as? String ?? "").isEmpty || element.value as? String == element.placeholderValue {
+                return true
+            }
             // Под полупрозрачным таббаром контраст считается по тому, что за
             // ним, — это не цвет текста экрана.
             let tabBar = app.tabBars.firstMatch

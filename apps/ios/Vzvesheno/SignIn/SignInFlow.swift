@@ -61,9 +61,6 @@ struct DSField: View {
             .textContentType(contentType)
             // Шрифт без межстрочной добавки: поле однострочное.
             .font(DS.Typography.body.font)
-            // Высота строки Golos 16 — больше кегля: без запаса поле обрезает
-            // нижние выносные («р», «у») и аудит доступности это видит.
-            .frame(minHeight: 28)
             .padding(.horizontal, DS.Space.s4)
             .frame(minHeight: DS.Size.control)
             .background(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous).fill(DS.Color.bgSurface))
