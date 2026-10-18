@@ -561,5 +561,6 @@ public struct DiaryScreenState: Sendable, Equatable {
 }
 
 extension Double {
-    var jsRounded: Int { NumberText.jsRound(self) }
+    /// Округление, как `Math.round` в вебе.
+    public var jsRounded: Int { NumberText.jsRound(self) }
 }

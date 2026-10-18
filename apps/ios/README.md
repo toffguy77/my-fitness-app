@@ -10,7 +10,7 @@ SwiftUI, iOS 18+, Swift 6 со строгой проверкой паралле�
 
 | Путь | Что |
 |---|---|
-| `Vzvesheno/` | приложение: запуск, модель (`AppModel`), вход, онбординг, «Сегодня», профиль, оболочки по роли |
+| `Vzvesheno/` | приложение: запуск, модель (`AppModel`), вход, онбординг, «Сегодня», «Записать еду» (`FoodLogging/`), «Дневник», «Меню», профиль, оболочки по роли |
 | `VzveshenoWidgets/` | расширение виджетов (каркас; виджеты — `ios-system-surfaces`) |
 | `VzveshenoKit/` | локальный Swift-пакет: `DesignSystem`, `API`, `Session`, `Outbox`, `Navigation`, `Health`, `Client` и их тесты |
 | `VzveshenoTests/` | тесты внутри приложения: манифест, Info.plist, Keychain, модель, снапшоты экранов с макетами |
@@ -20,8 +20,10 @@ SwiftUI, iOS 18+, Swift 6 со строгой проверкой паралле�
 
 Ядро модулей `VzveshenoKit` — только Foundation: клиент API, сессия, очередь
 изменений, маршрутизатор, модели компонентов, модели экранов клиента
-(`Client`: «Сегодня», онбординг — числа сверяются с вебом на общих
-фикстурах `docs/ios/fixtures/`). Keychain, SwiftUI, Network,
+(`Client`: «Сегодня», онбординг, запись еды, «Дневник», нутриенты,
+«Меню» — числа сверяются с вебом на общих фикстурах `docs/ios/fixtures/`;
+задержки поиска и окна отмены — через `Sleeper`, тесты гоняют их
+виртуальным временем). Keychain, SwiftUI, Network,
 BackgroundTasks, WidgetKit и HealthKit — адаптеры под `#if canImport(...)`. Токены
 дизайн-системы подключены ссылкой
 `VzveshenoKit/Sources/DesignSystem/Generated → packages/design-tokens/dist/ios`
