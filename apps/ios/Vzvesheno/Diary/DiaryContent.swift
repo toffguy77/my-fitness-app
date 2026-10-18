@@ -224,20 +224,18 @@ struct MealGroupCard: View {
                         // «Повторить сегодня» и «Сохранить как своё» — в листе
                         // правки записи и действиями VoiceOver строки.
                         EntryRow(row: row) { actions.edit(row.entry) }
-                            .accessibilityHidden(true)
                     })
                     .overlay(alignment: .top) { Rectangle().fill(DS.Color.lineDefault).frame(height: 1) }
-                    // Строка целиком — один элемент VoiceOver: снаружи свайпа и
-                    // контекстного меню (внутри них SwiftUI снова открывал
-                    // название, подпись и калории по отдельности).
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(row.accessibilityLabel)
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityAction(.default) { actions.edit(row.entry) }
-                    .accessibilityAction(named: "Удалить") { actions.delete(row.entry) }
-                    .accessibilityAction(named: "Повторить сегодня") { actions.repeatToday(row.entry) }
-                    .accessibilityAction(named: "Сохранить как своё") { actions.saveAsOwn(row.entry) }
-                    .accessibilityIdentifier("entry.\(row.entry.foodName)")
+                    // Строка целиком — один элемент VoiceOver: представление
+                    // заменяет всё поддерево (`.accessibilityElement(children:
+                    // .ignore)` и скрытие оставляли тексты строки отдельными).
+                    .accessibilityRepresentation {
+                        Button(row.accessibilityLabel) { actions.edit(row.entry) }
+                            .accessibilityIdentifier("entry.\(row.entry.foodName)")
+                            .accessibilityAction(named: "Удалить") { actions.delete(row.entry) }
+                            .accessibilityAction(named: "Повторить сегодня") { actions.repeatToday(row.entry) }
+                            .accessibilityAction(named: "Сохранить как своё") { actions.saveAsOwn(row.entry) }
+                    }
                 }
             }
         }
@@ -279,10 +277,6 @@ struct EntryRow: View {
         .background(DS.Color.bgSurface)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
-        // Текст строки VoiceOver не читает по частям: элемент — вся строка
-        // (`.accessibilityElement` снаружи свайпа); без этого SwiftUI
-        // показывал название, подпись и калории ещё и отдельными текстами.
-        .accessibilityHidden(true)
     }
 }
 

@@ -144,7 +144,18 @@ final class FoodUITests: XCTestCase {
         let oatmeal = app.buttons["entry.Овсянка на молоке"]
         XCTAssertTrue(oatmeal.waitForExistence(timeout: 10), app.screenSummary)
         XCTAssertTrue(oatmeal.label.hasPrefix("Овсянка на молоке, "), oatmeal.label)
-        XCTAssertFalse(app.staticTexts["Овсянка на молоке"].exists, "название не отдельным элементом")
+        let stray = app.staticTexts["Овсянка на молоке"]
+        if stray.exists {
+            // Где в иерархии лишний текст — одной строкой: журнал CI хранит только «error:».
+            let tree = app.debugDescription.split(separator: "\n")
+            let hits = tree.indices.filter { tree[$0].contains("Овсянка на молоке") }
+            let context = hits.flatMap { index in tree[max(0, index - 12)...min(tree.count - 1, index + 2)] }
+                .joined(separator: " ;; ")
+            let buttons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'entry.'")).count
+            let texts = app.staticTexts.matching(NSPredicate(format: "label == %@", "Овсянка на молоке")).count
+            XCTFail("название отдельным элементом: frame=\(stray.frame) buttons=\(buttons) texts=\(texts) ;; "
+                    + String(context.prefix(3000)).replacingOccurrences(of: "\n", with: " "))
+        }
         // Правка записи → «Удалить» (свайп и контекстное меню ведут туда же).
         oatmeal.tap()
         let delete = app.buttons["editor.delete"]
