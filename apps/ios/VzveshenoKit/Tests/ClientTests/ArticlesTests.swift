@@ -58,7 +58,7 @@ final class ArticlesTests: XCTestCase {
         await byID.load()
         XCTAssertEqual(transport.requests.map(\.path), ["/api/v1/content/feed/0b6e5b9c-6c1c-4a5c-9a3e-1f2d3c4b5a69",
                                                         "/api/v1/public/content/ostatok-vazhnee"])
-        XCTAssertEqual(byID.document?.blocks, [.heading(level: 1, text: "Т")])
+        XCTAssertEqual(byID.document?.blocks, [.heading(level: 1, text: AttributedString("Т"))])
     }
 }
 
@@ -105,29 +105,85 @@ final class ArticleDocumentTests: XCTestCase {
         """
         let blocks = ArticleDocument(markdown: markdown).blocks
         XCTAssertEqual(blocks.count, 6, "\(blocks)")
-        XCTAssertEqual(blocks[0], .heading(level: 1, text: "Почему остаток важнее"))
-        XCTAssertEqual(blocks[1], .paragraph("Норма — **не цель**, а *ориентир*. Подробнее — [в статье](https://burcev.team/content/kbzhu)."))
+        XCTAssertEqual(blocks[0], .heading(level: 1, text: AttributedString("Почему остаток важнее")))
+        guard case let .paragraph(text) = blocks[1] else { return XCTFail("нет абзаца") }
+        XCTAssertEqual(Self.plain(text), "Норма — не цель, а ориентир. Подробнее — в статье.")
+        XCTAssertEqual(Self.runs(text, .strong), ["не цель"])
+        XCTAssertEqual(Self.runs(text, .emphasized), ["ориентир"])
+        XCTAssertEqual(Self.links(text), [URL(string: "https://burcev.team/content/kbzhu")!])
         XCTAssertEqual(blocks[2], .image(url: URL(string: "https://cdn.burcev.team/plate.jpg"), alt: "Тарелка"))
         guard case let .table(table) = blocks[3] else { return XCTFail("нет таблицы") }
         XCTAssertEqual(table.columnCount, 6)
-        XCTAssertEqual(table.header, ["Приём", "Ккал", "Б", "Ж", "У", "Время"])
-        XCTAssertEqual(table.rows, [["Завтрак", "420", "30", "15", "40", "08:10"]])
-        XCTAssertEqual(blocks[4], .list(ordered: false, start: 1, items: [[.paragraph("один")], [.paragraph("два")]]))
-        XCTAssertEqual(blocks[5], .quote([.paragraph("Цитата")]))
+        XCTAssertEqual(table.header.map(Self.plain), ["Приём", "Ккал", "Б", "Ж", "У", "Время"])
+        XCTAssertEqual(table.rows.map { $0.map(Self.plain) }, [["Завтрак", "420", "30", "15", "40", "08:10"]])
+        XCTAssertEqual(blocks[4], .list(ordered: false, start: 1, items: [[.paragraph(AttributedString("один"))],
+                                                                         [.paragraph(AttributedString("два"))]]))
+        XCTAssertEqual(blocks[5], .quote([.paragraph(AttributedString("Цитата"))]))
     }
 
     /// Ссылки на тарифы в статье — только текст; калькулятор — «Тело и цели».
     func testPricingLinksAreDroppedAndCalculatorLeadsToBodyGoals() {
         let blocks = ArticleDocument(markdown: "Смотрите [тарифы](https://burcev.team/pricing) и [калькулятор](/kalkulyator-kbzhu).")
             .blocks
-        XCTAssertEqual(blocks, [.paragraph("Смотрите тарифы и [калькулятор](vzvesheno-app:body-goals).")])
+        guard case let .paragraph(text) = blocks.first, blocks.count == 1 else { return XCTFail("\(blocks)") }
+        XCTAssertEqual(Self.plain(text), "Смотрите тарифы и калькулятор.")
+        XCTAssertEqual(Self.links(text), [ArticleLinks.bodyGoals], "у «тарифы» ссылки нет")
         XCTAssertEqual(ArticleLinks.decide("https://new.burcev.team/pricing?plan=1"), .drop)
         XCTAssertEqual(ArticleLinks.decide("javascript:alert(1)"), .drop)
         XCTAssertEqual(ArticleLinks.decide("https://example.org/a"), .keep(URL(string: "https://example.org/a")!))
     }
 
-    func testMarkdownCharactersInTextAreEscaped() {
-        XCTAssertEqual(ArticleDocument(markdown: "2 \\* 3 = 6").blocks, [.paragraph("2 \\* 3 = 6")])
+    func testEscapedMarkdownCharactersStayText() {
+        XCTAssertEqual(ArticleDocument(markdown: "2 \\* 3 = 6").blocks, [.paragraph(AttributedString("2 * 3 = 6"))])
+    }
+
+    /// Код со скобками и обратными кавычками остаётся текстом — ссылкой не станет.
+    func testInlineCodeCannotSmuggleALink() {
+        let blocks = ArticleDocument(markdown: "Пример: `` ` [x](javascript:alert(1)) ` `` и ``[y](evil://z)``.").blocks
+        guard case let .paragraph(text) = blocks.first else { return XCTFail("\(blocks)") }
+        XCTAssertTrue(Self.links(text).isEmpty, "\(text)")
+        XCTAssertTrue(Self.plain(text).contains("[x](javascript:alert(1))"))
+        XCTAssertEqual(Self.runs(text, .code).count, 2)
+    }
+
+    /// Подпись изображения с «](javascript:…)» — только текст.
+    func testImageAltTextCannotSmuggleALink() {
+        let markdown = "Текст ![alt](javascript:alert(1)) и ![a](https://cdn/x.png \"t\") ещё ![x\\](javascript:alert(2)) конец"
+        for block in ArticleDocument(markdown: markdown).blocks {
+            switch block {
+            case let .paragraph(text):
+                XCTAssertTrue(Self.links(text).isEmpty, "\(text)")
+            case let .image(url, _):
+                XCTAssertNotEqual(url?.scheme, "javascript")
+            default:
+                break
+            }
+        }
+        let image = ArticleDocument(markdown: "![подпись ](javascript:alert(1)) [ok](https://example.org/a)").blocks
+        guard case let .paragraph(text) = image.first else { return XCTFail("\(image)") }
+        XCTAssertEqual(Self.links(text), [URL(string: "https://example.org/a")!], "ссылка — только из проверенного узла")
+    }
+
+    func testStandaloneImageOnlyLoadsOverHTTP() {
+        XCTAssertEqual(ArticleDocument(markdown: "![x](javascript:alert(1))").blocks, [.image(url: nil, alt: "x")])
+    }
+
+    /// Ссылка с недопустимой схемой — текст без ссылки.
+    func testDisallowedSchemesBecomePlainText() {
+        let blocks = ArticleDocument(markdown: "[a](javascript:alert(1)) [b](evil://x) [c](data:text/html,1)").blocks
+        guard case let .paragraph(text) = blocks.first else { return XCTFail("\(blocks)") }
+        XCTAssertTrue(Self.links(text).isEmpty)
+        XCTAssertEqual(Self.plain(text), "a b c")
+    }
+
+    static func plain(_ text: AttributedString) -> String { String(text.characters) }
+
+    static func links(_ text: AttributedString) -> [URL] {
+        text.runs.compactMap(\.link)
+    }
+
+    static func runs(_ text: AttributedString, _ style: ArticleStyle) -> [String] {
+        text.runs.filter { $0[ArticleStyleAttribute.self]?.contains(style) == true }.map { String(text[$0.range].characters) }
     }
 
     func testReadingMinutes() {

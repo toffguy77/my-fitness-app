@@ -174,11 +174,14 @@ public final class ArticleModel {
 
 // MARK: Markdown
 
-/// Блок статьи для отрисовки на токенах. Встроенный текст — Markdown без
-/// блоков (жирный, курсив, код, ссылки): его разбирает `AttributedString`.
+/// Блок статьи для отрисовки на токенах. Встроенный текст — `AttributedString`,
+/// собранный прямо из дерева разбора (жирный, курсив, код, зачёркивание —
+/// `inlinePresentationIntent`, ссылки — атрибут `link`). Обратно в Markdown
+/// текст не превращается: повторный разбор позволил бы содержимому кода или
+/// подписи изображения стать ссылкой в обход проверки `ArticleLinks`.
 public indirect enum ArticleBlock: Equatable, Sendable {
-    case heading(level: Int, text: String)
-    case paragraph(String)
+    case heading(level: Int, text: AttributedString)
+    case paragraph(AttributedString)
     case image(url: URL?, alt: String)
     case list(ordered: Bool, start: Int, items: [[ArticleBlock]])
     case quote([ArticleBlock])
@@ -188,15 +191,45 @@ public indirect enum ArticleBlock: Equatable, Sendable {
 }
 
 public struct ArticleTable: Equatable, Sendable {
-    public var header: [String]
-    public var rows: [[String]]
+    public var header: [AttributedString]
+    public var rows: [[AttributedString]]
 
-    public init(header: [String], rows: [[String]]) {
+    public init(header: [AttributedString], rows: [[AttributedString]]) {
         self.header = header
         self.rows = rows
     }
 
     public var columnCount: Int { max(header.count, rows.map(\.count).max() ?? 0) }
+}
+
+/// Оформление встроенного текста статьи. Своё, а не `InlinePresentationIntent`:
+/// того нет в Foundation на Linux, где разбор проверяется тестами. На
+/// платформах Apple дублируется в `inlinePresentationIntent` для SwiftUI `Text`.
+public struct ArticleStyle: OptionSet, Hashable, Sendable, Codable {
+    public let rawValue: Int
+
+    public init(rawValue: Int) { self.rawValue = rawValue }
+
+    public static let emphasized = ArticleStyle(rawValue: 1)
+    public static let strong = ArticleStyle(rawValue: 2)
+    public static let code = ArticleStyle(rawValue: 4)
+    public static let strikethrough = ArticleStyle(rawValue: 8)
+
+    #if canImport(Darwin)
+    var presentationIntent: InlinePresentationIntent {
+        var intent: InlinePresentationIntent = []
+        if contains(.emphasized) { intent.insert(.emphasized) }
+        if contains(.strong) { intent.insert(.stronglyEmphasized) }
+        if contains(.code) { intent.insert(.code) }
+        if contains(.strikethrough) { intent.insert(.strikethrough) }
+        return intent
+    }
+    #endif
+}
+
+public enum ArticleStyleAttribute: AttributedStringKey {
+    public typealias Value = ArticleStyle
+    public static let name = "team.burcev.articleStyle"
 }
 
 /// Куда ведут ссылки статьи в приложении.
@@ -262,7 +295,7 @@ public struct ArticleDocument: Equatable, Sendable {
                 return meaningful.compactMap { $0 as? Markdown.Image }.map(image)
             }
             let text = inline(children)
-            return text.isEmpty ? [] : [.paragraph(text)]
+            return text.characters.isEmpty ? [] : [.paragraph(text)]
         case let list as UnorderedList:
             return [.list(ordered: false, start: 1, items: list.listItems.map { $0.children.flatMap(blocks) })]
         case let list as OrderedList:
@@ -272,8 +305,8 @@ public struct ArticleDocument: Equatable, Sendable {
         case let code as CodeBlock:
             return [.code(code.code.hasSuffix("\n") ? String(code.code.dropLast()) : code.code)]
         case let table as Markdown.Table:
-            let header: [String] = table.head.cells.map { inline($0.children) }
-            let rows: [[String]] = table.body.rows.map { row in Array(row.cells.map { inline($0.children) }) }
+            let header: [AttributedString] = table.head.cells.map { inline($0.children) }
+            let rows: [[AttributedString]] = table.body.rows.map { row in Array(row.cells.map { inline($0.children) }) }
             return [.table(ArticleTable(header: header, rows: rows))]
         case is ThematicBreak:
             return [.rule]
@@ -286,47 +319,77 @@ public struct ArticleDocument: Equatable, Sendable {
     }
 
     static func image(_ image: Markdown.Image) -> ArticleBlock {
-        let alt = image.children.compactMap { ($0 as? Text)?.string }.joined()
+        let alt = plainText(image)
+        // Изображение грузится только по http(s).
         let url = image.source.flatMap { URL(string: $0, relativeTo: ArticleLinks.site)?.absoluteURL }
+            .flatMap { ["https", "http"].contains($0.scheme?.lowercased() ?? "") ? $0 : nil }
         return .image(url: url, alt: alt)
     }
 
-    /// Встроенное содержимое → Markdown для `AttributedString`.
-    static func inline<S: Sequence>(_ children: S) -> String where S.Element == Markup {
-        children.map(inline).joined().trimmingCharacters(in: .whitespacesAndNewlines)
+    /// Встроенное содержимое → `AttributedString`, без пробелов по краям.
+    static func inline<S: Sequence>(_ children: S) -> AttributedString where S.Element == Markup {
+        var result = AttributedString()
+        for child in children { append(child, to: &result, intent: [], link: nil) }
+        return trimmed(result)
     }
 
-    static func inline(_ markup: Markup) -> String {
-        switch markup {
-        case let text as Text: return escape(text.string)
-        case let emphasis as Emphasis: return "*\(inlineRaw(emphasis.children))*"
-        case let strong as Strong: return "**\(inlineRaw(strong.children))**"
-        case let strike as Strikethrough: return "~~\(inlineRaw(strike.children))~~"
-        case let code as InlineCode: return "`\(code.code)`"
-        case let link as Markdown.Link:
-            let label = inlineRaw(link.children)
-            switch ArticleLinks.decide(link.destination ?? "") {
-            case .drop: return label
-            case .bodyGoals: return "[\(label)](\(ArticleLinks.bodyGoals.absoluteString))"
-            case let .keep(url): return "[\(label)](\(url.absoluteString))"
+    /// Обход узла: текст получает накопленное оформление; ссылка ставится
+    /// только узлом `Link`, прошедшим `ArticleLinks.decide`.
+    static func append(_ markup: Markup, to result: inout AttributedString, intent: ArticleStyle, link: URL?) {
+        func run(_ text: String, _ extra: ArticleStyle = []) {
+            var piece = AttributedString(text)
+            let combined = intent.union(extra)
+            if !combined.isEmpty {
+                piece[ArticleStyleAttribute.self] = combined
+                #if canImport(Darwin)
+                piece.inlinePresentationIntent = combined.presentationIntent
+                #endif
             }
-        case is SoftBreak: return " "
-        case is LineBreak: return "\n"
-        case let image as Markdown.Image: return image.children.compactMap { ($0 as? Text)?.string }.joined()
-        default: return ""
+            if let link { piece.link = link }
+            result.append(piece)
+        }
+        switch markup {
+        case let text as Text: run(text.string)
+        case let code as InlineCode: run(code.code, .code)
+        case is SoftBreak: run(" ")
+        case is LineBreak: run("\n")
+        case let image as Markdown.Image: run(plainText(image))
+        case let emphasis as Emphasis:
+            for child in emphasis.children { append(child, to: &result, intent: intent.union(.emphasized), link: link) }
+        case let strong as Strong:
+            for child in strong.children { append(child, to: &result, intent: intent.union(.strong), link: link) }
+        case let strike as Strikethrough:
+            for child in strike.children { append(child, to: &result, intent: intent.union(.strikethrough), link: link) }
+        case let anchor as Markdown.Link:
+            let target: URL?
+            switch ArticleLinks.decide(anchor.destination ?? "") {
+            case .drop: target = nil
+            case .bodyGoals: target = ArticleLinks.bodyGoals
+            case let .keep(url): target = url
+            }
+            // Ссылка внутри ссылки невозможна; внешняя побеждает.
+            for child in anchor.children { append(child, to: &result, intent: intent, link: link ?? target) }
+        default:
+            // Встроенный HTML и прочее — только текст потомков.
+            for child in markup.children { append(child, to: &result, intent: intent, link: link) }
         }
     }
 
-    private static func inlineRaw<S: Sequence>(_ children: S) -> String where S.Element == Markup {
-        children.map(inline).joined()
+    /// Подпись изображения — только буквы текста, без разметки.
+    static func plainText(_ markup: Markup) -> String {
+        if let text = markup as? Text { return text.string }
+        if let code = markup as? InlineCode { return code.code }
+        return markup.children.map(plainText).joined()
     }
 
-    static func escape(_ text: String) -> String {
-        var result = ""
-        for character in text {
-            if "\\`*_[]<>~#".contains(character) { result.append("\\") }
-            result.append(character)
+    static func trimmed(_ text: AttributedString) -> AttributedString {
+        var text = text
+        while let first = text.characters.first, first.isWhitespace || first.isNewline {
+            text.removeSubrange(text.startIndex..<text.index(afterCharacter: text.startIndex))
         }
-        return result
+        while let last = text.characters.last, last.isWhitespace || last.isNewline {
+            text.removeSubrange(text.index(beforeCharacter: text.endIndex)..<text.endIndex)
+        }
+        return text
     }
 }
