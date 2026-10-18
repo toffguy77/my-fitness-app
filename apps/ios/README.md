@@ -128,7 +128,8 @@ App ID `.dev`, App Groups и запись приложения в App Store Conn
 
 ## Сбои и аналитика
 
-Sentry — единственный сторонний пакет, только отчёты о сбоях: без трассировки,
+Sentry — единственный сторонний пакет приложения (у `VzveshenoKit` — ещё
+`apple/swift-markdown` для статей), только отчёты о сбоях: без трассировки,
 сетевых крошек и снимков экрана. События продукта — только
 `POST /api/v1/public/analytics/events` (`AnalyticsClient`), без сторонних SDK и
 без запроса App Tracking Transparency.

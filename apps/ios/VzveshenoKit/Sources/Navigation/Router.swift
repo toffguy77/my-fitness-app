@@ -233,7 +233,8 @@ public enum Router {
         case .chat, .curatorConversation: return NavigationTarget(tab: .today, path: [.curatorChat])
         case .notifications: return NavigationTarget(tab: .today, path: [.notifications])
         case let .weeklyFeedback(report): return NavigationTarget(tab: .today, path: [.weeklyFeedback(reportID: report)])
-        case .plan: return NavigationTarget(tab: .today, path: [.plan])
+        // План от куратора — нормы «Сегодня».
+        case .plan: return NavigationTarget(tab: .today)
         case .export: return NavigationTarget(tab: .today, path: [.profile, .export])
         case .curatorHome, .curatorClient, .curatorChats, .curatorSupport, .curatorLeads, .unknown: return nil
         }

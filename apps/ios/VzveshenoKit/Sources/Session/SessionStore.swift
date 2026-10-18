@@ -52,6 +52,9 @@ public enum SessionEndReason: Sendable, Equatable {
 public actor SessionStore: AccessTokenProvider {
     static let sessionKey = "session"
     static let pendingLogoutKey = "pending_logout"
+    /// Удаление аккаунта запрошено: экран «Аккаунт будет удалён» возвращается
+    /// и после перезапуска, а не только сразу после входа.
+    static let pendingDeletionKey = "pending_deletion"
 
     private let api: APIClient
     private let secure: SecureStore
@@ -116,6 +119,22 @@ public actor SessionStore: AccessTokenProvider {
         }
         try persist(newSession)
         session = newSession
+        setPendingDeletion(newSession.pendingDeletion)
+    }
+
+    /// Запрошенное удаление аккаунта, сохранённое на устройстве.
+    public func storedPendingDeletion() -> PendingDeletion? {
+        guard session != nil || hasStoredSession(), let data = try? secure.read(Self.pendingDeletionKey) else { return nil }
+        return try? JSONDecoder().decode(PendingDeletion.self, from: data)
+    }
+
+    /// Запомнить или забыть запрошенное удаление (ответ входа, `GET /users/me/deletion`, отмена).
+    public func setPendingDeletion(_ deletion: PendingDeletion?) {
+        if let deletion, let data = try? JSONEncoder().encode(deletion) {
+            try? secure.write(data, for: Self.pendingDeletionKey)
+        } else {
+            try? secure.delete(Self.pendingDeletionKey)
+        }
     }
 
     private func currentOrStoredSession() -> NativeSession? {
@@ -258,6 +277,7 @@ public actor SessionStore: AccessTokenProvider {
         session = nil
         refreshing = nil
         try? secure.delete(Self.sessionKey)
+        try? secure.delete(Self.pendingDeletionKey)
         for eraser in erasers {
             await eraser.eraseAccountData()
         }

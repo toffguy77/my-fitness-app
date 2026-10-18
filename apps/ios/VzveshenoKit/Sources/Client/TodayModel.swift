@@ -196,7 +196,7 @@ public final class TodayModel {
                 snapshot?.unread = unread
             }
             reloadCount += 1
-        case .typing:
+        case .typing, .connected:
             break
         }
     }
