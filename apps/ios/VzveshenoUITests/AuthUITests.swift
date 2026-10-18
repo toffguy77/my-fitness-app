@@ -14,6 +14,18 @@ final class AuthUITests: XCTestCase {
         return app
     }
 
+    /// После входа с паролем система предлагает сохранить его в связке
+    /// ключей; лист перекрывает экран и съедает нажатия.
+    private func dismissSavePasswordPrompt(_ app: XCUIApplication) {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for label in ["Не сейчас", "Not Now"] {
+            for candidate in [springboard.buttons[label], app.buttons[label]] where candidate.waitForExistence(timeout: 2) {
+                candidate.tap()
+                return
+            }
+        }
+    }
+
     /// «VK выключен на сервере»: провайдеры `yandex` и `apple`.
     func testOnlyEnabledProvidersAreShown() {
         let app = launch("signedOut", ["-uiTestProviders", "yandex,apple"])
@@ -103,6 +115,7 @@ final class AuthUITests: XCTestCase {
         password.tap()
         password.typeText("Secret12!")
         app.buttons["signIn.submit"].tap()
+        dismissSavePasswordPrompt(app)
         XCTAssertTrue(app.staticTexts["Аккаунт будет удалён 31 октября"].waitForExistence(timeout: 10))
         app.buttons["deletion.cancel"].tap()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10), app.screenSummary)

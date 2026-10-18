@@ -198,7 +198,9 @@ struct WeekStripView: View {
                     VStack(spacing: DS.Space.s1) {
                         Text(day.weekday)
                             .font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .footnote))
-                            .foregroundStyle(day.isSelected ? DS.Color.fgDefault : DS.Color.fgMuted)
+                            // Не fgSubtle макета: аудит доступности счёл его контраст на 11 pt
+                            // недостаточным.
+                            .foregroundStyle(DS.Color.fgDefault)
                         Text(day.number)
                             .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .subheadline).weight(.semibold))
                             .foregroundStyle(DS.Color.fgDefault)
