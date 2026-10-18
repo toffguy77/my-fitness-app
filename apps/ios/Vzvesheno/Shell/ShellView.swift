@@ -19,13 +19,16 @@ struct ShellView: View {
             ForEach(shell.tabs, id: \.self) { tab in
                 NavigationStack(path: Binding(get: { model.paths[tab] ?? [] }, set: { model.paths[tab] = $0 })) {
                     TabRoot(tab: tab, shell: shell, offline: offline)
+                        // iOS 18: «Записать еду» — плавающая панель над таббаром.
+                        // На корне вкладки, внутри стека: снаружи NavigationStack
+                        // вставка не доходит до прокрутки, и панель закрывала
+                        // низ экрана (и «Отменить» удаления).
+                        .floatingFoodLogAccessory(visible: shell == .client && model.showsFoodAccessory(on: tab)) { method in
+                            model.openFoodLog(method)
+                        }
                         .navigationDestination(for: Destination.self) { destination in
                             DestinationView(destination: destination)
                         }
-                }
-                // iOS 18: «Записать еду» — плавающая панель над таббаром.
-                .floatingFoodLogAccessory(visible: shell == .client && model.showsFoodAccessory(on: tab)) { method in
-                    model.openFoodLog(method)
                 }
                 .tabItem { Label(tab.title, systemImage: tab.systemImage) }
                 .tag(Optional(tab))
