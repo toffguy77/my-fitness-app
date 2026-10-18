@@ -1,4 +1,5 @@
 import API
+import Client
 import Foundation
 import Navigation
 import Session
@@ -103,5 +104,31 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.launch, .signedOut)
         let user = await model.session.user
         XCTAssertNil(user)
+    }
+}
+
+/// `ios-auth-flows`, «Аккаунт в процессе удаления» на модели приложения.
+@MainActor
+final class PendingDeletionModelTests: XCTestCase {
+    func testCancelDeletionOpensTheRolesRoot() async throws {
+        let model = UITestScenario.signedOut.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        let outcome = try await model.auth.login(email: "deleting@example.com", password: "Secret12!")
+        try await model.complete(outcome)
+        XCTAssertEqual(model.launch, .pendingDeletion)
+        XCTAssertEqual(model.pendingDeletion?.title, "Аккаунт будет удалён 31 октября")
+        try await model.cancelDeletion()
+        XCTAssertNil(model.pendingDeletion)
+        XCTAssertEqual(model.launch, .shell(.client, offline: false))
+    }
+
+    func testCurrentWeightGoesAsMeasurementThroughTheApp() async throws {
+        let model = UITestScenario.newClient.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        XCTAssertEqual(model.launch, .onboarding)
+        var draft = OnboardingDraft()
+        draft.currentWeight = 78.4
+        try await model.completeOnboarding(draft)
+        XCTAssertEqual(model.launch, .shell(.client, offline: false))
     }
 }

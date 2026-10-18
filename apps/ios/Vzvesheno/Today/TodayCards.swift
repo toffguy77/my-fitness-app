@@ -214,11 +214,11 @@ struct CuratorRow: View {
                         .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .subheadline).weight(.semibold))
                         .foregroundStyle(DS.Color.coachFg)
                         .fixedSize(horizontal: false, vertical: true)
-                    // Последнее сообщение — одной строкой, как превью в «Сообщениях».
+                    // До двух строк: обрезанный текст аудит доступности считает ошибкой.
                     Text(subtitle)
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.coachFgMuted)
-                        .lineLimit(isPreview ? 1 : 2)
+                        .lineLimit(2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if case let .curator(_, _, unread) = summary.state, unread > 0 {
@@ -237,11 +237,6 @@ struct CuratorRow: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("today.curator")
-    }
-
-    private var isPreview: Bool {
-        if case .curator = summary.state { return true }
-        return false
     }
 
     private var title: String {
