@@ -336,6 +336,16 @@ public final class TodayModel {
         }
     }
 
+    /// Дневник изменил итог дня (запись добавлена, в том числе без сети,
+    /// удалена или поправлена): остаток на «Сегодня» меняется сразу.
+    public func applyDiaryTotals(day: String, totals: Nutrition) {
+        guard day == selected, snapshot != nil else { return }
+        snapshot?.day.calories = totals.calories.jsRounded
+        snapshot?.day.protein = totals.protein.jsRounded
+        snapshot?.day.fat = totals.fat.jsRounded
+        snapshot?.day.carbs = totals.carbs.jsRounded
+    }
+
     // MARK: Отчёт и фото недели
 
     /// «Отправить недельный отчёт»: неделя выбранного дня, RFC 3339.

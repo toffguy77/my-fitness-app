@@ -78,6 +78,12 @@ public actor Outbox {
         return await task.value
     }
 
+    /// Изменение ещё не отправлено, а человек его отменил (удалил запись,
+    /// ждущую отправки): снять из очереди без запроса.
+    public func discard(_ id: UUID) {
+        try? store.remove(id)
+    }
+
     /// Выход: очередь аккаунта удаляется.
     public func eraseAll() {
         try? store.removeAll()

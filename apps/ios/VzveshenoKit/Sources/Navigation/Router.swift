@@ -2,7 +2,7 @@ import Foundation
 
 /// Способ записи еды из ссылки `add=`.
 public enum AddMethod: String, Sendable, Hashable, CaseIterable {
-    case search, barcode, photo
+    case search, barcode, photo, manual
 }
 
 /// Экран внутри вкладки — элемент пути навигации.

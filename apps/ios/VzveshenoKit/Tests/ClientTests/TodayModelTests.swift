@@ -159,6 +159,14 @@ final class TodayModelTests: XCTestCase {
         XCTAssertFalse(files.isEmpty)
         for file in files {
             let source = try String(contentsOf: directory.appendingPathComponent(file), encoding: .utf8)
+            // Единственная пауза модуля — `Sleeper`: одна задержка поиска
+            // (300 мс) и окно отмены удаления (5 с), без повторов.
+            if file == "Sleeper.swift" {
+                for forbidden in ["while", "repeat", "Timer", "asyncAfter"] {
+                    XCTAssertFalse(source.contains(forbidden), "\(file): \(forbidden)")
+                }
+                continue
+            }
             for forbidden in ["Timer", "DispatchSourceTimer", "Task.sleep", "asyncAfter"] {
                 XCTAssertFalse(source.contains(forbidden), "\(file): \(forbidden)")
             }

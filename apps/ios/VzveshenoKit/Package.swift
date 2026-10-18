@@ -80,7 +80,7 @@ let package = Package(
         .target(name: "Health", dependencies: ["API", "Outbox"], swiftSettings: strictSwift),
         // Экраны клиента (`ios-client-app`): ядро на Foundation — модели
         // «Сегодня», онбординга и правила, которые сверяются с вебом.
-        .target(name: "Client", dependencies: ["API", "Outbox", "Session"], swiftSettings: strictSwift),
+        .target(name: "Client", dependencies: ["API", "Outbox", "Session", "Health"], swiftSettings: strictSwift),
 
         // Заглушки транспорта и пути к файлам репозитория — общие для тестов.
         .target(name: "TestSupport", dependencies: ["API"], path: "Tests/TestSupport", swiftSettings: strictSwift),
@@ -91,7 +91,7 @@ let package = Package(
         .testTarget(name: "SessionTests", dependencies: ["Session", "API", "TestSupport"], swiftSettings: strictSwift),
         .testTarget(name: "OutboxTests", dependencies: ["Outbox", "API", "TestSupport"], swiftSettings: strictSwift),
         .testTarget(name: "NavigationTests", dependencies: ["Navigation", "TestSupport"], swiftSettings: strictSwift),
-        .testTarget(name: "ClientTests", dependencies: ["Client", "API", "Outbox", "Session", "TestSupport"],
+        .testTarget(name: "ClientTests", dependencies: ["Client", "API", "Outbox", "Session", "Health", "TestSupport"],
                     swiftSettings: strictSwift),
         .testTarget(name: "HealthTests", dependencies: ["Health", "Outbox", "API", "TestSupport"], swiftSettings: strictSwift),
     ]
