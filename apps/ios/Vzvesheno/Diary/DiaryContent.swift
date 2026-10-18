@@ -59,6 +59,8 @@ struct DiaryHeader: View {
                 dayButton("chevron.right", "Следующий день", enabled: state.canGoForward, action: actions.nextDay)
                     .accessibilityIdentifier("diary.next")
             }
+            // Ряд 36 pt, как на макете; кнопки остаются 44 pt и заходят на соседей.
+            .padding(.vertical, -4)
             SegmentedTabs(items: [(DiaryTab.ration, "Рацион"), (DiaryTab.nutrients, "Нутриенты")], selection: $tab) {
                 "diary.tab.\($0.rawValue)"
             }

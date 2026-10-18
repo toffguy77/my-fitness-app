@@ -46,11 +46,16 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(shell.tabs.map(\.title), ["Сегодня", "Дневник", "Меню", "Статьи"])
     }
 
+    /// «Дневник» — корень своей вкладки: ссылка открывает его на дате из
+    /// `?date=` и лист «Записать еду» на способе из `?add=`, а не кладёт
+    /// второй дневник в путь навигации.
     func testDeepLinkOpensTabAndPath() async throws {
         let model = await started(.client)
         await model.open(try XCTUnwrap(URL(string: "https://new.burcev.team/food-tracker?date=2026-10-15&add=barcode")))
         XCTAssertEqual(model.selectedTab, .diary)
-        XCTAssertEqual(model.paths[.diary], [.diaryDay(date: "2026-10-15", add: .barcode)])
+        XCTAssertEqual(model.paths[.diary], [])
+        XCTAssertEqual(model.foodLog?.method, .barcode)
+        XCTAssertEqual(model.foodLog?.date, "2026-10-15")
     }
 
     /// Сценарий «Пуш на устройстве после выхода».

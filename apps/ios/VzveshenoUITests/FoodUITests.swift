@@ -85,11 +85,11 @@ final class FoodUITests: XCTestCase {
         add.tap()
 
         openTab(app, "Дневник")
-        let chicken = app.buttons.matching(identifier: "entry.Куриная грудка запечённая")
+        let chicken = app.staticTexts.matching(NSPredicate(format: "label == %@", "Куриная грудка запечённая"))
         let deadline = Date().addingTimeInterval(10)
         while chicken.count < 2 && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.25)) }
         XCTAssertEqual(chicken.count, 2, "к утренней грудке добавилась распознанная")
-        XCTAssertFalse(app.buttons["entry.Рис басмати"].exists, "позиция без веса не добавлена")
+        XCTAssertFalse(app.staticTexts["Рис басмати"].exists, "позиция без веса не добавлена")
     }
 
     // MARK: 3.5
@@ -116,9 +116,9 @@ final class FoodUITests: XCTestCase {
         waitForExpectations(timeout: 10)
 
         openTab(app, "Дневник")
-        let entry = app.buttons["entry.Гречка отварная"]
-        XCTAssertTrue(entry.waitForExistence(timeout: 10), app.screenSummary)
-        XCTAssertTrue(entry.label.contains("ждёт отправки"), entry.label)
+        XCTAssertTrue(app.staticTexts["Гречка отварная"].waitForExistence(timeout: 10), app.screenSummary)
+        let pending = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "ждёт отправки")).firstMatch
+        XCTAssertTrue(pending.waitForExistence(timeout: 5), app.screenSummary)
     }
 
     // MARK: 4.1
@@ -139,20 +139,21 @@ final class FoodUITests: XCTestCase {
     func testDeleteWithUndoKeepsEntry() {
         let app = launch()
         openTab(app, "Дневник")
-        let oatmeal = app.buttons["entry.Овсянка на молоке"]
+        let oatmeal = app.staticTexts["Овсянка на молоке"]
         XCTAssertTrue(oatmeal.waitForExistence(timeout: 10), app.screenSummary)
-        oatmeal.press(forDuration: 1.0)
-        let delete = app.buttons["Удалить"].firstMatch
+        // Правка записи → «Удалить» (свайп и контекстное меню ведут туда же).
+        oatmeal.tap()
+        let delete = app.buttons["editor.delete"]
         XCTAssertTrue(delete.waitForExistence(timeout: 5), app.screenSummary)
         delete.tap()
         let undo = app.buttons["diary.undo"]
         XCTAssertTrue(undo.waitForExistence(timeout: 3), app.screenSummary)
-        XCTAssertFalse(app.buttons["entry.Овсянка на молоке"].exists, "пропала сразу")
+        XCTAssertFalse(app.staticTexts["Овсянка на молоке"].exists, "пропала сразу")
         undo.tap()
-        XCTAssertTrue(app.buttons["entry.Овсянка на молоке"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Овсянка на молоке"].waitForExistence(timeout: 3))
         // Окно отмены прошло — запись всё ещё на месте.
         RunLoop.current.run(until: Date().addingTimeInterval(6))
-        XCTAssertTrue(app.buttons["entry.Овсянка на молоке"].exists)
+        XCTAssertTrue(app.staticTexts["Овсянка на молоке"].exists)
     }
 
     /// «Убрать лишний стакан»: 5 → 4.
@@ -192,7 +193,8 @@ final class FoodUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Съедено"].waitForExistence(timeout: 5), app.screenSummary)
 
         openTab(app, "Дневник")
-        XCTAssertTrue(app.buttons["entry.Сырники"].waitForExistence(timeout: 10), app.screenSummary)
+        // 320 ккал утра + 420 ккал сырников.
+        XCTAssertTrue(app.staticTexts["740 ккал"].waitForExistence(timeout: 10), app.screenSummary)
     }
 
     /// «Замена блюда».

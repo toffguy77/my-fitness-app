@@ -130,6 +130,13 @@ final class AccessibilityAuditUITests: XCTestCase {
                element.frame.maxY > tabBar.frame.minY {
                 return true
             }
+            // То же под плавающей панелью «Записать еду» — но не для её
+            // собственных элементов.
+            let accessory = app.descendants(matching: .any)["accessory.foodLog"].firstMatch
+            if issue.auditType == .contrast, let element = issue.element, accessory.exists,
+               !element.identifier.hasPrefix("accessory."), element.frame.maxY > accessory.frame.minY {
+                return true
+            }
             let element = issue.element.map { "\($0.elementType.rawValue) «\($0.label)» [\($0.identifier)] \($0.frame)" } ?? "нет элемента"
             found.append("\(issue.compactDescription): \(element)".replacingOccurrences(of: "\n", with: " "))
             return false

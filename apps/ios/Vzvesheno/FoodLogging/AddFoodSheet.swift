@@ -59,6 +59,8 @@ struct AddFoodSheet: View {
             }
         }
         .sensoryFeedback(.success, trigger: added)
+        // Без `.contain` идентификатор контейнера достаётся каждому элементу внутри.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("sheet.addFood")
         .task {
             if search == nil {

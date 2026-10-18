@@ -14,6 +14,8 @@ struct FoodLogAccessory: View {
             Button { onOpen(.search) } label: {
                 Text("Записать еду")
                     .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .subheadline).weight(.medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .foregroundStyle(DS.Color.fgDefault)
                     .frame(maxWidth: .infinity, minHeight: DS.Size.touch, alignment: .leading)
                     .contentShape(Rectangle())
@@ -46,8 +48,9 @@ struct FoodLogAccessory: View {
     }
 }
 
-/// Плавающая панель iOS 18: полупрозрачная бумага поверх контента, как
-/// аксессуар iOS 26.
+/// Плавающая панель iOS 18: бумага поверх контента. Непрозрачная: под
+/// полупрозрачной подложкой контраст подписи зависел бы от того, что
+/// прокручивается под ней (стекло — у системного аксессуара iOS 26).
 struct FloatingFoodLogAccessory: View {
     let onOpen: (FoodLogMethod) -> Void
 
@@ -55,8 +58,7 @@ struct FloatingFoodLogAccessory: View {
         FoodLogAccessory(onOpen: onOpen)
             .frame(height: 48)
             .background {
-                Capsule().fill(.ultraThinMaterial)
-                    .overlay(Capsule().fill(DS.Color.bgSurface.opacity(0.78)))
+                Capsule().fill(DS.Color.bgSurface)
                     .overlay(Capsule().strokeBorder(DS.Color.lineDefault, lineWidth: 0.5))
                     .shadow(color: DS.Color.fgDefault.opacity(0.14), radius: 15, y: 8)
             }

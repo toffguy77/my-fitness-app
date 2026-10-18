@@ -144,6 +144,8 @@ private struct RecognitionRow: View {
                         Button(action: onApply) {
                             Text("Подставить")
                                 .font(.custom(DS.FontFamily.sans, size: 13, relativeTo: .footnote).weight(.medium))
+                                .lineLimit(1)
+                                .fixedSize()
                                 .foregroundStyle(DS.Color.primaryDefault)
                                 .padding(.horizontal, 10)
                                 .frame(minHeight: 32)
