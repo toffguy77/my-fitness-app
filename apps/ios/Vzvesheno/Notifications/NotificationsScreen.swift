@@ -72,7 +72,9 @@ struct NotificationsContent: View {
                         let count = item == .main ? counts.main : counts.content
                         Button { onTab(item) } label: {
                             Text(count > 0 ? "\(item.title) · \(count)" : item.title)
-                                .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout).weight(.medium))
+                                // Как чипы «Статей»: аудит находил недостаточный контраст
+                                // у полужирного 15 pt на bgSubtle.
+                                .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .callout))
                                 .foregroundStyle(item == tab ? DS.Color.fgInverse : DS.Color.fgDefault)
                                 .padding(.horizontal, DS.Space.s4)
                                 .frame(minHeight: DS.Size.touch)

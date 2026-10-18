@@ -219,15 +219,18 @@ struct MealGroupCard: View {
             } else {
                 ForEach(group.rows) { row in
                     SwipeToDeleteRow(revealed: row.id == revealedEntryID, onDelete: { actions.delete(row.entry) }, content: {
+                        // Меню — у самой строки, под скрытием от VoiceOver: снаружи
+                        // свайпа его обёртка снова открывала тексты строки.
                         EntryRow(row: row) { actions.edit(row.entry) }
+                            .contextMenu {
+                                Button("Повторить сегодня", systemImage: "arrow.uturn.forward") { actions.repeatToday(row.entry) }
+                                Button("Сохранить как своё", systemImage: "star") { actions.saveAsOwn(row.entry) }
+                                    .disabled(row.pending)
+                                Button("Удалить", systemImage: "trash", role: .destructive) { actions.delete(row.entry) }
+                            }
+                            .accessibilityHidden(true)
                     })
                     .overlay(alignment: .top) { Rectangle().fill(DS.Color.lineDefault).frame(height: 1) }
-                    .contextMenu {
-                        Button("Повторить сегодня", systemImage: "arrow.uturn.forward") { actions.repeatToday(row.entry) }
-                        Button("Сохранить как своё", systemImage: "star") { actions.saveAsOwn(row.entry) }
-                            .disabled(row.pending)
-                        Button("Удалить", systemImage: "trash", role: .destructive) { actions.delete(row.entry) }
-                    }
                     // Строка целиком — один элемент VoiceOver: снаружи свайпа и
                     // контекстного меню (внутри них SwiftUI снова открывал
                     // название, подпись и калории по отдельности).
@@ -236,6 +239,7 @@ struct MealGroupCard: View {
                     .accessibilityAddTraits(.isButton)
                     .accessibilityAction(.default) { actions.edit(row.entry) }
                     .accessibilityAction(named: "Удалить") { actions.delete(row.entry) }
+                    .accessibilityAction(named: "Повторить сегодня") { actions.repeatToday(row.entry) }
                     .accessibilityIdentifier("entry.\(row.entry.foodName)")
                 }
             }
