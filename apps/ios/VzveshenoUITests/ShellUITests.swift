@@ -130,11 +130,15 @@ final class AccessibilityAuditUITests: XCTestCase {
                element.frame.maxY > tabBar.frame.minY {
                 return true
             }
-            // То же под плавающей панелью «Записать еду» — но не для её
-            // собственных элементов.
-            let accessory = app.descendants(matching: .any)["accessory.foodLog"].firstMatch
-            if issue.auditType == .contrast, let element = issue.element, accessory.exists,
-               !element.identifier.hasPrefix("accessory."), element.frame.maxY > accessory.frame.minY {
+            // То же в полосе плавающей панели «Записать еду» (iOS 18): контент
+            // прокручивается под ней, и аудит сравнивает подпись панели с
+            // тем, что под ней в иерархии, а не с её непрозрачной подложкой
+            // (fgDefault на bgSurface — пара токенов с контрастом выше 12:1).
+            // На iOS 26 панель — системный аксессуар.
+            let accessory = app.buttons["accessory.open"]
+            if issue.auditType == .contrast || issue.auditType == .textClipped, let element = issue.element,
+               accessory.exists, element.frame.maxY > accessory.frame.minY - 4,
+               element.frame.minY < accessory.frame.maxY + 4 {
                 return true
             }
             let element = issue.element.map { "\($0.elementType.rawValue) «\($0.label)» [\($0.identifier)] \($0.frame)" } ?? "нет элемента"

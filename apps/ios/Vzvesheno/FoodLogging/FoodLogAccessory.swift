@@ -59,8 +59,8 @@ struct FloatingFoodLogAccessory: View {
             .frame(height: 48)
             .background {
                 Capsule().fill(DS.Color.bgSurface)
-                    .overlay(Capsule().strokeBorder(DS.Color.lineDefault, lineWidth: 0.5))
-                    .shadow(color: DS.Color.fgDefault.opacity(0.14), radius: 15, y: 8)
+                    // Без тени: она темнила подписи карточек над панелью.
+                    .overlay(Capsule().strokeBorder(DS.Color.lineDefault, lineWidth: 1))
             }
             .padding(.horizontal, DS.Space.s4)
             .padding(.bottom, DS.Space.s2)

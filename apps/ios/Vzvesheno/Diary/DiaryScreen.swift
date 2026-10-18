@@ -47,7 +47,9 @@ struct DiaryScreen: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("screen.diary")
-        .overlay(alignment: .bottom) { undoBanner }
+        // Не overlay: прокрутка уходит под панель «Записать еду», и
+        // «Отменить» оказался бы под ней.
+        .safeAreaInset(edge: .bottom, spacing: 0) { undoBanner }
         .sheet(item: $editing) { entry in
             EntryEditorSheet(entry: entry, today: model.diary?.today ?? entry.date) { action in
                 Task { await handle(action) }
