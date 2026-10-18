@@ -1,6 +1,7 @@
 package foodtracker
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -589,6 +590,12 @@ func (r *UpdateEntryRequest) Validate() error {
 	return nil
 }
 
+// MinSearchQueryRunes — короткий запрос поиска, с которого он работает.
+const MinSearchQueryRunes = 2
+
+// ErrSearchQueryTooShort — запрос короче MinSearchQueryRunes: 400, а не 500.
+var ErrSearchQueryTooShort = errors.New("поисковый запрос должен содержать минимум 2 символа")
+
 // SearchFoodsRequest represents the request to search for foods
 type SearchFoodsRequest struct {
 	Query  string `form:"q" binding:"required,min=2"`
@@ -601,8 +608,11 @@ func (r *SearchFoodsRequest) Validate() error {
 	if r.Query == "" {
 		return fmt.Errorf("поисковый запрос обязателен")
 	}
-	if len([]rune(r.Query)) < 3 {
-		return fmt.Errorf("поисковый запрос должен содержать минимум 3 символа")
+	// Со второго символа, как обещает руководство и как ищет приложение
+	// (`ios-food-logging`, `food-diary-entry`): короткий запрос держат ILIKE
+	// по каталогу и задержка 300 мс у клиента.
+	if len([]rune(r.Query)) < MinSearchQueryRunes {
+		return ErrSearchQueryTooShort
 	}
 	return nil
 }

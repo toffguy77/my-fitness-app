@@ -989,9 +989,10 @@ func roundToOneDecimal(value float64) float64 {
 func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, limit int, offset int) (*SearchFoodsResponse, error) {
 	startTime := time.Now()
 
-	// Validate query (3+ chars needed for meaningful FTS results with Russian morphology)
-	if len([]rune(query)) < 3 {
-		return nil, fmt.Errorf("поисковый запрос должен содержать минимум 3 символа")
+	// Со второго символа: двухбуквенный запрос («гр») морфология FTS не
+	// разбирает, его находят ILIKE-ветки по названию.
+	if len([]rune(query)) < MinSearchQueryRunes {
+		return nil, ErrSearchQueryTooShort
 	}
 
 	// Default and max limit
