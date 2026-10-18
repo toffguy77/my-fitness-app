@@ -111,13 +111,15 @@ const mockStopPolling = jest.fn()
 const mockSetOfflineStatus = jest.fn()
 const mockLoadFromCache = jest.fn()
 
+let mockSelectedWeek = {
+    start: new Date('2024-01-15'),
+    end: new Date('2024-01-21'),
+}
+
 jest.mock('@/features/dashboard/store/dashboardStore', () => ({
     useDashboardStore: () => ({
         selectedDate: new Date('2024-01-15'),
-        selectedWeek: {
-            start: new Date('2024-01-15'),
-            end: new Date('2024-01-21'),
-        },
+        selectedWeek: mockSelectedWeek,
         dailyData: {},
         targetsVersion: 0,
         fetchDailyData: mockFetchDailyData,
@@ -451,6 +453,31 @@ describe('Недельный отчёт со страницы дашборда',
         const [start, end] = dashboardApi.submitWeeklyReport.mock.calls[0]
         expect(start).toMatch(/^\d{4}-\d{2}-\d{2}$/)
         expect(end).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    })
+
+    // Неделя выбирается в местном времени. toISOString() отдавал дату по UTC,
+    // и в первые часы понедельника восточнее Гринвича отчёт уходил за
+    // воскресенье прошлой недели.
+    it('границы недели — местные даты, а не даты по UTC', async () => {
+        const { dashboardApi } = jest.requireMock('@/features/dashboard/api/dashboardApi')
+        const previousTZ = process.env.TZ
+        const previousWeek = mockSelectedWeek
+        process.env.TZ = 'Asia/Yekaterinburg'
+        try {
+            // 00:30 понедельника 12 октября по Екатеринбургу — 11 октября по UTC.
+            mockSelectedWeek = { start: new Date(2026, 9, 12, 0, 30), end: new Date(2026, 9, 18, 0, 30) }
+            expect(mockSelectedWeek.start.toISOString().slice(0, 10)).toBe('2026-10-11')
+
+            render(<DashboardPage />)
+            fireEvent.click(await screen.findByRole('button', { name: 'Отправить недельный отчет' }))
+
+            await waitFor(() => {
+                expect(dashboardApi.submitWeeklyReport).toHaveBeenCalledWith('2026-10-12', '2026-10-18')
+            })
+        } finally {
+            mockSelectedWeek = previousWeek
+            process.env.TZ = previousTZ
+        }
     })
 
     it('отказ сервера показывается человеку, а не проглатывается', async () => {

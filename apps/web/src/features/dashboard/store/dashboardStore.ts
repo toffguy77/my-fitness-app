@@ -1445,9 +1445,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             const url = getApiUrl('/dashboard/weekly-report');
 
             await retryWithBackoff(
+                // Ключи — как в API (week_start/week_end): с weekStart сервер
+                // отвечал 400, и отчёт из очереди без сети не доходил никогда.
                 () => apiClient.post<SubmitWeeklyReportResponse>(url, {
-                    weekStart: formatDateISO(weekStart),
-                    weekEnd: formatDateISO(weekEnd),
+                    week_start: formatDateISO(weekStart),
+                    week_end: formatDateISO(weekEnd),
                 }),
                 3,
                 1000

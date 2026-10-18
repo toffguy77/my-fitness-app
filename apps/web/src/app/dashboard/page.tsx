@@ -46,6 +46,7 @@ import { useOnboardingState } from '@/features/dashboard/hooks/useOnboardingStat
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import { dashboardApi } from '@/features/dashboard/api/dashboardApi'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { formatLocalDate } from '@/shared/utils/format'
 import toast from 'react-hot-toast'
 import { WeekCaloriesCard } from '@/features/nutrition-calc/components/WeekCaloriesCard'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
@@ -191,9 +192,10 @@ export default function DashboardPage() {
         if (submittingReport) return
         setSubmittingReport(true)
         try {
-            // Сервер принимает дату недели, не момент времени.
-            const asDate = (d: Date) => d.toISOString().slice(0, 10)
-            await dashboardApi.submitWeeklyReport(asDate(selectedWeek.start), asDate(selectedWeek.end))
+            // Сервер принимает дату недели, не момент времени. Дата — местная:
+            // toISOString() давал дату по UTC, и в первые часы понедельника
+            // восточнее Гринвича отчёт уходил за воскресенье прошлой недели.
+            await dashboardApi.submitWeeklyReport(formatLocalDate(selectedWeek.start), formatLocalDate(selectedWeek.end))
             toast.success(t('dashboard.calendar.reportSent'))
         } catch (error) {
             toast.error(messageForOr(error, t('dashboard.calendar.reportFailed')))

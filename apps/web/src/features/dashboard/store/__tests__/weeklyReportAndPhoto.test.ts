@@ -97,8 +97,8 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             expect(apiClient.post).toHaveBeenCalledWith(
                 'http://localhost:4000/dashboard/weekly-report',
                 {
-                    weekStart: '2024-01-01',
-                    weekEnd: '2024-01-07',
+                    week_start: '2024-01-01',
+                    week_end: '2024-01-07',
                 }
             );
 
