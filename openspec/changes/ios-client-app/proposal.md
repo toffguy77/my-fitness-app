@@ -50,6 +50,7 @@
 - `ios-client-today`: экран «Сегодня».
 - `ios-food-logging`: лист «Записать еду» — четыре способа и порция.
 - `ios-food-diary`: экран «Дневник» и нутриенты.
+- `ios-meal-plan`: вкладка «Меню» (бета, перенос из 0.3.x): план дня под норму, замена и закрепление, «Съел» → дневник, рецепты, список покупок, приёмы пищи.
 - `ios-client-chat`: переписка с куратором и состояние без доступа.
 - `ios-content-reader`: лента и статья.
 - `ios-notifications-center`: экран уведомлений.
@@ -72,6 +73,7 @@
 - **Бэкенд:**
   - `apps/api/internal/modules/food-tracker/types.go:616-630` — `AddWaterRequest`: привязка `min=-1,max=10`, `Validate` пропускает −1;
   - `service.go:1739-1747` — `AddWater` убирает стакан и не уходит ниже нуля.
+  - `food-tracker/types.go` (`SearchFoodsRequest.Validate`) и `service.go` (`SearchFoods`) — поиск со второго символа: привязка принимала `min=2`, а проверка и сервис требовали 3 и отвечали `400` на «гр».
 - **App Store:**
   - описание приватности (данные о здоровье, питании, фото);
   - `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, тексты HealthKit;
