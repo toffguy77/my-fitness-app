@@ -1,0 +1,60 @@
+ЧЕРНОВИК — ТРЕБУЕТ СОГЛАСОВАНИЯ ВЛАДЕЛЬЦА ПРОДУКТА (задача 7.3a ios-client-app).
+Lane `metadata` этот файл не загружает: текст вносится в App Store Connect
+(App Review Information → Notes) человеком после согласования. Пароль
+демо-аккаунта в git не хранится — подставляется при вводе в App Store Connect.
+
+=== RU ===
+
+«Взвешено» — дневник питания с личным куратором. Приложение бесплатно: дневник,
+поиск продуктов, сканер штрихкодов, распознавание блюд по фото, статьи и
+интеграция с «Здоровьем» доступны каждому вошедшему пользователю.
+
+Работа с куратором — персональная услуга «человек — человек»: живой специалист
+(нутрициолог) один на один ведёт клиента — читает его дневник питания, отвечает
+в переписке, ставит задачи и пишет отзыв на недельный отчёт. Это услуга,
+оказываемая в реальном времени одним человеком другому, по пункту 3.1.3(d)
+App Review Guidelines.
+
+Оплата работы с куратором происходит вне приложения, на сайте burcev.team.
+В приложении нет цен, кнопок покупки, форм заявки, ссылок на оплату или на
+страницу тарифов и иных призывов оплатить услугу вне приложения. Пользователь
+без доступа видит экран «Работа с куратором» с описанием и кнопкой «Написать в
+поддержку». Ссылки на тарифы в статьях показываются как обычный текст.
+
+Аккаунт можно удалить в приложении: Профиль → Удалить аккаунт.
+
+Демо-аккаунт клиента с доступом к куратору:
+  Логин: e2e-appreview-client@burcev.team
+  Пароль: <указывается в App Store Connect, в git не хранится>
+Вход: экран входа → «Войти с паролем». Переписка с куратором — значок чата в
+шапке экрана «Сегодня». Ответы куратора в демо-аккаунте пишет сотрудник
+команды в рабочее время (Москва, UTC+3).
+
+=== EN ===
+
+Vzvesheno is a food diary with a personal curator. The app is free: the diary,
+food search, barcode scanner, photo meal recognition, articles and Apple Health
+integration are available to every signed-in user.
+
+Curator access is a person-to-person service: a live specialist (nutritionist)
+works one-on-one with the client — reads their food diary, replies in the chat,
+assigns tasks and reviews the weekly report. This is a real-time
+person-to-person service under App Review Guideline 3.1.3(d).
+
+Payment for the curator service happens outside the app, on burcev.team. The
+app contains no prices, purchase buttons, request forms, payment or pricing
+links, or any other calls to action to pay outside the app. A user without
+access sees a "Работа с куратором" (Working with a curator) screen with a
+description and a "Написать в поддержку" (Contact support) button. Pricing links
+inside articles are shown as plain text.
+
+Account deletion is available in the app: Profile → Delete account
+(«Удалить аккаунт»).
+
+Demo client account with curator access:
+  Login: e2e-appreview-client@burcev.team
+  Password: <entered in App Store Connect, not stored in git>
+Sign in: sign-in screen → "Войти с паролем" (Sign in with password). The curator
+chat opens from the chat icon in the header of the "Сегодня" (Today) screen.
+Curator replies on the demo account are written by a team member during working
+hours (Moscow, UTC+3).

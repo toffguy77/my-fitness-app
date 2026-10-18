@@ -20,12 +20,24 @@ struct TodayScreen: View {
     @State private var photoError: String?
 
     var body: some View {
-        ScrollView {
-            if let today = model.today {
-                TodayContent(state: today.state, avatarInitial: model.avatarInitial, offline: offline,
-                             healthHint: model.healthAccessHint, actions: actions(today))
-                    .padding(.top, DS.Space.s2)
+        ScrollViewReader { proxy in
+            ScrollView {
+                if let today = model.today {
+                    TodayContent(state: today.state, avatarInitial: model.avatarInitial, offline: offline,
+                                 healthHint: model.healthAccessHint, highlightedTask: model.highlightedTask,
+                                 actions: actions(today))
+                        .padding(.top, DS.Space.s2)
+                }
             }
+            // Задача из пуша или уведомления — прокрутить к ней.
+            .onChange(of: model.highlightedTask) { _, task in scroll(proxy, to: task) }
+            .onChange(of: model.today?.state.tasks.count) { _, _ in scroll(proxy, to: model.highlightedTask) }
+        }
+        // «Выполнено» в пуше задачи-тренировки — лист вида и длительности.
+        .onChange(of: model.workoutSheetTask, initial: true) { _, task in
+            guard let task else { return }
+            editor = .workout(task: task)
+            model.workoutSheetTask = nil
         }
         .background(DS.Color.bgCanvas)
         .refreshable { await model.today?.load() }
@@ -98,6 +110,11 @@ struct TodayScreen: View {
                 if let url = URL(string: "x-apple-health://") { openURL(url) }
             }
         )
+    }
+
+    private func scroll(_ proxy: ScrollViewProxy, to task: String?) {
+        guard let task else { return }
+        withAnimation { proxy.scrollTo("task.\(task)", anchor: .center) }
     }
 
     private func push(_ destination: Destination) {

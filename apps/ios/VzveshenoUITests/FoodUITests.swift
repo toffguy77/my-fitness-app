@@ -116,8 +116,9 @@ final class FoodUITests: XCTestCase {
         waitForExpectations(timeout: 10)
 
         openTab(app, "Дневник")
-        XCTAssertTrue(app.staticTexts["Гречка отварная"].waitForExistence(timeout: 10), app.screenSummary)
-        let pending = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "ждёт отправки")).firstMatch
+        let entry = app.buttons["entry.Гречка отварная"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 10), app.screenSummary)
+        let pending = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "ждёт отправки")).firstMatch
         XCTAssertTrue(pending.waitForExistence(timeout: 5), app.screenSummary)
     }
 
@@ -139,8 +140,11 @@ final class FoodUITests: XCTestCase {
     func testDeleteWithUndoKeepsEntry() {
         let app = launch()
         openTab(app, "Дневник")
-        let oatmeal = app.staticTexts["Овсянка на молоке"]
+        // Строка — один элемент VoiceOver с идентификатором `entry.<название>`.
+        let oatmeal = app.buttons["entry.Овсянка на молоке"]
         XCTAssertTrue(oatmeal.waitForExistence(timeout: 10), app.screenSummary)
+        XCTAssertTrue(oatmeal.label.hasPrefix("Овсянка на молоке, "), oatmeal.label)
+        XCTAssertFalse(app.staticTexts["Овсянка на молоке"].exists, "название не отдельным элементом")
         // Правка записи → «Удалить» (свайп и контекстное меню ведут туда же).
         oatmeal.tap()
         let delete = app.buttons["editor.delete"]
@@ -148,12 +152,12 @@ final class FoodUITests: XCTestCase {
         delete.tap()
         let undo = app.buttons["diary.undo"]
         XCTAssertTrue(undo.waitForExistence(timeout: 3), app.screenSummary)
-        XCTAssertFalse(app.staticTexts["Овсянка на молоке"].exists, "пропала сразу")
+        XCTAssertFalse(app.buttons["entry.Овсянка на молоке"].exists, "пропала сразу")
         undo.tap()
-        XCTAssertTrue(app.staticTexts["Овсянка на молоке"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["entry.Овсянка на молоке"].waitForExistence(timeout: 3))
         // Окно отмены прошло — запись всё ещё на месте.
         RunLoop.current.run(until: Date().addingTimeInterval(6))
-        XCTAssertTrue(app.staticTexts["Овсянка на молоке"].exists)
+        XCTAssertTrue(app.buttons["entry.Овсянка на молоке"].exists)
     }
 
     /// «Убрать лишний стакан»: 5 → 4.

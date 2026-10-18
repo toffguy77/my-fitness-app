@@ -57,6 +57,10 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      # Сгенерированные Info.plist и entitlements — валидные списки свойств.
+      - name: Lint generated plists
+        run: plutil -lint Vzvesheno/Info.plist VzveshenoWidgets/Info.plist Vzvesheno/Vzvesheno.entitlements VzveshenoWidgets/VzveshenoWidgets.entitlements
+
       - name: SwiftLint
         run: swiftlint lint --strict
 

@@ -30,6 +30,8 @@ struct TodayContent: View {
     let avatarInitial: String
     var offline = false
     var healthHint = false
+    /// Задача из пуша или уведомления — подсвечена.
+    var highlightedTask: String?
     var actions = TodayActions()
 
     var body: some View {
@@ -80,7 +82,7 @@ struct TodayContent: View {
     private var blocks: some View {
         let shown = state.visibility
         if shown.tasks {
-            TasksCard(rows: state.tasks, onToggle: actions.toggleTask)
+            TasksCard(rows: state.tasks, highlighted: highlightedTask, onToggle: actions.toggleTask)
         }
         if shown.firstWeek {
             FirstWeekCard(items: state.firstWeek)

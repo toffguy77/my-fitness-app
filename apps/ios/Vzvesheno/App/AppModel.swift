@@ -49,6 +49,22 @@ final class AppModel {
     internal(set) var shopping: ShoppingModel?
     /// Открытый лист «Записать еду».
     var foodLog: FoodLogRequest?
+    /// Переписка с куратором, лента статей и уведомления вошедшего клиента.
+    internal(set) var chat: ChatModel?
+    internal(set) var articles: ArticleFeedModel?
+    internal(set) var notifications: NotificationsModel?
+    /// Задача, подсвеченная на «Сегодня» (пуш или уведомление о задаче).
+    var highlightedTask: String?
+    /// «Выполнено» в пуше задачи-тренировки: лист вида и длительности.
+    var workoutSheetTask: String?
+    /// «Сменить часовой пояс на {пояс}?» — пояс устройства.
+    var timeZoneOffer: String?
+    /// Разрешение iOS на уведомления — колонка «Пуш» в настройках.
+    internal(set) var notificationPermission: NotificationPermission = .notDetermined
+    /// «Оформление» — на устройстве.
+    var appearance: Appearance = .auto {
+        didSet { preferences.set(appearance.rawValue, forKey: "appearance") }
+    }
     var profileTimeZone = TimeZone.current
     /// Ссылка входа пришла при открытой сессии — ждёт подтверждения
     /// «Войти в другой аккаунт? Текущий сеанс завершится».
@@ -77,12 +93,16 @@ final class AppModel {
     private let healthStore: HealthStore
     let messages = ErrorMessages()
     let realtime: RealtimeConnection
+    let push: PushRegistrar
+    let permissions: NotificationPermissionProvider
+    let timeZones: TimeZoneSuggestionStore
+    let preferences: UserDefaults
     let photoWeeks: PhotoWeekStore
     /// Найденные по штрихкоду продукты — на 90 дней.
     let barcodeCache: BarcodeCache
     let shoppingMarks: FileShoppingMarks
     private var realtimeTask: Task<Void, Never>?
-    private let pendingLinks = PendingLinkStore()
+    let pendingLinks = PendingLinkStore()
     private let configLoader: ConfigLoader
     private let configCache: ConfigCache
     private var pendingPKCE: PKCEPair?
@@ -90,7 +110,10 @@ final class AppModel {
     private var started = false
 
     init(environment: AppEnvironment, transport: HTTPTransport, secure: SecureStore, installMarker: InstallMarker,
-         directory: URL, deviceName: String, healthStore: HealthStore) {
+         directory: URL, deviceName: String, healthStore: HealthStore,
+         installation: SecureStore = InMemorySecureStore(), pushTokens: DeviceTokenStore = InMemoryDeviceTokenStore(),
+         permissions: NotificationPermissionProvider = FixedNotificationPermission(.notDetermined),
+         preferences: UserDefaults = .standard) {
         self.environment = environment
         let api = APIClient(baseURL: environment.apiBaseURL, clientHeader: environment.clientHeader, transport: transport)
         self.api = api
@@ -121,18 +144,30 @@ final class AppModel {
         self.barcodeCache = barcodeCache
         let shoppingMarks = FileShoppingMarks(url: directory.appendingPathComponent("shopping-marks.json"))
         self.shoppingMarks = shoppingMarks
+        let timeZones = FileTimeZoneSuggestionStore(url: directory.appendingPathComponent("timezone-suggestion.json"))
+        self.timeZones = timeZones
+        // Выход отписывает телефон от пушей и через `native/logout`
+        // (`device_token`): так отписка доходит и без сети в момент выхода.
         session = SessionStore(api: api, secure: secure, installMarker: installMarker,
                                erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health,
                                                        photoWeeks: photoWeeks, barcodes: barcodeCache,
-                                                       shoppingMarks: shoppingMarks)])
+                                                       shoppingMarks: shoppingMarks, timeZones: timeZones)],
+                               deviceToken: { [pushTokens] in pushTokens.load() })
         sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
         realtime = RealtimeConnection(api: api)
+        // Идентификатор установки — в отдельной записи Keychain: выход его не
+        // стирает, по нему сервер переносит токен к следующему вошедшему.
+        push = PushRegistrar(api: api, tokens: pushTokens, environment: PushEnvironment.forApp(environment.name),
+                             appVersion: environment.version, installationID: { InstallationID.value(in: installation) })
+        self.permissions = permissions
+        self.preferences = preferences
         let configCache = FileConfigCache(url: directory.appendingPathComponent("config.json"))
         self.configCache = configCache
         configLoader = ConfigLoader(cache: configCache) {
             try await api.sendBare(.get("/api/v1/config", requiresAuth: false), as: ClientConfig.self)
         }
+        appearance = preferences.string(forKey: "appearance").flatMap(Appearance.init(rawValue:)) ?? .auto
     }
 
     /// Приложение на устройстве: Keychain с общей группой, файлы в App Group.
@@ -147,9 +182,12 @@ final class AppModel {
         try? ProtectedFiles.prepareDirectory(directory)
         let secure = KeychainStore(policy: KeychainPolicy(service: "\(environment.bundleID).session",
                                                           accessGroup: environment.keychainAccessGroup))
+        let installation = KeychainStore(policy: KeychainPolicy(service: "\(environment.bundleID).installation",
+                                                                accessGroup: environment.keychainAccessGroup))
         return AppModel(environment: environment, transport: URLSessionTransport(), secure: secure,
                         installMarker: UserDefaultsInstallMarker(), directory: directory, deviceName: AppEnvironment.deviceName,
-                        healthStore: HealthKitStore())
+                        healthStore: HealthKitStore(), installation: installation, pushTokens: UserDefaultsDeviceTokenStore(),
+                        permissions: SystemNotificationPermission())
     }
 
     // MARK: Запуск
@@ -163,6 +201,8 @@ final class AppModel {
         // Решение о версии — сразу по сохранённой конфигурации, затем по свежей.
         config = configCache.load()
         user = await session.restore()
+        // Запрошенное удаление — и после перезапуска, до любого другого экрана.
+        if user != nil { pendingDeletion = await session.storedPendingDeletion() }
         recompute()
         // Наблюдатели Здоровья живут до конца процесса: при каждом запуске,
         // в том числе фоновом по событию Здоровья, — заново и после restore(),
@@ -206,6 +246,7 @@ final class AppModel {
                 user = current
             }
             Telemetry.identify(id: me.user.id, role: me.user.role)
+            await refreshDeletion()
             await refreshLanguage()
         } catch APIError.network {
             offline = true
@@ -280,6 +321,13 @@ final class AppModel {
 
     /// «Сегодня» и сокет — пока открыта клиентская оболочка.
     private func startClient() {
+        if chat == nil, let userID = user?.id {
+            let chat = ChatModel(api: api, outbox: outbox, calendar: DayCalendar(timeZone: profileTimeZone), userID: userID)
+            chat.sendTyping = { [realtime] id in await realtime.sendTyping(conversationID: id) }
+            chat.onRead = { [weak self] in Task { await self?.refreshBadge() } }
+            self.chat = chat
+            articles = ArticleFeedModel(api: api)
+        }
         if today == nil {
             let model = TodayModel(api: api, outbox: outbox, cache: cache, photoWeeks: photoWeeks,
                                    calendar: DayCalendar(timeZone: profileTimeZone),
@@ -298,6 +346,11 @@ final class AppModel {
     private func stopClient() {
         stopFood()
         today = nil
+        chat = nil
+        articles = nil
+        notifications = nil
+        highlightedTask = nil
+        workoutSheetTask = nil
         realtimeTask?.cancel()
         realtimeTask = nil
         Task { await realtime.disconnect() }
@@ -308,6 +361,8 @@ final class AppModel {
         realtimeTask = Task { [weak self, realtime] in
             for await event in await realtime.connect() {
                 await self?.today?.handle(event)
+                await self?.chat?.handle(event)
+                if case .unreadCount = event { await self?.refreshBadge() }
             }
         }
     }
@@ -380,89 +435,11 @@ final class AppModel {
         try await complete(try await auth.exchange(code: code, pkce: pkce))
     }
 
+    /// Выход: сначала отписка устройства (пока сессия действует), затем
+    /// `native/logout` и стирание данных аккаунта.
     func signOut() async {
+        await push.unregister()
         await session.signOut()
-    }
-
-    // MARK: Ссылки
-
-    /// Universal link: ссылки входа — без сессии, экраны — после входа.
-    func open(_ url: URL) async {
-        guard let link = Router.parse(url) else { return }
-        switch link {
-        case let .auth(authLink):
-            // Не `user`: при холодном запуске по ссылке restore() ещё не
-            // прошёл, и сессия есть только в Keychain.
-            let hasSession = await session.hasStoredSession()
-            switch AuthLinkDecision.decide(authLink, hasSession: hasSession) {
-            case .handle:
-                await handle(authLink)
-            case .confirmSwitchingAccount:
-                authLinkAwaitingConfirmation = authLink
-            }
-        case let .screen(screen):
-            open(screen)
-        }
-    }
-
-    /// Человек подтвердил вход в другой аккаунт: текущий сеанс завершается,
-    /// затем ссылка обрабатывается.
-    func confirmSwitchingAccount() async {
-        guard let link = authLinkAwaitingConfirmation else { return }
-        authLinkAwaitingConfirmation = nil
-        await signOut()
-        user = nil
-        recompute()
-        await handle(link)
-    }
-
-    func cancelSwitchingAccount() {
-        authLinkAwaitingConfirmation = nil
-    }
-
-    private func handle(_ link: AuthLink) async {
-        switch link {
-        case let .magicLink(token):
-            do {
-                try await complete(try await auth.consumeMagicLink(token: token))
-            } catch APIError.server(_, .some("token_invalid"), _) {
-                // Просроченная, использованная и поддельная ссылка сервер не
-                // различает — для человека это одно: «Ссылка устарела».
-                signInStep = .linkExpired
-            } catch {
-                linkError = messages.message(for: error)
-            }
-        case let .resetPassword(token):
-            signInStep = .resetPassword(token: token)
-        case let .providerComplete(code, reason):
-            guard let code else {
-                linkError = Self.providerFailureMessage(reason)
-                return
-            }
-            do {
-                try await finishProviderSignIn(code: code)
-            } catch {
-                linkError = messages.message(for: error)
-            }
-        }
-    }
-
-    /// `target` пуша.
-    func open(_ target: PushTarget) {
-        open(Router.link(for: target))
-    }
-
-    func open(_ link: ScreenLink) {
-        guard case let .shell(shell, _) = launch else {
-            Task { await pendingLinks.remember(link) }
-            return
-        }
-        if shell == .client, openFoodTracker(link) { return }
-        let target = Router.target(for: link, shell: shell)
-        selectedTab = target.tab
-        if let tab = target.tab {
-            paths[tab] = target.path
-        }
     }
 
     // MARK: Очередь
@@ -475,7 +452,10 @@ final class AppModel {
             await today?.refresh()
         }
         await refreshFood()
+        await chat?.flush()
         await refreshConfig()
+        await refreshPushState()
+        checkTimeZone()
         await health.refresh()
         await refreshHealthState()
     }

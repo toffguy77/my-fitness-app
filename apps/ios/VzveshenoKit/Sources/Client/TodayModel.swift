@@ -346,6 +346,11 @@ public final class TodayModel {
         snapshot?.day.carbs = totals.carbs.jsRounded
     }
 
+    /// Счётчики уведомлений изменились на экране уведомлений — колокольчик сразу.
+    public func applyUnread(_ counts: UnreadCounts) {
+        snapshot?.unread = counts
+    }
+
     // MARK: Отчёт и фото недели
 
     /// «Отправить недельный отчёт»: неделя выбранного дня, RFC 3339.

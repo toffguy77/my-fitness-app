@@ -1,5 +1,6 @@
 #if DEBUG
 import API
+import Client
 import Foundation
 import Health
 import Session
@@ -13,7 +14,12 @@ import Session
 /// - `-uiTestPendingConsents` — вход через провайдера создаёт аккаунт:
 ///   открыт экран согласий;
 /// - `-uiTestFoodOffline` — изменения дневника не доходят до сервера (нет
-///   сети), чтения работают: запись остаётся «ждёт отправки».
+///   сети), чтения работают: запись остаётся «ждёт отправки»;
+/// - `-uiTestCuratorAccess none|expired|noCurator` — доступ к куратору;
+/// - `-uiTestPickFile 14mb` — «Файл» в переписке выбирает файл этого размера;
+/// - `-uiTestPushPermission denied|notDetermined|authorized` — разрешение iOS
+///   на уведомления (по умолчанию выдано);
+/// - `-uiTestNoPassword` — аккаунт без пароля (вход через Apple).
 enum UITestScenario: String {
     case client
     case coordinator
@@ -61,13 +67,30 @@ enum UITestScenario: String {
             }
         }
         let providers = Self.argument("-uiTestProviders")?.split(separator: ",").map(String.init) ?? ["yandex", "vk"]
+        let permission: NotificationPermission
+        switch Self.argument("-uiTestPushPermission") {
+        case "denied": permission = .denied
+        case "notDetermined": permission = .notDetermined
+        default: permission = .authorized
+        }
+        // Своё хранилище настроек на запуск: «Оформление» одного теста не
+        // переходит в другой.
+        let preferences = UserDefaults(suiteName: "uitest-\(UUID().uuidString)") ?? .standard
         let model = AppModel(environment: environment, transport: ScenarioTransport(scenario: self, providers: providers),
                              secure: secure, installMarker: MarkedInstall(), directory: directory, deviceName: "UI test",
                              // Системный запрос Здоровья в UI-тесте не показывается:
                              // подделка считает запросы, «Профиль» показывает счёт.
-                             healthStore: InMemoryHealthStore())
+                             healthStore: InMemoryHealthStore(), permissions: FixedNotificationPermission(permission),
+                             preferences: preferences)
         if ProcessInfo.processInfo.arguments.contains("-uiTestPendingConsents") {
             model.signInStep = .pending(PendingSignIn(step: .needsConsents, pendingToken: "pending", provider: "yandex", email: nil))
+        }
+        if Self.argument("-uiTestPushResponse") == "workout" {
+            // «Выполнено» в пуше задачи-тренировки: системный пуш тест не пришлёт.
+            Task { @MainActor in
+                await model.start()
+                await model.handlePush(.openWorkoutSheet(taskID: "t1"))
+            }
         }
         if let raw = Self.argument("-uiTestOpenURL"), let url = URL(string: raw) {
             Task { @MainActor in
@@ -86,7 +109,7 @@ private struct MarkedInstall: InstallMarker {
 
 /// Заготовленные ответы сервера для сценария. Помнит изменения: стакан
 /// воды, отметку задачи-тренировки.
-private final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
+final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
     let scenario: UITestScenario
     let providers: [String]
     private let lock = NSLock()
@@ -102,6 +125,11 @@ private final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
     var planLocked = false
     var nextEntry = 100
     let foodOffline = ProcessInfo.processInfo.arguments.contains("-uiTestFoodOffline")
+    /// Переписка, уведомления и настройки сценария (`UITestScenario+Client.swift`).
+    var chatMessages: [[String: Any]] = []
+    var readNotifications: Set<String> = []
+    var exportRequested = false
+    var deletionCodeSent = false
 
     init(scenario: UITestScenario, providers: [String]) {
         self.scenario = scenario
@@ -121,7 +149,8 @@ private final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
         let query = Dictionary((URLComponents(url: request.url ?? URL(fileURLWithPath: "/"), resolvingAgainstBaseURL: false)?
             .queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
         let (status, text) = lock.withLock {
-            foodResponse(method, path, body, query) ?? menuResponse(method, path, body) ?? respond(method, path, body)
+            foodResponse(method, path, body, query) ?? menuResponse(method, path, body)
+                ?? clientResponse(method, path, body, query) ?? respond(method, path, body)
         }
         let response = HTTPURLResponse(url: request.url ?? URL(fileURLWithPath: "/"), statusCode: status,
                                        httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])
@@ -129,8 +158,8 @@ private final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
         return (Data(text.utf8), response)
     }
 
-    private static func ok(_ data: String) -> (Int, String) { (200, #"{"status":"success","data":\#(data)}"#) }
-    private static func error(_ status: Int, _ code: String) -> (Int, String) {
+    static func ok(_ data: String) -> (Int, String) { (200, #"{"status":"success","data":\#(data)}"#) }
+    static func error(_ status: Int, _ code: String) -> (Int, String) {
         (status, #"{"status":"error","code":"\#(code)","message":"текст сервера"}"#)
     }
 

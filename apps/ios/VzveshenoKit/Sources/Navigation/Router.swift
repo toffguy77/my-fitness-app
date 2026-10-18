@@ -18,6 +18,9 @@ public enum Destination: Hashable, Sendable {
     case profile
     /// «Профиль → Здоровье» (`healthkit-client`).
     case health
+    /// Раздел профиля и настроек (`ios-client-settings`): `body-goals`,
+    /// `notifications`, `telegram`… — имена разделов знает приложение.
+    case settings(section: String)
     case notifications
     case weeklyFeedback(reportID: String)
     case plan

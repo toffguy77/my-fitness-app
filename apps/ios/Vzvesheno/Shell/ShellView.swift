@@ -36,7 +36,14 @@ struct ShellView: View {
             }
         }
         // iOS 26: системный аксессуар таббара с Liquid Glass.
-        .foodLogBottomAccessory(enabled: shell == .client) { method in model.openFoodLog(method) }
+        .foodLogBottomAccessory(enabled: shell == .client && model.showsFoodAccessory(on: model.selectedTab ?? .today)) { method in
+            model.openFoodLog(method)
+        }
+        // Пояс устройства отличается от профиля больше суток — один раз спросить.
+        .alert(timeZoneQuestion, isPresented: Binding(get: { model.timeZoneOffer != nil }, set: { if !$0 { model.timeZoneOffer = nil } })) {
+            Button("Сменить") { Task { await model.answerTimeZoneOffer(change: true) } }
+            Button("Оставить", role: .cancel) { Task { await model.answerTimeZoneOffer(change: false) } }
+        }
         .sheet(item: $model.foodLog) { request in
             AddFoodSheet(request: request)
                 .presentationDragIndicator(.visible)
@@ -58,6 +65,10 @@ struct ShellView: View {
             }
         }
         #endif
+    }
+
+    private var timeZoneQuestion: String {
+        "Сменить часовой пояс на \(TimeZoneSuggestion.title(model.timeZoneOffer ?? ""))?"
     }
 
     private var shellName: String {
@@ -125,6 +136,7 @@ private struct TabRoot: View {
         case (.client, .today): TodayScreen(offline: offline)
         case (.client, .diary): DiaryScreen(offline: offline)
         case (.client, .menu): MenuScreen(offline: offline)
+        case (.client, .articles): ArticlesScreen(offline: offline)
         default: placeholder
         }
     }
@@ -202,6 +214,13 @@ private struct DestinationView: View {
         switch destination {
         case .profile: ProfileScreen()
         case .health: HealthScreen()
+        case .curatorChat: ChatScreen()
+        case let .article(slug): ArticleScreen(reference: slug)
+        case .notifications: NotificationsScreen()
+        case let .weeklyFeedback(reportID): WeeklyFeedbackScreen(reportID: reportID)
+        case .export: SettingsSectionView(section: .export)
+        case let .settings(section):
+            if let section = SettingsSection(rawValue: section) { SettingsSectionView(section: section) } else { placeholder }
         default: placeholder
         }
     }
@@ -233,6 +252,7 @@ private struct DestinationView: View {
         case .curatorChat: return "Куратор"
         case .profile: return "Профиль"
         case .health: return "Здоровье"
+        case .settings: return "Настройки"
         case .notifications: return "Уведомления"
         case .weeklyFeedback: return "Отзыв куратора"
         case .plan: return "План"
@@ -252,6 +272,7 @@ private struct DestinationView: View {
         case .curatorChat: return "curatorChat"
         case .profile: return "profile"
         case .health: return "health"
+        case .settings: return "settings"
         case .notifications: return "notifications"
         case .weeklyFeedback: return "weeklyFeedback"
         case .plan: return "plan"

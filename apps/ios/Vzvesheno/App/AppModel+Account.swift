@@ -39,7 +39,34 @@ extension AppModel {
             // Уже отменено (например, в вебе) — цель достигнута.
         }
         pendingDeletion = nil
+        await session.setPendingDeletion(nil)
         recompute()
+    }
+
+    /// `GET /users/me/deletion`: удаление, запрошенное на другом устройстве
+    /// или до перезапуска, — экран «Аккаунт будет удалён».
+    func refreshDeletion() async {
+        struct Status: Decodable, Sendable {
+            let requested: Bool
+            let requestedAt: String?
+            let scheduledFor: String?
+            enum CodingKeys: String, CodingKey {
+                case requested
+                case requestedAt = "requested_at"
+                case scheduledFor = "scheduled_for"
+            }
+        }
+        guard let status: Status = try? await api.send(.get("/api/v1/users/me/deletion")) else { return }
+        let deletion = status.requested ? status.scheduledFor.map { PendingDeletion(requestedAt: status.requestedAt, scheduledFor: $0) }
+            : nil
+        pendingDeletion = deletion
+        await session.setPendingDeletion(deletion)
+    }
+
+    /// Удаление запрошено в настройках (`202`): выход и экран входа с датой.
+    func accountDeletionRequested(_ deletion: PendingDeletion) async {
+        await signOut()
+        sessionMessage = deletion.signedOutMessage
     }
 
     /// Ответы онбординга и `PUT /users/onboarding/complete`.

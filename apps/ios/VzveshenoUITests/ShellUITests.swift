@@ -71,8 +71,10 @@ final class ShellUITests: XCTestCase {
         let app = launch("client")
         XCTAssertTrue(app.buttons["header.profile"].waitForExistence(timeout: 10))
         app.buttons["header.profile"].tap()
-        XCTAssertTrue(app.buttons["profile.catalogue"].waitForExistence(timeout: 5))
-        app.buttons["profile.catalogue"].tap()
+        let catalogue = app.buttons["profile.catalogue"]
+        XCTAssertTrue(catalogue.waitForExistence(timeout: 5))
+        for _ in 0..<6 where !catalogue.isHittable { app.swipeUp() }
+        catalogue.tap()
         let entries = ["card", "coachCard", "progressArc", "progressBar", "macroRemaining", "weekDots", "quickAdd",
                        "quickAddBar", "buttons", "offlineBanner", "spinner", "nutritionCard"]
         let scroll = app.scrollViews.firstMatch
@@ -93,8 +95,14 @@ final class ShellUITests: XCTestCase {
         let app = launch("client")
         XCTAssertTrue(app.buttons["header.profile"].waitForExistence(timeout: 10))
         app.buttons["header.profile"].tap()
-        XCTAssertTrue(app.buttons["profile.signOut"].waitForExistence(timeout: 5))
-        app.buttons["profile.signOut"].tap()
+        let signOut = app.buttons["profile.signOut"]
+        XCTAssertTrue(signOut.waitForExistence(timeout: 5))
+        for _ in 0..<6 where !signOut.isHittable { app.swipeUp() }
+        signOut.tap()
+        // ios-client-settings «Выход»: сначала подтверждение.
+        let confirm = app.alerts["Выйти из аккаунта?"].buttons["Выйти"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), app.screenSummary)
+        confirm.tap()
         XCTAssertTrue(app.otherElements["screen.signIn"].waitForExistence(timeout: 5)
                       || app.scrollViews["screen.signIn"].waitForExistence(timeout: 1))
     }
@@ -130,28 +138,76 @@ final class AccessibilityAuditUITests: XCTestCase {
                element.frame.maxY > tabBar.frame.minY {
                 return true
             }
-            // То же в полосе плавающей панели «Записать еду» (iOS 18): контент
-            // прокручивается под ней, и аудит сравнивает подпись панели с
-            // тем, что под ней в иерархии, а не с её непрозрачной подложкой
-            // (fgDefault на bgSurface — пара токенов с контрастом выше 12:1).
-            // На iOS 26 панель — системный аксессуар.
-            let accessory = app.buttons["accessory.open"]
-            if issue.auditType == .contrast || issue.auditType == .textClipped, let element = issue.element,
-               accessory.exists, element.frame.maxY > accessory.frame.minY - 4,
-               element.frame.minY < accessory.frame.maxY + 4 {
-                return true
-            }
             let element = issue.element.map { "\($0.elementType.rawValue) «\($0.label)» [\($0.identifier)] \($0.frame)" } ?? "нет элемента"
             found.append("\(issue.compactDescription): \(element)".replacingOccurrences(of: "\n", with: " "))
             return false
         }
     }
 
-    private func launch(_ scenario: String) -> XCUIApplication {
+    private func launch(_ scenario: String, _ extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTestScenario", scenario, "-AppleLanguages", "(ru)", "-AppleLocale", "ru_RU"]
+        app.launchArguments = ["-uiTestScenario", scenario, "-AppleLanguages", "(ru)", "-AppleLocale", "ru_RU"] + extra
         app.launch()
         return app
+    }
+
+    /// Крупнейший размер Dynamic Type (AX5).
+    private let ax5 = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+
+    private func open(_ app: XCUIApplication, _ identifier: String) {
+        let element = app.descendants(matching: .any)[identifier].firstMatch
+        XCTAssertTrue(element.waitForExistence(timeout: 10), "нет \(identifier): \(app.screenSummary)")
+        element.tap()
+    }
+
+    // 7.2: главные экраны клиента.
+    func testDiary() throws {
+        let app = launch("client")
+        app.tabBars.buttons["Дневник"].tap()
+        XCTAssertTrue(app.buttons["entry.Овсянка на молоке"].waitForExistence(timeout: 10), app.screenSummary)
+        try audit(app)
+    }
+
+    func testArticles() throws {
+        let app = launch("client")
+        app.tabBars.buttons["Статьи"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["article.a1"].waitForExistence(timeout: 10), app.screenSummary)
+        try audit(app)
+    }
+
+    func testChat() throws {
+        let app = launch("client")
+        open(app, "header.chat")
+        XCTAssertTrue(app.descendants(matching: .any)["message.m5"].waitForExistence(timeout: 10), app.screenSummary)
+        try audit(app)
+    }
+
+    func testNotifications() throws {
+        let app = launch("client")
+        open(app, "header.notifications")
+        XCTAssertTrue(app.descendants(matching: .any)["notification.n1"].waitForExistence(timeout: 10), app.screenSummary)
+        try audit(app)
+    }
+
+    func testProfile() throws {
+        let app = launch("client")
+        open(app, "header.profile")
+        XCTAssertTrue(app.descendants(matching: .any)["profile.body-goals"].waitForExistence(timeout: 10), app.screenSummary)
+        try audit(app)
+    }
+
+    /// Dynamic Type до AX5 на «Сегодня»: текст не обрезан, аудит без ошибок.
+    func testTodayAtAX5() throws {
+        let app = launch("client", ax5)
+        XCTAssertTrue(app.descendants(matching: .any)["nutrition.summary"].waitForExistence(timeout: 10), app.screenSummary)
+        try audit(app)
+    }
+
+    func testDiaryAtAX5() throws {
+        let app = launch("client", ax5)
+        app.tabBars.buttons["Дневник"].tap()
+        XCTAssertTrue(app.buttons["entry.Овсянка на молоке"].waitForExistence(timeout: 10), app.screenSummary)
+        try audit(app)
     }
 
     func testSignInScreen() throws {
@@ -176,8 +232,10 @@ final class AccessibilityAuditUITests: XCTestCase {
         let app = launch("client")
         XCTAssertTrue(app.buttons["header.profile"].waitForExistence(timeout: 10))
         app.buttons["header.profile"].tap()
-        XCTAssertTrue(app.buttons["profile.catalogue"].waitForExistence(timeout: 5))
-        app.buttons["profile.catalogue"].tap()
+        let catalogue = app.buttons["profile.catalogue"]
+        XCTAssertTrue(catalogue.waitForExistence(timeout: 5))
+        for _ in 0..<6 where !catalogue.isHittable { app.swipeUp() }
+        catalogue.tap()
         XCTAssertTrue(app.descendants(matching: .any)["catalogue.nutritionCard"].waitForExistence(timeout: 5)
                       || app.scrollViews.firstMatch.exists)
         try audit(app)

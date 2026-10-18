@@ -154,6 +154,8 @@ targets:
         NSHealthUpdateUsageDescription: "Взвешено записывает в Здоровье съеденные калории, белки, жиры, углеводы и выпитую воду."
         NSCameraUsageDescription: "Камера нужна, чтобы сканировать штрихкод продукта и фотографировать блюдо для распознавания."
         NSPhotoLibraryUsageDescription: "Доступ к фото нужен, чтобы выбрать снимок блюда или фотографию прогресса."
+        # «Сохранить изображение» из share sheet вложения в переписке.
+        NSPhotoLibraryAddUsageDescription: "Разрешите сохранять в Фото снимки из переписки с куратором."
     entitlements:
       path: Vzvesheno/Vzvesheno.entitlements
       properties:

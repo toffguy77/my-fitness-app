@@ -23,6 +23,17 @@ final class ComplianceTests: XCTestCase {
         XCTAssertEqual(AppEnvironment.current().apiBaseURL.absoluteString, "https://new.burcev.team")
     }
 
+    /// 7.1: тексты системных разрешений — по-русски и про то, зачем они.
+    func testPermissionStringsAreRussian() {
+        let keys = ["NSCameraUsageDescription", "NSPhotoLibraryUsageDescription", "NSPhotoLibraryAddUsageDescription",
+                    "NSHealthShareUsageDescription", "NSHealthUpdateUsageDescription"]
+        for key in keys {
+            let text = info[key] as? String ?? ""
+            XCTAssertFalse(text.isEmpty, key)
+            XCTAssertNotNil(text.range(of: "[А-Яа-яЁё]", options: .regularExpression), "\(key): \(text)")
+        }
+    }
+
     // Сценарий «Проверка сборки»: манифест в .app и .appex.
     func testPrivacyManifestsInAppAndExtension() throws {
         var bundles = [Bundle.main.bundleURL]

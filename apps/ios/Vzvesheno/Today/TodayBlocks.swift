@@ -16,6 +16,7 @@ struct TodayCardTitle: View {
 /// «Задачи от куратора»: отметка на месте.
 struct TasksCard: View {
     let rows: [TaskRow]
+    var highlighted: String?
     let onToggle: (TaskRow) -> Void
 
     var body: some View {
@@ -42,11 +43,19 @@ struct TasksCard: View {
                             Spacer(minLength: 0)
                         }
                         .frame(minHeight: DS.Size.touch)
+                        .padding(.horizontal, row.id == highlighted ? DS.Space.s2 : 0)
+                        .background {
+                            if row.id == highlighted {
+                                RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous).fill(DS.Color.primarySoft)
+                            }
+                        }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .id("task.\(row.id)")
                     .accessibilityElement(children: .combine)
                     .accessibilityAddTraits(row.isDone ? .isSelected : [])
+                    .accessibilityValue(row.id == highlighted ? "Открыта из уведомления" : "")
                     .accessibilityHint(Text(row.isDone ? "" : "Отметить выполненной"))
                     .accessibilityIdentifier("task.\(row.id)")
                 }

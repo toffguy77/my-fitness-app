@@ -233,38 +233,44 @@ struct MealGroupCard: View {
 }
 
 /// Строка записи: название, «250 г · 08:10», калории.
+///
+/// Для VoiceOver строка — один элемент-кнопка с идентификатором
+/// `entry.<название>` и действием «Удалить» (свайп). Раньше это была `Button`
+/// с `.accessibilityElement(children: .ignore)`: внутри жеста свайпа кнопка не
+/// схлопывалась, VoiceOver читал название, подпись и калории по отдельности,
+/// а идентификатор строки был недостижим.
 struct EntryRow: View {
     let row: DiaryRow
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: DS.Space.s3) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(row.entry.foodName)
-                        .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout))
-                        .foregroundStyle(DS.Color.fgDefault)
-                        .lineLimit(2)
-                    Text(row.pending ? "\(row.entry.caption) · ждёт отправки" : row.entry.caption)
-                        .dsText(DS.Typography.caption)
-                        .foregroundStyle(row.pending ? DS.Color.statusWarningFg : DS.Color.fgMuted)
-                }
-                Spacer()
-                Text(NumberText.grouped(row.entry.nutrition.kcal))
-                    .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout).weight(.medium))
-                    .monospacedDigit()
+        HStack(spacing: DS.Space.s3) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(row.entry.foodName)
+                    .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout))
                     .foregroundStyle(DS.Color.fgDefault)
+                    .lineLimit(2)
+                Text(row.pending ? "\(row.entry.caption) · ждёт отправки" : row.entry.caption)
+                    .dsText(DS.Typography.caption)
+                    .foregroundStyle(row.pending ? DS.Color.statusWarningFg : DS.Color.fgMuted)
             }
-            .padding(.horizontal, DS.Space.s4)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity)
-            .background(DS.Color.bgSurface)
-            .contentShape(Rectangle())
+            Spacer()
+            Text(NumberText.grouped(row.entry.nutrition.kcal))
+                .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout).weight(.medium))
+                .monospacedDigit()
+                .foregroundStyle(DS.Color.fgDefault)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, DS.Space.s4)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(DS.Color.bgSurface)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(row.entry.foodName), \(row.entry.caption), \(row.entry.nutrition.kcal) ккал"
                             + (row.pending ? ", ждёт отправки" : ""))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(.default, onTap)
         .accessibilityIdentifier("entry.\(row.entry.foodName)")
     }
 }
@@ -296,6 +302,8 @@ struct SwipeToDeleteRow<Content: View>: View {
             .accessibilityHidden(!(open || revealed))
             .accessibilityIdentifier("entry.delete")
             content
+                // Действие — у самой строки: она и есть элемент VoiceOver.
+                .accessibilityAction(named: "Удалить", onDelete)
                 .offset(x: revealed ? -width : offset)
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 20)
@@ -312,7 +320,6 @@ struct SwipeToDeleteRow<Content: View>: View {
                 )
         }
         .clipped()
-        .accessibilityAction(named: "Удалить", onDelete)
     }
 }
 

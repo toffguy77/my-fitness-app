@@ -17,6 +17,7 @@ struct AccountEraser: AccountDataEraser {
     let photoWeeks: FilePhotoWeekStore
     let barcodes: BarcodeCache
     let shoppingMarks: FileShoppingMarks
+    let timeZones: FileTimeZoneSuggestionStore
 
     func eraseAccountData() async {
         // Наблюдатели и фоновая доставка Здоровья останавливаются: иначе
@@ -28,6 +29,7 @@ struct AccountEraser: AccountDataEraser {
         photoWeeks.erase()
         barcodes.eraseAll()
         shoppingMarks.erase()
+        timeZones.erase()
         #if canImport(WidgetKit)
         // Виджет не показывает данные прежнего аккаунта ни минуты.
         WidgetCenter.shared.reloadAllTimelines()
@@ -99,4 +101,38 @@ final class FileShoppingMarks: ShoppingMarksStore, @unchecked Sendable {
     func erase() {
         lock.withLock { _ = try? FileManager.default.removeItem(at: url) }
     }
+}
+
+/// Состояние предложения сменить часовой пояс — файл в каталоге аккаунта.
+final class FileTimeZoneSuggestionStore: TimeZoneSuggestionStore, @unchecked Sendable {
+    private let url: URL
+    private let lock = NSLock()
+
+    init(url: URL) { self.url = url }
+
+    func load() -> TimeZoneSuggestion {
+        lock.withLock {
+            (try? Data(contentsOf: url)).flatMap { try? JSONDecoder().decode(TimeZoneSuggestion.self, from: $0) }
+                ?? TimeZoneSuggestion()
+        }
+    }
+
+    func save(_ state: TimeZoneSuggestion) {
+        lock.withLock {
+            if let data = try? JSONEncoder().encode(state) { try? ProtectedFiles.write(data, to: url) }
+        }
+    }
+
+    func erase() {
+        lock.withLock { _ = try? FileManager.default.removeItem(at: url) }
+    }
+}
+
+/// Последний токен APNs — для повторной регистрации и отписки при выходе.
+struct UserDefaultsDeviceTokenStore: DeviceTokenStore {
+    private static let key = "push.deviceToken"
+
+    func load() -> String? { UserDefaults.standard.string(forKey: Self.key) }
+
+    func save(_ token: String?) { UserDefaults.standard.set(token, forKey: Self.key) }
 }
