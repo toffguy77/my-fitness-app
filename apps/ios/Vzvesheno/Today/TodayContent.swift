@@ -196,11 +196,11 @@ struct WeekStripView: View {
             ForEach(days) { day in
                 Button { onSelect(day.day) } label: {
                     VStack(spacing: DS.Space.s1) {
+                        // Вес 500 — как у токена micro (на макете 400): тонкие 11 pt
+                        // аудит доступности считает неконтрастными.
                         Text(day.weekday)
-                            .font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .footnote))
-                            // Не fgSubtle макета: аудит доступности счёл его контраст на 11 pt
-                            // недостаточным.
-                            .foregroundStyle(DS.Color.fgDefault)
+                            .font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .footnote).weight(.medium))
+                            .foregroundStyle(DS.Color.fgMuted)
                         Text(day.number)
                             .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .subheadline).weight(.semibold))
                             .foregroundStyle(DS.Color.fgDefault)
