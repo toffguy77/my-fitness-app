@@ -108,7 +108,7 @@ struct NameAndPhotoScreen: View {
         .task {
             if let profile = try? await ProfileService(api: model.api).profile() {
                 name = profile.name ?? ""
-                avatarURL = profile.avatarURL.flatMap(URL.init(string:))
+                avatarURL = profile.avatarURL.flatMap(TrustedMedia.url)
             }
         }
         .onChange(of: item) { _, item in
@@ -138,7 +138,7 @@ struct NameAndPhotoScreen: View {
     private func upload(_ image: UIImage?) async {
         guard let image, let jpeg = PhotoPreparation.jpeg(from: image) else { return }
         do {
-            avatarURL = try await ProfileService(api: model.api).uploadAvatar(jpeg: jpeg).flatMap(URL.init(string:))
+            avatarURL = try await ProfileService(api: model.api).uploadAvatar(jpeg: jpeg).flatMap(TrustedMedia.url)
             result = "Фото обновлено"
         } catch {
             self.error = model.messages.message(for: error)

@@ -113,7 +113,7 @@ private struct FeaturedArticleCard: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous)
         VStack(alignment: .leading, spacing: 0) {
-            image(article.coverImageURL.flatMap(URL.init(string:)))
+            image(article.coverURL)
                 .frame(height: 150)
                 .frame(maxWidth: .infinity)
                 .clipped()
@@ -146,7 +146,7 @@ private struct ArticleRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: DS.Space.s4) {
-            image(article.coverImageURL.flatMap(URL.init(string:)))
+            image(article.coverURL)
                 .frame(width: 84, height: 84)
                 .clipShape(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous))
             VStack(alignment: .leading, spacing: DS.Space.s1) {
@@ -176,7 +176,7 @@ struct ArticleContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s4) {
-            if let cover = article.coverImageURL.flatMap(URL.init(string:)) {
+            if let cover = article.coverURL {
                 image(cover)
                     .frame(height: 200)
                     .frame(maxWidth: .infinity)

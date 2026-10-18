@@ -61,11 +61,11 @@ final class ClientScreenSnapshotTests: XCTestCase {
     func testArticles() {
         let articles = [
             Article(id: "a1", slug: "ostatok-vazhnee", title: "Почему остаток важнее съеденного",
-                    excerpt: "Как читать дневной остаток и не срываться к вечеру", coverImageURL: "https://cdn/1.jpg",
+                    excerpt: "Как читать дневной остаток и не срываться к вечеру", coverImageURL: "https://storage.yandexcloud.net/burcev-content/1.jpg",
                     category: "nutrition", publishedAt: "2025-10-16T09:00:00Z"),
-            Article(id: "a2", title: "Завтрак на 30 г белка за 10 минут", coverImageURL: "https://cdn/2.jpg", category: "recipes",
+            Article(id: "a2", title: "Завтрак на 30 г белка за 10 минут", coverImageURL: "https://storage.yandexcloud.net/burcev-content/2.jpg", category: "recipes",
                     publishedAt: "2025-10-15T09:00:00Z"),
-            Article(id: "a3", title: "Вода и вес: почему цифра скачет по утрам", coverImageURL: "https://cdn/3.jpg",
+            Article(id: "a3", title: "Вода и вес: почему цифра скачет по утрам", coverImageURL: "https://storage.yandexcloud.net/burcev-content/3.jpg",
                     category: "health", publishedAt: "2025-10-14T09:00:00Z"),
         ]
         let content = NavigationStack {
@@ -83,7 +83,7 @@ final class ClientScreenSnapshotTests: XCTestCase {
         let body = """
             Остаток — главное число дня: сколько ещё можно съесть, чтобы остаться в норме.
 
-            ![Тарелка с обедом](https://cdn.burcev.team/plate.jpg)
+            ![Тарелка с обедом](https://storage.yandexcloud.net/burcev-content/plate.jpg)
 
             ## Как читать остаток
 

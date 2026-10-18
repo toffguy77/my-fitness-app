@@ -183,14 +183,19 @@ public struct ChatMessage: Decodable, Sendable, Equatable, Identifiable {
         createdAt = ServerDate.parse(raw) ?? Date(timeIntervalSince1970: 0)
     }
 
-    /// Адрес вложения: веб сначала загружает файл, затем шлёт его адрес текстом.
+    /// Адрес вложения — только проверенный (`TrustedMedia`). Веб загружает
+    /// файл, затем шлёт его адрес текстом сообщения (сервер вложение к
+    /// сообщению не привязывает), поэтому текст — второй источник, но тоже
+    /// только после проверки: чужой адрес не загружается вовсе.
     public var fileURL: URL? {
-        (attachments.first?.fileURL ?? content).flatMap(URL.init(string:))
+        if let attachment = attachments.first { return TrustedMedia.url(attachment.fileURL) }
+        guard kind == .image || kind == .file else { return nil }
+        return content.flatMap(TrustedMedia.url)
     }
 
     /// Имя файла для пузыря «Файл».
     public var fileName: String {
-        attachments.first?.fileName ?? fileURL?.lastPathComponent ?? "Файл"
+        AccountFiles.safeName(attachments.first?.fileName ?? fileURL?.lastPathComponent ?? "") ?? "Файл"
     }
 }
 

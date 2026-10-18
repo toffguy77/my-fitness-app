@@ -1,4 +1,5 @@
 import Client
+import Outbox
 import DesignSystem
 import PhotosUI
 import QuickLook
@@ -101,7 +102,9 @@ struct ChatScreen: View {
                             },
                             attach: { choosingAttachment = true },
                             loadEarlier: { Task { await chat.loadEarlier() } },
-                            open: { message in Task { preview = await AttachmentFiles.local(message) } },
+                            open: { message in
+                                Task { preview = await AttachmentFiles.local(message, files: model.files, accountID: chat.userID) }
+                            },
                             typed: { chat.userTyped() },
                             dismissFailed: { chat.dismissFailed($0) }))
         }
@@ -151,17 +154,20 @@ struct ChatScreen: View {
     }
 }
 
-/// Вложение для QuickLook: скачивается во временный каталог под своим именем.
+/// Вложение для QuickLook: только с проверенного адреса (`TrustedMedia` —
+/// в `ChatMessage.fileURL`), в каталоге аккаунта
+/// `attachments/<аккаунт>/<сообщение>/<имя>`; выход каталог стирает. Имя от
+/// сервера очищено и служит только заголовком просмотра.
 enum AttachmentFiles {
-    static func local(_ message: ChatMessage) async -> URL? {
+    static func local(_ message: ChatMessage, files: AccountFiles, accountID: Int64) async -> URL? {
         guard let remote = message.fileURL else { return nil }
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("attachments", isDirectory: true)
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let name = message.kind == .image ? "\(message.id).jpg" : message.fileName
-        let target = directory.appendingPathComponent(name)
+        let name = message.kind == .image ? "Фото.jpg" : message.fileName
+        guard let target = files.attachment(accountID: accountID, messageID: message.id, displayName: name) else { return nil }
         if FileManager.default.fileExists(atPath: target.path) { return target }
-        guard let (data, _) = try? await URLSession.shared.data(from: remote) else { return nil }
-        try? data.write(to: target, options: .atomic)
+        guard let (data, response) = try? await URLSession.shared.data(from: remote),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        try? FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard (try? ProtectedFiles.write(data, to: target)) != nil else { return nil }
         return target
     }
 }

@@ -63,6 +63,9 @@ public struct Article: Decodable, Sendable, Equatable, Identifiable {
         return "\(categoryTitle) · \(DayText.dayMonth(String(publishedAt.prefix(10))))"
     }
 
+    /// Обложка — только с проверенного хоста.
+    public var coverURL: URL? { coverImageURL.flatMap(TrustedMedia.url) }
+
     /// Адрес для «Поделиться»; у личной статьи его нет.
     public var shareURL: URL? { slug.flatMap { $0.isEmpty ? nil : ArticleShare.url(slug: $0) } }
 }
@@ -320,9 +323,9 @@ public struct ArticleDocument: Equatable, Sendable {
 
     static func image(_ image: Markdown.Image) -> ArticleBlock {
         let alt = plainText(image)
-        // Изображение грузится только по http(s).
+        // Изображение грузится только с проверенного хоста (`TrustedMedia`).
         let url = image.source.flatMap { URL(string: $0, relativeTo: ArticleLinks.site)?.absoluteURL }
-            .flatMap { ["https", "http"].contains($0.scheme?.lowercased() ?? "") ? $0 : nil }
+            .flatMap { TrustedMedia.url($0.absoluteString) }
         return .image(url: url, alt: alt)
     }
 

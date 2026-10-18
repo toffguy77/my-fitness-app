@@ -92,7 +92,7 @@ final class ArticleDocumentTests: XCTestCase {
 
         Норма — **не цель**, а *ориентир*. Подробнее — [в статье](/content/kbzhu).
 
-        ![Тарелка](https://cdn.burcev.team/plate.jpg)
+        ![Тарелка](https://storage.yandexcloud.net/burcev-content/plate.jpg)
 
         | Приём | Ккал | Б | Ж | У | Время |
         |---|---|---|---|---|---|
@@ -111,7 +111,7 @@ final class ArticleDocumentTests: XCTestCase {
         XCTAssertEqual(Self.runs(text, .strong), ["не цель"])
         XCTAssertEqual(Self.runs(text, .emphasized), ["ориентир"])
         XCTAssertEqual(Self.links(text), [URL(string: "https://burcev.team/content/kbzhu")!])
-        XCTAssertEqual(blocks[2], .image(url: URL(string: "https://cdn.burcev.team/plate.jpg"), alt: "Тарелка"))
+        XCTAssertEqual(blocks[2], .image(url: URL(string: "https://storage.yandexcloud.net/burcev-content/plate.jpg"), alt: "Тарелка"))
         guard case let .table(table) = blocks[3] else { return XCTFail("нет таблицы") }
         XCTAssertEqual(table.columnCount, 6)
         XCTAssertEqual(table.header.map(Self.plain), ["Приём", "Ккал", "Б", "Ж", "У", "Время"])

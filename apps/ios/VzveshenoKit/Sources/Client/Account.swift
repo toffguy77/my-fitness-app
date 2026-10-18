@@ -164,11 +164,12 @@ public final class ExportModel {
     public private(set) var working = false
     public var message: String?
     private let api: APIClient
-    private let directory: URL
+    private let files: AccountFiles
 
-    public init(api: APIClient, directory: URL = FileManager.default.temporaryDirectory) {
+    /// Архив пишется в каталог аккаунта — выход его стирает.
+    public init(api: APIClient, files: AccountFiles) {
         self.api = api
-        self.directory = directory
+        self.files = files
     }
 
     public func load() async {
@@ -203,8 +204,11 @@ public final class ExportModel {
         do {
             let raw = try await api.sendRaw(.get("/api/v1/users/me/export/\(latest.id)"))
             guard (200..<300).contains(raw.status) else { throw raw.apiError }
-            let url = directory.appendingPathComponent("vzvesheno-export-\(String(latest.requestedAt?.prefix(10) ?? "data")).zip")
-            try raw.data.write(to: url, options: .atomic)
+            guard let url = files.export(named: "vzvesheno-export-\(String(latest.requestedAt?.prefix(10) ?? "data")).zip") else {
+                return nil
+            }
+            try FileManager.default.createDirectory(at: files.exports, withIntermediateDirectories: true)
+            try raw.data.write(to: url, options: [.atomic])
             self.latest?.downloaded = true
             return url
         } catch APIError.server(410, _, _) {

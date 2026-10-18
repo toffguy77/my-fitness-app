@@ -18,6 +18,7 @@ struct AccountEraser: AccountDataEraser {
     let barcodes: BarcodeCache
     let shoppingMarks: FileShoppingMarks
     let timeZones: FileTimeZoneSuggestionStore
+    let files: AccountFiles
 
     func eraseAccountData() async {
         // Наблюдатели и фоновая доставка Здоровья останавливаются: иначе
@@ -30,6 +31,8 @@ struct AccountEraser: AccountDataEraser {
         barcodes.eraseAll()
         shoppingMarks.erase()
         timeZones.erase()
+        // Вложения переписки и архив выгрузки данных.
+        files.eraseAll()
         #if canImport(WidgetKit)
         // Виджет не показывает данные прежнего аккаунта ни минуты.
         WidgetCenter.shared.reloadAllTimelines()

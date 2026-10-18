@@ -45,7 +45,7 @@ final class ChatModelTests: XCTestCase {
                 if offline.value { return .offline }
                 return .success(message(total, sender: 7), status: 201)
             case ("POST", "/api/v1/conversations/c1/upload"):
-                return .success(#"{"id":"a1","file_url":"https://s3/a.jpg","file_name":"a.jpg","file_size":10,"mime_type":"image/jpeg"}"#)
+                return .success(#"{"id":"a1","file_url":"https://storage.yandexcloud.net/burcev-chat/a.jpg","file_name":"a.jpg","file_size":10,"mime_type":"image/jpeg"}"#)
             default:
                 return .error(404, code: "not_found")
             }
@@ -171,7 +171,7 @@ final class ChatModelTests: XCTestCase {
         XCTAssertEqual(upload.flatMap { String(data: $0.body ?? Data(), encoding: .isoLatin1) }?.contains(#"name="file""#), true)
         let post = transport.requests.last { $0.method == "POST" && $0.path == "/api/v1/conversations/c1/messages" }
         XCTAssertEqual(post?.json?["type"] as? String, "image")
-        XCTAssertEqual(post?.json?["content"] as? String, "https://s3/a.jpg")
+        XCTAssertEqual(post?.json?["content"] as? String, "https://storage.yandexcloud.net/burcev-chat/a.jpg")
     }
 
     // Сценарий «Доступ истёк».

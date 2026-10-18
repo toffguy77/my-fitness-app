@@ -121,17 +121,18 @@ final class SettingsTests: XCTestCase {
             default: return .error(404, code: "not_found")
             }
         }
-        let model = ExportModel(api: api(transport), directory: directory)
+        let model = ExportModel(api: api(transport), files: AccountFiles(root: directory))
         await model.load()
         XCTAssertEqual(model.latest?.statusTitle, "Готова")
         let file = await model.download()
         XCTAssertEqual(file?.lastPathComponent, "vzvesheno-export-2026-10-17.zip")
+        XCTAssertEqual(file?.deletingLastPathComponent().lastPathComponent, "exports", "архив — в каталоге аккаунта")
         XCTAssertEqual(file.flatMap { try? Data(contentsOf: $0) }, Data("PK-zip".utf8))
     }
 
     func testExportTwiceADayShowsTheLimit() async {
         let transport = StubTransport { _ in .error(429, code: "rate_limited") }
-        let model = ExportModel(api: api(transport))
+        let model = ExportModel(api: api(transport), files: AccountFiles(root: FileManager.default.temporaryDirectory))
         await model.request()
         XCTAssertEqual(model.message, "Выгрузку можно запрашивать раз в сутки. Попробуйте завтра.")
     }

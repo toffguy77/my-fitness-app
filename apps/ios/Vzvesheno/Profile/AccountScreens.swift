@@ -222,7 +222,7 @@ struct ExportScreen: View {
                 .accessibilityIdentifier("export.request")
         }
         .task {
-            let loaded = ExportModel(api: model.api)
+            let loaded = ExportModel(api: model.api, files: model.files)
             export = loaded
             await loaded.load()
         }

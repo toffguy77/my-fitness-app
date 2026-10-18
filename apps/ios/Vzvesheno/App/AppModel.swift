@@ -94,6 +94,8 @@ final class AppModel {
     let messages = ErrorMessages()
     let realtime: RealtimeConnection
     let push: PushRegistrar
+    /// Вложения переписки и архив выгрузки — в каталоге аккаунта.
+    let files: AccountFiles
     let permissions: NotificationPermissionProvider
     let timeZones: TimeZoneSuggestionStore
     let preferences: UserDefaults
@@ -144,6 +146,8 @@ final class AppModel {
         self.barcodeCache = barcodeCache
         let shoppingMarks = FileShoppingMarks(url: directory.appendingPathComponent("shopping-marks.json"))
         self.shoppingMarks = shoppingMarks
+        let files = AccountFiles(root: directory)
+        self.files = files
         let timeZones = FileTimeZoneSuggestionStore(url: directory.appendingPathComponent("timezone-suggestion.json"))
         self.timeZones = timeZones
         // Выход отписывает телефон от пушей и через `native/logout`
@@ -151,7 +155,8 @@ final class AppModel {
         session = SessionStore(api: api, secure: secure, installMarker: installMarker,
                                erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health,
                                                        photoWeeks: photoWeeks, barcodes: barcodeCache,
-                                                       shoppingMarks: shoppingMarks, timeZones: timeZones)],
+                                                       shoppingMarks: shoppingMarks, timeZones: timeZones,
+                                                       files: files)],
                                deviceToken: { [pushTokens] in pushTokens.load() })
         sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
