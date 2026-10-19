@@ -29,6 +29,8 @@ struct TodayContent: View {
     let state: TodayScreenState
     let avatarInitial: String
     var offline = false
+    /// «Обновлено в 14:20», пока на экране сохранённый день.
+    var updatedLabel: String?
     var healthHint = false
     /// Задача из пуша или уведомления — подсвечена.
     var highlightedTask: String?
@@ -39,15 +41,14 @@ struct TodayContent: View {
             TodayHeader(subtitle: state.subtitle, title: state.title, unread: state.unreadCount, avatarInitial: avatarInitial,
                         actions: actions)
             WeekStripView(days: state.weekStrip, onSelect: actions.selectDay)
-            if offline || state.snapshot?.fromCache == true {
-                OfflineBanner()
-                    .accessibilityIdentifier("banner.offline")
-            }
+            FreshnessBanner(offline: offline, updatedLabel: updatedLabel)
             if healthHint {
                 HealthAccessHintCard()
             }
             if let nutrition = state.nutrition {
                 NutritionTodayCard(summary: nutrition, onFillProfile: actions.fillProfile, onLogWeight: actions.editWeight)
+            } else if offline && state.snapshot == nil {
+                OfflineEmptyView()
             } else {
                 TodaySkeleton()
             }

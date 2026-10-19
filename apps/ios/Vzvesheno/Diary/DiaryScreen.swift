@@ -20,12 +20,14 @@ struct DiaryScreen: View {
             if let diary = model.diary {
                 VStack(spacing: DS.Space.s3) {
                     DiaryHeader(state: diary.state, tab: $tab, actions: actions(diary))
-                    if offline {
-                        OfflineBanner().accessibilityIdentifier("banner.offline")
-                    }
+                    FreshnessBanner(offline: offline || diary.offline, updatedLabel: diary.updatedLabel)
                     switch tab {
                     case .ration:
-                        DiaryRationContent(state: diary.state, actions: actions(diary))
+                        if diary.day == nil && diary.offline {
+                            OfflineEmptyView()
+                        } else {
+                            DiaryRationContent(state: diary.state, actions: actions(diary))
+                        }
                     case .nutrients:
                         if let nutrients = model.nutrients {
                             NutrientsContent(answer: nutrients.answer, error: nutrients.error,

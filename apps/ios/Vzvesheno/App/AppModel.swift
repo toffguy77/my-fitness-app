@@ -42,6 +42,8 @@ final class AppModel {
     private(set) var today: TodayModel?
     /// «Дневник», нутриенты и «Меню» вошедшего клиента.
     internal(set) var diary: DiaryModel?
+    /// Вода дня — одна на «Сегодня» и «Дневник».
+    internal(set) var water: WaterLedger?
     internal(set) var nutrients: NutrientsModel?
     internal(set) var mealPlan: MealPlanModel?
     internal(set) var recipes: RecipeCatalogModel?
@@ -168,6 +170,8 @@ final class AppModel {
         self.shoppingMarks = shoppingMarks
         let files = AccountFiles(root: directory)
         self.files = files
+        let rejections = RejectionLog(directory: directory)
+        self.rejections = rejections
         let timeZones = FileTimeZoneSuggestionStore(url: directory.appendingPathComponent("timezone-suggestion.json"))
         self.timeZones = timeZones
         // Выход отписывает телефон от пушей и через `native/logout`
@@ -188,8 +192,6 @@ final class AppModel {
                              appVersion: environment.version, installationID: { InstallationID.value(in: installation) })
         self.permissions = permissions
         self.preferences = preferences
-        let rejections = RejectionLog(directory: directory)
-        self.rejections = rejections
         let configCache = FileConfigCache(url: directory.appendingPathComponent("config.json"))
         self.configCache = configCache
         configLoader = ConfigLoader(cache: configCache) {
@@ -365,13 +367,13 @@ final class AppModel {
             self.chat = chat
             articles = ArticleFeedModel(api: api)
         }
+        if water == nil { startWater() }
         if today == nil {
+            // Сохранённый день — в первом кадре: аккаунт известен без ожидания.
             let model = TodayModel(api: api, outbox: outbox, cache: cache, photoWeeks: photoWeeks,
-                                   calendar: DayCalendar(timeZone: profileTimeZone),
+                                   calendar: DayCalendar(timeZone: profileTimeZone), account: user?.id,
                                    userID: { [session] in await session.user?.id })
-            model.onWaterChanged = { [health] day, glasses, glassSize in
-                Task { await health.setWater(day: day, glasses: glasses, glassMilliliters: Double(glassSize), at: Date()) }
-            }
+            model.waterLedger = water
             model.observeDayChanges()
             attachSurface(to: model)
             today = model
@@ -383,6 +385,7 @@ final class AppModel {
 
     func stopClient() {
         stopFood()
+        water = nil
         today = nil
         todaySurface = nil
         chat = nil

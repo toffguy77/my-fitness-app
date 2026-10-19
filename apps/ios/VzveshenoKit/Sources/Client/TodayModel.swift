@@ -96,7 +96,10 @@ public final class TodayModel {
     @ObservationIgnored var diaryTotals: (day: String, totals: Nutrition)?
     @ObservationIgnored private var dayObserver: NSObjectProtocol?
     @ObservationIgnored private var generation = 0
-    /// Вода изменилась — для записи в Здоровье (`healthkit-sync`).
+    /// Вода — общая с «Дневником»; без неё (тесты) — своя в снимке.
+    @ObservationIgnored public var waterLedger: WaterLedger?
+    /// Вода изменилась — для записи в Здоровье (`healthkit-sync`), если нет
+    /// общего счётчика (он пишет в Здоровье сам).
     @ObservationIgnored public var onWaterChanged: (@MainActor (_ day: String, _ glasses: Int, _ glassSize: Int) -> Void)?
     /// Сегодняшний день загружен или изменён — для снимка виджетов
     /// (`ios-system-surfaces`). Прошлые дни, открытые в полосе недели, сюда
@@ -165,6 +168,7 @@ public final class TodayModel {
         switch loaded {
         case let .success(snapshot):
             self.snapshot = overlay(snapshot, pending: fresh, date: date)
+            waterLedger?.set(self.snapshot?.water, day: date)
             loadError = nil
             offline = false
             dayChanged()
@@ -281,6 +285,15 @@ public final class TodayModel {
     /// «+» на карточке «Вода»: счётчик сразу, запрос — через очередь с
     /// `Idempotency-Key`.
     public func addGlass() async {
+        if let waterLedger {
+            if waterLedger.water(selected) == nil { waterLedger.set(snapshot?.water, day: selected) }
+            guard let (report, water) = await waterLedger.change(day: selected, by: 1, kind: "today.water") else { return }
+            applyWater(day: selected, water)
+            if let report, !report.rejected.isEmpty {
+                notice = "Не удалось сохранить изменение. Проверьте значение и попробуйте ещё раз."
+            }
+            return
+        }
         guard var water = snapshot?.water, water.enabled else { return }
         water.glasses += 1
         snapshot?.water = water
@@ -360,6 +373,13 @@ public final class TodayModel {
     func dayChanged() {
         guard selected == today, let snapshot else { return }
         onDayChanged?(snapshot, today)
+    }
+
+    /// Общая вода изменилась (в том числе в «Дневнике») — карточка сразу.
+    public func applyWater(day: String, _ water: WaterDay) {
+        guard day == selected, snapshot != nil, snapshot?.water != water else { return }
+        snapshot?.water = water
+        dayChanged()
     }
 
     /// Счётчики уведомлений изменились на экране уведомлений — колокольчик сразу.

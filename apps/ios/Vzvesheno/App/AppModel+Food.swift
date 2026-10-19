@@ -9,8 +9,9 @@ extension AppModel {
     /// клиента, — лист записи с любой вкладки добавляет в тот же дневник.
     func startFood() {
         let calendar = DayCalendar(timeZone: profileTimeZone)
-        let diary = DiaryModel(api: api, outbox: outbox, calendar: calendar, health: health,
+        let diary = DiaryModel(api: api, outbox: outbox, cache: cache, calendar: calendar, health: health, account: user?.id,
                                userID: { [session] in await session.user?.id })
+        diary.waterLedger = water
         diary.onTotalsChanged = { [weak self] day, totals in
             self?.today?.applyDiaryTotals(day: day, totals: totals)
         }
@@ -36,6 +37,16 @@ extension AppModel {
         if let date, let diary { Task { await diary.select(date) } }
         if let add { openFoodLog(FoodLogMethod(add), date: date) }
         return true
+    }
+
+    /// Общая вода: изменение с любого экрана — на обоих сразу, Здоровью — итог.
+    func startWater() {
+        let ledger = WaterLedger(outbox: outbox, health: health, userID: { [session] in await session.user?.id })
+        ledger.onChanged = { [weak self] day, value in
+            self?.today?.applyWater(day: day, value)
+            self?.diary?.applyWater(day: day, value)
+        }
+        water = ledger
     }
 
     func stopFood() {

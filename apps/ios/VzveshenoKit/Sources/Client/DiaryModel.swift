@@ -74,10 +74,10 @@ public final class DiaryModel {
 
     public private(set) var selected: String
     public private(set) var today: String
-    public private(set) var day: DayEntries?
-    public private(set) var water: WaterDay?
-    public private(set) var plan: WeeklyPlan?
-    public private(set) var targets: TargetsAnswer?
+    public internal(set) var day: DayEntries?
+    public internal(set) var water: WaterDay?
+    public internal(set) var plan: WeeklyPlan?
+    public internal(set) var targets: TargetsAnswer?
     public private(set) var isLoading = false
     public private(set) var loadError: APIError?
     /// Удалённая запись в окне отмены (5 с).
@@ -85,25 +85,35 @@ public final class DiaryModel {
     /// Сообщение после отказа сервера или «Сохранено в своих».
     public var notice: String?
     /// Записи, поставленные в очередь и ещё не принятые: id изменения → запись.
-    public private(set) var queued: [UUID: FoodEntry] = [:]
+    public internal(set) var queued: [UUID: FoodEntry] = [:]
+    /// Ждут отправки: удаление и правка записей с сервера.
+    var pendingDeleted: Set<String> = []
+    var pendingEdited: [String: EntryUpdateBody] = [:]
+    /// На экране сохранённый день / последнее обновление не дошло.
+    public internal(set) var freshness = Freshness()
     /// Поменялся итог дня — «Сегодня» уменьшает остаток сразу.
     @ObservationIgnored public var onTotalsChanged: (@MainActor (_ day: String, _ totals: Nutrition) -> Void)?
 
     public let calendar: DayCalendar
-    private let api: APIClient
-    private let outbox: Outbox?
+    let api: APIClient
+    let outbox: Outbox?
+    let reader: ScreenReader
     private let sleeper: Sleeper
-    private let now: @Sendable () -> Date
-    private let userID: @Sendable () async -> Int64?
+    let now: @Sendable () -> Date
+    let userID: @Sendable () async -> Int64?
     @ObservationIgnored public var health: FoodHealthWriter?
+    /// Вода — общая с «Сегодня»; без неё (тесты) — своя.
+    @ObservationIgnored public var waterLedger: WaterLedger?
     @ObservationIgnored private var deletionTask: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
 
-    public init(api: APIClient, outbox: Outbox?, calendar: DayCalendar, sleeper: Sleeper = TaskSleeper(),
-                health: FoodHealthWriter? = nil, now: @escaping @Sendable () -> Date = { Date() },
+    /// `account` известен сразу — сохранённый день показывается в первом кадре.
+    public init(api: APIClient, outbox: Outbox?, cache: ScreenCache? = nil, calendar: DayCalendar, sleeper: Sleeper = TaskSleeper(),
+                health: FoodHealthWriter? = nil, now: @escaping @Sendable () -> Date = { Date() }, account: Int64? = nil,
                 userID: @escaping @Sendable () async -> Int64?) {
         self.api = api
         self.outbox = outbox
+        reader = ScreenReader(api: api, cache: cache, now: now)
         self.calendar = calendar
         self.sleeper = sleeper
         self.health = health
@@ -112,6 +122,7 @@ public final class DiaryModel {
         let today = calendar.key(now())
         self.today = today
         selected = today
+        if let account { hydrate(date: today, userID: account) }
     }
 
     // MARK: Производные
@@ -125,7 +136,8 @@ public final class DiaryModel {
     public var rows: [MealType: [DiaryRow]] {
         var result: [MealType: [DiaryRow]] = [:]
         for meal in MealType.allCases {
-            let server = (day?.entries[meal] ?? []).filter { $0.id != deletion?.entry.id }.map { DiaryRow(entry: $0) }
+            let server = (day?.entries[meal] ?? []).filter { $0.id != deletion?.entry.id && !pendingDeleted.contains($0.id) }
+                .map { DiaryRow(entry: $0) }
             let local = queued.values.filter { $0.date == selected && $0.mealType == meal && $0.id != deletion?.entry.id }
                 .sorted { $0.time < $1.time }.map { DiaryRow(entry: $0, pending: true) }
             result[meal] = server + local
@@ -167,57 +179,47 @@ public final class DiaryModel {
         today = current
     }
 
+    /// Сохранённый день — сразу, затем свежий; без сети остаётся сохранённый
+    /// с записями, правками и удалениями, ждущими отправки.
     public func load() async {
         generation += 1
         let started = generation
         let date = selected
         isLoading = true
         defer { if started == generation { isLoading = false } }
-        await restoreQueued()
-        async let entriesAnswer = fetch(DayEntries.self, "/api/v1/food-tracker/entries", ["date": date])
-        async let waterAnswer = fetch(WaterDay.self, "/api/v1/food-tracker/water", ["date": date])
-        async let planAnswer = fetch(WeeklyPlanAnswer.self, "/api/v1/dashboard/weekly-plan", [:])
-        async let targetsAnswer = fetch(TargetsAnswer.self, "/api/v1/nutrition-calc/targets", ["date": date])
+        let user = await userID()
+        let pending = await pendingItems(user)
+        guard started == generation else { return }
+        restoreQueued(pending)
+        if day == nil { hydrate(date: date, userID: user) }
+        let endpoints = DiaryEndpoints(date: date)
+        let reader = reader
+        async let entriesAnswer = reader.fetch(DayEntries.self, endpoints.entries, userID: user)
+        async let waterAnswer = reader.fetchOrCached(WaterDay.self, endpoints.water, userID: user)
+        async let planAnswer = reader.fetchOrCached(WeeklyPlanAnswer.self, endpoints.plan, userID: user)
+        async let targetsAnswer = reader.fetchOrCached(TargetsAnswer.self, endpoints.targets, userID: user)
         let loaded = await entriesAnswer
         let loadedWater = await waterAnswer
         let loadedPlan = await planAnswer
         let loadedTargets = await targetsAnswer
+        let fresh = await pendingItems(user)
         guard started == generation else { return }
+        restoreQueued(fresh)
         switch loaded {
         case let .success(value):
             day = value
             loadError = nil
+            freshness.markFresh()
             await reconcileHealth(date, value)
         case let .failure(error):
-            loadError = error
+            freshness.markFailed(error)
+            if day == nil || error != .network { loadError = error }
         }
-        if case let .success(value) = loadedWater { water = value }
-        if case let .success(value) = loadedPlan { plan = value.plan }
-        if case let .success(value) = loadedTargets { targets = value }
+        if case let .success((value, _)) = loadedWater { water = WaterLedger.overlay(value, day: date, pending: fresh) }
+        waterLedger?.set(water, day: date)
+        if case let .success((value, _)) = loadedPlan { plan = value.plan }
+        if case let .success((value, _)) = loadedTargets { targets = value }
         notifyTotals()
-    }
-
-    private nonisolated func fetch<T: Decodable & Sendable>(_ type: T.Type, _ path: String,
-                                                            _ query: [String: String]) async -> Result<T, APIError> {
-        do {
-            let items = query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
-            return .success(try await api.send(.get(path, query: items), as: T.self))
-        } catch let error as APIError {
-            return .failure(error)
-        } catch {
-            return .failure(.network)
-        }
-    }
-
-    /// Ждущие отправки записи из очереди — переживают перезапуск.
-    private func restoreQueued() async {
-        guard let outbox, let pending = try? await outbox.pending() else { return }
-        var restored: [UUID: FoodEntry] = [:]
-        for item in pending where item.kind == Self.addKind {
-            guard let body = item.body, let draft = try? JSONDecoder().decode(NewEntryBody.self, from: body) else { continue }
-            restored[item.id] = Self.entry(id: item.id, body: draft)
-        }
-        queued = restored
     }
 
     /// Открыт день: записи, сделанные в вебе или куратором, попадают в
@@ -251,8 +253,10 @@ public final class DiaryModel {
             await load()
             return
         }
-        guard health != nil, case let .success(entries) = await fetch(DayEntries.self, "/api/v1/food-tracker/entries",
-                                                                       ["date": day]) else { return }
+        let user = await userID()
+        guard health != nil,
+              case let .success(entries) = await reader.fetch(DayEntries.self, DiaryEndpoints(date: day).entries, userID: user)
+        else { return }
         await reconcileHealth(day, entries)
     }
 
@@ -275,7 +279,7 @@ public final class DiaryModel {
                                     // Все пять переопределений, как веб: запись описана телом целиком
                                     // (и `ai-` продукт сервер заводит только по ним).
                                     foodName: draft.name, nutrition: draft.nutrition)
-            guard let endpoint = try? Endpoint.post("/api/v1/food-tracker/entries", body: body),
+            guard let endpoint = try? Endpoint.post(Self.entriesPath, body: body),
                   let item = try? await outbox.enqueue(kind: Self.addKind, endpoint: endpoint, userID: user) else { continue }
             queued[item.id] = Self.entry(id: item.id, body: body)
             ids.append(item.id)
@@ -322,6 +326,12 @@ public final class DiaryModel {
         queued[id] = nil
     }
 
+    /// Общая вода изменилась (в том числе на «Сегодня»).
+    public func applyWater(day: String, _ value: WaterDay) {
+        guard day == selected else { return }
+        water = value
+    }
+
     /// Досылка по возвращению сети или переднему плану.
     public func flush() async {
         guard let user = await userID() else { return }
@@ -344,6 +354,7 @@ public final class DiaryModel {
         }
         guard let outbox, let user = await userID() else { return }
         replaceLocally(entry)
+        pendingEdited[entry.id] = EntryUpdateBody(entry: entry)
         if let endpoint = try? Endpoint.put("/api/v1/food-tracker/entries/\(entry.id)", body: EntryUpdateBody(entry: entry)) {
             _ = try? await outbox.enqueue(kind: "diary.update", endpoint: endpoint, userID: user)
         }
@@ -420,6 +431,7 @@ public final class DiaryModel {
             for meal in MealType.allCases { current.entries[meal]?.removeAll { $0.id == entry.id } }
             day = current
         }
+        pendingDeleted.insert(entry.id)
         notifyTotals()
         guard let outbox, let user = await userID() else { return }
         _ = try? await outbox.enqueue(kind: "diary.delete", endpoint: .delete("/api/v1/food-tracker/entries/\(entry.id)"),
@@ -470,6 +482,13 @@ public final class DiaryModel {
 
     /// «−» и «+»: счётчик сразу, `POST /water` с `glasses: ±1` через очередь.
     public func changeWater(by delta: Int) async {
+        if let waterLedger {
+            if waterLedger.water(selected) == nil { waterLedger.set(water, day: selected) }
+            guard let (report, current) = await waterLedger.change(day: selected, by: delta, kind: "diary.water") else { return }
+            water = current
+            if let report, !report.rejected.isEmpty { notice = "Не удалось сохранить изменение. Попробуйте ещё раз." }
+            return
+        }
         guard var current = water, current.enabled, delta == 1 || delta == -1 else { return }
         guard current.glasses + delta >= 0 else { return }
         current.glasses += delta
