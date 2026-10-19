@@ -11,8 +11,9 @@ SwiftUI, iOS 18+, Swift 6 со строгой проверкой паралле�
 | Путь | Что |
 |---|---|
 | `Vzvesheno/` | приложение: запуск, модель (`AppModel`), вход, онбординг, «Сегодня», «Записать еду» (`FoodLogging/`), «Дневник», «Меню», профиль, оболочки по роли |
-| `VzveshenoWidgets/` | расширение виджетов (каркас; виджеты — `ios-system-surfaces`) |
-| `VzveshenoKit/` | локальный Swift-пакет: `DesignSystem`, `API`, `Session`, `Outbox`, `Navigation`, `Health`, `Client` и их тесты |
+| `VzveshenoWidgets/` | расширение: виджеты клиента и куратора, элементы Пункта управления (`ios-system-surfaces`) |
+| `Shared/` | App Intents и виды виджетов — собираются и в приложение, и в расширение |
+| `VzveshenoKit/` | локальный Swift-пакет: `DesignSystem`, `API`, `Session`, `Outbox`, `Navigation`, `Health`, `Client`, `Curator`, `Surfaces` и их тесты |
 | `VzveshenoTests/` | тесты внутри приложения: манифест, Info.plist, Keychain, модель, снапшоты экранов с макетами |
 | `VzveshenoUITests/` | UI-тесты: оболочки ролей, «Обновите приложение», справочник, аудит доступности |
 | `_legacy/` | приложение 0.3.x (`Burcev`) — источник для переноса экранов; ни в одну цель не входит |
@@ -24,7 +25,10 @@ SwiftUI, iOS 18+, Swift 6 со строгой проверкой паралле�
 «Меню» — числа сверяются с вебом на общих фикстурах `docs/ios/fixtures/`;
 задержки поиска и окна отмены — через `Sleeper`, тесты гоняют их
 виртуальным временем). Keychain, SwiftUI, Network,
-BackgroundTasks, WidgetKit и HealthKit — адаптеры под `#if canImport(...)`. Токены
+BackgroundTasks, WidgetKit и HealthKit — адаптеры под `#if canImport(...)`.
+Виджеты и интенты (`Surfaces`) читают снимок дня из App Group и сессию из
+общего Keychain, но сессию не обновляют и ничего не стирают: изменения из
+них идут в общую очередь, приложение досылает их само. Токены
 дизайн-системы подключены ссылкой
 `VzveshenoKit/Sources/DesignSystem/Generated → packages/design-tokens/dist/ios`
 (не копия): правка токена и `npm run tokens:build` сразу доходят до приложения.

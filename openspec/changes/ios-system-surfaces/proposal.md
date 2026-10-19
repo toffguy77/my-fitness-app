@@ -43,6 +43,6 @@
 ## Impact
 
 - `apps/ios/VzveshenoWidgets/` — расширение: виджеты и элементы управления.
-- `apps/ios/VzveshenoKit/Intents/` — интенты, общие для приложения и расширения.
-- `apps/ios/VzveshenoKit/Snapshot/` — снимок дня в App Group.
+- `apps/ios/Shared/` — интенты и виды виджетов, общие для приложения и расширения.
+- `apps/ios/VzveshenoKit/Sources/Surfaces/` — снимок дня в App Group, строки виджетов и действия интентов.
 - Бэкенд и веб не меняются: интенты используют те же эндпоинты (`POST /food-tracker/water`, `POST /dashboard/daily`) с `Idempotency-Key`.
