@@ -1,4 +1,5 @@
 import Client
+import DesignSystem
 import Foundation
 
 /// Переписка в списке куратора (`GET /conversations`, `GET /conversations/by-participant/:userId`).
@@ -231,7 +232,7 @@ public struct Lead: Decodable, Sendable, Equatable, Identifiable {
     public var hasParameters: Bool { parametersLine != "Параметры не заполнены" }
 
     /// «ждёт 3 дня» или «сегодня».
-    public var waitingLine: String { ageDays <= 0 ? "сегодня" : "ждёт \(CuratorText.days(ageDays))" }
+    public var waitingLine: String { ageDays <= 0 ? "сегодня" : DS.Plural.format("plural.waiting_days %lld", ageDays) }
 
     /// utm через « · », иначе хост адреса перехода, иначе «Источник перехода неизвестен».
     public var sourceLine: String {

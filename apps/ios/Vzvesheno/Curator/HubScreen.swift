@@ -178,7 +178,7 @@ private struct SummaryGrid: View {
 
     /// «от 3 клиентов», «от 1 клиента».
     static func clients(_ count: Int) -> String {
-        count % 10 == 1 && count % 100 != 11 ? "\(count) клиента" : "\(count) клиентов"
+        DS.Plural.format("plural.of_clients %lld", count)
     }
 
     private func tile(_ title: String, value: String, caption: String, alert: Bool = false, id: String) -> some View {

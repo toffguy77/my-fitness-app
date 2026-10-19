@@ -1,3 +1,4 @@
+import DesignSystem
 import Foundation
 
 /// День в полосе недели: три точки — питание, вес, активность.
@@ -92,8 +93,8 @@ public struct WaterCard: Sendable, Equatable {
 
     public var value: String { NumberText.grouped(glasses) }
     /// «из 8 стаканов».
-    public var caption: String { "из \(Plural.ofGlasses(goal))" }
-    public var accessibilityLabel: String { "Вода: \(glasses) из \(Plural.ofGlasses(goal))" }
+    public var caption: String { DS.Plural.format("plural.of_glasses %lld", goal, numberText: NumberText.grouped(goal)) }
+    public var accessibilityLabel: String { "Вода: \(glasses) \(caption)" }
 }
 
 /// Карточка «Вес»: последнее значение до выбранного дня и изменение за неделю.
@@ -234,27 +235,5 @@ public enum ManualInput {
             return nil
         }
         return (kind, minutes)
-    }
-}
-
-/// Склонения экрана «Сегодня» (без зависимости от каталога DesignSystem).
-public enum Plural {
-    static func form(_ number: Int, _ one: String, _ few: String, _ many: String) -> String {
-        let value = abs(number)
-        let mod10 = value % 10
-        let mod100 = value % 100
-        if mod10 == 1 && mod100 != 11 { return one }
-        if (2...4).contains(mod10) && !(12...14).contains(mod100) { return few }
-        return many
-    }
-
-    /// Родительный после «из»: «из 1 стакана», «из 8 стаканов».
-    public static func ofGlasses(_ number: Int) -> String {
-        "\(NumberText.grouped(number)) \(form(number, "стакана", "стаканов", "стаканов"))"
-    }
-
-    /// «3 дня».
-    public static func days(_ number: Int) -> String {
-        "\(number) \(form(number, "день", "дня", "дней"))"
     }
 }

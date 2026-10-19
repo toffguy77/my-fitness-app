@@ -93,13 +93,13 @@ let package = Package(
         // Его подключает и расширение — поэтому без `Client`.
         .target(name: "Surfaces", dependencies: ["API", "Outbox", "Session", "Navigation", "DesignSystem"],
                 swiftSettings: strictSwift),
-        .target(name: "Client", dependencies: ["API", "Outbox", "Session", "Health", "Navigation", "Surfaces",
+        .target(name: "Client", dependencies: ["API", "Outbox", "Session", "Health", "Navigation", "Surfaces", "DesignSystem",
                                               .product(name: "Markdown", package: "swift-markdown")],
                 swiftSettings: strictSwift),
 
         // Экраны куратора (`ios-curator-app`): модели «Клиентов», карточки,
         // переписок, заявок и обращений на Foundation.
-        .target(name: "Curator", dependencies: ["API", "Outbox", "Navigation", "Client"], swiftSettings: strictSwift),
+        .target(name: "Curator", dependencies: ["API", "Outbox", "Navigation", "Client", "DesignSystem"], swiftSettings: strictSwift),
 
         // Заглушки транспорта и пути к файлам репозитория — общие для тестов.
         .target(name: "TestSupport", dependencies: ["API"], path: "Tests/TestSupport", swiftSettings: strictSwift),

@@ -1,3 +1,4 @@
+import DesignSystem
 import Foundation
 
 /// Задача куратора в блоке «Задачи от куратора».
@@ -138,10 +139,10 @@ public enum WeeklyReportProblems {
         let logged = numbers.first
         let minimum = numbers.count > 1 ? numbers[1] : 5
         if error.hasPrefix("nutrition logged") {
-            return "Питание записано \(Plural.days(logged ?? 0)) из 7 — нужно не меньше \(minimum)"
+            return "Питание записано \(DS.Plural.format("plural.days %lld", logged ?? 0)) из 7 — нужно не меньше \(minimum)"
         }
         if error.hasPrefix("weight logged") {
-            return "Вес записан \(Plural.days(logged ?? 0)) из 7 — нужно не меньше \(minimum)"
+            return "Вес записан \(DS.Plural.format("plural.days %lld", logged ?? 0)) из 7 — нужно не меньше \(minimum)"
         }
         if error.contains("photo") {
             return "Нет фото недели"

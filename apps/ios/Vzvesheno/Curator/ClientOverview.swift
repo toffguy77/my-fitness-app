@@ -208,6 +208,7 @@ private struct WaterGoalTile: View {
                     .frame(minHeight: 36)
                     .background(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous).fill(DS.Color.bgSubtle))
                     Text("сегодня выпито \(drunk)").dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
+                        .accessibilityLabel("сегодня выпито \(DS.Plural.format("plural.glasses %lld", drunk))")
                     Button("Убрать") { onChange(nil) }
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.primaryDefault)
@@ -256,7 +257,8 @@ private struct DiaryCard: View {
                         showEarlier.toggle()
                     } label: {
                         HStack {
-                            Text("Ранее (\(days.count - 3) дн.)").dsText(DS.Typography.body).foregroundStyle(DS.Color.fgDefault)
+                            Text(DS.Plural.format("plural.earlier_days %lld", days.count - 3))
+                                .dsText(DS.Typography.body).foregroundStyle(DS.Color.fgDefault)
                             Spacer()
                             Image(systemName: showEarlier ? "chevron.up" : "chevron.down").foregroundStyle(DS.Color.fgMuted)
                         }

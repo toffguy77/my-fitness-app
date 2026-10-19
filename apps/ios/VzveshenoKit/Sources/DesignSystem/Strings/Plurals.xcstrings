@@ -176,41 +176,6 @@
         }
       }
     },
-    "plural.grams_left %lld": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld г осталось"
-                }
-              },
-              "few": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld г осталось"
-                }
-              },
-              "many": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld г осталось"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld г осталось"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "plural.kcal %lld": {
       "extractionState": "manual",
       "localizations": {
@@ -274,6 +239,41 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld мин назад"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "plural.of_clients %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld клиента"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld клиентов"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld клиентов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld клиента"
                 }
               }
             }
@@ -351,6 +351,41 @@
         }
       }
     },
+    "plural.of_records %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "из %lld записи"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "из %lld записей"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "из %lld записей"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "из %lld записи"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "plural.waiting_days %lld": {
       "extractionState": "manual",
       "localizations": {
@@ -379,6 +414,41 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "ждёт %lld дня"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "plural.years %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld год"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld года"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld лет"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld года"
                 }
               }
             }

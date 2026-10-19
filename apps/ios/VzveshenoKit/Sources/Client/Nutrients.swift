@@ -1,4 +1,5 @@
 import API
+import DesignSystem
 import Foundation
 import Observation
 
@@ -138,7 +139,7 @@ public struct NutrientRecommendation: Decodable, Sendable, Hashable, Identifiabl
     /// «посчитано по 3 из 5 записей».
     public var coverageText: String? {
         guard let countedEntries, let totalEntries, totalEntries > 0 else { return nil }
-        return "посчитано по \(countedEntries) из \(totalEntries) \(Self.records(totalEntries))"
+        return "посчитано по \(countedEntries) \(DS.Plural.format("plural.of_records %lld", totalEntries))"
     }
 
     public var fraction: Double {
@@ -150,12 +151,6 @@ public struct NutrientRecommendation: Decodable, Sendable, Hashable, Identifiabl
         value >= 10 ? NumberText.grouped(value.jsRounded) : NumberText.oneDecimal(value)
     }
 
-    static func records(_ count: Int) -> String {
-        let mod10 = count % 10
-        let mod100 = count % 100
-        if mod10 == 1 && mod100 != 11 { return "записи" }
-        return "записей"
-    }
 }
 
 /// `GET /food-tracker/recommendations`.
