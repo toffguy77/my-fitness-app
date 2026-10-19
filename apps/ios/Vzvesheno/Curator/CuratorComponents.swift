@@ -49,7 +49,7 @@ struct CuratorBadge: View {
             .dsText(DS.Typography.caption)
             .fontWeight(.medium)
             .foregroundStyle(foreground)
-            .padding(.horizontal, 7)
+            .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous).fill(background))
     }

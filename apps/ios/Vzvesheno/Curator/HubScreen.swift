@@ -231,7 +231,7 @@ private struct AttentionRow: View {
 
     var body: some View {
         Button(action: onOpen) {
-            HStack(spacing: DS.Space.s3) {
+            HStack(spacing: DS.Space.s2) {
                 InitialsAvatar(name: group.name, size: 38)
                 VStack(alignment: .leading, spacing: DS.Space.s1) {
                     Text(group.name).font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .headline).weight(.semibold))
@@ -318,7 +318,7 @@ extension View {
     /// Строка-карточка внутри группы.
     func cardRow(position: RowPosition) -> some View {
         padding(.vertical, 10)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, DS.Space.s3)
             .background(DS.Color.bgSurface)
             .overlay(alignment: .top) {
                 if position == .middle || position == .last {
