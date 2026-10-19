@@ -43,13 +43,15 @@ struct CuratorBadge: View {
     let tone: BadgeTone
 
     var body: some View {
+        // Кегль caption, а не micro: плашки micro аудит Dynamic Type считал
+        // немасштабируемыми; на макете — 11 pt.
         Text(text)
-            .dsText(DS.Typography.micro)
+            .dsText(DS.Typography.caption)
+            .fontWeight(.medium)
             .foregroundStyle(foreground)
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
-            .background(Capsule().fill(background))
-            .fixedSize(horizontal: false, vertical: true)
+            .background(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous).fill(background))
     }
 
     private var foreground: Color {

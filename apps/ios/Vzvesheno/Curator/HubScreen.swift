@@ -236,12 +236,8 @@ private struct AttentionRow: View {
                 VStack(alignment: .leading, spacing: DS.Space.s1) {
                     Text(group.name).font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .headline).weight(.semibold))
                         .foregroundStyle(DS.Color.fgDefault)
-                    // В строку, а не помещается — столбиком (свой Layout аудит
-                    // Dynamic Type считал масштабируемым лишь частично).
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: DS.Space.s1) { badges }
-                        VStack(alignment: .leading, spacing: DS.Space.s1) { badges }
-                    }
+                    // Строкой; при крупном шрифте текст плашки переносится внутри неё.
+                    HStack(alignment: .top, spacing: DS.Space.s1) { badges }
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right").font(.system(size: 14, weight: .medium))
