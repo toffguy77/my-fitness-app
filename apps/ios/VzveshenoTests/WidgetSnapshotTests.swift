@@ -139,7 +139,7 @@ final class WidgetSnapshotTests: XCTestCase {
             mode == .tinted ? DS.Color.bgNav : DS.Color.bgSurface
         } else {
             // Экран блокировки: полупрозрачная подложка поверх обоев.
-            family == .inline ? DS.Color.coachBg : DS.Color.fgDefault.opacity(0.18)
+            DS.Color.fgDefault.opacity(0.18)
         }
     }
 
