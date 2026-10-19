@@ -91,6 +91,10 @@ public final class TodayModel {
     @ObservationIgnored private var generation = 0
     /// Вода изменилась — для записи в Здоровье (`healthkit-sync`).
     @ObservationIgnored public var onWaterChanged: (@MainActor (_ day: String, _ glasses: Int, _ glassSize: Int) -> Void)?
+    /// Сегодняшний день загружен или изменён — для снимка виджетов
+    /// (`ios-system-surfaces`). Прошлые дни, открытые в полосе недели, сюда
+    /// не попадают.
+    @ObservationIgnored public var onDayChanged: (@MainActor (_ snapshot: TodaySnapshot, _ date: String) -> Void)?
 
     public init(api: APIClient, outbox: Outbox?, cache: ScreenCache? = nil, photoWeeks: PhotoWeekStore = InMemoryPhotoWeekStore(),
                 calendar: DayCalendar, now: @escaping @Sendable () -> Date = { Date() },
@@ -138,6 +142,7 @@ public final class TodayModel {
         case let .success(snapshot):
             self.snapshot = snapshot
             loadError = nil
+            dayChanged()
         case let .failure(error):
             loadError = error
         }
@@ -277,6 +282,7 @@ public final class TodayModel {
         water.glasses += 1
         snapshot?.water = water
         onWaterChanged?(selected, water.glasses, water.glassSize)
+        dayChanged()
         await enqueue(kind: "today.water", try? Endpoint.post("/api/v1/food-tracker/water",
                                                                body: WaterBody(date: selected, glasses: 1)))
     }
@@ -344,6 +350,12 @@ public final class TodayModel {
         snapshot?.day.protein = totals.protein.jsRounded
         snapshot?.day.fat = totals.fat.jsRounded
         snapshot?.day.carbs = totals.carbs.jsRounded
+        dayChanged()
+    }
+
+    private func dayChanged() {
+        guard selected == today, let snapshot else { return }
+        onDayChanged?(snapshot, today)
     }
 
     /// Счётчики уведомлений изменились на экране уведомлений — колокольчик сразу.

@@ -141,6 +141,41 @@
         }
       }
     },
+    "plural.grams %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld грамм"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld грамма"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld граммов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld грамма"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "plural.grams_left %lld": {
       "extractionState": "manual",
       "localizations": {
@@ -176,6 +211,41 @@
         }
       }
     },
+    "plural.kcal %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld килокалория"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld килокалории"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld килокалорий"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld килокалории"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "plural.minutes_ago %lld": {
       "extractionState": "manual",
       "localizations": {
@@ -204,6 +274,41 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld мин назад"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "plural.of_glasses %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "из %lld стакана"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "из %lld стаканов"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "из %lld стаканов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "из %lld стакана"
                 }
               }
             }
