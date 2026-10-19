@@ -207,8 +207,10 @@ struct MealPlanDayContent: View {
         ForEach(plan.mealTypes, id: \.self) { meal in
             slot(meal, plan)
         }
-        HStack(spacing: DS.Space.s2) {
-            Button("Подогнать порции") { Task { await model.refit() } }.buttonStyle(DSButtonStyle(.secondary, size: .medium))
+        // Подписи длинные — кнопки друг под другом, а не в строку.
+        VStack(alignment: .leading, spacing: DS.Space.s2) {
+            Button("Подогнать оставшиеся порции") { Task { await model.refit() } }
+                .buttonStyle(DSButtonStyle(.secondary, size: .medium))
                 .accessibilityIdentifier("menu.refit")
             Button("Пересобрать") { Task { await model.regenerate() } }.buttonStyle(DSButtonStyle(.secondary, size: .medium))
                 .accessibilityIdentifier("menu.regenerate")

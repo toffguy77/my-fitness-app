@@ -172,6 +172,24 @@ final class FoodUITests: XCTestCase {
         XCTAssertTrue(app.buttons["entry.Овсянка на молоке"].exists)
     }
 
+    /// «Удаление свайпом»: свайп влево открывает «Удалить», нажатие убирает
+    /// запись и показывает «Отменить».
+    func testSwipeLeftDeletesEntry() {
+        let app = launch()
+        openTab(app, "Дневник")
+        let oatmeal = app.buttons["entry.Овсянка на молоке"]
+        XCTAssertTrue(oatmeal.waitForExistence(timeout: 10), app.screenSummary)
+        oatmeal.swipeLeft()
+        // Кнопка «Удалить» открывается у правого края строки (84 pt); строка для
+        // VoiceOver — один элемент, поэтому нажатие — по точке, а не по кнопке.
+        let row = oatmeal.frame
+        let deleteX = (row.width - 42) / max(row.width, 1)
+        oatmeal.coordinate(withNormalizedOffset: CGVector(dx: deleteX, dy: 0.5)).tap()
+        XCTAssertTrue(app.buttons["diary.undo"].waitForExistence(timeout: 3), app.screenSummary)
+        XCTAssertFalse(app.buttons["entry.Овсянка на молоке"].exists, "запись не удалена свайпом")
+        XCTAssertFalse(app.buttons["editor.delete"].exists, "свайп открыл правку вместо удаления")
+    }
+
     /// «Убрать лишний стакан»: 5 → 4.
     func testRemoveAGlass() {
         let app = launch()

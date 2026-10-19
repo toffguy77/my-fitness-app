@@ -95,3 +95,29 @@ public struct ResendCountdown: Sendable, Equatable {
         return String(format: "Отправить повторно через %d:%02d", left / 60, left % 60)
     }
 }
+
+/// Когда на почту ушёл код подтверждения — момент отправки, а не момент, когда
+/// открылся экран: после перезапуска приложения или нового показа экрана
+/// таймер «Отправить повторно» продолжает отсчёт от письма. Неизвестна
+/// отправка (код просили на другом телефоне) — повторить можно сразу.
+public struct VerificationSendClock: @unchecked Sendable {
+    static let key = "verification_code_sent_at"
+    private let defaults: UserDefaults
+
+    public init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    public func markSent(at moment: Date = Date()) {
+        defaults.set(moment.timeIntervalSince1970, forKey: Self.key)
+    }
+
+    public var countdown: ResendCountdown {
+        let stored = defaults.double(forKey: Self.key)
+        return ResendCountdown(sentAt: stored > 0 ? Date(timeIntervalSince1970: stored) : .distantPast)
+    }
+
+    public func forget() {
+        defaults.removeObject(forKey: Self.key)
+    }
+}

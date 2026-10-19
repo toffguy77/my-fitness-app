@@ -70,7 +70,7 @@ struct MagicLinkView: View {
         errorText = nil
         defer { working = false }
         do {
-            try await model.auth.requestMagicLink(email: email.trimmingCharacters(in: .whitespaces), consents: consents)
+            try await model.magicLinks.request(email: email.trimmingCharacters(in: .whitespaces), consents: consents)
             sent = true
         } catch {
             errorText = model.messages.message(for: error)
@@ -201,8 +201,12 @@ struct RegisterView: View {
         errorText = nil
         defer { working = false }
         do {
-            try await model.complete(try await model.auth.register(email: email.trimmingCharacters(in: .whitespaces),
-                                                                   password: password, consents: consents))
+            let outcome = try await model.auth.register(email: email.trimmingCharacters(in: .whitespaces),
+                                                        password: password, consents: consents)
+            // Регистрация отправляет код подтверждения — от этого момента и
+            // считается «Отправить повторно».
+            model.verificationSends.markSent()
+            try await model.complete(outcome)
         } catch {
             errorText = model.messages.message(for: error)
         }
@@ -383,28 +387,59 @@ struct PasswordRulesView: View {
 }
 
 /// «Ссылка устарела»: просроченная, использованная или чужая ссылка из письма.
+/// «Получить новую» отправляет письмо на адрес, на который просили прежнее;
+/// если его нет (ссылку просили на другом телефоне) — к началу входа.
 struct LinkExpiredView: View {
     @Environment(AppModel.self) private var model
+    @State private var sentTo: String?
+    @State private var working = false
+    @State private var errorText: String?
 
     var body: some View {
         StepScaffold(title: "Ссылка устарела",
                      subtitle: "Ссылка из письма действует 15 минут и только один раз. Запросите новую — придёт следующим письмом.",
                      identifier: "screen.linkExpired") {
-            Button("Получить новую") { model.cancelPendingSignIn() }
-                .buttonStyle(DSButtonStyle(.primary))
-                .accessibilityIdentifier("linkExpired.again")
+            if let sentTo {
+                Text("Новое письмо отправлено на \(sentTo). Откройте ссылку на этом iPhone.")
+                    .dsText(DS.Typography.body)
+                    .accessibilityIdentifier("linkExpired.sent")
+                Button("Ко входу") { model.cancelPendingSignIn() }
+                    .buttonStyle(DSButtonStyle(.secondary))
+                    .accessibilityIdentifier("linkExpired.toSignIn")
+            } else {
+                ErrorText(text: errorText)
+                Button(working ? "Отправляем…" : "Получить новую") { Task { await again() } }
+                    .buttonStyle(DSButtonStyle(.primary))
+                    .disabled(working)
+                    .accessibilityIdentifier("linkExpired.again")
+            }
+        }
+    }
+
+    private func again() async {
+        working = true
+        errorText = nil
+        defer { working = false }
+        do {
+            guard let email = try await model.magicLinks.resend() else {
+                model.cancelPendingSignIn()
+                return
+            }
+            sentTo = email
+        } catch {
+            errorText = model.messages.message(for: error)
         }
     }
 }
 
 /// Код из письма: 6 цифр одним полем, проверка после шестой цифры,
-/// «Отправить повторно» — через 60 секунд.
+/// «Отправить повторно» — через 60 секунд после письма (не после показа экрана).
 struct VerifyEmailView: View {
     @Environment(AppModel.self) private var model
     @State private var code = ""
     @State private var working = false
     @State private var errorText: String?
-    @State private var countdown = ResendCountdown(sentAt: Date())
+    @State private var countdown = ResendCountdown(sentAt: .distantPast)
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -440,7 +475,10 @@ struct VerifyEmailView: View {
                     .buttonStyle(DSButtonStyle(.ghost))
             }
         }
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            countdown = model.verificationSends.countdown
+        }
     }
 
     private func verify(_ value: String) async {
@@ -462,7 +500,7 @@ struct VerifyEmailView: View {
         defer { working = false }
         do {
             try await model.resendVerification()
-            countdown = ResendCountdown(sentAt: Date())
+            countdown = model.verificationSends.countdown
         } catch {
             errorText = model.messages.message(for: error)
         }

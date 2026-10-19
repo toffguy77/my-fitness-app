@@ -122,3 +122,58 @@ final class NativeAuthTests: XCTestCase {
         XCTAssertEqual(transport.requests.last?.json?["token"] as? String, "t")
     }
 }
+
+/// «Ссылка устарела» → «Получить новую»: новое письмо на тот же адрес.
+final class MagicLinkRequestsTests: XCTestCase {
+    private func requests(_ transport: StubTransport, _ defaults: UserDefaults) -> MagicLinkRequests {
+        let api = APIClient(baseURL: URL(string: "https://burcev.team")!, clientHeader: "ios/1.0.0/1", transport: transport)
+        return MagicLinkRequests(auth: NativeAuthAPI(api: api, deviceName: "iPhone"), defaults: defaults)
+    }
+
+    private func freshDefaults() -> UserDefaults {
+        let name = "magic-link-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        return defaults
+    }
+
+    func testResendGoesToTheSameAddressWithTheSameConsents() async throws {
+        let transport = StubTransport { _ in .success("{}") }
+        let defaults = freshDefaults()
+        let consents = Consents(termsOfService: true, privacyPolicy: true, dataProcessing: true)
+        try await requests(transport, defaults).request(email: "anna@example.com", consents: consents)
+
+        // Ссылка открылась позже, в новом запуске приложения.
+        let sent = try await requests(transport, defaults).resend()
+        XCTAssertEqual(sent, "anna@example.com")
+        let posts = transport.requests(to: "/api/v1/auth/native/magic-link/request")
+        XCTAssertEqual(posts.count, 2)
+        XCTAssertEqual(posts.last?.json?["email"] as? String, "anna@example.com")
+        let resentConsents = posts.last?.json?["consents"] as? [String: Bool]
+        XCTAssertEqual(resentConsents?["data_processing"], true)
+        XCTAssertEqual(resentConsents?["terms_of_service"], true)
+    }
+
+    func testWithoutAnEarlierRequestNothingIsSent() async throws {
+        let transport = StubTransport { _ in .success("{}") }
+        let sent = try await requests(transport, freshDefaults()).resend()
+        XCTAssertNil(sent)
+        XCTAssertTrue(transport.requests.isEmpty)
+    }
+
+    func testRefusedRequestIsNotRemembered() async {
+        let transport = StubTransport { _ in .success(#"{"status":"error","code":"rate_limited"}"#, status: 429) }
+        let defaults = freshDefaults()
+        let memory = requests(transport, defaults)
+        _ = try? await memory.request(email: "anna@example.com", consents: nil)
+        XCTAssertNil(memory.last)
+    }
+
+    func testForgottenAfterSignIn() async throws {
+        let transport = StubTransport { _ in .success("{}") }
+        let memory = requests(transport, freshDefaults())
+        try await memory.request(email: "anna@example.com", consents: nil)
+        memory.forget()
+        XCTAssertNil(memory.last)
+    }
+}

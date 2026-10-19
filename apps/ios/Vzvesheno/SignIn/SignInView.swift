@@ -232,6 +232,9 @@ struct SignInContent: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .background(DS.Color.bgCanvas)
+        #if DEBUG
+        .overlay(alignment: .bottom) { UITestSignOutLog().padding(.bottom, DS.Space.s2) }
+        #endif
         .accessibilityIdentifier("screen.signIn")
     }
 }

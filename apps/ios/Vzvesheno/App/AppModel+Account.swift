@@ -15,9 +15,17 @@ extension AppModel {
         }
     }
 
+    /// Письма со ссылкой на вход: последний адрес помнится до входа, чтобы
+    /// «Ссылка устарела» → «Получить новую» отправила письмо туда же.
+    var magicLinks: MagicLinkRequests { MagicLinkRequests(auth: auth, defaults: preferences) }
+
+    /// Когда ушёл код подтверждения: «Отправить повторно» считает от письма.
+    var verificationSends: VerificationSendClock { VerificationSendClock(defaults: preferences) }
+
     /// `POST /auth/verify-email` — сразу после шестой цифры.
     func verifyEmail(code: String) async throws {
         let _: EmptyResponse = try await api.send(try .post("/api/v1/auth/verify-email", body: ["code": code]))
+        verificationSends.forget()
         if var current = await session.user {
             current.emailVerified = true
             await session.updateUser(current)
@@ -29,6 +37,7 @@ extension AppModel {
     /// `POST /auth/resend-verification` без тела: письмо на почту из токена.
     func resendVerification() async throws {
         let _: EmptyResponse = try await api.send(Endpoint(method: .post, path: "/api/v1/auth/resend-verification"))
+        verificationSends.markSent()
     }
 
     /// «Отменить удаление»: `DELETE /users/me/deletion`, затем маршрут после входа.

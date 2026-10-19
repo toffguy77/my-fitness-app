@@ -409,6 +409,7 @@ final class AppModel {
             // Сессию другого человека молча не заменяет (AccountSwitchNotConfirmed);
             // смену аккаунта человек подтверждает до этого — confirmSwitchingAccount.
             try await session.adopt(newSession)
+            magicLinks.forget()
             user = newSession.user
             pendingDeletion = newSession.pendingDeletion
             sessionMessage = nil
