@@ -215,6 +215,8 @@ public final class DiaryModel {
             freshness.markFailed(error)
             if day == nil || error != .network { loadError = error }
         }
+        // Правки, ждущие отправки (запрос в повторе), — и поверх свежего дня.
+        applyPendingEdits()
         if case let .success((value, _)) = loadedWater { water = WaterLedger.overlay(value, day: date, pending: fresh) }
         waterLedger?.set(water, day: date)
         if case let .success((value, _)) = loadedPlan { plan = value.plan }

@@ -323,3 +323,47 @@ final class ConnectivityEdgesTests: XCTestCase {
         XCTAssertEqual(offlineAtLaunch.next(true), .restored)
     }
 }
+
+/// Вложение в очереди и очередь без каталога тел (расширение виджетов).
+final class OutboxBodyFileTests: XCTestCase {
+    func testItemWithBodyFileWaitsWhenThisOutboxHasNoFiles() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("bodyfile-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = InMemoryOutboxStore()
+        let files = directory.appendingPathComponent("outbox-files")
+        let offline = Outbox(store: store, files: files) { _ in throw APIError.network }
+        let big = Endpoint(method: .post, path: "/api/v1/conversations/c1/upload", body: Data(repeating: 1, count: 100_000),
+                           contentType: "multipart/form-data; boundary=x")
+        let item = try await offline.enqueue(kind: "chat.upload", endpoint: big, userID: 7)
+        XCTAssertNotNil(item.bodyFile)
+        XCTAssertNil(item.body)
+
+        let sent = LockedCount()
+        let extensionOutbox = Outbox(store: store) { _ in
+            sent.increment()
+            return RawResponse(data: Data(), status: 200)
+        }
+        let report = await extensionOutbox.drain(userID: 7)
+        XCTAssertEqual(report.stoppedAt, item.id)
+        XCTAssertEqual(sent.value, 0)
+        XCTAssertEqual(try store.pending().count, 1, "вложение не удалено")
+
+        let app = Outbox(store: store, files: files) { endpoint in
+            XCTAssertEqual(endpoint.body?.count, 100_000)
+            XCTAssertEqual(endpoint.contentType, "multipart/form-data; boundary=x")
+            return RawResponse(data: Data(#"{"status":"success","data":{"file_url":"https://storage.yandexcloud.net/chats/a.jpg","#
+                                          .utf8) + Data(#""mime_type":"image/jpeg"}}"#.utf8), status: 201)
+        }
+        await app.setObserver(nil)
+        let delivered = await app.drain(userID: 7)
+        XCTAssertEqual(delivered.delivered.count, 1, "загрузка; сообщения-продолжения у этого изменения нет")
+        XCTAssertTrue(try store.pending().isEmpty)
+    }
+}
+
+final class LockedCount: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.withLock { count } }
+    func increment() { lock.withLock { count += 1 } }
+}

@@ -139,6 +139,20 @@ final class OutboxAppTests: XCTestCase {
         XCTAssertTrue(left.isEmpty)
     }
 
+    /// Поводы досылки: передний план и фоновое обновление (BGAppRefreshTask).
+    func testForegroundAndBackgroundRefreshDrainTheQueue() async throws {
+        let model = UITestScenario.client.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        try await model.outbox.enqueue(kind: "diary.add", endpoint: try breakfast(), userID: 7)
+        await model.onForeground()
+        var left = try await model.outbox.pending()
+        XCTAssertTrue(left.isEmpty, "передний план досылает")
+        try await model.outbox.enqueue(kind: "diary.add", endpoint: try breakfast(), userID: 7)
+        await model.backgroundRefresh()
+        left = try await model.outbox.pending()
+        XCTAssertTrue(left.isEmpty, "фоновое обновление досылает")
+    }
+
     /// Отказ из досылки приложения доходит до «Сегодня»: сообщение по коду.
     func testRejectionFromAppDrainReachesToday() async throws {
         let model = UITestScenario.client.makeModel(environment: AppEnvironment.current())

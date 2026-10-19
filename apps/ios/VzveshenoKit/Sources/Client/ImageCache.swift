@@ -18,9 +18,9 @@ public final class ImageCache: @unchecked Sendable {
         self.limit = limit
     }
 
-    public func data(for url: URL) -> Data? {
+    public func data(for url: URL, owner: Int64? = nil) -> Data? {
         lock.withLock {
-            let file = path(url)
+            let file = path(url, owner: owner)
             guard let data = try? Data(contentsOf: file) else { return nil }
             // Открыто — значит, нужно: отметка для вытеснения старых.
             try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: file.path)
@@ -28,11 +28,14 @@ public final class ImageCache: @unchecked Sendable {
         }
     }
 
-    public func store(_ data: Data, for url: URL) {
+    /// `owner` — аккаунт для личных изображений: свой подкаталог, чужой
+    /// аккаунт файл не найдёт даже по тому же адресу.
+    public func store(_ data: Data, for url: URL, owner: Int64? = nil) {
         guard data.count <= limit else { return }
         lock.withLock {
-            try? ProtectedFiles.prepareDirectory(directory)
-            try? ProtectedFiles.write(data, to: path(url))
+            let file = path(url, owner: owner)
+            try? ProtectedFiles.prepareDirectory(file.deletingLastPathComponent())
+            try? ProtectedFiles.write(data, to: file)
             prune()
         }
     }
@@ -46,18 +49,22 @@ public final class ImageCache: @unchecked Sendable {
         lock.withLock { files().reduce(0) { $0 + $1.size } }
     }
 
-    private func path(_ url: URL) -> URL {
+    private func path(_ url: URL, owner: Int64?) -> URL {
         // FNV-1a по адресу: имя файла, а не защита.
         var hash: UInt64 = 0xcbf29ce484222325
         for byte in url.absoluteString.utf8 {
             hash = (hash ^ UInt64(byte)) &* 0x100000001b3
         }
-        return directory.appendingPathComponent(String(hash, radix: 16) + ".img")
+        let folder = owner.map { directory.appendingPathComponent(String($0), isDirectory: true) } ?? directory
+        return folder.appendingPathComponent(String(hash, radix: 16) + ".img")
     }
 
     private func files() -> [(url: URL, size: Int, date: Date)] {
-        let keys: Set<URLResourceKey> = [.fileSizeKey, .contentModificationDateKey]
-        let list = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: Array(keys))) ?? []
+        let keys: Set<URLResourceKey> = [.fileSizeKey, .contentModificationDateKey, .isRegularFileKey]
+        let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: Array(keys))
+        let list = (enumerator?.allObjects as? [URL] ?? []).filter {
+            (try? $0.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true
+        }
         return list.map { url in
             let values = try? url.resourceValues(forKeys: keys)
             return (url, values?.fileSize ?? 0, values?.contentModificationDate ?? .distantPast)
@@ -89,11 +96,11 @@ public struct ImageLoader: Sendable {
         self.fetch = fetch
     }
 
-    public func load(_ raw: URL) async -> Data? {
+    public func load(_ raw: URL, owner: Int64? = nil) async -> Data? {
         guard let url = TrustedMedia.url(raw.absoluteString) else { return nil }
-        if let cached = cache.data(for: url) { return cached }
+        if let cached = cache.data(for: url, owner: owner) { return cached }
         guard let data = try? await fetch(url), !data.isEmpty else { return nil }
-        cache.store(data, for: url)
+        cache.store(data, for: url, owner: owner)
         return data
     }
 }

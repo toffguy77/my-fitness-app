@@ -32,10 +32,20 @@ private struct ImageLoadersKey: EnvironmentKey {
     static let defaultValue: ImageLoaders? = nil
 }
 
+/// Вошедший аккаунт — владелец личных изображений.
+private struct ImageOwnerKey: EnvironmentKey {
+    static let defaultValue: Int64? = nil
+}
+
 extension EnvironmentValues {
     var imageLoaders: ImageLoaders? {
         get { self[ImageLoadersKey.self] }
         set { self[ImageLoadersKey.self] = newValue }
+    }
+
+    var imageOwner: Int64? {
+        get { self[ImageOwnerKey.self] }
+        set { self[ImageOwnerKey.self] = newValue }
     }
 }
 
@@ -48,6 +58,7 @@ struct CachedImage<Placeholder: View>: View {
     var scope: Scope = .shared
     @ViewBuilder var placeholder: () -> Placeholder
     @Environment(\.imageLoaders) private var loaders
+    @Environment(\.imageOwner) private var owner
     @State private var image: UIImage?
 
     var body: some View {
@@ -59,8 +70,17 @@ struct CachedImage<Placeholder: View>: View {
             }
         }
         .task(id: url) {
-            guard let url, let loader = scope == .shared ? loaders?.shared : loaders?.account else { return }
-            if let data = await loader.load(url), let decoded = UIImage(data: data) { image = decoded }
+            guard let url else { return }
+            let data: Data?
+            switch scope {
+            case .shared:
+                data = await loaders?.shared.load(url)
+            case .account:
+                // Без вошедшего аккаунта личное изображение не грузится и не кэшируется.
+                guard let owner else { return }
+                data = await loaders?.account.load(url, owner: owner)
+            }
+            if let data, let decoded = UIImage(data: data) { image = decoded }
         }
     }
 }

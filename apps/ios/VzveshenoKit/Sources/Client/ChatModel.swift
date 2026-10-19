@@ -163,6 +163,9 @@ public final class ChatModel {
             try await loadLatest()
             phase = .chat
             freshness = pass
+            // Переписка стала известна только сейчас (кэша не было): ждущие
+            // отправки сообщения прошлого запуска — на экран.
+            await restorePending()
             await reconcilePending()
             if isVisible, !freshness.offline { await markRead() }
         } catch {

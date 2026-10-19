@@ -29,6 +29,7 @@ struct VzveshenoApp: App {
             RootView()
                 .environment(model)
                 .environment(\.imageLoaders, model.imageLoaders)
+                .environment(\.imageOwner, model.user?.id)
                 .tint(DS.Color.primaryDefault)
                 // «Оформление»: сразу ко всему приложению; «Авто» — тема системы.
                 .preferredColorScheme(model.appearance.colorScheme)

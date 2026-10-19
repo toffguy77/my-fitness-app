@@ -164,6 +164,12 @@ public actor Outbox {
                 // удаляются: очередь стирает выход (`eraseAll`), а не досылка, —
                 // досылка не знает, вышел тот человек или сессия ещё не поднялась.
                 handled.insert(item.id)
+                // Тело — файлом, а каталога файлов у этой очереди нет (расширение
+                // старой сборки): не отказ, а «позже» — дошлёт приложение.
+                if item.bodyFile != nil && files == nil {
+                    report.stoppedAt = item.id
+                    return report
+                }
                 try? store.recordAttempt(item.id)
                 let verdict: DeliveryVerdict
                 var response: RawResponse?

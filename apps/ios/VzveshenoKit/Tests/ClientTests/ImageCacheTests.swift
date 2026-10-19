@@ -65,3 +65,16 @@ final class ImageCacheTests: XCTestCase {
         XCTAssertNil(cache.data(for: urls[2]), "выход стирает")
     }
 }
+
+extension ImageCacheTests {
+    /// Личные изображения — по аккаунту: другой аккаунт не находит чужое.
+    func testPrivateImagesArePerAccount() throws {
+        let cache = ImageCache(directory: root, limit: 1_000)
+        let url = try XCTUnwrap(URL(string: "https://storage.yandexcloud.net/chats/photo.jpg"))
+        cache.store(Data([1, 2, 3]), for: url, owner: 7)
+        XCTAssertEqual(cache.data(for: url, owner: 7), Data([1, 2, 3]))
+        XCTAssertNil(cache.data(for: url, owner: 8))
+        XCTAssertNil(cache.data(for: url))
+        XCTAssertEqual(cache.size, 3, "предел считается по всем аккаунтам")
+    }
+}

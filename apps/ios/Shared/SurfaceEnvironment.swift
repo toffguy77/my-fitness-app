@@ -59,7 +59,9 @@ enum SurfaceEnvironment {
         // показывал бы стакан, которого нет.
         let store: OutboxStore = (try? SQLiteOutboxStore(url: directory.appendingPathComponent("outbox.sqlite")))
             ?? UnavailableOutboxStore()
-        let outbox = Outbox(store: store, api: api)
+        // Каталог тел — тот же, что у приложения: вложение переписки в очереди
+        // расширение досылает, а не считает отказом.
+        let outbox = Outbox(store: store, api: api, files: directory.appendingPathComponent("outbox-files", isDirectory: true))
         // Отказ сервера здесь показать некому — его покажет приложение.
         await outbox.setObserver(RejectionLog(directory: directory))
         return SurfaceContext(snapshots: snapshots, outbox: outbox, reloader: WidgetCenterReloader(),
