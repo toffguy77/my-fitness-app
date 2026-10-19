@@ -270,7 +270,8 @@ final class PushTests: XCTestCase {
         let secure = InMemorySecureStore()
         let installation = InstallationID.value(in: secure)
         XCTAssertEqual(InstallationID.value(in: secure), installation, "один на установку")
-        let registrar = PushRegistrar(api: api, tokens: InMemoryDeviceTokenStore(), environment: PushEnvironment.forBuild(apsEnvironment: "development"),
+        let registrar = PushRegistrar(api: api, tokens: InMemoryDeviceTokenStore(),
+                                      environment: PushEnvironment.forBuild(apsEnvironment: "development"),
                                       appVersion: "1.0.0", installationID: { installation })
         let registered = await registrar.didReceive(token: Data([0xAB, 0x01, 0xFF]))
         XCTAssertTrue(registered)

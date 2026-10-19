@@ -194,7 +194,8 @@ final class AppModel {
         realtime = RealtimeConnection(api: api)
         // Идентификатор установки — в отдельной записи Keychain: выход его не
         // стирает, по нему сервер переносит токен к следующему вошедшему.
-        push = PushRegistrar(api: api, tokens: pushTokens, environment: PushEnvironment.forBuild(apsEnvironment: environment.apsEnvironment),
+        push = PushRegistrar(api: api, tokens: pushTokens,
+                             environment: PushEnvironment.forBuild(apsEnvironment: environment.apsEnvironment),
                              appVersion: environment.version, installationID: { InstallationID.value(in: installation) })
         self.permissions = permissions
         self.preferences = preferences

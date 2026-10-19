@@ -137,7 +137,7 @@ final class ArticleDocumentTests: XCTestCase {
     /// Свой сайт — белый список: статья открывается в приложении, калькулятор —
     /// «Тело и цели», всё остальное (главная, онбординг, тарифы на главной,
     /// кабинет, новая страница) — только текст.
-    func testOwnSiteLinksAreWhitelisted() {
+    func testOwnSiteLinksAreAllowListed() {
         let article = URL(string: "https://burcev.team/content/x")!
         XCTAssertEqual(ArticleLinks.decide("https://burcev.team/content/x"), .article(slug: "x", url: article))
         XCTAssertEqual(ArticleLinks.decide("/content/x"), .article(slug: "x", url: article), "относительная ссылка")
@@ -157,7 +157,7 @@ final class ArticleDocumentTests: XCTestCase {
     /// экран статьи; главная и онбординг — текст без ссылки.
     func testArticleLinkRoutesInsideTheApp() {
         let markdown = "Читайте [статью](/content/sugar), [главную](/) и [анкету](https://burcev.team/onboarding), [тарифы](/#tariffs)."
-        guard case let .paragraph(text) = ArticleDocument(markdown: markdown).blocks.first else { return XCTFail() }
+        guard case let .paragraph(text) = ArticleDocument(markdown: markdown).blocks.first else { return XCTFail("нет абзаца") }
         XCTAssertEqual(Self.plain(text), "Читайте статью, главную и анкету, тарифы.")
         let links = Self.links(text)
         XCTAssertEqual(links, [URL(string: "https://burcev.team/content/sugar")!])

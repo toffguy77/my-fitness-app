@@ -173,8 +173,8 @@ final class FoodLoggingTests: XCTestCase {
         let transport = StubTransport { request in
             switch (request.method, request.path) {
             case ("POST", "/api/v1/food-tracker/user-foods"):
-                return .success(#"{"id":"uf-1","name":"Сырок","calories_per_100":350,"protein_per_100":9,"fat_per_100":23,"carbs_per_100":28}"#,
-                                status: 201)
+                return .success(#"{"id":"uf-1","name":"Сырок","calories_per_100":350,"protein_per_100":9,"#
+                                + #""fat_per_100":23,"carbs_per_100":28}"#, status: 201)
             default:
                 return .success(#"{"found":false,"cached":false}"#)
             }
