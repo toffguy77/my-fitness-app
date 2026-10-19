@@ -87,7 +87,7 @@ struct ClientCardScreen: View {
                 .frame(maxHeight: .infinity)
         case .loaded:
             if let detail = card.detail {
-                @Bindable var card = card
+                @Bindable var bound = card
                 ClientCardContent(
                     detail: detail, streak: model.curator?.hub?.client(clientID)?.streakDays ?? detail.client.streakDays,
                     tab: Binding(get: { card.tab }, set: { tab in
@@ -95,7 +95,7 @@ struct ClientCardScreen: View {
                         Task { await card.loadTab() }
                     }),
                     today: card.today, notices: card.notices, plans: card.plans, tasks: card.visibleTasks,
-                    taskFilter: $card.taskFilter, reports: card.reports, waterCaption: card.waterCaption,
+                    taskFilter: $bound.taskFilter, reports: card.reports, waterCaption: card.waterCaption,
                     actions: ClientCardActions(
                         editWeightGoal: {
                             weightText = detail.client.targetWeight.map(DecimalInput.text) ?? ""

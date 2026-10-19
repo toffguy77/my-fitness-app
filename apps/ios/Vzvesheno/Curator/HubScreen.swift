@@ -11,9 +11,9 @@ struct HubScreen: View {
     var body: some View {
         Group {
             if let hub = model.curator?.hub {
-                @Bindable var hub = hub
+                @Bindable var bound = hub
                 HubContent(phase: hub.phase, analytics: hub.analytics, groups: hub.visibleGroups, others: hub.visibleOthers,
-                           benchmark: hub.benchmark?.own ?? [], query: $hub.query,
+                           benchmark: hub.benchmark?.own ?? [], query: $bound.query,
                            actions: HubActions(open: { open($0) }, write: { write($0) }, retry: { Task { await hub.load() } })) {
                     CuratorProfileMenu()
                 }

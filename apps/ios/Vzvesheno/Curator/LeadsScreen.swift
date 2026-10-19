@@ -34,9 +34,9 @@ struct LeadsScreen: View {
     var body: some View {
         Group {
             if let leads = model.curator?.leads {
-                @Bindable var leads = leads
+                @Bindable var bound = leads
                 LeadsContent(leads: focus.map { id in leads.leads.filter { $0.id == id } } ?? leads.leads, waiting: leads.waiting,
-                             loaded: leads.loaded, error: leads.error, includeHandled: $leads.includeHandled,
+                             loaded: leads.loaded, error: leads.error, includeHandled: $bound.includeHandled,
                              showsTitle: focus == nil,
                              actions: LeadActions(write: { write($0) }, conversation: { openConversation($0) },
                                                   handled: { id in Task { await leads.markHandled(id) } },
