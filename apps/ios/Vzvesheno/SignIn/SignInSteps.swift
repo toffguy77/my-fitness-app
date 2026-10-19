@@ -440,7 +440,8 @@ struct VerifyEmailView: View {
     @State private var code = ""
     @State private var working = false
     @State private var errorText: String?
-    @State private var countdown = ResendCountdown(sentAt: .distantPast)
+    /// Момент повтора из этого экрана; до него — момент письма из `verificationSends`.
+    @State private var resentAt: Date?
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -466,7 +467,8 @@ struct VerifyEmailView: View {
                     }
                 if working { DSSpinner("Проверяем код") }
                 ErrorText(text: errorText)
-                TimelineView(.periodic(from: countdown.sentAt, by: 1)) { context in
+                let countdown = resentAt.map(ResendCountdown.init) ?? model.verificationSends.countdown
+                TimelineView(.periodic(from: .now, by: 1)) { context in
                     Button(countdown.title(now: context.date)) { Task { await resend() } }
                         .buttonStyle(DSButtonStyle(.secondary))
                         .disabled(working || !countdown.canResend(now: context.date))
@@ -476,10 +478,7 @@ struct VerifyEmailView: View {
                     .buttonStyle(DSButtonStyle(.ghost))
             }
         }
-        .onAppear {
-            focused = true
-            countdown = model.verificationSends.countdown
-        }
+        .onAppear { focused = true }
     }
 
     private func verify(_ value: String) async {
@@ -501,7 +500,7 @@ struct VerifyEmailView: View {
         defer { working = false }
         do {
             try await model.resendVerification()
-            countdown = model.verificationSends.countdown
+            resentAt = model.verificationSends.countdown.sentAt
         } catch {
             errorText = model.messages.message(for: error)
         }

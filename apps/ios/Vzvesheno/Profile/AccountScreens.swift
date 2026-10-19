@@ -194,7 +194,7 @@ struct SignInMethodsScreen: View {
                 let webOnly = available.filter { !AccountService.linkableInApp($0) }
                     .filter { name in !linked.linked.contains(where: { $0.provider == name }) }
                 if !webOnly.isEmpty {
-                    Text("Яндекс ID и VK ID привязываются в веб-версии, в профиле, в разделе «Способы входа».")
+                    Text("Яндекс ID и VK ID привязываются в веб-версии: настройки профиля, раздел «Вход через сервисы».")
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.fgMuted)
                         .fixedSize(horizontal: false, vertical: true)
