@@ -56,8 +56,10 @@ struct HubContent<Avatar: View>: View {
     @ViewBuilder var avatar: Avatar
 
     var body: some View {
-        List {
-            Group {
+        // Не List и не ленивая стопка: аудит Dynamic Type не видит роста текста
+        // в ячейках списка (как и в переписке клиента), а клиентов у куратора — десятки.
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.Space.s3) {
                 CuratorTitle(title: "Клиенты") { avatar }
                 SearchField(text: $query)
                 if let analytics {
@@ -74,38 +76,34 @@ struct HubContent<Avatar: View>: View {
                 default:
                     EmptyView()
                 }
-            }
-            .plainRow()
-            if !groups.isEmpty {
-                SectionTitle(text: "Требуют внимания").plainRow()
-                ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
-                    AttentionRow(group: group) { actions.open(group.link) }
-                        .cardRow(position: .of(index, groups.count))
-                        .swipeActions(edge: .trailing) { writeButton(group.clientID) }
+                if !groups.isEmpty {
+                    SectionTitle(text: "Требуют внимания")
+                    CardGroup {
+                        ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+                            AttentionRow(group: group) { actions.open(group.link) }
+                                .cardRow(position: .of(index, groups.count))
+                                .swipeAction("Написать", identifier: "hub.write.\(group.clientID)") { actions.write(group.clientID) }
+                        }
+                    }
+                }
+                if !others.isEmpty {
+                    SectionTitle(text: "Остальные")
+                    CardGroup {
+                        ForEach(Array(others.enumerated()), id: \.element.id) { index, client in
+                            OtherClientRow(client: client) { actions.open(.curatorClient(id: String(client.id), tab: nil)) }
+                                .cardRow(position: .of(index, others.count))
+                                .swipeAction("Написать", identifier: "hub.write.\(client.id)") { actions.write(client.id) }
+                        }
+                    }
                 }
             }
-            if !others.isEmpty {
-                SectionTitle(text: "Остальные").plainRow()
-                ForEach(Array(others.enumerated()), id: \.element.id) { index, client in
-                    OtherClientRow(client: client) { actions.open(.curatorClient(id: String(client.id), tab: nil)) }
-                        .cardRow(position: .of(index, others.count))
-                        .swipeActions(edge: .trailing) { writeButton(client.id) }
-                }
-            }
-            Color.clear.frame(height: DS.Space.s6).plainRow()
+            .padding(.horizontal, DS.Space.screenX)
+            .padding(.bottom, DS.Space.s6)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .environment(\.defaultMinListRowHeight, 0)
         .background(DS.Color.bgCanvas)
         .accessibilityIdentifier("hub.list")
     }
 
-    private func writeButton(_ clientID: Int64) -> some View {
-        Button { actions.write(clientID) } label: { Label("Написать", systemImage: "bubble.left") }
-            .tint(DS.Color.primaryDefault)
-            .accessibilityIdentifier("hub.write.\(clientID)")
-    }
 }
 
 private struct SectionTitle: View {
@@ -113,9 +111,9 @@ private struct SectionTitle: View {
 
     var body: some View {
         Text(text)
-            .dsText(DS.Typography.title2)
+            .dsText(DS.Typography.title3)
             .foregroundStyle(DS.Color.fgDefault)
-            .padding(.top, DS.Space.s4)
+            .padding(.top, DS.Space.s1)
             .accessibilityAddTraits(.isHeader)
     }
 }
@@ -126,12 +124,13 @@ struct SearchField: View {
     var prompt = "Поиск"
 
     var body: some View {
-        HStack(spacing: DS.Space.s3) {
+        HStack(spacing: DS.Space.s2) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(DS.Color.fgMuted)
+                .font(.system(size: 16))
+                .foregroundStyle(DS.Color.fgSubtle)
                 .accessibilityHidden(true)
             TextField(prompt, text: $text, prompt: Text(prompt).foregroundStyle(DS.Color.fgMuted))
-                .font(.custom(DS.FontFamily.sans, size: 17, relativeTo: .body))
+                .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body))
                 .foregroundStyle(DS.Color.fgDefault)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
@@ -143,9 +142,9 @@ struct SearchField: View {
                     .accessibilityLabel("Очистить поиск")
             }
         }
-        .padding(.horizontal, DS.Space.s4)
-        .frame(minHeight: DS.Size.control - 10)
-        .background(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous).fill(DS.Color.bgSubtle))
+        .padding(.horizontal, DS.Space.s3)
+        .frame(minHeight: 38)
+        .background(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous).fill(DS.Color.bgSubtle))
     }
 }
 
@@ -154,7 +153,7 @@ private struct SummaryGrid: View {
     let analytics: CuratorAnalytics
 
     var body: some View {
-        Grid(horizontalSpacing: DS.Space.s3, verticalSpacing: DS.Space.s3) {
+        Grid(horizontalSpacing: 10, verticalSpacing: 10) {
             GridRow {
                 tile("Активные", value: "\(analytics.totalClients)",
                      caption: "требуют внимания: \(analytics.attentionClients)", alert: analytics.attentionClients > 0, id: "active")
@@ -180,19 +179,19 @@ private struct SummaryGrid: View {
     }
 
     private func tile(_ title: String, value: String, caption: String, alert: Bool = false, id: String) -> some View {
-        CuratorCard {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+        CuratorCard(padding: EdgeInsets(top: 10, leading: DS.Space.s3, bottom: 10, trailing: DS.Space.s3)) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(title).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                 Text(value)
                     .dsText(DS.Typography.numL)
                     .foregroundStyle(DS.Color.fgDefault)
+                    .padding(.vertical, 1)
                 Text(caption)
-                    .dsText(DS.Typography.callout)
+                    .dsText(DS.Typography.caption)
                     .foregroundStyle(alert ? DS.Color.statusDangerFg : DS.Color.fgMuted)
-                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("hub.summary.\(id)")
@@ -233,9 +232,10 @@ private struct AttentionRow: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: DS.Space.s3) {
-                InitialsAvatar(name: group.name)
+                InitialsAvatar(name: group.name, size: 38)
                 VStack(alignment: .leading, spacing: DS.Space.s1) {
-                    Text(group.name).dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault)
+                    Text(group.name).font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .headline).weight(.semibold))
+                        .foregroundStyle(DS.Color.fgDefault)
                     FlowRow {
                         ForEach(group.badges) { badge in
                             CuratorBadge(text: badge.text, tone: badge.tone)
@@ -243,7 +243,8 @@ private struct AttentionRow: View {
                     }
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.right").foregroundStyle(DS.Color.fgMuted).accessibilityHidden(true)
+                Image(systemName: "chevron.right").font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(DS.Color.fgSubtle).accessibilityHidden(true)
             }
             .contentShape(Rectangle())
         }
@@ -262,18 +263,17 @@ private struct OtherClientRow: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: DS.Space.s3) {
-                InitialsAvatar(name: client.displayName)
-                VStack(alignment: .leading, spacing: DS.Space.s2) {
-                    HStack {
-                        Text(client.displayName).dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault)
-                        Spacer(minLength: DS.Space.s2)
-                        if let percent = client.kbzhuPercent {
-                            Text("\(percent)%").dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted).monospacedDigit()
-                        }
-                    }
+                InitialsAvatar(name: client.displayName, size: 38)
+                VStack(alignment: .leading, spacing: DS.Space.s1) {
+                    Text(client.displayName).font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .headline).weight(.semibold))
+                        .foregroundStyle(DS.Color.fgDefault)
                     if let percent = client.kbzhuPercent {
                         TodayBar(fraction: Double(percent) / 100, color: percent > 110 ? DS.Color.statusDanger : DS.Color.statusSuccess)
+                            .frame(height: 5)
                     }
+                }
+                if let percent = client.kbzhuPercent {
+                    Text("\(percent)%").dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted).monospacedDigit()
                 }
             }
             .contentShape(Rectangle())
@@ -295,41 +295,78 @@ enum RowPosition {
     }
 }
 
-/// Фон строки-карточки: бумага, линия, скругление по месту, разделитель.
-private struct RowCardBackground: View {
-    let position: RowPosition
+/// Группа строк одной карточкой: бумага, линия, скругление.
+struct CardGroup<Content: View>: View {
+    @ViewBuilder var content: Content
 
     var body: some View {
-        let radius = DS.Radius.l
-        let top: CGFloat = position == .first || position == .single ? radius : 0
-        let bottom: CGFloat = position == .last || position == .single ? radius : 0
-        let shape = UnevenRoundedRectangle(topLeadingRadius: top, bottomLeadingRadius: bottom, bottomTrailingRadius: bottom,
-                                           topTrailingRadius: top, style: .continuous)
-        ZStack(alignment: .bottom) {
-            shape.fill(DS.Color.bgSurface)
-            shape.strokeBorder(DS.Color.lineDefault, lineWidth: 1)
-            if position == .first || position == .middle {
-                Rectangle().fill(DS.Color.lineDefault).frame(height: 1)
-            }
-        }
-        .padding(.horizontal, DS.Space.screenX)
+        let shape = RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous)
+        VStack(spacing: 0) { content }
+            .background(shape.fill(DS.Color.bgSurface))
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(DS.Color.lineDefault, lineWidth: 1))
     }
 }
 
 extension View {
-    /// Строка списка без подложки и разделителя — шапка, сводка, заголовки.
-    func plainRow() -> some View {
-        listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 6, leading: DS.Space.screenX, bottom: 6, trailing: DS.Space.screenX))
-    }
-
     /// Строка-карточка внутри группы.
     func cardRow(position: RowPosition) -> some View {
-        padding(.vertical, DS.Space.s4)
-            .listRowBackground(RowCardBackground(position: position))
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 0, leading: DS.Space.screenX + DS.Space.s4, bottom: 0,
-                                      trailing: DS.Space.screenX + DS.Space.s4))
+        padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .background(DS.Color.bgSurface)
+            .overlay(alignment: .top) {
+                if position == .middle || position == .last {
+                    Rectangle().fill(DS.Color.lineDefault).frame(height: 1)
+                }
+            }
+    }
+
+    /// Действие свайпом влево («Написать»); для VoiceOver — то же действие в списке действий.
+    func swipeAction(_ title: String, identifier: String, perform: @escaping () -> Void) -> some View {
+        modifier(SwipeActionModifier(title: title, identifier: identifier, perform: perform))
+    }
+}
+
+/// Свайп строки влево открывает кнопку действия справа (как `swipeActions`
+/// у `List`, которого на этих экранах нет).
+private struct SwipeActionModifier: ViewModifier {
+    let title: String
+    let identifier: String
+    let perform: () -> Void
+    @State private var offset: CGFloat = 0
+    private let width: CGFloat = 112
+
+    func body(content: Content) -> some View {
+        content
+            .offset(x: offset)
+            .background(alignment: .trailing) {
+                if offset < 0 {
+                    Button {
+                        withAnimation(.snappy) { offset = 0 }
+                        perform()
+                    } label: {
+                        Text(title)
+                            .dsText(DS.Typography.headline)
+                            .foregroundStyle(DS.Color.primaryFg)
+                            .frame(width: -offset)
+                            .frame(maxHeight: .infinity)
+                            .background(DS.Color.primaryDefault)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier(identifier)
+                }
+            }
+            .clipped()
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 16)
+                    .onChanged { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                        offset = min(0, max(-width, value.translation.width))
+                    }
+                    .onEnded { _ in
+                        withAnimation(.snappy) { offset = offset < -width / 2 ? -width : 0 }
+                    }
+            )
+            .accessibilityAction(named: title, perform)
     }
 }

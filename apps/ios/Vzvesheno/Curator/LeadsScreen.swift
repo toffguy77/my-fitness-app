@@ -12,13 +12,14 @@ struct CardButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .dsText(DS.Typography.headline)
+            .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout).weight(.medium))
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .foregroundStyle(kind == .soft ? DS.Color.primaryDefault : DS.Color.coachFg)
-            .frame(maxWidth: .infinity, minHeight: DS.Size.touch)
-            .background(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous)
-                .fill(kind == .soft ? DS.Color.primarySoft : DS.Color.coachBg))
+            .foregroundStyle(kind == .soft ? DS.Color.primaryDefault : DS.Color.bgCanvas)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .background(RoundedRectangle(cornerRadius: DS.Radius.s + 2, style: .continuous)
+                .fill(kind == .soft ? DS.Color.primarySoft : DS.Color.fgDefault))
+            .frame(minHeight: DS.Size.touch)
             .opacity(configuration.isPressed || !isEnabled ? 0.7 : 1)
     }
 }
@@ -135,17 +136,17 @@ struct LeadsContent<Avatar: View>: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DS.Space.s4) {
+            VStack(alignment: .leading, spacing: DS.Space.s3) {
                 if showsTitle {
                     CuratorTitle(title: "Заявки") {
                         HStack(spacing: DS.Space.s3) {
-                            Text("ждут: \(waiting)").dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                            Text("ждут: \(waiting)").dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                                 .accessibilityIdentifier("leads.waiting")
                             avatar
                         }
                     }
                     Toggle("Показывать обработанные", isOn: $includeHandled)
-                        .dsText(DS.Typography.body)
+                        .dsText(DS.Typography.callout)
                         .foregroundStyle(DS.Color.fgDefault)
                         .tint(DS.Color.primaryDefault)
                         .accessibilityIdentifier("leads.includeHandled")
@@ -173,40 +174,41 @@ private struct LeadCard: View {
     let actions: LeadActions
 
     var body: some View {
-        CuratorCard(padding: DS.Space.s5) {
-            VStack(alignment: .leading, spacing: DS.Space.s2) {
+        CuratorCard {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(lead.title).font(.custom(DS.FontFamily.sans, size: 18, relativeTo: .title3).weight(.semibold))
+                    Text(lead.title).dsText(DS.Typography.headline)
                         .foregroundStyle(DS.Color.fgDefault)
                     Spacer(minLength: DS.Space.s2)
                     if lead.handled {
                         CuratorBadge(text: "Обработана", tone: .info).accessibilityIdentifier("lead.handledBadge.\(lead.id)")
                     } else {
-                        Text(lead.waitingLine).dsText(DS.Typography.callout)
+                        Text(lead.waitingLine).dsText(DS.Typography.caption)
                             .foregroundStyle(lead.ageDays >= 2 ? DS.Color.statusWarningFg : DS.Color.fgMuted)
                     }
                 }
-                Text("\(lead.email) · \(lead.stepLine)").dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                Text("\(lead.email) · \(lead.stepLine)").dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                     .fixedSize(horizontal: false, vertical: true)
                 if lead.hasParameters {
-                    Text(lead.parametersLine).dsText(DS.Typography.body).foregroundStyle(DS.Color.fgDefault)
-                    Text(sourceLine).dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                    Text(lead.parametersLine).font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout))
+                        .foregroundStyle(DS.Color.fgDefault)
+                    Text(sourceLine).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    Text("\(lead.parametersLine) · \(sourceLine)").dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                    Text("\(lead.parametersLine) · \(sourceLine)").dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if !lead.contactAllowed {
                     Text("Согласия на связь нет — писать нельзя")
-                        .dsText(DS.Typography.callout)
+                        .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.statusWarningFg)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, DS.Space.s3)
-                        .padding(.vertical, DS.Space.s2)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
                         .background(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous).fill(DS.Color.statusWarningSoft))
                         .accessibilityIdentifier("lead.noConsent.\(lead.id)")
                 }
-                buttons.padding(.top, DS.Space.s2)
+                buttons.padding(.top, DS.Space.s1)
             }
         }
         .accessibilityElement(children: .contain)
@@ -217,7 +219,7 @@ private struct LeadCard: View {
 
     @ViewBuilder
     private var buttons: some View {
-        HStack(spacing: DS.Space.s3) {
+        HStack(spacing: DS.Space.s2) {
             if lead.contactAllowed {
                 Button("Написать") { actions.write(lead) }
                     .buttonStyle(CardButtonStyle(kind: .soft))

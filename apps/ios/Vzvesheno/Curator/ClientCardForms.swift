@@ -178,6 +178,7 @@ private struct TaskForm: View {
                 Picker("Повторение", selection: $draft.recurrence) {
                     ForEach(TaskRecurrence.allCases) { Text($0.title).tag($0) }
                 }
+                .pickerStyle(.segmented)
                 .disabled(draft.editing)
                 .accessibilityIdentifier("task.recurrence")
                 if draft.recurrence == .weekly {

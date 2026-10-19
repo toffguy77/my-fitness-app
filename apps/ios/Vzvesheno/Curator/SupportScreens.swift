@@ -37,25 +37,29 @@ struct SupportQueueContent<Avatar: View>: View {
     @ViewBuilder var avatar: Avatar
 
     var body: some View {
-        List {
-            CuratorTitle(title: "Обращения") { avatar }.plainRow()
-            if let error {
-                LoadFailedView(text: error, retry: onRetry).plainRow()
-            } else if loaded, conversations.isEmpty {
-                Text("Обращений нет").dsText(DS.Typography.body).foregroundStyle(DS.Color.fgMuted).plainRow()
-            } else if !loaded {
-                DSSpinner("Загружаем обращения").frame(maxWidth: .infinity).plainRow()
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.Space.s3) {
+                CuratorTitle(title: "Обращения") { avatar }
+                if let error {
+                    LoadFailedView(text: error, retry: onRetry)
+                } else if loaded, conversations.isEmpty {
+                    Text("Обращений нет").dsText(DS.Typography.body).foregroundStyle(DS.Color.fgMuted)
+                } else if !loaded {
+                    DSSpinner("Загружаем обращения").frame(maxWidth: .infinity)
+                }
+                CardGroup {
+                    ForEach(Array(conversations.enumerated()), id: \.element.id) { index, conversation in
+                        Button { onOpen(conversation) } label: {
+                            SupportRow(conversation: conversation, now: now).cardRow(position: .of(index, conversations.count))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("support.\(conversation.id)")
+                    }
+                }
             }
-            ForEach(Array(conversations.enumerated()), id: \.element.id) { index, conversation in
-                Button { onOpen(conversation) } label: { SupportRow(conversation: conversation, now: now) }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("support.\(conversation.id)")
-                    .cardRow(position: .of(index, conversations.count))
-            }
+            .padding(.horizontal, DS.Space.screenX)
+            .padding(.bottom, DS.Space.s6)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .environment(\.defaultMinListRowHeight, 0)
         .background(DS.Color.bgCanvas)
     }
 }
@@ -161,26 +165,29 @@ struct SupportThreadContent: View {
         VStack(spacing: 0) {
             header
             ScrollView {
-                VStack(alignment: .leading, spacing: DS.Space.s3) {
+                VStack(alignment: .leading, spacing: 10) {
                     if let lead = thread.lead {
-                        VStack(alignment: .leading, spacing: DS.Space.s1) {
-                            Text("Связано с заявкой").dsText(DS.Typography.headline).foregroundStyle(DS.Color.statusInfoFg)
-                            Text(lead.line).dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Связано с заявкой").font(.custom(DS.FontFamily.sans, size: 13, relativeTo: .footnote).weight(.semibold))
+                                .foregroundStyle(DS.Color.statusInfoFg)
+                            Text(lead.line).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(DS.Space.s4)
-                        .background(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).fill(DS.Color.statusInfoSoft))
+                        .padding(.horizontal, DS.Space.s3)
+                        .padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous).fill(DS.Color.statusInfoSoft))
                         .accessibilityElement(children: .combine)
                         .accessibilityIdentifier("support.lead")
                     }
                     if let reason = conversation.escalationReason, !reason.isEmpty {
                         Text("Причина эскалации: \(reason)")
-                            .dsText(DS.Typography.callout)
+                            .dsText(DS.Typography.caption)
                             .foregroundStyle(DS.Color.statusDangerFg)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(DS.Space.s4)
-                            .background(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).fill(DS.Color.statusDangerSoft))
+                            .padding(.horizontal, DS.Space.s3)
+                            .padding(.vertical, 10)
+                            .background(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous).fill(DS.Color.statusDangerSoft))
                     }
                     ForEach(thread.messages) { message in
                         SupportBubble(message: message, retrying: retrying.contains(message.id), isWeb: conversation.isWeb) {
@@ -204,24 +211,28 @@ struct SupportThreadContent: View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Space.s3) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(conversation.title).dsText(DS.Typography.title2).foregroundStyle(DS.Color.fgDefault)
+                    Text(conversation.title).dsText(DS.Typography.title3).foregroundStyle(DS.Color.fgDefault)
                         .accessibilityAddTraits(.isHeader)
                     Text(conversation.subtitle(now: now)).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                         .accessibilityIdentifier("support.subtitle")
                 }
                 Spacer(minLength: 0)
                 if conversation.status != "closed" {
-                    Button("Закрыть", action: actions.close)
-                        .dsText(DS.Typography.headline)
-                        .foregroundStyle(DS.Color.fgDefault)
-                        .padding(.horizontal, DS.Space.s4)
-                        .frame(minHeight: DS.Size.touch)
-                        .background(Capsule().fill(DS.Color.bgSubtle))
+                    Button(action: actions.close) {
+                        Text("Закрыть")
+                            .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout).weight(.medium))
+                            .foregroundStyle(DS.Color.fgDefault)
+                            .padding(.horizontal, DS.Space.s3)
+                            .frame(height: 34)
+                            .background(Capsule().fill(DS.Color.bgSubtle))
+                            .frame(minHeight: DS.Size.touch)
+                    }
+                    .buttonStyle(.plain)
                         .accessibilityIdentifier("support.close")
                 }
             }
-            .padding(.horizontal, DS.Space.screenX)
-            .padding(.vertical, DS.Space.s2)
+            .padding(.horizontal, DS.Space.s4)
+            .padding(.vertical, DS.Space.s1)
             Rectangle().fill(DS.Color.lineDefault).frame(height: 1)
         }
     }
@@ -235,10 +246,12 @@ private struct SupportBubble: View {
     let onRetry: () -> Void
 
     var body: some View {
-        VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: DS.Space.s1) {
+        VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 2) {
             Text(message.isOutgoing ? "Вы" : message.authorTitle)
-                .dsText(DS.Typography.overline)
-                .foregroundStyle(DS.Color.fgMuted)
+                .font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .caption2).weight(.semibold))
+                .textCase(.uppercase)
+                .tracking(0.3)
+                .foregroundStyle(DS.Color.fgSubtle)
             HStack {
                 if message.isOutgoing { Spacer(minLength: 56) }
                 Text(message.text)
@@ -259,7 +272,7 @@ private struct SupportBubble: View {
             if message.undelivered {
                 Button(action: onRetry) {
                     Text(retrying ? "Отправляем ещё раз…" : "Не доставлено в Telegram · Повторить")
-                        .dsText(DS.Typography.callout)
+                        .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.statusDangerFg)
                 }
                 .buttonStyle(.plain)

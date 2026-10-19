@@ -19,7 +19,6 @@ struct CuratorTitle<Trailing: View>: View {
             Spacer(minLength: 0)
             trailing
         }
-        .padding(.top, DS.Space.s3)
     }
 }
 
@@ -45,10 +44,10 @@ struct CuratorBadge: View {
 
     var body: some View {
         Text(text)
-            .font(.custom(DS.FontFamily.sans, size: 13, relativeTo: .footnote).weight(.medium))
+            .dsText(DS.Typography.micro)
             .foregroundStyle(foreground)
-            .padding(.horizontal, DS.Space.s2)
-            .padding(.vertical, 3)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
             .background(Capsule().fill(background))
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -59,6 +58,7 @@ struct CuratorBadge: View {
         case .warning: return DS.Color.statusWarningFg
         case .info: return DS.Color.statusInfoFg
         case .neutral: return DS.Color.fgMuted
+        case .accent: return DS.Color.primaryDefault
         }
     }
 
@@ -68,13 +68,14 @@ struct CuratorBadge: View {
         case .warning: return DS.Color.statusWarningSoft
         case .info: return DS.Color.statusInfoSoft
         case .neutral: return DS.Color.bgSubtle
+        case .accent: return DS.Color.primarySoft
         }
     }
 }
 
 /// Перенос плашек по строкам.
 struct FlowRow: Layout {
-    var spacing: CGFloat = 6
+    var spacing: CGFloat = DS.Space.s1
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)
@@ -133,12 +134,12 @@ struct SegmentBar<Item: Hashable>: View {
                 let selected = item == selection
                 Button { selection = item } label: {
                     Text(title(item))
-                        .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(selected ? .semibold : .medium))
+                        .font(.custom(DS.FontFamily.sans, size: 13, relativeTo: .footnote).weight(.medium))
                         .foregroundStyle(selected ? DS.Color.fgDefault : DS.Color.fgMuted)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
-                        .frame(maxWidth: .infinity, minHeight: 30)
-                        .padding(.vertical, 2)
+                        .frame(maxWidth: .infinity, minHeight: 18)
+                        .padding(.vertical, 7)
                         .background {
                             if selected {
                                 RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous)
@@ -153,13 +154,13 @@ struct SegmentBar<Item: Hashable>: View {
             }
         }
         .padding(3)
-        .background(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous).fill(DS.Color.bgSubtle))
+        .background(RoundedRectangle(cornerRadius: DS.Radius.s + 2, style: .continuous).fill(DS.Color.bgSubtle))
     }
 }
 
 /// Карточка экрана куратора — та же бумага с линией, что «Сегодня» у клиента.
 struct CuratorCard<Content: View>: View {
-    var padding: CGFloat = DS.Space.s4
+    var padding = EdgeInsets(top: DS.Space.s3, leading: 14, bottom: DS.Space.s3, trailing: 14)
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -235,9 +236,9 @@ struct ProfileAvatar: View {
 
     var body: some View {
         Text(verbatim: initial)
-            .font(.custom(DS.FontFamily.sans, size: 20, relativeTo: .title3).weight(.semibold))
+            .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .headline).weight(.semibold))
             .foregroundStyle(DS.Color.fgDefault)
-            .frame(width: DS.Size.control, height: DS.Size.control)
+            .frame(width: DS.Size.touch, height: DS.Size.touch)
             .background(Circle().fill(DS.Color.bgSubtle))
     }
 }

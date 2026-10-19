@@ -28,10 +28,17 @@ struct ClientCardScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { write() } label: { Label("Написать", systemImage: "bubble.left") }
-                    .labelStyle(.titleAndIcon)
-                    .buttonStyle(DSButtonStyle(.secondary, size: .small))
-                    .accessibilityIdentifier("card.write")
+                Button { write() } label: {
+                    Label("Написать", systemImage: "bubble.left")
+                        .labelStyle(.titleAndIcon)
+                        .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout).weight(.medium))
+                        .foregroundStyle(DS.Color.primaryDefault)
+                        .padding(.horizontal, 14)
+                        .frame(height: 36)
+                        .background(Capsule().fill(DS.Color.primarySoft))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("card.write")
             }
         }
         .accessibilityElement(children: .contain)
@@ -162,7 +169,7 @@ struct ClientCardContent: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DS.Space.s4) {
+            VStack(alignment: .leading, spacing: DS.Space.s3) {
                 ClientHeader(client: detail.client, streak: streak, today: today)
                 SegmentBar(items: ClientCardTab.allCases, selection: $tab, title: \.title, identifier: \.rawValue)
                 switch tab {
@@ -191,16 +198,16 @@ private struct ClientHeader: View {
     let today: String
 
     var body: some View {
-        HStack(spacing: DS.Space.s4) {
+        HStack(spacing: DS.Space.s3) {
             InitialsAvatar(name: client.displayName, size: 52)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(client.displayName)
-                    .dsText(DS.Typography.title1)
+                    .dsText(DS.Typography.title2)
                     .foregroundStyle(DS.Color.fgDefault)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("card.name")
                 if !meta.isEmpty {
-                    Text(meta).dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                    Text(meta).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

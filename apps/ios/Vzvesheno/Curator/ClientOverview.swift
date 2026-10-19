@@ -17,11 +17,11 @@ struct ClientOverview: View {
     private var day: ClientDay? { detail.days.first { $0.date == today } ?? detail.days.first }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Space.s4) {
+        VStack(alignment: .leading, spacing: DS.Space.s3) {
             if let day {
                 DayCard(day: day, plan: day.plan ?? detail.weeklyPlan)
             }
-            Grid(horizontalSpacing: DS.Space.s3, verticalSpacing: DS.Space.s3) {
+            Grid(horizontalSpacing: 10, verticalSpacing: 10) {
                 GridRow {
                     WeightGoalTile(detail: detail, onEdit: actions.editWeightGoal)
                     WaterGoalTile(goal: detail.waterGoal, drunk: day?.water?.glasses ?? 0, hiddenCaption: waterCaption,
@@ -29,10 +29,10 @@ struct ClientOverview: View {
                 }
             }
             DiaryCard(days: detail.days, today: today, plan: detail.weeklyPlan, calendar: calendar, showEarlier: $showEarlier)
-            ActivityCard(days: detail.days, today: today, calendar: calendar)
             if !detail.photos.isEmpty {
                 PhotosCard(photos: detail.photos)
             }
+            ActivityCard(days: detail.days, today: today, calendar: calendar)
             if !notices.isEmpty {
                 NoticesCard(notices: Array(notices.prefix(5)))
             }
@@ -50,32 +50,29 @@ private struct DayCard: View {
     let plan: Macros?
 
     var body: some View {
-        CuratorCard(padding: DS.Space.s5) {
-            VStack(alignment: .leading, spacing: DS.Space.s3) {
+        CuratorCard {
+            VStack(alignment: .leading, spacing: DS.Space.s2) {
                 HStack {
                     Text("Сегодня").dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault)
                     Spacer()
                     if day.alerts.contains(where: { $0.level == "red" }) {
-                        CuratorBadge(text: "Алерт КБЖУ", tone: .danger).accessibilityIdentifier("card.alert")
+                        CuratorBadge(text: "Алерт КБЖУ", tone: .danger)
+                            .accessibilityLabel("Алерт КБЖУ: \(day.alerts.map(\.message).joined(separator: "; "))")
+                            .accessibilityIdentifier("card.alert")
                     }
                 }
-                HStack(alignment: .firstTextBaseline, spacing: DS.Space.s2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(grams(day.kbzhu.calories))
-                        .font(.custom(DS.FontFamily.sans, size: 34, relativeTo: .largeTitle).weight(.semibold))
-                        .monospacedDigit()
+                        .dsText(DS.Typography.numL)
                         .foregroundStyle(DS.Color.fgDefault)
-                    Text(kcalLine).dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                    Text(kcalLine).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 macro("Б", day.kbzhu.protein, plan?.protein, fill: DS.Color.macroProtein, text: DS.Color.macroProteinFg)
                 macro("Ж", day.kbzhu.fat, plan?.fat, fill: DS.Color.macroFat, text: DS.Color.macroFatFg)
                 macro("У", day.kbzhu.carbs, plan?.carbs, fill: DS.Color.macroCarbs, text: DS.Color.macroCarbsFg)
-                if !day.alerts.isEmpty {
-                    ForEach(day.alerts, id: \.self) { alert in
-                        Text(alert.message)
-                            .dsText(DS.Typography.caption)
-                            .foregroundStyle(alert.level == "red" ? DS.Color.statusDangerFg : DS.Color.statusWarningFg)
-                    }
+                ForEach(day.alerts.filter { $0.level != "red" }, id: \.self) { alert in
+                    Text(alert.message).dsText(DS.Typography.caption).foregroundStyle(DS.Color.statusWarningFg)
                 }
             }
         }
@@ -91,12 +88,13 @@ private struct DayCard: View {
     }
 
     private func macro(_ letter: String, _ eaten: Double, _ goal: Double?, fill: Color, text: Color) -> some View {
-        HStack(spacing: DS.Space.s3) {
-            Text(letter).dsText(DS.Typography.headline).foregroundStyle(text).frame(width: 18, alignment: .leading)
+        HStack(spacing: DS.Space.s2) {
+            Text(letter).font(.custom(DS.FontFamily.sans, size: 12, relativeTo: .caption).weight(.semibold))
+                .foregroundStyle(text).frame(width: 22, alignment: .leading)
             TodayBar(fraction: goal.map { $0 > 0 ? eaten / $0 : 0 } ?? 0, color: fill)
             Text(goal.map { "\(grams(eaten)) / \(grams($0)) г" } ?? "\(grams(eaten)) г")
-                .dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted).monospacedDigit()
-                .frame(minWidth: 96, alignment: .trailing)
+                .dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted).monospacedDigit()
+                .frame(minWidth: 72, alignment: .leading)
         }
         .accessibilityElement(children: .combine)
     }
@@ -113,12 +111,12 @@ private struct WeightGoalTile: View {
         Button(action: onEdit) {
             CuratorCard {
                 VStack(alignment: .leading, spacing: DS.Space.s2) {
-                    Text("Вес").dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                    Text("Вес").dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                     WeightSparkline(values: points.map(\.weight), target: detail.client.targetWeight)
-                        .frame(height: 44)
-                    (Text(current).font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.semibold))
+                        .frame(height: 40)
+                    (Text(current).font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout).weight(.bold))
                         + Text(" · цель ") + Text(target).foregroundStyle(DS.Color.primaryDefault))
-                        .dsText(DS.Typography.callout)
+                        .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout))
                         .foregroundStyle(DS.Color.fgDefault)
                         .accessibilityIdentifier("card.weightGoal")
                     if let trend {
@@ -196,20 +194,19 @@ private struct WaterGoalTile: View {
     var body: some View {
         CuratorCard {
             VStack(alignment: .leading, spacing: DS.Space.s2) {
-                Text("Вода, стаканов в день").dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                Text("Вода, стаканов в день").dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                     .fixedSize(horizontal: false, vertical: true)
                 if let goal {
                     HStack {
                         stepButton("minus", label: "Меньше") { onChange(max(1, goal - 1)) }.disabled(goal <= 1)
-                        Text("\(goal)").dsText(DS.Typography.numL).foregroundStyle(DS.Color.fgDefault)
+                        Text("\(goal)").dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault)
                             .frame(maxWidth: .infinity)
                             .accessibilityIdentifier("card.waterGoal")
                         stepButton("plus", label: "Больше") { onChange(min(30, goal + 1)) }.disabled(goal >= 30)
                     }
-                    .padding(.horizontal, DS.Space.s2)
-                    .frame(minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous).fill(DS.Color.bgSubtle))
-                    Text("сегодня выпито \(drunk)").dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                    .frame(minHeight: 36)
+                    .background(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous).fill(DS.Color.bgSubtle))
+                    Text("сегодня выпито \(drunk)").dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                     Button("Убрать") { onChange(nil) }
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.primaryDefault)
@@ -231,7 +228,7 @@ private struct WaterGoalTile: View {
     private func stepButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon).font(.system(.body).weight(.semibold)).foregroundStyle(DS.Color.fgDefault)
-                .frame(width: 36, height: 44)
+                .frame(width: 40, height: 36)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -247,12 +244,12 @@ private struct DiaryCard: View {
     @Binding var showEarlier: Bool
 
     var body: some View {
-        CuratorCard(padding: DS.Space.s5) {
+        CuratorCard {
             VStack(alignment: .leading, spacing: 0) {
-                Text("Дневник").dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault).padding(.bottom, DS.Space.s3)
+                Text("Дневник").dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault).padding(.bottom, DS.Space.s1)
                 ForEach(days.prefix(3)) { day in DiaryDayRow(day: day, title: title(day.date), plan: day.plan ?? plan) }
                 if days.count > 3 {
-                    Divider().overlay(DS.Color.lineDefault)
+                    Rectangle().fill(DS.Color.lineDefault).frame(height: 1)
                     Button {
                         showEarlier.toggle()
                     } label: {
@@ -294,15 +291,15 @@ private struct DiaryDayRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Divider().overlay(DS.Color.lineDefault)
+            Rectangle().fill(DS.Color.lineDefault).frame(height: 1)
             Button { expanded.toggle() } label: {
                 HStack {
-                    Text(title).dsText(DS.Typography.body).foregroundStyle(DS.Color.fgDefault)
+                    Text(title).dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgDefault)
                     Spacer()
-                    Text(total).dsText(DS.Typography.body).monospacedDigit()
+                    Text(total).dsText(DS.Typography.callout).monospacedDigit()
                         .foregroundStyle(over ? DS.Color.statusDangerFg : DS.Color.fgDefault)
                 }
-                .padding(.vertical, DS.Space.s3)
+                .padding(.vertical, DS.Space.s2)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -366,7 +363,7 @@ private struct ActivityCard: View {
     let calendar: DayCalendar
 
     var body: some View {
-        CuratorCard(padding: DS.Space.s5) {
+        CuratorCard {
             VStack(alignment: .leading, spacing: DS.Space.s2) {
                 Text("Активность").dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault)
                 if let day = days.first {
@@ -406,15 +403,15 @@ private struct PhotosCard: View {
     let photos: [WeekPhoto]
 
     var body: some View {
-        CuratorCard(padding: DS.Space.s5) {
+        CuratorCard {
             VStack(alignment: .leading, spacing: DS.Space.s3) {
                 Text("Фото недели").dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: DS.Space.s3) {
+                    HStack(spacing: DS.Space.s2) {
                         ForEach(photos) { photo in
                             AttachmentImage(url: photo.url)
                                 .frame(width: 72, height: 96)
-                                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous))
+                                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous))
                                 .accessibilityLabel("Фото недели с \(DayText.dayMonth(photo.weekStart))")
                         }
                     }
@@ -429,7 +426,7 @@ private struct NoticesCard: View {
     let notices: [ClientNotice]
 
     var body: some View {
-        CuratorCard(padding: DS.Space.s5) {
+        CuratorCard {
             VStack(alignment: .leading, spacing: DS.Space.s2) {
                 Text("Оповещения").dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault)
                 ForEach(notices) { notice in

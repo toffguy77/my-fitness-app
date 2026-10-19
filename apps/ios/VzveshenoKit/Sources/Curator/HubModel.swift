@@ -7,6 +7,8 @@ import Observation
 /// Тон бейджа причины.
 public enum BadgeTone: Sendable, Equatable {
     case danger, warning, info, neutral
+    /// Цвет действия: «Ожидает отзыв» ждёт куратора, а не тревожит.
+    case accent
 }
 
 /// Бейдж причины «Требуют внимания»: «Алерт КБЖУ · 132%».
@@ -125,7 +127,8 @@ public enum AttentionGrouping {
 
     static func tone(_ reason: AttentionReason?) -> BadgeTone {
         switch reason {
-        case .redAlert, .awaitingFeedback: return .danger
+        case .redAlert: return .danger
+        case .awaitingFeedback: return .accent
         case .overdueTask: return .warning
         case .unreadMessage: return .info
         case .inactive, .incompleteProfile, .none: return .neutral

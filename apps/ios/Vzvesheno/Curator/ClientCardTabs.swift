@@ -33,7 +33,7 @@ struct ClientPlanTab: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s4) {
             if let active = plans.first(where: \.isActive) {
-                CuratorCard(padding: DS.Space.s5) {
+                CuratorCard {
                     VStack(alignment: .leading, spacing: DS.Space.s3) {
                         HStack {
                             Text("Активный план").dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault)
@@ -55,6 +55,7 @@ struct ClientPlanTab: View {
                         }
                     }
                 }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("plan.active")
             } else {
                 Text("Активного плана нет — клиент видит нормы автоматического расчёта.")
@@ -133,7 +134,7 @@ struct ClientReportsTab: View {
                 Text("Клиент ещё не отправлял недельных отчётов").dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
             }
             ForEach(reports) { report in
-                CuratorCard(padding: DS.Space.s5) {
+                CuratorCard {
                     VStack(alignment: .leading, spacing: DS.Space.s3) {
                         HStack(alignment: .firstTextBaseline) {
                             Text(report.periodTitle).dsText(DS.Typography.headline).foregroundStyle(DS.Color.fgDefault)
@@ -149,6 +150,7 @@ struct ClientReportsTab: View {
                             .accessibilityIdentifier("report.feedback.\(report.id)")
                     }
                 }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("report.\(report.id)")
             }
         }

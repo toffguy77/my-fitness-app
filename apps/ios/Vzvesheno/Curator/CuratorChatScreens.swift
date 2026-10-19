@@ -47,29 +47,32 @@ struct ConversationListContent<Avatar: View>: View {
     @ViewBuilder var avatar: Avatar
 
     var body: some View {
-        List {
-            CuratorTitle(title: "Чаты") { avatar }.plainRow()
-            if let error {
-                LoadFailedView(text: error, retry: onRetry).plainRow()
-            } else if loaded, conversations.isEmpty {
-                Text("Переписок пока нет").dsText(DS.Typography.body).foregroundStyle(DS.Color.fgMuted).plainRow()
-            } else if !loaded {
-                DSSpinner("Загружаем переписки").frame(maxWidth: .infinity).plainRow()
-            }
-            ForEach(Array(conversations.enumerated()), id: \.element.id) { index, conversation in
-                Button { onOpen(conversation) } label: {
-                    ConversationRow(conversation: conversation, time: conversation.lastMessage.map {
-                        CuratorText.relative($0.createdAt, now: now, calendar: calendar)
-                    })
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.Space.s3) {
+                CuratorTitle(title: "Чаты") { avatar }
+                if let error {
+                    LoadFailedView(text: error, retry: onRetry)
+                } else if loaded, conversations.isEmpty {
+                    Text("Переписок пока нет").dsText(DS.Typography.body).foregroundStyle(DS.Color.fgMuted)
+                } else if !loaded {
+                    DSSpinner("Загружаем переписки").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("conversation.\(conversation.clientID)")
-                .cardRow(position: .of(index, conversations.count))
+                CardGroup {
+                    ForEach(Array(conversations.enumerated()), id: \.element.id) { index, conversation in
+                        Button { onOpen(conversation) } label: {
+                            ConversationRow(conversation: conversation, time: conversation.lastMessage.map {
+                                CuratorText.relative($0.createdAt, now: now, calendar: calendar)
+                            })
+                            .cardRow(position: .of(index, conversations.count))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("conversation.\(conversation.clientID)")
+                    }
+                }
             }
+            .padding(.horizontal, DS.Space.screenX)
+            .padding(.bottom, DS.Space.s6)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .environment(\.defaultMinListRowHeight, 0)
         .background(DS.Color.bgCanvas)
     }
 }
@@ -134,15 +137,6 @@ struct CuratorConversationScreen: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
-        .toolbar {
-            if let clientID = conversation?.clientID {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { openCard(clientID) } label: { Image(systemName: "person") }
-                        .accessibilityLabel("Карточка клиента")
-                        .accessibilityIdentifier("conversation.card")
-                }
-            }
-        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.curatorConversation")
         .task {
@@ -208,6 +202,7 @@ struct CuratorConversationScreen: View {
                     attach: { showLibrary = true },
                     loadEarlier: { Task { await conversation.loadEarlier() } },
                     enterFood: { foodPhoto = $0 },
+                    openCard: { if let id = conversation.clientID { openCard(id) } },
                     open: { message in
                         Task { preview = await AttachmentFiles.local(message, files: model.files, accountID: conversation.curatorID) }
                     }))
@@ -248,6 +243,7 @@ struct CuratorConversationActions {
     var attach: () -> Void = {}
     var loadEarlier: () -> Void = {}
     var enterFood: (ChatMessage) -> Void = { _ in }
+    var openCard: () -> Void = {}
     var open: (ChatMessage) -> Void = { _ in }
 }
 
@@ -300,18 +296,29 @@ struct CuratorConversationContent: View {
 
     private var header: some View {
         VStack(spacing: 0) {
-            HStack(spacing: DS.Space.s3) {
-                InitialsAvatar(name: name, size: 40)
+            HStack(spacing: 10) {
+                InitialsAvatar(name: name, size: 38)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(name).dsText(DS.Typography.title3).foregroundStyle(DS.Color.fgDefault)
+                        .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("conversation.name")
                     Text(typing ? "печатает…" : subtitle).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                         .accessibilityIdentifier("conversation.subtitle")
                 }
                 Spacer(minLength: 0)
+                Button(action: actions.openCard) {
+                    Image(systemName: "person")
+                        .font(.system(size: 17))
+                        .foregroundStyle(DS.Color.fgDefault)
+                        .frame(width: 40, height: 40)
+                        .background(Circle().fill(DS.Color.bgSubtle))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Карточка клиента")
+                .accessibilityIdentifier("conversation.card")
             }
-            .padding(.horizontal, DS.Space.screenX)
-            .padding(.vertical, DS.Space.s2)
+            .padding(.horizontal, DS.Space.s4)
+            .padding(.vertical, 10)
             Rectangle().fill(DS.Color.lineDefault).frame(height: 1)
         }
     }
@@ -324,10 +331,10 @@ struct CuratorConversationContent: View {
             if message.kind == .image, !mine {
                 Button { actions.enterFood(message) } label: {
                     Label("Ввести КБЖУ", systemImage: "plus")
-                        .dsText(DS.Typography.headline)
+                        .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout).weight(.medium))
                         .foregroundStyle(DS.Color.primaryDefault)
-                        .padding(.horizontal, DS.Space.s4)
-                        .frame(minHeight: 36)
+                        .padding(.horizontal, DS.Space.s3)
+                        .frame(minHeight: 34)
                         .background(Capsule().fill(DS.Color.primarySoft))
                 }
                 .buttonStyle(.plain)
@@ -390,7 +397,7 @@ struct FoodEntryContent: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DS.Space.s4) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Button("Отмена", action: onCancel)
                         .dsText(DS.Typography.headline).foregroundStyle(DS.Color.primaryDefault)
@@ -406,13 +413,13 @@ struct FoodEntryContent: View {
                         .accessibilityIdentifier("food.done")
                 }
                 .padding(.top, DS.Space.s5)
-                HStack(alignment: .top, spacing: DS.Space.s4) {
+                HStack(alignment: .center, spacing: DS.Space.s3) {
                     AttachmentImage(url: photoURL)
                         .frame(width: 64, height: 64)
-                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.s + 2, style: .continuous))
                         .accessibilityHidden(true)
                     Text("Запись попадёт в дневник клиента с пометкой «Добавлено куратором», в чате появится карточка.")
-                        .dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
+                        .dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 SegmentBar(items: MealType.allCases, selection: $draft.meal, title: \.title, identifier: \.rawValue)
@@ -420,7 +427,7 @@ struct FoodEntryContent: View {
                     row("Блюдо") {
                         TextField("Например, омлет", text: $draft.name)
                             .multilineTextAlignment(.trailing)
-                            .font(.custom(DS.FontFamily.sans, size: 17, relativeTo: .body).weight(.medium))
+                            .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.medium))
                             .accessibilityIdentifier("food.name")
                     }
                     divider
@@ -475,16 +482,16 @@ struct FoodEntryContent: View {
     private var divider: some View { Rectangle().fill(DS.Color.lineDefault).frame(height: 1) }
 
     private func group<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        CuratorCard(padding: 0) { VStack(spacing: 0) { content() } }
+        CuratorCard(padding: EdgeInsets()) { VStack(spacing: 0) { content() } }
     }
 
     private func row<Field: View>(_ title: String, color: Color = DS.Color.fgDefault, @ViewBuilder field: () -> Field) -> some View {
         HStack {
-            Text(title).dsText(DS.Typography.body).foregroundStyle(color)
+            Text(title).dsText(DS.Typography.callout).foregroundStyle(color)
             Spacer(minLength: DS.Space.s3)
             field()
         }
-        .padding(.horizontal, DS.Space.s4)
+        .padding(.horizontal, 14)
         .frame(minHeight: 48)
     }
 
@@ -493,7 +500,7 @@ struct FoodEntryContent: View {
             TextField("0", text: value)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
-                .font(.custom(DS.FontFamily.sans, size: 17, relativeTo: .body).weight(.semibold))
+                .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.medium))
                 .monospacedDigit()
                 .accessibilityLabel(title)
                 .accessibilityIdentifier(id)

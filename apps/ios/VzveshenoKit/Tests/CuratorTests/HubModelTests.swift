@@ -72,6 +72,7 @@ final class HubModelTests: XCTestCase {
         XCTAssertEqual(groups.first { $0.clientID == 12 }?.badges.first?.text, "Просроченная задача")
         XCTAssertEqual(groups.first { $0.clientID == 14 }?.badges.first?.text, "Ожидает отзыв")
         XCTAssertEqual(groups.first { $0.clientID == 11 }?.badges.map(\.tone), [.danger, .info])
+        XCTAssertEqual(groups.first { $0.clientID == 14 }?.badges.map(\.tone), [.accent])
     }
 
     func testEmptyAttentionHidesBlock() async {
