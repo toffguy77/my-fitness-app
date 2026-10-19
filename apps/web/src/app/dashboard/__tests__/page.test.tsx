@@ -460,11 +460,10 @@ describe('Недельный отчёт со страницы дашборда',
     // воскресенье прошлой недели.
     it('границы недели — местные даты, а не даты по UTC', async () => {
         const { dashboardApi } = jest.requireMock('@/features/dashboard/api/dashboardApi')
-        const previousTZ = process.env.TZ
         const previousWeek = mockSelectedWeek
-        process.env.TZ = 'Asia/Yekaterinburg'
+        // Пояс прогона — Москва (jest.global-setup.js).
         try {
-            // 00:30 понедельника 12 октября по Екатеринбургу — 11 октября по UTC.
+            // 00:30 понедельника 12 октября по Москве — 11 октября по UTC.
             mockSelectedWeek = { start: new Date(2026, 9, 12, 0, 30), end: new Date(2026, 9, 18, 0, 30) }
             expect(mockSelectedWeek.start.toISOString().slice(0, 10)).toBe('2026-10-11')
 
@@ -476,7 +475,6 @@ describe('Недельный отчёт со страницы дашборда',
             })
         } finally {
             mockSelectedWeek = previousWeek
-            process.env.TZ = previousTZ
         }
     })
 
