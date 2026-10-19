@@ -328,17 +328,15 @@ final class AccessibilityAuditUITests: XCTestCase {
 
     /// Каждый раздел профиля.
     func testSettingsSections() throws {
-        let app = launch("client")
         for section in ["name", "body-goals", "locale", "notifications", "telegram", "password", "sign-in", "export", "delete"] {
+            // Каждый раздел — с нового запуска: без догадок о кнопке «Назад».
+            let app = launch("client")
             wait(app, "header.profile").tap()
             scrollTo(app, "profile.\(section)").tap()
             // Раздел грузит данные: аудит — по загруженному экрану.
             Thread.sleep(forTimeInterval: 1.5)
             try audit(app, "настройки: \(section)")
-            // Назад к «Сегодня»: «Профиль» открыт поверх него.
-            for _ in 0..<2 where app.navigationBars.buttons.firstMatch.exists {
-                app.navigationBars.buttons.firstMatch.tap()
-            }
+            app.terminate()
         }
     }
 
