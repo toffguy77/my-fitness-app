@@ -33,10 +33,14 @@ final class OfflineUITests: XCTestCase {
         tab.tap()
     }
 
-    /// Плашка без сети с подписью времени сохранённого ответа.
+    /// Плашка без сети с подписью времени сохранённого ответа — по тексту на
+    /// экране: идентификатор контейнера экрана («screen.hub») SwiftUI отдаёт и
+    /// вложенным элементам, и `banner.offline` там не виден.
     private func assertOfflineWithLabel(_ app: XCUIApplication, _ screen: String) {
-        let banner = wait(app, "banner.offline")
-        XCTAssertTrue(banner.label.contains("Обновлено"), "\(screen): \(banner.label)")
+        let offline = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Нет подключения")).firstMatch
+        XCTAssertTrue(offline.waitForExistence(timeout: 10), "\(screen): нет плашки: \(app.screenSummary)")
+        let updated = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Обновлено")).firstMatch
+        XCTAssertTrue(updated.exists, "\(screen): нет подписи «Обновлено»: \(app.screenSummary)")
     }
 
     private func back(_ app: XCUIApplication) {
