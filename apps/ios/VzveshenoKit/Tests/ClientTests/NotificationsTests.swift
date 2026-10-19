@@ -195,12 +195,36 @@ final class PushTests: XCTestCase {
     /// «Выполнено» — `POST /dashboard/tasks/9/complete` через очередь, без открытия.
     func testCompleteActionGoesThroughOutbox() async {
         let transport = StubTransport { _ in .success(#"{"task":{"id":"9"},"metric_synced":false}"#) }
-        let performer = PushActionPerformer(outbox: outbox(transport), userID: { 7 })
+        let performer = PushActionPerformer(outbox: outbox(transport), userID: { 7 }, today: { "2026-10-19" })
         let queued = await performer.perform(.completeTask(id: "9"))
         XCTAssertTrue(queued)
         let request = transport.requests.first
         XCTAssertEqual(request?.path, "/api/v1/dashboard/tasks/9/complete")
         XCTAssertNotNil(request?.header("Idempotency-Key"))
+        XCTAssertEqual(request?.json?["date"] as? String, "2026-10-19", "местная дата нажатия, а не день часов сервера")
+    }
+
+    /// Дата фиксируется при нажатии: досылка после полуночи отмечает задачу
+    /// тем днём, когда человек нажал «Выполнено».
+    func testCompleteKeepsTapDateAcrossMidnight() async {
+        let offline = LockedFlag(true)
+        let transport = StubTransport { _ in offline.value ? .offline : .success(#"{"task":{"id":"9"}}"#) }
+        let queue = outbox(transport)
+        let day = LockedValue("2026-10-19")
+        let performer = PushActionPerformer(outbox: queue, userID: { 7 }, today: { day.value })
+        await performer.perform(.completeTask(id: "9"))
+        day.value = "2026-10-20"
+        offline.value = false
+        await queue.drain(userID: 7)
+        let posts = transport.requests(to: "/api/v1/dashboard/tasks/9/complete")
+        XCTAssertEqual(posts.last?.json?["date"] as? String, "2026-10-19")
+    }
+
+    /// По умолчанию — сегодняшний день телефона в формате сервера.
+    func testCompleteDefaultsToDeviceToday() async {
+        let transport = StubTransport { _ in .success(#"{"task":{"id":"9"}}"#) }
+        await PushActionPerformer(outbox: outbox(transport), userID: { 7 }).perform(.completeTask(id: "9"))
+        XCTAssertEqual(transport.requests.first?.json?["date"] as? String, DayCalendar().key(Date()))
     }
 
     /// Ответ из пуша переживает обрыв сети: тот же `Idempotency-Key` при досылке.

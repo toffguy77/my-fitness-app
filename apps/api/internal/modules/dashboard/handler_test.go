@@ -1681,6 +1681,30 @@ func TestCompleteTaskForDate_BasicCompletion(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
+// The iOS app completes a task from a push with the phone's local date at
+// tap time; the queue may deliver it after midnight, so the server must mark
+// the day it was sent, not the day of its own clock.
+func TestCompleteTaskForDate_UsesClientDate(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	task := &Task{ID: "task-9", UserID: 1, Type: "habit", Status: TaskStatusActive, Recurrence: "daily"}
+	mockService.On("CompleteTaskForDate", mock.Anything, int64(1), "task-9", "2026-10-19").Return(task, nil)
+
+	router := gin.New()
+	router.POST("/tasks/:id/complete", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.CompleteTaskForDate(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-9/complete", bytes.NewBufferString(`{"date":"2026-10-19"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+}
+
 func TestCompleteTaskForDate_WorkoutWithData(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
