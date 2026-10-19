@@ -2,6 +2,7 @@
 included:
   - Vzvesheno
   - VzveshenoWidgets
+  - Shared
   - VzveshenoKit/Sources
   - VzveshenoKit/Tests
   - VzveshenoTests

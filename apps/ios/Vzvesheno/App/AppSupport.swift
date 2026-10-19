@@ -4,15 +4,14 @@ import Foundation
 import Health
 import Outbox
 import Session
-#if canImport(WidgetKit)
-import WidgetKit
-#endif
+import Surfaces
 
 /// Всё, что связано с аккаунтом на устройстве, кроме Keychain: стирается при выходе.
 struct AccountEraser: AccountDataEraser {
     let cache: ScreenCache
     let outbox: Outbox
-    let snapshot: DaySnapshotStore
+    let surfaces: SnapshotPublisher
+    let surfaceRoutes: PendingRouteStore
     let health: HealthSync
     let photoWeeks: FilePhotoWeekStore
     let barcodes: BarcodeCache
@@ -26,17 +25,16 @@ struct AccountEraser: AccountDataEraser {
         await health.erase()
         cache.eraseAll()
         await outbox.eraseAll()
-        snapshot.erase()
+        // Снимок дня и виджеты: «Войдите во Взвешено» сразу, без данных
+        // прежнего аккаунта; запоздалая запись «Сегодня» уже не пройдёт.
+        surfaces.erase()
+        surfaceRoutes.erase()
         photoWeeks.erase()
         barcodes.eraseAll()
         shoppingMarks.erase()
         timeZones.erase()
         // Вложения переписки и архив выгрузки данных.
         files.eraseAll()
-        #if canImport(WidgetKit)
-        // Виджет не показывает данные прежнего аккаунта ни минуты.
-        WidgetCenter.shared.reloadAllTimelines()
-        #endif
     }
 }
 
