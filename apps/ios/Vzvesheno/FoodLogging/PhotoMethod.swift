@@ -33,6 +33,7 @@ struct PhotoResultContent: View {
                             .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.medium))
                             .foregroundStyle(DS.Color.primaryDefault)
                             .frame(minHeight: DS.Size.touch)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("photo.retake")
@@ -122,6 +123,7 @@ private struct RecognitionRow: View {
                         .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .subheadline).weight(.medium))
                         .foregroundStyle(DS.Color.primaryDefault)
                         .frame(minHeight: DS.Size.touch)
+                        .touchTarget()
                         .accessibilityIdentifier("photo.find.\(item.id)")
                 }
             } else {

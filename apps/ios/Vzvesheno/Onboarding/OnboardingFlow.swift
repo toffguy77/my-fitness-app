@@ -47,6 +47,9 @@ struct OnboardingFlow: View {
                     Text("Шаг \(step.rawValue + 1) из \(OnboardingStep.allCases.count)")
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.fgMuted)
+                        // Панель навигации не растёт с Dynamic Type: крупная
+                        // подпись — долгим нажатием (Large Content Viewer, HIG).
+                        .accessibilityShowsLargeContentViewer()
                 }
             }
         }

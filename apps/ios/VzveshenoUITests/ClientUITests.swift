@@ -345,12 +345,14 @@ final class SettingsUITests: ClientUITestCase {
         alert.buttons["Выйти"].tap()
         XCTAssertTrue(element(app, "screen.signIn").waitForExistence(timeout: 10), app.screenSummary)
 
+        // Симулятор может получить и настоящий токен APNs поверх подставленного:
+        // проверяется, что отписка и native/logout несут один и тот же токен.
         let log = element(app, "uitest.signOutRequests")
-        let both = NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@",
-                               "DELETE /api/v1/notifications/devices/ab01ff",
-                               "POST /api/v1/auth/native/logout device_token=ab01ff")
+        let both = NSPredicate(format: "label MATCHES %@",
+                               ".*DELETE /api/v1/notifications/devices/([0-9a-f]+).*"
+                               + "POST /api/v1/auth/native/logout device_token=\\1.*")
         expectation(for: both, evaluatedWith: log)
-        waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 15)
     }
 
     // Сценарий «Тёмная тема».

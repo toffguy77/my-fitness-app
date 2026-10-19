@@ -250,7 +250,7 @@ private struct SupportBubble: View {
     var body: some View {
         VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 2) {
             Text(message.isOutgoing ? "Вы" : message.authorTitle)
-                .font(.custom(DS.FontFamily.sans, size: 11, relativeTo: .caption2).weight(.semibold))
+                .microScaled(weight: .semibold)
                 .textCase(.uppercase)
                 .tracking(0.3)
                 .foregroundStyle(DS.Color.fgSubtle)
@@ -276,6 +276,7 @@ private struct SupportBubble: View {
                     Text(retrying ? "Отправляем ещё раз…" : "Не доставлено в Telegram · Повторить")
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.statusDangerFg)
+                        .touchTarget()
                 }
                 .buttonStyle(.plain)
                 .disabled(retrying)

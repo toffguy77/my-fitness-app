@@ -410,6 +410,7 @@ struct FoodEntryContent: View {
                 HStack {
                     Button("Отмена", action: onCancel)
                         .dsText(DS.Typography.headline).foregroundStyle(DS.Color.primaryDefault)
+                        .touchTarget()
                         .accessibilityIdentifier("food.cancel")
                     Spacer()
                     Text("Запись для \(FoodEntryContent.genitive(clientName))")

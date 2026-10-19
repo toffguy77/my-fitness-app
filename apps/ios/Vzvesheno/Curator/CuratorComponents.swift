@@ -96,6 +96,7 @@ struct SegmentBar<Item: Hashable>: View {
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, minHeight: 18)
                         .padding(.vertical, 7)
+                        .contentShape(Rectangle())
                         .background {
                             if selected {
                                 RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous)

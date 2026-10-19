@@ -140,7 +140,7 @@ struct SearchField: View {
                 .submitLabel(.search)
                 .accessibilityIdentifier("hub.search")
             if !text.isEmpty {
-                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(DS.Color.fgSubtle) }
+                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(DS.Color.fgSubtle).touchTarget() }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Очистить поиск")
             }

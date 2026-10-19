@@ -212,6 +212,7 @@ private struct WaterGoalTile: View {
                     Button("Убрать") { onChange(nil) }
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.primaryDefault)
+                        .touchTarget()
                         .accessibilityIdentifier("card.waterGoal.remove")
                 } else {
                     if let hiddenCaption {
@@ -232,6 +233,7 @@ private struct WaterGoalTile: View {
         Button(action: action) {
             Image(systemName: icon).font(.system(.body).weight(.semibold)).foregroundStyle(DS.Color.fgDefault)
                 .frame(width: 40, height: 36)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

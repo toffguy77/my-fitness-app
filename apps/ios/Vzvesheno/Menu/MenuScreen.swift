@@ -119,7 +119,7 @@ struct BetaNote: View {
         VStack(alignment: .leading, spacing: DS.Space.s1) {
             HStack(spacing: DS.Space.s2) {
                 Text("бета")
-                    .dsText(DS.Typography.micro)
+                    .microScaled()
                     .foregroundStyle(DS.Color.primaryFg)
                     .padding(.horizontal, DS.Space.s2)
                     .background(Capsule().fill(DS.Color.primaryDefault))
@@ -253,6 +253,7 @@ struct MealPlanDayContent: View {
                                 Image(systemName: item.locked ? "lock.fill" : "lock.open")
                                     .foregroundStyle(DS.Color.fgDefault)
                                     .frame(width: DS.Size.touch, height: DS.Size.touch)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(item.locked ? "Открепить" : "Закрепить")
@@ -288,6 +289,7 @@ struct MealPlanDayContent: View {
             Image(systemName: icon).font(.system(size: 18, weight: .medium))
                 .foregroundStyle(model.canShift(days) ? DS.Color.fgDefault : DS.Color.fgSubtle)
                 .frame(width: 36, height: DS.Size.touch)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!model.canShift(days))

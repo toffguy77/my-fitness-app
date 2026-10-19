@@ -17,6 +17,7 @@ struct AddFoodContent<Method: View>: View {
                     .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.medium))
                     .foregroundStyle(DS.Color.primaryDefault)
                     .frame(minHeight: DS.Size.touch)
+                    .touchTarget()
                     .accessibilityIdentifier("addFood.cancel")
                 Spacer()
                 Menu {
@@ -92,6 +93,7 @@ struct FoodSearchContent: View {
                 if !query.isEmpty {
                     Button { query = "" } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(DS.Color.fgSubtle)
+                            .touchTarget()
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Очистить")
@@ -235,6 +237,7 @@ struct PortionCard: View {
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.fgMuted)
                         .multilineTextAlignment(.trailing)
+                        .touchTarget()
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("portion.wheelToggle")

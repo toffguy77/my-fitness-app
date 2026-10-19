@@ -48,8 +48,7 @@ struct SourceTag: View {
 
     var body: some View {
         Text(text)
-            .dsText(DS.Typography.micro)
-            .fontWeight(.regular)
+            .microScaled(weight: .regular)
             .foregroundStyle(DS.Color.fgSubtle)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
