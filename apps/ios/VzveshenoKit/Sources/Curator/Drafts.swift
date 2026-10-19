@@ -33,7 +33,7 @@ public struct PlanDraft: Sendable, Equatable {
         editing = false
     }
 
-    public init(plan: WeeklyPlan) {
+    public init(plan: ClientPlan) {
         calories = DecimalInput.text(plan.macros.calories)
         protein = DecimalInput.text(plan.macros.protein)
         fat = DecimalInput.text(plan.macros.fat)
@@ -112,7 +112,7 @@ public struct TaskDraft: Sendable, Equatable {
         editing = false
     }
 
-    public init(task: CuratorTask) {
+    public init(task: ClientTask) {
         title = task.title
         kind = task.kind ?? .habit
         deadline = task.deadline

@@ -86,7 +86,7 @@ final class ClientCardModelTests: XCTestCase {
 
     // Сценарий «Правка существующего плана»: даты недоступны и не уходят.
     func testEditingPlanLocksDates() async throws {
-        let plan = WeeklyPlan(id: "w1", macros: Macros(calories: 2240, protein: 120, fat: 75, carbs: 250), startDate: "2026-10-13",
+        let plan = ClientPlan(id: "w1", macros: Macros(calories: 2240, protein: 120, fat: 75, carbs: 250), startDate: "2026-10-13",
                               endDate: "2026-10-19", comment: "Держим белок", isActive: true)
         var draft = PlanDraft(plan: plan)
         XCTAssertFalse(draft.datesEditable)

@@ -219,6 +219,33 @@ public final class CuratorConversationModel {
         }
     }
 
+    /// Фото куратора: загрузка `POST …/upload`, затем сообщение с адресом файла.
+    @discardableResult
+    public func send(_ attachment: AttachmentDraft) async -> Bool {
+        if let rejection = attachment.rejection {
+            notice = rejection
+            return false
+        }
+        guard let conversation, !sending else { return false }
+        sending = true
+        defer { sending = false }
+        do {
+            let form = MultipartForm(fields: [:], file: (name: "file", filename: attachment.fileName, mime: attachment.mimeType,
+                                                         data: attachment.data))
+            let uploaded: ChatAttachment = try await api.send(Endpoint(method: .post,
+                                                                       path: "/api/v1/conversations/\(conversation.id)/upload",
+                                                                       body: form.body, contentType: form.contentType))
+            let type = uploaded.mimeType.hasPrefix("image/") ? "image" : "file"
+            let message: ChatMessage = try await api.send(try Endpoint.post("/api/v1/conversations/\(conversation.id)/messages",
+                                                                            body: Body(type: type, content: uploaded.fileURL)))
+            merge([message])
+            return true
+        } catch {
+            notice = ErrorMessages().message(for: error)
+            return false
+        }
+    }
+
     /// «Записать в дневник»: `POST …/messages/:msgId/food-entry`. Бросает —
     /// лист остаётся открытым с введённым.
     public func submitFoodEntry(_ draft: FoodEntryDraft, photo: ChatMessage) async throws {

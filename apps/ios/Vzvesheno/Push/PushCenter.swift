@@ -75,20 +75,32 @@ final class PushCenter: NSObject, UNUserNotificationCenterDelegate {
         ]
     }
 
+    /// Решение по ответу на пуш: текст поля «Ответить» — из
+    /// `UNTextInputNotificationResponse`, остальное — из нагрузки и действия.
+    nonisolated static func decision(for response: UNNotificationResponse) -> PushResponse {
+        decision(userInfo: response.notification.request.content.userInfo, action: response.actionIdentifier,
+                 text: (response as? UNTextInputNotificationResponse)?.userText)
+    }
+
+    nonisolated static func decision(userInfo: [AnyHashable: Any], action: String, text: String?) -> PushResponse {
+        PushRouting.decide(PushPayload(userInfo: userInfo), action: action, text: text)
+    }
+
     /// Пуш при открытом приложении: баннер, кроме сообщения в открытой переписке.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification)
         async -> UNNotificationPresentationOptions {
         let payload = PushPayload(userInfo: notification.request.content.userInfo)
-        let chatOnScreen = await MainActor.run { model?.chat?.isVisible == true }
+        let conversation = payload.target.ids["conversation_id"]
+        let chatOnScreen = await MainActor.run {
+            model?.chat?.isVisible == true
+                || (conversation != nil && model?.curator?.visibleConversationID == conversation)
+        }
         if payload.category == .chatMessage, chatOnScreen { return [] }
         return [.banner, .list, .sound, .badge]
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        let payload = PushPayload(userInfo: response.notification.request.content.userInfo)
-        let action = response.actionIdentifier
-        let text = (response as? UNTextInputNotificationResponse)?.userText
-        let decision = PushRouting.decide(payload, action: action, text: text)
+        let decision = Self.decision(for: response)
         let model = await MainActor.run { self.model }
         await model?.handlePush(decision)
     }

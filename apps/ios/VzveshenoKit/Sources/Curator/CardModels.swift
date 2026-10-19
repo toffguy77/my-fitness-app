@@ -2,7 +2,7 @@ import Client
 import Foundation
 
 /// План недели (`GET …/weekly-plans`).
-public struct WeeklyPlan: Decodable, Sendable, Equatable, Identifiable {
+public struct ClientPlan: Decodable, Sendable, Equatable, Identifiable {
     public var id: String
     public var macros: Macros
     public var startDate: String
@@ -84,7 +84,7 @@ public enum TaskFilter: String, CaseIterable, Sendable, Identifiable {
 }
 
 /// Задача клиента (`GET …/tasks`).
-public struct CuratorTask: Decodable, Sendable, Equatable, Identifiable {
+public struct ClientTask: Decodable, Sendable, Equatable, Identifiable {
     public var id: String
     public var title: String
     public var type: String

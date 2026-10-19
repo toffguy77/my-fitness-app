@@ -22,8 +22,8 @@ public final class ClientCardModel {
     public private(set) var phase: Phase = .loading
     public private(set) var detail: ClientDetail?
     public private(set) var notices: [ClientNotice] = []
-    public private(set) var plans: [WeeklyPlan] = []
-    public private(set) var tasks: [CuratorTask] = []
+    public private(set) var plans: [ClientPlan] = []
+    public private(set) var tasks: [ClientTask] = []
     public private(set) var reports: [WeeklyReport] = []
     public var taskFilter: TaskFilter = .active
     /// «Не удалось сохранить» и тексты ошибок форм.
@@ -71,11 +71,11 @@ public final class ClientCardModel {
     }
 
     public func loadPlans() async {
-        if let list: [WeeklyPlan] = try? await api.send(.get("\(base)/weekly-plans")) { plans = list }
+        if let list: [ClientPlan] = try? await api.send(.get("\(base)/weekly-plans")) { plans = list }
     }
 
     public func loadTasks() async {
-        if let list: [CuratorTask] = try? await api.send(.get("\(base)/tasks")) { tasks = list }
+        if let list: [ClientTask] = try? await api.send(.get("\(base)/tasks")) { tasks = list }
     }
 
     public func loadReports() async {
@@ -84,10 +84,10 @@ public final class ClientCardModel {
 
     // MARK: Производные
 
-    public var activePlan: WeeklyPlan? { plans.first { $0.isActive } }
-    public var planHistory: [WeeklyPlan] { plans.filter { !$0.isActive } }
+    public var activePlan: ClientPlan? { plans.first { $0.isActive } }
+    public var planHistory: [ClientPlan] { plans.filter { !$0.isActive } }
 
-    public var visibleTasks: [CuratorTask] {
+    public var visibleTasks: [ClientTask] {
         tasks.filter { $0.filter(today: today) == taskFilter }
     }
 
