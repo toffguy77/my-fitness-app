@@ -29,11 +29,11 @@ struct WidgetArc: View {
 
     var body: some View {
         ZStack {
-            HalfArc(progress: 1)
+            WidgetHalfArc(progress: 1)
                 .stroke(tint == .full ? DS.Color.track : DS.Color.fgDefault.opacity(0.25),
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
             if fraction > 0 {
-                HalfArc(progress: fraction)
+                WidgetHalfArc(progress: fraction)
                     .stroke(tint == .full ? DS.Color.primaryDefault : DS.Color.fgDefault,
                             style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                     .widgetAccentable()
@@ -44,7 +44,7 @@ struct WidgetArc: View {
     }
 }
 
-private struct HalfArc: Shape {
+private struct WidgetHalfArc: Shape {
     var progress: Double
 
     func path(in rect: CGRect) -> Path {
