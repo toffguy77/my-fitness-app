@@ -71,6 +71,7 @@ struct MagicLinkView: View {
         defer { working = false }
         do {
             try await model.magicLinks.request(email: email.trimmingCharacters(in: .whitespaces), consents: consents)
+            model.track(ProductEvent.magicLinkRequested)
             sent = true
         } catch {
             errorText = model.messages.message(for: error)

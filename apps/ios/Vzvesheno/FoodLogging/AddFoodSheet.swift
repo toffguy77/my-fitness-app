@@ -125,6 +125,9 @@ struct AddFoodSheet: View {
     private func add(_ drafts: [EntryDraft]) async {
         guard let diary = model.diary else { return }
         await diary.add(drafts)
+        for draft in drafts {
+            model.track(ProductEvent.foodEntryCreated, ["meal_type": draft.meal.rawValue])
+        }
         added += 1
         dismiss()
     }

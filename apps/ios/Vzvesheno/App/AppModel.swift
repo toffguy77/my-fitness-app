@@ -410,6 +410,7 @@ final class AppModel {
             // смену аккаунта человек подтверждает до этого — confirmSwitchingAccount.
             try await session.adopt(newSession)
             magicLinks.forget()
+            identifyAnalytics()
             user = newSession.user
             pendingDeletion = newSession.pendingDeletion
             sessionMessage = nil

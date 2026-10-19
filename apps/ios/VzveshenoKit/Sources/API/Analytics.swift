@@ -49,6 +49,13 @@ public actor AnalyticsClient {
         self.appVersion = appVersion
     }
 
+    /// Связывает установку с аккаунтом после входа (`POST /analytics/identify`,
+    /// как у сайта): события до входа и после — одного человека.
+    public func identify() async {
+        guard let endpoint = try? Endpoint.post("/api/v1/analytics/identify", body: ["visitor_id": visitorID]) else { return }
+        _ = try? await api.sendRaw(endpoint)
+    }
+
     /// Отправляет события; сбой аналитики не мешает работе приложения.
     public func send(_ events: [Event]) async {
         guard !events.isEmpty else { return }
@@ -58,5 +65,39 @@ public actor AnalyticsClient {
             return
         }
         _ = try? await api.sendRaw(Endpoint(method: .post, path: Self.path, body: body, requiresAuth: false))
+    }
+}
+
+/// События приложения — только объявленные в словаре сервера
+/// (`apps/api/internal/modules/analytics/dictionary.go`) и не серверные: имя
+/// или свойство вне словаря сервер отбрасывает. Сверяет `AnalyticsTests`.
+public enum ProductEvent {
+    /// Письмо со ссылкой на вход запрошено. Без свойств.
+    public static let magicLinkRequested = "magic_link_requested"
+    /// Запись в дневник; свойство `meal_type`.
+    public static let foodEntryCreated = "food_entry_created"
+    /// Открыт раздел «Меню». Без свойств.
+    public static let menuOpened = "menu_opened"
+    /// «Подогнать оставшиеся порции». Без свойств.
+    public static let planRefit = "plan_refit"
+    /// «Пересобрать». Без свойств.
+    public static let planRegenerated = "plan_regenerated"
+
+    /// Имя и свойства каждого события приложения.
+    public static let declared: [String: Set<String>] = [
+        magicLinkRequested: [], foodEntryCreated: ["meal_type"], menuOpened: [], planRefit: [], planRegenerated: [],
+    ]
+}
+
+/// Идентификатор посетителя — случайный UUID установки в настройках
+/// приложения, без связи с рекламными идентификаторами устройства.
+public enum AnalyticsVisitor {
+    static let key = "analytics_visitor_id"
+
+    public static func id(in defaults: UserDefaults) -> String {
+        if let existing = defaults.string(forKey: key), UUID(uuidString: existing) != nil { return existing }
+        let fresh = UUID().uuidString.lowercased()
+        defaults.set(fresh, forKey: key)
+        return fresh
     }
 }
