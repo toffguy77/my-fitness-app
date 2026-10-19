@@ -74,9 +74,18 @@ extension AppModel {
         open(Router.link(for: target))
     }
 
+    /// Ссылка, пришедшая до оболочки (холодный запуск, онбординг,
+    /// подтверждение почты, «Обновите приложение»), открывается, как только
+    /// оболочка появилась, — а не только после входа.
+    func openPendingLink() {
+        guard let link = pendingLink else { return }
+        pendingLink = nil
+        open(link)
+    }
+
     func open(_ link: ScreenLink) {
         guard case let .shell(shell, _) = launch else {
-            Task { await pendingLinks.remember(link) }
+            pendingLink = link
             return
         }
         if shell == .client, openFoodTracker(link) { return }

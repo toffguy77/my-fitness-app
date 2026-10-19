@@ -26,7 +26,7 @@ final class AppModel {
     private(set) var launch: LaunchState = .loading
     internal(set) var user: SessionUser?
     private(set) var offline = false
-    private(set) var config: ClientConfig?
+    internal(set) var config: ClientConfig?
     var selectedTab: AppTab?
     var paths: [AppTab: [Destination]] = [:]
     /// Текст над формой входа: «Сессия завершена, войдите снова».
@@ -70,6 +70,9 @@ final class AppModel {
     /// Ссылка входа пришла при открытой сессии — ждёт подтверждения
     /// «Войти в другой аккаунт? Текущий сеанс завершится».
     var authLinkAwaitingConfirmation: AuthLink?
+    /// Отказ сервера на изменение из очереди без своего экрана (Здоровье,
+    /// виджеты у куратора и т. п.) — общее сообщение.
+    var outboxNotice: String?
     /// Справочник компонентов открыт (только Dev-сборка).
     var showCatalogue = false
     /// Здоровье подключено в профиле приложения.
@@ -111,12 +114,18 @@ final class AppModel {
     let barcodeCache: BarcodeCache
     let shoppingMarks: FileShoppingMarks
     var realtimeTask: Task<Void, Never>?
-    let pendingLinks = PendingLinkStore()
+    /// Экран из ссылки или пуша, пришедших до оболочки (`ios-deep-links`).
+    var pendingLink: ScreenLink?
     private let configLoader: ConfigLoader
-    private let configCache: ConfigCache
+    let configCache: ConfigCache
     private var pendingPKCE: PKCEPair?
     private var serverRole: Role?
     private var started = false
+    /// Восстановление сессии из Keychain: досылка, передний план и пуш ждут
+    /// его, иначе они видели бы «никто не вошёл».
+    var restoring: Task<Void, Never>?
+    /// Отказы из расширения виджетов (App Group).
+    let rejections: RejectionLog
 
     init(environment: AppEnvironment, transport: HTTPTransport, secure: SecureStore, installMarker: InstallMarker,
          directory: URL, deviceName: String, healthStore: HealthStore,
@@ -168,7 +177,7 @@ final class AppModel {
                                                        surfaceRoutes: surfaceRoutes, health: health,
                                                        photoWeeks: photoWeeks, barcodes: barcodeCache,
                                                        shoppingMarks: shoppingMarks, timeZones: timeZones,
-                                                       files: files)],
+                                                       files: files, rejections: rejections)],
                                deviceToken: { [pushTokens] in pushTokens.load() })
         sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
@@ -179,6 +188,8 @@ final class AppModel {
                              appVersion: environment.version, installationID: { InstallationID.value(in: installation) })
         self.permissions = permissions
         self.preferences = preferences
+        let rejections = RejectionLog(directory: directory)
+        self.rejections = rejections
         let configCache = FileConfigCache(url: directory.appendingPathComponent("config.json"))
         self.configCache = configCache
         configLoader = ConfigLoader(cache: configCache) {
@@ -210,16 +221,13 @@ final class AppModel {
     // MARK: Запуск
 
     func start() async {
-        guard !started else { return }
+        guard !started else {
+            await ensureRestored()
+            return
+        }
         started = true
-        await session.attach()
+        await ensureRestored()
         Task { await watchSessionEndings() }
-
-        // Решение о версии — сразу по сохранённой конфигурации, затем по свежей.
-        config = configCache.load()
-        user = await session.restore()
-        // Запрошенное удаление — и после перезапуска, до любого другого экрана.
-        if user != nil { pendingDeletion = await session.storedPendingDeletion() }
         // Никто не вошёл — снимка дня быть не должно (выход без сети, сбой
         // посреди стирания): виджет не покажет данных прежнего аккаунта.
         if user == nil { surfaces.erase() }
@@ -335,8 +343,11 @@ final class AppModel {
             onboardingCompleted: user?.onboardingCompleted
         )
         if case let .shell(shell, _) = launch {
-            if case .shell = before {} else { selectedTab = shell.rootTab }
+            var entering = true
+            if case .shell = before { entering = false }
+            if entering { selectedTab = shell.rootTab }
             if shell == .client { stopCurator(); startClient() } else { startStaff(shell) }
+            if entering { openPendingLink() }
         } else {
             stopClient()
             stopCurator()
@@ -438,9 +449,6 @@ final class AppModel {
             serverRole = nil
             recompute()
             await refreshProfile()
-            if let link = await pendingLinks.take() {
-                open(link)
-            }
         }
     }
 
@@ -475,8 +483,10 @@ final class AppModel {
     // MARK: Очередь
 
     func onForeground() async {
+        await ensureRestored()
         await session.flushPendingLogout()
         await drainOutbox()
+        await showExtensionRejections()
         openPendingSurfaceRoute()
         if today != nil {
             connectRealtime()
@@ -517,9 +527,5 @@ extension AppModel {
         #if DEBUG
         uiTestHealthAuthorizationRequests = (healthStore as? InMemoryHealthStore)?.authorizationRequests
         #endif
-    }
-
-    func drainOutbox() async {
-        await outbox.drain(userID: user?.id)
     }
 }

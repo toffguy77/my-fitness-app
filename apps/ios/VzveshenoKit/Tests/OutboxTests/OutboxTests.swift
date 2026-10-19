@@ -162,10 +162,24 @@ final class OutboxTests: XCTestCase {
         let transport = StubTransport { _ in .success("{}") }
         let outbox = Outbox(store: InMemoryOutboxStore(), api: api(transport))
         try await outbox.enqueue(kind: "old", endpoint: try breakfast(), userID: 1)
-        _ = await outbox.drain(userID: 2)
+        try await outbox.enqueue(kind: "mine", endpoint: try breakfast(), userID: 2)
+        let report = await outbox.drain(userID: 2)
+        XCTAssertEqual(transport.requests.count, 1, "отправлено только своё")
+        XCTAssertEqual(report.delivered.count, 1)
+        let left = try await outbox.pending()
+        XCTAssertEqual(left.map(\.kind), ["old"], "чужое не отправлено и не стёрто: стирает выход")
+    }
+
+    /// Досылка до восстановления сессии (`userID == nil`) не трогает очередь.
+    func testDrainWithoutSignedInUserKeepsTheQueue() async throws {
+        let transport = StubTransport { _ in .success("{}") }
+        let outbox = Outbox(store: InMemoryOutboxStore(), api: api(transport))
+        try await outbox.enqueue(kind: "breakfast", endpoint: try breakfast(), userID: 7)
+        let report = await outbox.drain(userID: nil)
+        XCTAssertEqual(report, DrainReport())
         XCTAssertTrue(transport.requests.isEmpty)
         let left = try await outbox.pending()
-        XCTAssertTrue(left.isEmpty)
+        XCTAssertEqual(left.count, 1, "запись в метро не потеряна")
     }
 
     func testEraseAllClearsQueue() async throws {
@@ -186,6 +200,40 @@ final class OutboxTests: XCTestCase {
         try store.append(OutboxItem(userID: 1, kind: "k", method: .post, path: "/x", body: nil))
         let attributes = ProtectedFiles.attributes(of: file)
         assertProtected(attributes, file.lastPathComponent)
+    }
+}
+
+/// Отказы из расширения: пишет наблюдатель его очереди, приложение забирает.
+final class RejectionLogTests: XCTestCase {
+    func testExtensionRejectionsAreTakenOncePerAccount() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("rejections-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let log = RejectionLog(directory: directory)
+        let transport = StubTransport { _ in .error(422, code: "validation") }
+        let outbox = Outbox(store: InMemoryOutboxStore(), api: APIClient(baseURL: URL(string: "https://new.burcev.team")!,
+                                                                         clientHeader: "ios/test", transport: transport))
+        await outbox.setObserver(log)
+        try await outbox.enqueue(kind: "surface.weight", endpoint: try Endpoint.post("/api/v1/dashboard/daily", body: ["a": 1]),
+                                 userID: 7)
+        let report = await outbox.drain(userID: 7)
+        XCTAssertEqual(report.rejected.count, 1)
+        log.append(RejectedChange(id: UUID(), userID: 8, kind: "surface.water", code: nil, status: 400))
+
+        let mine = RejectionLog(directory: directory).take(userID: 7)
+        XCTAssertEqual(mine.map(\.kind), ["surface.weight"])
+        XCTAssertEqual(mine.first?.error, .server(status: 422, code: "validation", params: [:]))
+        XCTAssertTrue(log.take(userID: 7).isEmpty, "забранное не показывается второй раз")
+        XCTAssertEqual(log.take(userID: 8).count, 1, "чужие отказы не трогаются")
+        log.erase()
+        XCTAssertTrue(log.take(userID: 8).isEmpty)
+    }
+
+    func testUnavailableStoreRefusesToEnqueue() async {
+        let outbox = Outbox(store: UnavailableOutboxStore()) { _ in RawResponse(data: Data(), status: 200) }
+        do {
+            _ = try await outbox.enqueue(kind: "k", endpoint: .delete("/x"), userID: 7)
+            XCTFail("постановка должна бросить")
+        } catch {}
     }
 }
 

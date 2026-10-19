@@ -52,7 +52,7 @@ struct VzveshenoApp: App {
         // Досылка очереди в фоне (BGAppRefreshTask): идентификатор — в
         // BGTaskSchedulerPermittedIdentifiers (project.yml).
         .backgroundTask(.appRefresh(model.environment.outboxTaskID)) { [model] in
-            await model.drainOutbox()
+            await model.backgroundRefresh()
         }
     }
 }

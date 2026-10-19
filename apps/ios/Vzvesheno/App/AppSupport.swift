@@ -18,6 +18,7 @@ struct AccountEraser: AccountDataEraser {
     let shoppingMarks: FileShoppingMarks
     let timeZones: FileTimeZoneSuggestionStore
     let files: AccountFiles
+    let rejections: RejectionLog
 
     func eraseAccountData() async {
         // Наблюдатели и фоновая доставка Здоровья останавливаются: иначе
@@ -35,6 +36,7 @@ struct AccountEraser: AccountDataEraser {
         timeZones.erase()
         // Вложения переписки и архив выгрузки данных.
         files.eraseAll()
+        rejections.erase()
     }
 }
 

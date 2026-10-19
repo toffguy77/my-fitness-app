@@ -188,6 +188,20 @@ final class SurfaceActionsTests: XCTestCase {
         XCTAssertEqual(h.repository.load()?.water?.glasses, 5)
     }
 
+    /// Очередь не открылась (файл SQLite недоступен): стакан не появляется в
+    /// виджете и действие говорит, что не записало, — а не теряет нажатие молча.
+    func testUnavailableQueueDoesNotTouchTheSnapshot() async throws {
+        let h = await harness(store: UnavailableOutboxStore())
+        let outcome = await AddWaterAction(context: h.context).perform()
+        XCTAssertEqual(outcome, .failed)
+        XCTAssertEqual(outcome.dialog, SurfaceDialogs.notSaved)
+        XCTAssertEqual(h.repository.load()?.water?.glasses, 5, "снимок не тронут")
+        XCTAssertEqual(h.reloader.count, 0)
+        XCTAssertTrue(h.transport.requests.isEmpty)
+        let weight = await LogWeightAction(context: h.context).perform(kilograms: 78.4)
+        XCTAssertEqual(weight, .failed)
+    }
+
     // MARK: Вес
 
     /// Сценарий «Вес 78,4»: изменение веса за сегодня в очереди, ответ

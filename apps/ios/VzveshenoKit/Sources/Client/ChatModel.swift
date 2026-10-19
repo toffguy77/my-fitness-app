@@ -250,13 +250,15 @@ public final class ChatModel {
     public func flush() async {
         guard let outbox else { return }
         let report = await outbox.drain(userID: userID)
-        for id in report.rejected {
-            if let index = pending.firstIndex(where: { $0.id == id }) {
-                pending[index].status = .failed("Сообщение не отправлено")
-            }
-        }
+        for id in report.rejected { markFailed(id) }
         if !report.delivered.isEmpty { try? await loadLatest() }
         await reconcilePending()
+    }
+
+    func markFailed(_ id: UUID) {
+        if let index = pending.firstIndex(where: { $0.id == id }) {
+            pending[index].status = .failed("Сообщение не отправлено")
+        }
     }
 
     /// Ушедшие из очереди (досланы другим проходом) — больше не «ждут».

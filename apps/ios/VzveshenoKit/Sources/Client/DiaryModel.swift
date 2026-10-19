@@ -318,6 +318,10 @@ public final class DiaryModel {
         if changed || !report.delivered.isEmpty { await load() } else { notifyTotals() }
     }
 
+    func forgetQueued(_ id: UUID) {
+        queued[id] = nil
+    }
+
     /// Досылка по возвращению сети или переднему плану.
     public func flush() async {
         guard let user = await userID() else { return }

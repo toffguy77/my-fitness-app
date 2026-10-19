@@ -92,13 +92,14 @@ public actor Outbox {
 
     private func performDrain(userID: Int64?) async -> DrainReport {
         var report = DrainReport()
-        guard let items = try? store.pending() else { return report }
-        for item in items {
-            guard item.userID == userID else {
-                // Изменение другого аккаунта отправить нечем — его токена нет.
-                try? store.remove(item.id)
-                continue
-            }
+        // Кто вошёл, ещё неизвестно (запуск до восстановления сессии, фоновая
+        // задача, тихий пуш): очередь не трогается. Раньше `nil` не совпадал
+        // ни с одним изменением, и всё ждущее отправки удалялось.
+        guard let userID, let items = try? store.pending() else { return report }
+        for item in items where item.userID == userID {
+            // Изменения другого аккаунта не отправляются (его токена нет) и не
+            // удаляются: очередь стирает выход (`eraseAll`), а не досылка, —
+            // досылка не знает, вышел тот человек или сессия ещё не поднялась.
             try? store.recordAttempt(item.id)
             let verdict: DeliveryVerdict
             var response: RawResponse?
