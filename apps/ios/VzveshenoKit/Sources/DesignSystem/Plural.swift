@@ -9,11 +9,14 @@ extension DS {
     /// теми же тестами на Linux.
     public enum Plural {
         /// «ждёт 21 день» для `format("plural.waiting_days %lld", 21)`.
-        public static func format(_ key: String, _ number: Int, language: String = "ru") -> String {
+        ///
+        /// `numberText` — число, уже записанное вызывающим (неразрывный пробел
+        /// между разрядами одинаков на всех системах, а у `grouped` — нет).
+        public static func format(_ key: String, _ number: Int, language: String = "ru", numberText: String? = nil) -> String {
             let forms = catalog[key]?[language] ?? catalog[key]?["ru"] ?? [:]
             let category = Self.category(number, language: language)
             let template = forms[category] ?? forms["other"] ?? key
-            return template.replacingOccurrences(of: "%lld", with: grouped(number))
+            return template.replacingOccurrences(of: "%lld", with: numberText ?? grouped(number))
         }
 
         /// Категория CLDR: для русского — one, few, many.

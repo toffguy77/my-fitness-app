@@ -62,6 +62,7 @@ let package = Package(
         .library(name: "Health", targets: ["Health"]),
         .library(name: "Client", targets: ["Client"]),
         .library(name: "Curator", targets: ["Curator"]),
+        .library(name: "Surfaces", targets: ["Surfaces"]),
     ],
     // Единственная внешняя зависимость пакета — apple/swift-markdown (Apple,
     // swiftlang): статьи разбираются как Markdown с GFM и рисуются своими
@@ -87,7 +88,12 @@ let package = Package(
         .target(name: "Health", dependencies: ["API", "Outbox"], swiftSettings: strictSwift),
         // Экраны клиента (`ios-client-app`): ядро на Foundation — модели
         // «Сегодня», онбординга и правила, которые сверяются с вебом.
-        .target(name: "Client", dependencies: ["API", "Outbox", "Session", "Health", "Navigation",
+        // Виджеты, Пункт управления и App Intents (`ios-system-surfaces`):
+        // снимок дня в App Group, строки виджетов, действия без приложения.
+        // Его подключает и расширение — поэтому без `Client`.
+        .target(name: "Surfaces", dependencies: ["API", "Outbox", "Session", "Navigation", "DesignSystem"],
+                swiftSettings: strictSwift),
+        .target(name: "Client", dependencies: ["API", "Outbox", "Session", "Health", "Navigation", "Surfaces",
                                               .product(name: "Markdown", package: "swift-markdown")],
                 swiftSettings: strictSwift),
 
@@ -108,6 +114,8 @@ let package = Package(
                     swiftSettings: strictSwift),
         .testTarget(name: "CuratorTests", dependencies: ["Curator", "Client", "API", "Outbox", "Navigation", "TestSupport"],
                     resources: [.copy("Fixtures")],
+                    swiftSettings: strictSwift),
+        .testTarget(name: "SurfacesTests", dependencies: ["Surfaces", "Client", "API", "Outbox", "Session", "Navigation", "TestSupport"],
                     swiftSettings: strictSwift),
         .testTarget(name: "HealthTests", dependencies: ["Health", "Outbox", "API", "TestSupport"], swiftSettings: strictSwift),
     ]

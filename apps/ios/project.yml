@@ -107,6 +107,10 @@ targets:
       # Манифест приватности: без него Apple отвергает загрузку (ITMS-91053).
       - path: Vzvesheno/Resources/PrivacyInfo.xcprivacy
         buildPhase: resources
+      # Интенты и виды виджетов — в обеих целях: интент, открывающий
+      # приложение, должен быть и в приложении, и в расширении
+      # (ios-system-surfaces); виды снимают снапшот-тесты приложения.
+      - path: Shared
     dependencies:
       - target: VzveshenoWidgets
         embed: true
@@ -126,6 +130,8 @@ targets:
         product: Client
       - package: VzveshenoKit
         product: Curator
+      - package: VzveshenoKit
+        product: Surfaces
       - package: Sentry
         product: Sentry
     info:
@@ -140,6 +146,7 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         APIBaseURL: "$(API_BASE_URL)"
         AppEnvironment: "$(APP_ENV)"
+        AppBundleID: "$(APP_BUNDLE_ID)"
         AppGroupID: "$(APP_GROUP_ID)"
         KeychainAccessGroup: "$(AppIdentifierPrefix)$(KEYCHAIN_GROUP)"
         SentryDSN: "$(SENTRY_DSN)"
@@ -191,13 +198,20 @@ targets:
           - "PrivacyInfo.xcprivacy"
       - path: VzveshenoWidgets/PrivacyInfo.xcprivacy
         buildPhase: resources
+      - path: Shared
     dependencies:
       - package: VzveshenoKit
         product: DesignSystem
       - package: VzveshenoKit
+        product: API
+      - package: VzveshenoKit
         product: Session
       - package: VzveshenoKit
         product: Outbox
+      - package: VzveshenoKit
+        product: Navigation
+      - package: VzveshenoKit
+        product: Surfaces
     info:
       path: VzveshenoWidgets/Info.plist
       properties:
@@ -205,6 +219,11 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleDevelopmentRegion: ru
+        # Снимок дня, очередь и сессия приложения: у расширения свой bundle id
+        # (….widget), поэтому запись Keychain ищется по AppBundleID, а
+        # интенты ходят на APIBaseURL с токеном приложения (без обновления).
+        APIBaseURL: "$(API_BASE_URL)"
+        AppBundleID: "$(APP_BUNDLE_ID)"
         AppGroupID: "$(APP_GROUP_ID)"
         KeychainAccessGroup: "$(AppIdentifierPrefix)$(KEYCHAIN_GROUP)"
         NSExtension:
@@ -272,6 +291,7 @@ schemes:
         - package: VzveshenoKit/HealthTests
         - package: VzveshenoKit/ClientTests
         - package: VzveshenoKit/CuratorTests
+        - package: VzveshenoKit/SurfacesTests
     profile:
       config: Dev-Release
     analyze:

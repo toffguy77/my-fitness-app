@@ -8,9 +8,7 @@ import Navigation
 import Observation
 import Outbox
 import Session
-#if canImport(WidgetKit)
-import WidgetKit
-#endif
+import Surfaces
 
 /// Состояние приложения: сессия, выбор оболочки, навигация и вход.
 @MainActor
@@ -92,6 +90,12 @@ final class AppModel {
     let outbox: Outbox
     let cache: ScreenCache
     let snapshot: DaySnapshotStore
+    /// Снимок дня для виджетов: пишет только вошедший аккаунт.
+    let surfaces: SnapshotPublisher
+    /// Экран, который попросил открыть App Intent, пока приложение не было готово.
+    let surfaceRoutes: PendingRouteStore
+    /// «Сегодня» → снимок (только у клиента).
+    var todaySurface: TodaySurfaceSync?
     let health: HealthSync
     private let healthStore: HealthStore
     let messages = ErrorMessages()
@@ -118,12 +122,12 @@ final class AppModel {
          directory: URL, deviceName: String, healthStore: HealthStore,
          installation: SecureStore = InMemorySecureStore(), pushTokens: DeviceTokenStore = InMemoryDeviceTokenStore(),
          permissions: NotificationPermissionProvider = FixedNotificationPermission(.notDetermined),
-         preferences: UserDefaults = .standard) {
+         preferences: UserDefaults = .standard, widgets: WidgetReloading = WidgetCenterReloader()) {
         self.environment = environment
         let api = APIClient(baseURL: environment.apiBaseURL, clientHeader: environment.clientHeader, transport: transport)
         self.api = api
         let cache = ScreenCache(root: directory.appendingPathComponent("Cache", isDirectory: true))
-        let snapshot = DaySnapshotStore(url: directory.appendingPathComponent("today-snapshot.json"))
+        let snapshot = DaySnapshotStore(url: directory.appendingPathComponent(SnapshotRepository.fileName))
         let outboxStore: OutboxStore = (try? SQLiteOutboxStore(url: directory.appendingPathComponent("outbox.sqlite")))
             ?? InMemoryOutboxStore()
         let outbox = Outbox(store: outboxStore, api: api)
@@ -140,6 +144,10 @@ final class AppModel {
         )
         self.cache = cache
         self.snapshot = snapshot
+        let surfaces = SnapshotPublisher(repository: SnapshotRepository(store: snapshot), reloader: widgets)
+        self.surfaces = surfaces
+        let surfaceRoutes = PendingRouteStore(directory: directory)
+        self.surfaceRoutes = surfaceRoutes
         self.outbox = outbox
         self.health = health
         self.healthStore = healthStore
@@ -156,7 +164,8 @@ final class AppModel {
         // Выход отписывает телефон от пушей и через `native/logout`
         // (`device_token`): так отписка доходит и без сети в момент выхода.
         session = SessionStore(api: api, secure: secure, installMarker: installMarker,
-                               erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health,
+                               erasers: [AccountEraser(cache: cache, outbox: outbox, surfaces: surfaces,
+                                                       surfaceRoutes: surfaceRoutes, health: health,
                                                        photoWeeks: photoWeeks, barcodes: barcodeCache,
                                                        shoppingMarks: shoppingMarks, timeZones: timeZones,
                                                        files: files)],
@@ -211,7 +220,12 @@ final class AppModel {
         user = await session.restore()
         // Запрошенное удаление — и после перезапуска, до любого другого экрана.
         if user != nil { pendingDeletion = await session.storedPendingDeletion() }
+        // Никто не вошёл — снимка дня быть не должно (выход без сети, сбой
+        // посреди стирания): виджет не покажет данных прежнего аккаунта.
+        if user == nil { surfaces.erase() }
         recompute()
+        listenToSurfaceRoutes()
+        openPendingSurfaceRoute()
         // Наблюдатели Здоровья живут до конца процесса: при каждом запуске,
         // в том числе фоновом по событию Здоровья, — заново и после restore(),
         // чтобы досылке было чьим токеном отправлять.
@@ -348,6 +362,7 @@ final class AppModel {
                 Task { await health.setWater(day: day, glasses: glasses, glassMilliliters: Double(glassSize), at: Date()) }
             }
             model.observeDayChanges()
+            attachSurface(to: model)
             today = model
             Task { await model.load() }
         }
@@ -358,6 +373,7 @@ final class AppModel {
     func stopClient() {
         stopFood()
         today = nil
+        todaySurface = nil
         chat = nil
         articles = nil
         notifications = nil
@@ -375,6 +391,7 @@ final class AppModel {
                 await self?.today?.handle(event)
                 await self?.chat?.handle(event)
                 await self?.curator?.handle(event)
+                if case .unreadCount = event { self?.publishStaffSnapshot() }
                 if case .unreadCount = event { await self?.refreshBadge() }
             }
         }
@@ -460,6 +477,7 @@ final class AppModel {
     func onForeground() async {
         await session.flushPendingLogout()
         await drainOutbox()
+        openPendingSurfaceRoute()
         if today != nil {
             connectRealtime()
             await today?.refresh()
@@ -473,9 +491,11 @@ final class AppModel {
         await health.refresh()
         await refreshHealthState()
     }
+}
 
-    // MARK: Здоровье
+// MARK: Здоровье
 
+extension AppModel {
     /// «Продолжить» на экране подключения. `false` — Здоровья на устройстве
     /// нет или запрос не удался.
     func connectHealth() async -> Bool {

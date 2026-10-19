@@ -58,7 +58,11 @@ extension AppModel {
         guard curator?.shell != shell, let userID = user?.id else { return }
         let workspace = CuratorWorkspace(shell: shell, api: api, curatorID: userID, calendar: DayCalendar(timeZone: profileTimeZone))
         curator = workspace
-        Task { await workspace.refresh() }
+        publishStaffSnapshot()
+        Task { [weak self] in
+            await workspace.refresh()
+            self?.publishStaffSnapshot()
+        }
         if realtimeTask == nil { connectRealtime() }
     }
 
@@ -66,6 +70,7 @@ extension AppModel {
     func startStaff(_ shell: Shell) {
         guard shell == .curator || shell == .admin else {
             stopCurator()
+            publishStaffSnapshot()
             return
         }
         if today != nil { stopClient() }
@@ -76,6 +81,7 @@ extension AppModel {
         guard let curator else { return }
         connectRealtime()
         await curator.refresh()
+        publishStaffSnapshot()
     }
 
     func stopCurator() {
