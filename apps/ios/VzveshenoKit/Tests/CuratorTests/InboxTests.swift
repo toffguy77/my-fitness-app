@@ -49,7 +49,8 @@ final class InboxTests: XCTestCase {
             case "/api/v1/conversations/by-participant/42":
                 return .success(#"{"id":"c9","client_id":42,"curator_id":3,"unread_count":1,"participant":{"id":42,"name":"Мария К."}}"#)
             case "/api/v1/conversations/c9/messages":
-                return .success(#"[{"id":"m2","conversation_id":"c9","sender_id":42,"type":"image","content":"https://storage.yandexcloud.net/chats/p.jpg","created_at":"2026-10-19T17:14:00Z"},"#
+                return .success(#"[{"id":"m2","conversation_id":"c9","sender_id":42,"type":"image","#
+                                + #""content":"https://storage.yandexcloud.net/chats/p.jpg","created_at":"2026-10-19T17:14:00Z"},"#
                                 + #"{"id":"m1","conversation_id":"c9","sender_id":3,"type":"text","content":"Привет","#
                                 + #""created_at":"2026-10-19T09:00:00Z"}]"#)
             default:
