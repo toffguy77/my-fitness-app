@@ -220,7 +220,8 @@ private struct LeadCard: View {
     @ViewBuilder
     private var buttons: some View {
         HStack(spacing: DS.Space.s2) {
-            if lead.contactAllowed {
+            // Писал боту — ответ в его обращение; иначе письмо, если есть согласие.
+            if lead.contactAllowed, lead.conversationID == nil {
                 Button("Написать") { actions.write(lead) }
                     .buttonStyle(CardButtonStyle(kind: .soft))
                     .accessibilityIdentifier("lead.write.\(lead.id)")

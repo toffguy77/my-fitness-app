@@ -170,9 +170,13 @@ final class CuratorUITests: XCTestCase {
         XCTAssertTrue(weekly.waitForExistence(timeout: 5), app.screenSummary)
         weekly.tap()
         XCTAssertTrue(element(app, "task.day.1").waitForExistence(timeout: 5), app.screenSummary)
-        XCTAssertFalse(save.isEnabled, "без дней «Готово» недоступна: \(app.screenSummary)")
+        // `isEnabled` у кнопки панели навигации XCUITest не отражает —
+        // недоступность проверяется тем, что нажатие ничего не сохраняет.
+        XCTAssertEqual(element(app, "task.problem").label, "Отметьте дни недели")
+        save.tap()
+        XCTAssertTrue(element(app, "task.title").waitForExistence(timeout: 2), "без дней лист не закрылся")
         wait(app, "task.day.1").tap()
-        XCTAssertTrue(save.isEnabled)
+        XCTAssertFalse(element(app, "task.problem").exists)
         save.tap()
         XCTAssertTrue(labelled(app, "Вода до обеда").waitForExistence(timeout: 5), app.screenSummary)
     }
@@ -183,12 +187,13 @@ final class CuratorUITests: XCTestCase {
         openCard(app, tab: "reports")
         wait(app, "report.feedback.r1").tap()
         let send = wait(app, "form.save", timeout: 5)
-        XCTAssertFalse(send.isEnabled)
-        XCTAssertTrue(element(app, "feedback.summaryHint").exists)
+        XCTAssertEqual(element(app, "feedback.summaryHint").label, "Заполните итог")
+        send.tap()
+        XCTAssertTrue(element(app, "feedback.summaryHint").waitForExistence(timeout: 2), "без итога лист не закрылся")
         let summary = scrollTo(app, "feedback.summary")
         summary.tap()
         summary.typeText("Хорошая неделя")
-        XCTAssertTrue(send.isEnabled)
+        XCTAssertFalse(element(app, "feedback.summaryHint").exists)
         send.tap()
         XCTAssertTrue(labelled(app, "Обратная связь дана").waitForExistence(timeout: 5), app.screenSummary)
     }

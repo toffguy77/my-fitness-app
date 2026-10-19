@@ -198,7 +198,9 @@ struct SupportThreadContent: View {
                 .padding(.horizontal, DS.Space.s4)
                 .padding(.vertical, DS.Space.s4)
             }
-            .defaultScrollAnchor(.bottom)
+            // Мало сообщений — сверху, как на макете; открывается на последнем.
+                .defaultScrollAnchor(.top, for: .alignment)
+                .defaultScrollAnchor(.bottom, for: .initialOffset)
             .scrollDismissesKeyboard(.interactively)
             if conversation.status != "closed" {
                 ReplyField(text: $text, placeholder: conversation.replyPlaceholder, sending: sending, onSend: actions.reply)

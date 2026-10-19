@@ -285,7 +285,9 @@ struct CuratorConversationContent: View {
                     .padding(.vertical, DS.Space.s4)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .defaultScrollAnchor(.bottom)
+                // Мало сообщений — сверху, как на макете; открывается на последнем.
+                .defaultScrollAnchor(.top, for: .alignment)
+                .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .onChange(of: items.count) { _, _ in withAnimation { proxy.scrollTo("bottom", anchor: .bottom) } }
                 .accessibilityIdentifier("chat.messages")
             }

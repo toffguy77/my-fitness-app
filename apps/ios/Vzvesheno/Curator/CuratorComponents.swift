@@ -58,7 +58,9 @@ struct CuratorBadge: View {
         case .warning: return DS.Color.statusWarningFg
         case .info: return DS.Color.statusInfoFg
         case .neutral: return DS.Color.fgMuted
-        case .accent: return DS.Color.primaryDefault
+        // Тёмный оттенок действия: основной на мягкой подложке мелким кеглем
+        // аудит контраста не проходит.
+        case .accent: return DS.Color.primaryHover
         }
     }
 
@@ -70,54 +72,6 @@ struct CuratorBadge: View {
         case .neutral: return DS.Color.bgSubtle
         case .accent: return DS.Color.primarySoft
         }
-    }
-}
-
-/// Перенос плашек по строкам.
-struct FlowRow: Layout {
-    var spacing: CGFloat = DS.Space.s1
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)
-        let height = rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(rows.count - 1, 0))
-        let width = rows.map(\.width).max() ?? 0
-        return CGSize(width: proposal.width ?? width, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var y = bounds.minY
-        for row in arrange(width: bounds.width, subviews: subviews) {
-            var x = bounds.minX
-            for index in row.indices {
-                let size = subviews[index].sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
-                let width = min(size.width, bounds.width)
-                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: width, height: size.height))
-                x += min(size.width, bounds.width) + spacing
-            }
-            y += row.height + spacing
-        }
-    }
-
-    private struct Row {
-        var indices: [Int] = []
-        var width: CGFloat = 0
-        var height: CGFloat = 0
-    }
-
-    private func arrange(width: CGFloat, subviews: Subviews) -> [Row] {
-        var rows: [Row] = [Row()]
-        for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(ProposedViewSize(width: width, height: nil))
-            let itemWidth = min(size.width, width)
-            if !rows[rows.count - 1].indices.isEmpty, rows[rows.count - 1].width + spacing + itemWidth > width {
-                rows.append(Row())
-            }
-            let extra = rows[rows.count - 1].indices.isEmpty ? 0 : spacing
-            rows[rows.count - 1].indices.append(index)
-            rows[rows.count - 1].width += extra + itemWidth
-            rows[rows.count - 1].height = max(rows[rows.count - 1].height, size.height)
-        }
-        return rows
     }
 }
 

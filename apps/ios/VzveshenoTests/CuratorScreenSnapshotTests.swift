@@ -131,7 +131,7 @@ final class CuratorScreenSnapshotTests: XCTestCase {
                  attribution: Lead.Attribution(utmSource: "yandex", utmMedium: "cpc", utmCampaign: "kbzhu_autumn"), ageDays: 3,
                  reminderSent: true),
             Lead(id: "l2", email: "a***@gmail.com", lastStep: "bot", attribution: Lead.Attribution(referrer: "https://t.me/burcev_bot"),
-                 ageDays: 1, contactAllowed: false, conversationID: "s1"),
+                 ageDays: 1, conversationID: "s1"),
             Lead(id: "l3", email: "s***@yandex.ru", name: "Сергей", lastStep: "registration", ageDays: 0, contactAllowed: false),
         ]
         let content = LeadsContent(leads: leads, waiting: 3, loaded: true, includeHandled: .constant(false)) { EmptyView() }

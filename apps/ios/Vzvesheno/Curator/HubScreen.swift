@@ -236,10 +236,11 @@ private struct AttentionRow: View {
                 VStack(alignment: .leading, spacing: DS.Space.s1) {
                     Text(group.name).font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .headline).weight(.semibold))
                         .foregroundStyle(DS.Color.fgDefault)
-                    FlowRow {
-                        ForEach(group.badges) { badge in
-                            CuratorBadge(text: badge.text, tone: badge.tone)
-                        }
+                    // В строку, а не помещается — столбиком (свой Layout аудит
+                    // Dynamic Type считал масштабируемым лишь частично).
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: DS.Space.s1) { badges }
+                        VStack(alignment: .leading, spacing: DS.Space.s1) { badges }
                     }
                 }
                 Spacer(minLength: 0)
@@ -252,6 +253,12 @@ private struct AttentionRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(group.name): \(group.badges.flatMap(\.details).joined(separator: "; "))")
         .accessibilityIdentifier("attention.\(group.clientID)")
+    }
+
+    private var badges: some View {
+        ForEach(group.badges) { badge in
+            CuratorBadge(text: badge.text, tone: badge.tone)
+        }
     }
 }
 

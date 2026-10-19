@@ -126,6 +126,7 @@ private struct WeightGoalTile: View {
                         SourceCaption(text: source)
                     }
                 }
+                .frame(maxHeight: .infinity, alignment: .topLeading)
             }
         }
         .buttonStyle(.plain)
@@ -222,6 +223,7 @@ private struct WaterGoalTile: View {
                         .accessibilityIdentifier("card.waterGoal.set")
                 }
             }
+            .frame(maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
