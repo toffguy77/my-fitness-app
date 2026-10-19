@@ -187,7 +187,9 @@ final class AppModel {
                                                        surfaceRoutes: surfaceRoutes, health: health,
                                                        photoWeeks: photoWeeks, barcodes: barcodeCache,
                                                        shoppingMarks: shoppingMarks, timeZones: timeZones,
-                                                       files: files, rejections: rejections)],
+                                                       files: files, rejections: rejections),
+                                         // Аналитика: новый посетитель после конца сессии.
+                                         AnalyticsVisitorEraser(defaults: preferences)],
                                deviceToken: { [pushTokens] in pushTokens.load() })
         sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
@@ -410,7 +412,7 @@ final class AppModel {
             // смену аккаунта человек подтверждает до этого — confirmSwitchingAccount.
             try await session.adopt(newSession)
             magicLinks.forget()
-            identifyAnalytics()
+            identifyAnalytics(userID: newSession.user.id)
             user = newSession.user
             pendingDeletion = newSession.pendingDeletion
             sessionMessage = nil

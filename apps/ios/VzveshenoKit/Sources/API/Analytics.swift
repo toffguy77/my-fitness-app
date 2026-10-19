@@ -49,8 +49,9 @@ public actor AnalyticsClient {
         self.appVersion = appVersion
     }
 
-    /// Связывает установку с аккаунтом после входа (`POST /analytics/identify`,
-    /// как у сайта): события до входа и после — одного человека.
+    /// Связывает посетителя с аккаунтом после входа (`POST /analytics/identify`,
+    /// как у сайта). Вызывать только с идентификатором из
+    /// `AnalyticsVisitor.idToIdentify` — он не бывает связан с другим аккаунтом.
     public func identify() async {
         guard let endpoint = try? Endpoint.post("/api/v1/analytics/identify", body: ["visitor_id": visitorID]) else { return }
         _ = try? await api.sendRaw(endpoint)
@@ -89,15 +90,43 @@ public enum ProductEvent {
     ]
 }
 
-/// Идентификатор посетителя — случайный UUID установки в настройках
-/// приложения, без связи с рекламными идентификаторами устройства.
+/// Идентификатор посетителя — случайный UUID в настройках приложения, без
+/// связи с рекламными идентификаторами устройства.
+///
+/// Один телефон — не один человек: идентификатор живёт только до конца сессии.
+/// Выход, завершение сессии и удаление аккаунта его сбрасывают
+/// (`AnalyticsVisitorEraser` в пути стирания данных аккаунта), и следующий
+/// вошедший получает новый. `identify` связывает идентификатор только с одним
+/// аккаунтом: уже связанный с другим перед связыванием заменяется новым —
+/// два аккаунта на одном телефоне в аналитике не склеиваются.
 public enum AnalyticsVisitor {
     static let key = "analytics_visitor_id"
+    static let linkedKey = "analytics_visitor_user_id"
 
     public static func id(in defaults: UserDefaults) -> String {
         if let existing = defaults.string(forKey: key), UUID(uuidString: existing) != nil { return existing }
         let fresh = UUID().uuidString.lowercased()
         defaults.set(fresh, forKey: key)
+        defaults.removeObject(forKey: linkedKey)
         return fresh
+    }
+
+    /// Идентификатор, который можно связать с аккаунтом `userID`, и отметка
+    /// связи. `nil` — уже связан с этим аккаунтом, повторять не нужно.
+    public static func idToIdentify(userID: Int64, in defaults: UserDefaults) -> String? {
+        if let linked = defaults.object(forKey: linkedKey) as? NSNumber {
+            if linked.int64Value == userID, defaults.string(forKey: key) != nil { return nil }
+            // Связан с другим аккаунтом — тот же идентификатор новому не достаётся.
+            reset(in: defaults)
+        }
+        let current = id(in: defaults)
+        defaults.set(NSNumber(value: userID), forKey: linkedKey)
+        return current
+    }
+
+    /// Новый посетитель: следующее событие уйдёт с новым идентификатором.
+    public static func reset(in defaults: UserDefaults) {
+        defaults.removeObject(forKey: key)
+        defaults.removeObject(forKey: linkedKey)
     }
 }

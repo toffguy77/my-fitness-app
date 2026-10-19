@@ -14,9 +14,11 @@ extension AppModel {
         Task { await client.send([AnalyticsClient.Event(name: name, properties: properties)]) }
     }
 
-    /// После входа: события установки — этого аккаунта.
-    func identifyAnalytics() {
-        let client = analytics
+    /// После входа: события посетителя — этого аккаунта. Идентификатор,
+    /// связанный с другим аккаунтом, перед этим заменяется новым.
+    func identifyAnalytics(userID: Int64) {
+        guard let visitor = AnalyticsVisitor.idToIdentify(userID: userID, in: preferences) else { return }
+        let client = AnalyticsClient(api: api, visitorID: visitor, appVersion: environment.version)
         Task { await client.identify() }
     }
 }
