@@ -251,9 +251,12 @@ private struct AttentionRow: View {
         .accessibilityIdentifier("attention.\(group.clientID)")
     }
 
+    /// Срочная причина получает ширину первой: переносится, если уж
+    /// придётся, менее срочная плашка, а не «Алерт КБЖУ · 132%».
     private var badges: some View {
-        ForEach(group.badges) { badge in
+        ForEach(Array(group.badges.enumerated()), id: \.element.id) { index, badge in
             CuratorBadge(text: badge.text, tone: badge.tone)
+                .layoutPriority(Double(group.badges.count - index))
         }
     }
 }
