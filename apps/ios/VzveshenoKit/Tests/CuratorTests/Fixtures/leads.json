@@ -1,0 +1,9 @@
+{"items":[
+ {"id":"l1","email":"k@mail.ru","name":"Екатерина","parameters":{"goal":"loss","height_cm":168,"weight_kg":74},"result":{"calories":1780},
+  "last_step":"result","attribution":{"utm_source":"yandex","utm_medium":"cpc","utm_campaign":"kbzhu_autumn"},"consents":{"contact":true},
+  "age_days":3,"reminder_sent":true,"contact_allowed":true},
+ {"id":"l2","email":"a@gmail.com","parameters":{},"last_step":"bot","attribution":{"referrer":"https://t.me/burcev_bot"},
+  "age_days":1,"reminder_sent":false,"contact_allowed":true,"conversation_id":"s1"},
+ {"id":"l3","email":"s@yandex.ru","name":"Сергей","parameters":{},"last_step":"registration","attribution":{},
+  "age_days":0,"reminder_sent":false,"contact_allowed":false}
+],"total":3,"limit":50,"offset":0}

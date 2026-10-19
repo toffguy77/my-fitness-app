@@ -40,7 +40,7 @@ final class RouterTests: XCTestCase {
         let rows: [(String, NavigationTarget)] = [
             ("https://burcev.team/curator/clients/7?tab=plan", NavigationTarget(tab: .clients, path: [.client(id: "7", tab: "plan")])),
             ("https://burcev.team/curator/clients/7", NavigationTarget(tab: .clients, path: [.client(id: "7", tab: nil)])),
-            ("https://burcev.team/curator/chat/42", NavigationTarget(tab: .chats, path: [.conversation(id: "42")])),
+            ("https://burcev.team/curator/chat/42", NavigationTarget(tab: .chats, path: [.clientConversation(clientID: "42")])),
             ("https://burcev.team/curator/support?conversation=9",
              NavigationTarget(tab: .support, path: [.supportConversation(id: "9")])),
             ("https://burcev.team/curator", NavigationTarget(tab: .clients)),

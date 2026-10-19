@@ -61,6 +61,7 @@ let package = Package(
         .library(name: "Navigation", targets: ["Navigation"]),
         .library(name: "Health", targets: ["Health"]),
         .library(name: "Client", targets: ["Client"]),
+        .library(name: "Curator", targets: ["Curator"]),
     ],
     // Единственная внешняя зависимость пакета — apple/swift-markdown (Apple,
     // swiftlang): статьи разбираются как Markdown с GFM и рисуются своими
@@ -90,6 +91,10 @@ let package = Package(
                                               .product(name: "Markdown", package: "swift-markdown")],
                 swiftSettings: strictSwift),
 
+        // Экраны куратора (`ios-curator-app`): модели «Клиентов», карточки,
+        // переписок, заявок и обращений на Foundation.
+        .target(name: "Curator", dependencies: ["API", "Outbox", "Navigation", "Client"], swiftSettings: strictSwift),
+
         // Заглушки транспорта и пути к файлам репозитория — общие для тестов.
         .target(name: "TestSupport", dependencies: ["API"], path: "Tests/TestSupport", swiftSettings: strictSwift),
 
@@ -100,6 +105,9 @@ let package = Package(
         .testTarget(name: "OutboxTests", dependencies: ["Outbox", "API", "TestSupport"], swiftSettings: strictSwift),
         .testTarget(name: "NavigationTests", dependencies: ["Navigation", "TestSupport"], swiftSettings: strictSwift),
         .testTarget(name: "ClientTests", dependencies: ["Client", "API", "Outbox", "Session", "Health", "Navigation", "TestSupport"],
+                    swiftSettings: strictSwift),
+        .testTarget(name: "CuratorTests", dependencies: ["Curator", "Client", "API", "Outbox", "Navigation", "TestSupport"],
+                    resources: [.copy("Fixtures")],
                     swiftSettings: strictSwift),
         .testTarget(name: "HealthTests", dependencies: ["Health", "Outbox", "API", "TestSupport"], swiftSettings: strictSwift),
     ]

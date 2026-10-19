@@ -1,0 +1,8 @@
+[
+ {"client_id":11,"client_name":"Мария К.","reason":"red_alert","detail":"Калории: 2960 из 2240 (132%)","priority":1,"action_url":"/curator/clients/11"},
+ {"client_id":12,"client_name":"Игорь П.","reason":"overdue_task","detail":"Просрочено: Замеры (дедлайн 15.10)","priority":2,"action_url":"/curator/clients/12"},
+ {"client_id":13,"client_name":"Ольга С.","reason":"inactive","detail":"Нет записей о питании сегодня и вчера","priority":3,"action_url":"/curator/clients/13"},
+ {"client_id":11,"client_name":"Мария К.","reason":"unread_message","detail":"Непрочитанных сообщений: 2","priority":4,"action_url":"/curator/chat/11"},
+ {"client_id":15,"client_name":"Анна Р.","reason":"unread_message","detail":"Непрочитанных сообщений: 1","priority":4,"action_url":"/curator/chat/15"},
+ {"client_id":14,"client_name":"Денис Л.","reason":"awaiting_feedback","detail":"Отчёт за неделю 06.10 ожидает обратной связи","priority":5,"action_url":"/curator/clients/14"}
+]

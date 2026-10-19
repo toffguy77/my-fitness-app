@@ -27,8 +27,11 @@ public enum Destination: Hashable, Sendable {
     case export
     /// Куратор: карточка клиента на вкладке.
     case client(id: String, tab: String?)
-    /// Куратор: переписка с клиентом.
+    /// Куратор: переписка по её id (пуш `chat` с `conversation_id`).
     case conversation(id: String)
+    /// Куратор: переписка с клиентом по id клиента — ссылка `/curator/chat/:clientId`
+    /// и «Написать» в карточке (`GET /conversations/by-participant/:userId`).
+    case clientConversation(clientID: String)
     case supportConversation(id: String)
     case lead(id: String)
 }
@@ -57,7 +60,10 @@ public enum ScreenLink: Equatable, Sendable {
     case curatorHome
     case curatorClient(id: String, tab: String?)
     case curatorChats
+    /// Переписка по её id — из пуша.
     case curatorConversation(id: String)
+    /// Переписка с клиентом по id клиента — `/curator/chat/:clientId` (как в вебе).
+    case curatorClientChat(clientID: String)
     case curatorSupport(conversation: String?)
     case curatorLeads(lead: String?)
     /// Ссылка на наш сайт, которой приложение не знает: корень роли.
@@ -162,7 +168,7 @@ public enum Router {
         case ["curator", "chat"]:
             return .screen(.curatorChats)
         case let path where path.count == 3 && path[0] == "curator" && path[1] == "chat":
-            return .screen(.curatorConversation(id: path[2]))
+            return .screen(.curatorClientChat(clientID: path[2]))
         case ["curator", "support"]:
             return .screen(.curatorSupport(conversation: query["conversation"]))
         case ["curator", "leads"]:
@@ -239,7 +245,7 @@ public enum Router {
         // План от куратора — нормы «Сегодня».
         case .plan: return NavigationTarget(tab: .today)
         case .export: return NavigationTarget(tab: .today, path: [.profile, .export])
-        case .curatorHome, .curatorClient, .curatorChats, .curatorSupport, .curatorLeads, .unknown: return nil
+        case .curatorHome, .curatorClient, .curatorChats, .curatorClientChat, .curatorSupport, .curatorLeads, .unknown: return nil
         }
     }
 
@@ -249,6 +255,7 @@ public enum Router {
         case let .curatorClient(id, tab): return NavigationTarget(tab: .clients, path: [.client(id: id, tab: tab)])
         case .curatorChats: return NavigationTarget(tab: .chats)
         case let .curatorConversation(id): return NavigationTarget(tab: .chats, path: [.conversation(id: id)])
+        case let .curatorClientChat(client): return NavigationTarget(tab: .chats, path: [.clientConversation(clientID: client)])
         case let .curatorSupport(conversation):
             return NavigationTarget(tab: .support, path: conversation.map { [.supportConversation(id: $0)] } ?? [])
         case let .curatorLeads(lead): return NavigationTarget(tab: .leads, path: lead.map { [.lead(id: $0)] } ?? [])

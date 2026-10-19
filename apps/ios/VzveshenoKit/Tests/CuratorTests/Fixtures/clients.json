@@ -1,0 +1,9 @@
+[
+ {"id":11,"name":"Мария К.","today_kbzhu":{"calories":2960,"protein":106,"fat":118,"carbs":330},"plan":{"calories":2240,"protein":120,"fat":75,"carbs":250},"alerts":[],"unread_count":2,"timezone":"Asia/Yekaterinburg"},
+ {"id":12,"name":"Игорь П.","alerts":[],"unread_count":0},
+ {"id":13,"name":"Ольга С.","alerts":[],"unread_count":0,"last_activity_date":"2026-10-17"},
+ {"id":14,"name":"Денис Л.","alerts":[],"unread_count":0},
+ {"id":15,"name":"Анна Р.","alerts":[],"unread_count":1},
+ {"id":16,"name":"Алексей В.","alerts":[],"unread_count":0,"weekly_kbzhu_percent":76.2},
+ {"id":17,"name":"Марина Т.","alerts":[],"unread_count":0}
+]
