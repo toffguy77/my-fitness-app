@@ -3,8 +3,13 @@
 # (design.md ios-app-foundation).
 #
 # Две среды, у каждой отладочная и выпускная конфигурация:
-#   Dev  → https://new.burcev.team, team.burcev.app.dev, push development;
-#   Prod → https://burcev.team,     team.burcev.app,     push production.
+#   Dev  → https://new.burcev.team, team.burcev.app.dev;
+#   Prod → https://burcev.team,     team.burcev.app.
+# Окружение APNs задаёт не среда, а конфигурация сборки: отладочная
+# (подпись разработчика) получает токен песочницы, выпускная (архив,
+# TestFlight, App Store — дистрибутивная подпись) — боевой. Сборка Dev для
+# TestFlight с «песочницей» получила бы боевой токен, отправленный как
+# sandbox, — BadDeviceToken, и сервер отключил бы устройство.
 # Схемы: Vzvesheno-Dev и Vzvesheno-Prod.
 name: Vzvesheno
 options:
@@ -70,7 +75,7 @@ settings:
       APP_BUNDLE_ID: team.burcev.app.dev
       APP_GROUP_ID: group.team.burcev.app.dev
       KEYCHAIN_GROUP: team.burcev.app.dev.shared
-      APS_ENVIRONMENT: development
+      APS_ENVIRONMENT: production
       SENTRY_ENVIRONMENT: development
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEV_BUILD"
     Prod-Debug:
@@ -80,7 +85,7 @@ settings:
       APP_BUNDLE_ID: team.burcev.app
       APP_GROUP_ID: group.team.burcev.app
       KEYCHAIN_GROUP: team.burcev.app.shared
-      APS_ENVIRONMENT: production
+      APS_ENVIRONMENT: development
       SENTRY_ENVIRONMENT: production
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG"
     Prod-Release:
@@ -146,6 +151,9 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         APIBaseURL: "$(API_BASE_URL)"
         AppEnvironment: "$(APP_ENV)"
+        # То же значение, что aps-environment в entitlements: по нему
+        # приложение сообщает серверу окружение токена (sandbox/production).
+        APSEnvironment: "$(APS_ENVIRONMENT)"
         AppBundleID: "$(APP_BUNDLE_ID)"
         AppGroupID: "$(APP_GROUP_ID)"
         KeychainAccessGroup: "$(AppIdentifierPrefix)$(KEYCHAIN_GROUP)"

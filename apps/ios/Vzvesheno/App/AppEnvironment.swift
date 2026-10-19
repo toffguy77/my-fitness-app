@@ -11,6 +11,8 @@ struct AppEnvironment: Sendable {
     let appGroupID: String?
     let keychainAccessGroup: String?
     let bundleID: String
+    /// `aps-environment` сборки: `development` (Debug) или `production` (Release).
+    let apsEnvironment: String?
     let version: String
     let build: String
 
@@ -31,6 +33,7 @@ struct AppEnvironment: Sendable {
             appGroupID: info["AppGroupID"] as? String,
             keychainAccessGroup: group,
             bundleID: bundle.bundleIdentifier ?? "team.burcev.app",
+            apsEnvironment: info["APSEnvironment"] as? String,
             version: info["CFBundleShortVersionString"] as? String ?? "0",
             build: info["CFBundleVersion"] as? String ?? "0"
         )

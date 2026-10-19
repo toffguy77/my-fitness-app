@@ -1,3 +1,4 @@
+import Client
 import Foundation
 @testable import Vzvesheno
 import XCTest
@@ -85,6 +86,39 @@ final class ComplianceTests: XCTestCase {
         for name in forbidden {
             XCTAssertFalse(lowered.contains(name), "запрещённый SDK: \(name)")
         }
+    }
+
+    /// Окружение APNs — по конфигурации сборки: Debug → development/sandbox,
+    /// Release (архив, TestFlight) → production, на обоих стендах. Иначе
+    /// TestFlight-сборка Dev отправляет боевой токен как sandbox, APNs
+    /// отвечает BadDeviceToken, и сервер отключает устройство.
+    func testPushEnvironmentFollowsBuildConfiguration() throws {
+        // Тесты идут в Dev-Debug.
+        XCTAssertEqual(info["APSEnvironment"] as? String, "development")
+        XCTAssertEqual(PushEnvironment.forBuild(apsEnvironment: AppEnvironment.current().apsEnvironment), "sandbox")
+
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let project = try String(contentsOf: root.appendingPathComponent("project.yml"), encoding: .utf8)
+        let values = Self.apsEnvironments(project)
+        XCTAssertEqual(values, ["Dev-Debug": "development", "Dev-Release": "production",
+                                "Prod-Debug": "development", "Prod-Release": "production"])
+    }
+
+    /// `APS_ENVIRONMENT` каждой конфигурации из `settings.configs` project.yml.
+    static func apsEnvironments(_ yaml: String) -> [String: String] {
+        var result: [String: String] = [:]
+        var config: String?
+        for line in yaml.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("    "), !line.hasPrefix("     "), trimmed.hasSuffix(":"),
+               trimmed.hasPrefix("Dev-") || trimmed.hasPrefix("Prod-") {
+                config = String(trimmed.dropLast())
+            } else if let config, trimmed.hasPrefix("APS_ENVIRONMENT:") {
+                result[config] = trimmed.replacingOccurrences(of: "APS_ENVIRONMENT:", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+            }
+        }
+        return result
     }
 
     /// Имена пакетов из раздела `packages:` project.yml.

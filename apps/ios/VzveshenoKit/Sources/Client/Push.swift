@@ -139,10 +139,19 @@ public struct PushActionPerformer: Sendable {
 
 // MARK: Регистрация устройства
 
-/// Окружение APNs по сборке: Dev — песочница, Prod — боевой.
+/// Окружение APNs по конфигурации сборки, а не по стенду: токен выдаёт
+/// подпись. Отладочная сборка (подпись разработчика, `aps-environment` =
+/// `development`) — песочница; выпускная (архив, TestFlight, App Store) —
+/// боевой, и для Dev-стенда тоже. Значение — `APSEnvironment` из Info.plist,
+/// тот же build setting, что и entitlement.
 public enum PushEnvironment {
-    public static func forApp(_ environment: String) -> String {
-        environment == "dev" ? "sandbox" : "production"
+    public static let sandbox = "sandbox"
+    public static let production = "production"
+
+    /// `development` → `sandbox`; `production`, пусто или неизвестно → `production`:
+    /// дистрибутивная подпись всегда даёт боевой токен.
+    public static func forBuild(apsEnvironment: String?) -> String {
+        apsEnvironment == "development" ? sandbox : production
     }
 }
 

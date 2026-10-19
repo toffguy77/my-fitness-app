@@ -231,9 +231,13 @@ final class PushTests: XCTestCase {
         XCTAssertTrue(transport.requests.isEmpty)
     }
 
-    func testEnvironmentByBuild() {
-        XCTAssertEqual(PushEnvironment.forApp("dev"), "sandbox")
-        XCTAssertEqual(PushEnvironment.forApp("prod"), "production")
+    /// Окружение — по конфигурации сборки, а не по стенду: выпускная сборка
+    /// Dev-стенда (TestFlight) подписана дистрибутивно и получает боевой токен.
+    func testEnvironmentByBuildConfiguration() {
+        XCTAssertEqual(PushEnvironment.forBuild(apsEnvironment: "development"), "sandbox")
+        XCTAssertEqual(PushEnvironment.forBuild(apsEnvironment: "production"), "production")
+        XCTAssertEqual(PushEnvironment.forBuild(apsEnvironment: nil), "production", "без значения — боевой")
+        XCTAssertEqual(PushEnvironment.forBuild(apsEnvironment: ""), "production")
     }
 
     func testRegistrationBodyAndUnregister() async {
@@ -242,7 +246,7 @@ final class PushTests: XCTestCase {
         let secure = InMemorySecureStore()
         let installation = InstallationID.value(in: secure)
         XCTAssertEqual(InstallationID.value(in: secure), installation, "один на установку")
-        let registrar = PushRegistrar(api: api, tokens: InMemoryDeviceTokenStore(), environment: PushEnvironment.forApp("dev"),
+        let registrar = PushRegistrar(api: api, tokens: InMemoryDeviceTokenStore(), environment: PushEnvironment.forBuild(apsEnvironment: "development"),
                                       appVersion: "1.0.0", installationID: { installation })
         let registered = await registrar.didReceive(token: Data([0xAB, 0x01, 0xFF]))
         XCTAssertTrue(registered)
