@@ -133,6 +133,48 @@ describe('useFoodSearch', () => {
         });
     });
 
+    describe('default threshold', () => {
+        // Пользовательское руководство обещает поиск с двух букв; сервер их
+        // принимает. Тест — с настройками по умолчанию, без minQueryLength и
+        // debounceMs: так хук работает на экране.
+        it('«гр» с порогом по умолчанию отправляет GET …/food-tracker/search?q=гр после задержки', async () => {
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({ items: [], total: 0 });
+
+            const { result } = renderHook(() => useFoodSearch({ autoLoadRecent: false }));
+
+            act(() => {
+                result.current.setQuery('гр');
+            });
+
+            await act(async () => {
+                jest.advanceTimersByTime(299);
+            });
+            expect(apiClient.get).not.toHaveBeenCalled();
+
+            await act(async () => {
+                jest.advanceTimersByTime(1);
+            });
+
+            expect(apiClient.get).toHaveBeenCalledTimes(1);
+            const url = new URL((apiClient.get as unknown as jest.Mock).mock.calls[0][0] as string);
+            expect(url.pathname).toBe('/food-tracker/search');
+            expect(url.searchParams.get('q')).toBe('гр');
+        });
+
+        it('одна буква с порогом по умолчанию не уходит на сервер', async () => {
+            const { result } = renderHook(() => useFoodSearch({ autoLoadRecent: false }));
+
+            act(() => {
+                result.current.setQuery('г');
+            });
+            await act(async () => {
+                jest.advanceTimersByTime(1000);
+            });
+
+            expect(apiClient.get).not.toHaveBeenCalled();
+        });
+    });
+
     describe('searchNow', () => {
         it('searches immediately without debounce', async () => {
             (apiClient.get as unknown as jest.Mock).mockResolvedValue({
