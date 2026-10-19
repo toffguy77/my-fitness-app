@@ -296,8 +296,9 @@ final class AppModel {
                 profileTimeZone = zone
                 today = nil
                 diary = nil
-                // Время сообщений — по поясу профиля.
+                // Время сообщений — по поясу профиля; куратору — тоже.
                 chat = nil
+                curator = nil
             }
         }
         if let completed = profile.onboardingCompleted, var current = await session.user, current.onboardingCompleted != completed {

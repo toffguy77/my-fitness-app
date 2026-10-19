@@ -313,8 +313,6 @@ struct CuratorConversationContent: View {
             .padding(.vertical, DS.Space.s2)
             Rectangle().fill(DS.Color.lineDefault).frame(height: 1)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder

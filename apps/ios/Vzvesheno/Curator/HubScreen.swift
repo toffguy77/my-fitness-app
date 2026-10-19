@@ -130,7 +130,7 @@ struct SearchField: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(DS.Color.fgMuted)
                 .accessibilityHidden(true)
-            TextField(prompt, text: $text)
+            TextField(prompt, text: $text, prompt: Text(prompt).foregroundStyle(DS.Color.fgMuted))
                 .font(.custom(DS.FontFamily.sans, size: 17, relativeTo: .body))
                 .foregroundStyle(DS.Color.fgDefault)
                 .autocorrectionDisabled()
@@ -186,7 +186,6 @@ private struct SummaryGrid: View {
                 Text(value)
                     .dsText(DS.Typography.numL)
                     .foregroundStyle(DS.Color.fgDefault)
-                    .accessibilityIdentifier("hub.summary.\(id)")
                 Text(caption)
                     .dsText(DS.Typography.callout)
                     .foregroundStyle(alert ? DS.Color.statusDangerFg : DS.Color.fgMuted)
@@ -196,6 +195,7 @@ private struct SummaryGrid: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("hub.summary.\(id)")
     }
 }
 

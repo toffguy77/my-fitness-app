@@ -32,7 +32,7 @@ struct ShellView: View {
                         }
                 }
                 .tabItem { Label(tab.title, systemImage: tab.systemImage) }
-                .badge(badge(tab))
+                .badge(tabBadge(tab))
                 .tag(Optional(tab))
                 .accessibilityIdentifier("tab.\(tab.rawValue)")
             }
@@ -70,7 +70,7 @@ struct ShellView: View {
     }
 
     /// «Чаты» — непрочитанные, «Обращения» — эскалированные без ответа.
-    private func badge(_ tab: AppTab) -> Int {
+    private func tabBadge(_ tab: AppTab) -> Int {
         switch tab {
         case .chats: return model.curator?.chatsBadge ?? 0
         case .support: return model.curator?.supportBadge ?? 0

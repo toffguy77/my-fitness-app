@@ -345,12 +345,12 @@ private struct FoodEntryLine: View {
             Text(caption).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgSubtle)
             if entry.addedByCurator {
                 Text("Добавлено куратором").dsText(DS.Typography.micro).foregroundStyle(DS.Color.statusInfoFg)
-                    .accessibilityIdentifier("entry.byCurator")
             }
         }
         .padding(.vertical, DS.Space.s1)
         .padding(.leading, DS.Space.s3)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(entry.addedByCurator ? "entry.byCurator" : "entry.\(entry.id)")
     }
 
     private var caption: String {
