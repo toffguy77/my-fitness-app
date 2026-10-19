@@ -41,6 +41,7 @@ extension AppModel {
             user = await session.restore()
             // Запрошенное удаление — и после перезапуска, до любого другого экрана.
             if user != nil { pendingDeletion = await session.storedPendingDeletion() }
+            await applyCachedProfile()
         }
         restoring = task
         await task.value
@@ -60,6 +61,14 @@ extension AppModel {
         await ensureRestored()
         await session.flushPendingLogout()
         await drainOutbox()
+    }
+
+    /// Монитор сети: пропала — оболочка сразу с плашкой; появилась — плашка
+    /// снимается, свежие данные приходят с `onForeground`.
+    func networkChanged(available: Bool) {
+        guard offline == available else { return }
+        offline = !available
+        recompute()
     }
 
     /// Отказ — владельцу изменения; нет экрана — общее сообщение.

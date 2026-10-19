@@ -11,18 +11,25 @@ enum OutboxBackgroundTask {
     }
 }
 
-/// Появление сети — досылка очереди и ожидающего выхода.
+/// Сеть: пропала — плашка «Нет подключения» сразу, а не после первого
+/// неудачного запроса; появилась — досылка очереди, отложенного выхода и
+/// обновление экранов (`onForeground`).
 struct PathConnectivityMonitorBox: Sendable {
     private let monitor = PathConnectivityMonitor()
 
     @MainActor
     func watch(_ model: AppModel) async {
-        var wasOnline = true
+        var edges = ConnectivityEdges()
         for await online in monitor.updates() {
-            if online && !wasOnline {
+            switch edges.next(online) {
+            case .lost:
+                model.networkChanged(available: false)
+            case .restored:
+                model.networkChanged(available: true)
                 await model.onForeground()
+            case nil:
+                break
             }
-            wasOnline = online
         }
     }
 }

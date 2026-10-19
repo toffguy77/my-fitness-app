@@ -75,16 +75,12 @@ struct NameAndPhotoScreen: View {
     var body: some View {
         SettingsForm(result: result, error: error) {
             HStack(spacing: DS.Space.s4) {
-                AsyncImage(url: avatarURL) { phase in
-                    if case let .success(image) = phase {
-                        image.resizable().scaledToFill()
-                    } else {
-                        Text(verbatim: model.avatarInitial)
-                            .font(.custom(DS.FontFamily.serif, size: 28, relativeTo: .title).weight(.semibold))
-                            .foregroundStyle(DS.Color.fgDefault)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(DS.Color.bgSubtle)
-                    }
+                CachedImage(url: avatarURL, scope: .account) {
+                    Text(verbatim: model.avatarInitial)
+                        .font(.custom(DS.FontFamily.serif, size: 28, relativeTo: .title).weight(.semibold))
+                        .foregroundStyle(DS.Color.fgDefault)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(DS.Color.bgSubtle)
                 }
                 .frame(width: 80, height: 80)
                 .clipShape(Circle())

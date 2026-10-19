@@ -8,12 +8,7 @@ import SwiftUI
 typealias ArticleImage = @MainActor (URL?) -> AnyView
 
 @MainActor let remoteArticleImage: ArticleImage = { url in
-    AnyView(AsyncImage(url: url) { phase in
-        switch phase {
-        case let .success(image): image.resizable().scaledToFill()
-        default: ArticleImagePlaceholder()
-        }
-    })
+    AnyView(CachedImage(url: url) { ArticleImagePlaceholder() })
 }
 
 /// Заглушка изображения: мягкий градиент поверхностей токенов.

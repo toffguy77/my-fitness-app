@@ -25,7 +25,7 @@ final class AppModel {
 
     private(set) var launch: LaunchState = .loading
     internal(set) var user: SessionUser?
-    private(set) var offline = false
+    internal(set) var offline = false
     internal(set) var config: ClientConfig?
     var selectedTab: AppTab?
     var paths: [AppTab: [Destination]] = [:]
@@ -37,9 +37,9 @@ final class AppModel {
     /// Вход аккаунта, ждущего удаления: экран «Аккаунт будет удалён».
     internal(set) var pendingDeletion: PendingDeletion?
     /// Имя из профиля — для аватара в шапке.
-    private(set) var profileName: String?
+    internal(set) var profileName: String?
     /// Модель «Сегодня» вошедшего клиента.
-    private(set) var today: TodayModel?
+    internal(set) var today: TodayModel?
     /// «Дневник», нутриенты и «Меню» вошедшего клиента.
     internal(set) var diary: DiaryModel?
     /// Вода дня — одна на «Сегодня» и «Дневник».
@@ -128,6 +128,8 @@ final class AppModel {
     var restoring: Task<Void, Never>?
     /// Отказы из расширения виджетов (App Group).
     let rejections: RejectionLog
+    /// Изображения: общий кэш и кэш аккаунта (в `Cache/` — стирается с кэшем экранов).
+    let imageLoaders: ImageLoaders
 
     init(environment: AppEnvironment, transport: HTTPTransport, secure: SecureStore, installMarker: InstallMarker,
          directory: URL, deviceName: String, healthStore: HealthStore,
@@ -173,6 +175,9 @@ final class AppModel {
         self.files = files
         let rejections = RejectionLog(directory: directory)
         self.rejections = rejections
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
+        imageLoaders = ImageLoaders.make(shared: caches.appendingPathComponent("vzvesheno-images", isDirectory: true),
+                                         account: cache.root.appendingPathComponent("images", isDirectory: true))
         let timeZones = FileTimeZoneSuggestionStore(url: directory.appendingPathComponent("timezone-suggestion.json"))
         self.timeZones = timeZones
         // Выход отписывает телефон от пушей и через `native/logout`
@@ -287,50 +292,6 @@ final class AppModel {
             // Сессия закончена — это обработает watchSessionEndings.
         }
         recompute()
-    }
-
-    /// `GET /users/profile` → `{profile: {name, onboarding_completed, settings}}`:
-    /// язык запросов, пояс профиля и признак онбординга. (Раньше разбиралось
-    /// без обёртки `profile`, и язык с поясом не применялись.)
-    private func refreshLanguage() async {
-        struct Answer: Decodable, Sendable {
-            struct Profile: Decodable, Sendable {
-                struct Settings: Decodable, Sendable {
-                    let language: String?
-                    let timezone: String?
-                }
-                let name: String?
-                let onboardingCompleted: Bool?
-                let settings: Settings?
-
-                enum CodingKeys: String, CodingKey {
-                    case name, settings
-                    case onboardingCompleted = "onboarding_completed"
-                }
-            }
-            let profile: Profile
-        }
-        guard let answer = try? await api.send(.get("/api/v1/users/profile"), as: Answer.self) else { return }
-        let profile = answer.profile
-        profileName = profile.name
-        await api.setLanguage(profile.settings?.language)
-        // Сутки шагов и дата взвешивания — по поясу профиля, не устройства.
-        if let timezone = profile.settings?.timezone {
-            await health.setTimeZone(timezone)
-            if let zone = TimeZone(identifier: timezone), zone != profileTimeZone {
-                profileTimeZone = zone
-                today = nil
-                diary = nil
-                // Время сообщений — по поясу профиля; куратору — тоже.
-                chat = nil
-                curator = nil
-            }
-        }
-        if let completed = profile.onboardingCompleted, var current = await session.user, current.onboardingCompleted != completed {
-            current.onboardingCompleted = completed
-            await session.updateUser(current)
-            user = current
-        }
     }
 
     func recompute() {

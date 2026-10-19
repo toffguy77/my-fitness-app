@@ -28,6 +28,7 @@ struct VzveshenoApp: App {
         return WindowGroup {
             RootView()
                 .environment(model)
+                .environment(\.imageLoaders, model.imageLoaders)
                 .tint(DS.Color.primaryDefault)
                 // «Оформление»: сразу ко всему приложению; «Авто» — тема системы.
                 .preferredColorScheme(model.appearance.colorScheme)

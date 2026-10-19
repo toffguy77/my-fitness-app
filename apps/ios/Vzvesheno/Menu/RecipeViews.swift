@@ -77,9 +77,9 @@ struct RecipePhoto: View {
     let url: String?
 
     var body: some View {
-        AsyncImage(url: url.flatMap(URL.init(string:))) { image in
-            image.resizable().scaledToFill()
-        } placeholder: {
+        // Только с проверенного хоста (`TrustedMedia`): раньше адрес из ответа
+        // загружался как есть.
+        CachedImage(url: url.flatMap(TrustedMedia.url)) {
             DS.Color.bgSubtle.overlay(Image(systemName: "fork.knife").foregroundStyle(DS.Color.fgSubtle))
         }
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.s, style: .continuous))

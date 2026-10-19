@@ -306,3 +306,20 @@ func assertProtected(_ attributes: ProtectedFiles.Attributes, _ name: String,
     XCTAssertNil(attributes.protection, "класса защиты на этой платформе нет", file: file, line: line)
     #endif
 }
+
+/// Поводы досылки (`ios-offline-outbox`): появление сети — по переходу, а не
+/// по каждому событию монитора.
+final class ConnectivityEdgesTests: XCTestCase {
+    func testEdges() {
+        var edges = ConnectivityEdges()
+        XCTAssertNil(edges.next(true), "с сетью на запуске — без досылки отсюда")
+        XCTAssertNil(edges.next(true), "повтор того же состояния — ничего")
+        XCTAssertEqual(edges.next(false), .lost)
+        XCTAssertNil(edges.next(false))
+        XCTAssertEqual(edges.next(true), .restored)
+
+        var offlineAtLaunch = ConnectivityEdges()
+        XCTAssertEqual(offlineAtLaunch.next(false), .lost, "без сети на запуске — плашка сразу")
+        XCTAssertEqual(offlineAtLaunch.next(true), .restored)
+    }
+}

@@ -27,7 +27,7 @@ struct RootView: View {
                 case .webOnly:
                     WebOnlyView()
                 default:
-                    ShellView(shell: shell, offline: offline)
+                    ShellView(shell: shell, offline: offline || model.offline)
                 }
             }
         }
