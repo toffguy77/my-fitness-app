@@ -67,6 +67,8 @@ custom_rules:
     name: "Цвет только из DesignSystem"
     included: ".*\\.swift$"
     excluded: "VzveshenoKit/Sources/DesignSystem/.*"
-    regex: '(\b(Color|UIColor|CGColor)\s*\(\s*(red|hue|white|displayP3|hex|srgbRed|.sRGB)\s*:)|(#colorLiteral)|("#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?")|(\bColor\s*\(\s*hex\b)'
+    # Метки аргументов (`red:`, `displayP3Red:`, `srgbRed:`…) и цветовое
+    # пространство первым аргументом (`Color(.sRGB, red:…)`, `.displayP3`).
+    regex: '(\b(Color|UIColor|NSColor|CGColor)\s*\(\s*((red|hue|white|displayP3|displayP3Red|hex|srgbRed)\s*:|\.(sRGB|sRGBLinear|displayP3)\s*,))|(#colorLiteral)|("#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?")|(\bColor\s*\(\s*hex\b)'
     message: "Цвет литералом запрещён: возьмите роль DS.Color.* из DesignSystem (packages/design-tokens)."
     severity: error
