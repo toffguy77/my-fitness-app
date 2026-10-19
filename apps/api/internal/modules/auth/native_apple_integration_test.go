@@ -316,7 +316,7 @@ func TestAppleRevocationOnErasure(t *testing.T) {
 }
 
 // Служебная учётка, пришедшая через Apple по HTTP-пути приложения,
-// получает куратора (TestEveryAccountPathAssignsCurator проверяет то же на
+// получает куратора (TestEveryAccountPathAssignsCuratorOnlyToServiceAccounts проверяет то же на
 // уровне сервиса; здесь — что обработчики ведут в тот же поток).
 func TestAppleServiceAccountGetsACurator(t *testing.T) {
 	s := newAppleStand(t, "apple_curator", true)

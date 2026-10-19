@@ -44,7 +44,7 @@ import (
 // Каждый путь проверяется до строки в curator_client_relationships, на
 // настоящей базе: назначение — три запроса подряд, и подмена показала бы
 // зелёное на любом из них.
-func TestEveryAccountPathAssignsCurator(t *testing.T) {
+func TestEveryAccountPathAssignsCuratorOnlyToServiceAccounts(t *testing.T) {
 	ctx := context.Background()
 
 	newFixture := func(t *testing.T, name string) (*database.DB, *auth.Service, int64) {
