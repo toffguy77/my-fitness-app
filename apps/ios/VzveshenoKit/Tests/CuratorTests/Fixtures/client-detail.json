@@ -1,0 +1,10 @@
+{"id":11,"name":"Мария К.","alerts":[],"unread_count":0,"target_weight":64,"birth_date":"1994-03-02","biological_sex":"female",
+ "fitness_goal":"loss","weekly_plan":{"calories":2240,"protein":120,"fat":75,"carbs":250},"water_goal":8,
+ "weight_history":[{"date":"2026-10-12","weight":68.9,"source":"healthkit"},{"date":"2026-10-19","weight":68.1,"source":"healthkit"}],
+ "photos":[{"id":"p1","photo_url":"https://storage.yandexcloud.net/weekly-progress-photos/1.jpg","week_start":"2026-10-13"},
+           {"id":"p2","photo_url":"https://evil.example/2.jpg","week_start":"2026-10-13"}],
+ "days":[{"date":"2026-10-19","kbzhu":{"calories":2960,"protein":106,"fat":118,"carbs":330},"plan":{"calories":2240,"protein":120,"fat":75,"carbs":250},
+          "alerts":[{"level":"red","message":"Калории значительно выше нормы"}],
+          "food_entries":[{"id":"e1","food_name":"Торт «Наполеон»","meal_type":"dinner","calories":684,"protein":9,"fat":45,"carbs":61,"weight":180,"created_by":3,"time":"20:40"},
+                          {"id":"e2","food_name":"Овсянка","meal_type":"breakfast","calories":280,"weight":250,"time":"08:10"}],
+          "water":{"glasses":3,"goal":8,"glass_size":250},"steps":6412,"steps_source":"healthkit","weight":68.1,"weight_source":"healthkit"}]}

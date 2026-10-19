@@ -1,5 +1,6 @@
 import API
 import Client
+import Curator
 import DesignSystem
 import Foundation
 import Health
@@ -53,6 +54,8 @@ final class AppModel {
     internal(set) var chat: ChatModel?
     internal(set) var articles: ArticleFeedModel?
     internal(set) var notifications: NotificationsModel?
+    /// Экраны куратора и суперадмина: «Клиенты», «Чаты», «Заявки», «Обращения».
+    internal(set) var curator: CuratorWorkspace?
     /// Задача, подсвеченная на «Сегодня» (пуш или уведомление о задаче).
     var highlightedTask: String?
     /// «Выполнено» в пуше задачи-тренировки: лист вида и длительности.
@@ -103,7 +106,7 @@ final class AppModel {
     /// Найденные по штрихкоду продукты — на 90 дней.
     let barcodeCache: BarcodeCache
     let shoppingMarks: FileShoppingMarks
-    private var realtimeTask: Task<Void, Never>?
+    var realtimeTask: Task<Void, Never>?
     let pendingLinks = PendingLinkStore()
     private let configLoader: ConfigLoader
     private let configCache: ConfigCache
@@ -293,8 +296,9 @@ final class AppModel {
                 profileTimeZone = zone
                 today = nil
                 diary = nil
-                // Время сообщений — по поясу профиля.
+                // Время сообщений — по поясу профиля; куратору — тоже.
                 chat = nil
+                curator = nil
             }
         }
         if let completed = profile.onboardingCompleted, var current = await session.user, current.onboardingCompleted != completed {
@@ -318,9 +322,10 @@ final class AppModel {
         )
         if case let .shell(shell, _) = launch {
             if case .shell = before {} else { selectedTab = shell.rootTab }
-            if shell == .client { startClient() }
+            if shell == .client { stopCurator(); startClient() } else { startStaff(shell) }
         } else {
             stopClient()
+            stopCurator()
         }
     }
 
@@ -350,7 +355,7 @@ final class AppModel {
         if realtimeTask == nil { connectRealtime() }
     }
 
-    private func stopClient() {
+    func stopClient() {
         stopFood()
         today = nil
         chat = nil
@@ -363,12 +368,13 @@ final class AppModel {
         Task { await realtime.disconnect() }
     }
 
-    private func connectRealtime() {
+    func connectRealtime() {
         realtimeTask?.cancel()
         realtimeTask = Task { [weak self, realtime] in
             for await event in await realtime.connect() {
                 await self?.today?.handle(event)
                 await self?.chat?.handle(event)
+                await self?.curator?.handle(event)
                 if case .unreadCount = event { await self?.refreshBadge() }
             }
         }
@@ -458,6 +464,7 @@ final class AppModel {
             connectRealtime()
             await today?.refresh()
         }
+        await refreshCuratorOnForeground()
         await refreshFood()
         await chat?.flush()
         await refreshConfig()

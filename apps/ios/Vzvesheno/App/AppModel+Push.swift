@@ -53,6 +53,9 @@ extension AppModel {
             }
             await performer.perform(response)
             await today?.refresh()
+            // Ответ куратора из пуша — в открытой переписке сразу.
+            try? await curator?.openConversation?.loadLatest()
+            await curator?.chats?.load()
         case let .openWorkoutSheet(taskID):
             open(.dashboard(task: taskID))
             workoutSheetTask = taskID

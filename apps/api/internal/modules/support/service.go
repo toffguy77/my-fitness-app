@@ -47,12 +47,15 @@ type LeadResolver interface {
 }
 
 // LeadSummary is what an operator needs to see: who, and where they stopped.
+// The keys are snake_case like the rest of the API: without tags the thread
+// answered {"ID","Email",…}, and both the web queue and the iOS app, which
+// read id/email/last_step, showed an empty lead block.
 type LeadSummary struct {
-	ID       string
-	Email    string
-	Name     string
-	LastStep string
-	Summary  string
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	Name     string `json:"name,omitempty"`
+	LastStep string `json:"last_step,omitempty"`
+	Summary  string `json:"summary,omitempty"`
 }
 
 // Answerer produces an answer to a question behind a cached prefix.

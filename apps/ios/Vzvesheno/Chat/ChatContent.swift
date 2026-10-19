@@ -123,7 +123,7 @@ private struct ChatHeader: View {
     }
 }
 
-private struct DayPill: View {
+struct DayPill: View {
     let title: String
 
     var body: some View {
@@ -139,10 +139,12 @@ private struct DayPill: View {
 }
 
 /// Пузырь сообщения: свой — справа, цвета действия; куратора — слева, на поверхности.
-private struct MessageBubble: View {
+struct MessageBubble: View {
     let message: ChatMessage
     let mine: Bool
     let calendar: DayCalendar
+    /// Кто собеседник для VoiceOver: «Куратор» у клиента, «Клиент» у куратора.
+    var otherName = "Куратор"
     let onOpen: () -> Void
 
     var body: some View {
@@ -200,7 +202,7 @@ private struct MessageBubble: View {
                     .textSelection(.enabled)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(mine ? "Вы" : "Куратор"): \(message.content ?? ""), \(time)")
+            .accessibilityLabel("\(mine ? "Вы" : otherName): \(message.content ?? ""), \(time)")
         }
     }
 
@@ -283,7 +285,9 @@ private struct PendingBubble: View {
     }
 }
 
-private struct TypingBubble: View {
+struct TypingBubble: View {
+    var label = "Куратор печатает"
+
     var body: some View {
         HStack {
             HStack(spacing: 5) {
@@ -298,13 +302,14 @@ private struct TypingBubble: View {
             Spacer()
         }
         .accessibilityElement()
-        .accessibilityLabel("Куратор печатает")
+        .accessibilityLabel(label)
     }
 }
 
 /// Поле сообщения: «+» (камера, Фото, Файлы) и отправка.
-private struct Composer: View {
+struct Composer: View {
     @Binding var text: String
+    var placeholder = "Сообщение"
     let uploading: Bool
     let onSend: () -> Void
     let onAttach: () -> Void
@@ -325,7 +330,7 @@ private struct Composer: View {
             .accessibilityHint("Камера, фото или файл")
             .accessibilityIdentifier("chat.attach")
             HStack(alignment: .bottom, spacing: DS.Space.s2) {
-                TextField("Сообщение", text: $text, axis: .vertical)
+                TextField(placeholder, text: $text, axis: .vertical)
                     .font(.custom(DS.FontFamily.sans, size: 17, relativeTo: .body))
                     .foregroundStyle(DS.Color.fgDefault)
                     .lineLimit(1...5)

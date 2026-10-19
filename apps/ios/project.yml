@@ -124,6 +124,8 @@ targets:
         product: Health
       - package: VzveshenoKit
         product: Client
+      - package: VzveshenoKit
+        product: Curator
       - package: Sentry
         product: Sentry
     info:
@@ -269,6 +271,7 @@ schemes:
         - package: VzveshenoKit/NavigationTests
         - package: VzveshenoKit/HealthTests
         - package: VzveshenoKit/ClientTests
+        - package: VzveshenoKit/CuratorTests
     profile:
       config: Dev-Release
     analyze:

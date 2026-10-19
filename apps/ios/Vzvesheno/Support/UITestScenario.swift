@@ -19,7 +19,11 @@ import Session
 /// - `-uiTestPickFile 14mb` — «Файл» в переписке выбирает файл этого размера;
 /// - `-uiTestPushPermission denied|notDetermined|authorized` — разрешение iOS
 ///   на уведомления (по умолчанию выдано);
-/// - `-uiTestNoPassword` — аккаунт без пароля (вход через Apple).
+/// - `-uiTestNoPassword` — аккаунт без пароля (вход через Apple);
+/// - куратор (`UITestScenario+Curator.swift`): `-uiTestBenchmarkDown` — бенчмарк
+///   отвечает 500; `-uiTestCuratorSaveFails` — цели клиента не сохраняются;
+///   `-uiTestFoodEntryOffline` — КБЖУ по фото не доходит; `-uiTestLeadConflict`
+///   — «Обработана» отвечает 409 `lead_already_claimed`.
 enum UITestScenario: String {
     case client
     case coordinator
@@ -132,6 +136,8 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
     var deletionCodeSent = false
     /// Вход «deleting@…»: удаление запрошено, пока его не отменили.
     var deletionScheduledFor: String?
+    /// Клиенты, переписки, заявки и обращения куратора (`UITestScenario+Curator.swift`).
+    var curator = CuratorScenarioState()
 
     init(scenario: UITestScenario, providers: [String]) {
         self.scenario = scenario
@@ -148,10 +154,13 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
         if foodOffline && method != "GET" && path.hasPrefix("/api/v1/food-tracker/") {
             throw URLError(.notConnectedToInternet)
         }
+        if path.hasSuffix("/food-entry"), ProcessInfo.processInfo.arguments.contains("-uiTestFoodEntryOffline") {
+            throw URLError(.notConnectedToInternet)
+        }
         let query = Dictionary((URLComponents(url: request.url ?? URL(fileURLWithPath: "/"), resolvingAgainstBaseURL: false)?
             .queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
         let (status, text) = lock.withLock {
-            foodResponse(method, path, body, query) ?? menuResponse(method, path, body)
+            curatorResponse(method, path, body, query) ?? foodResponse(method, path, body, query) ?? menuResponse(method, path, body)
                 ?? clientResponse(method, path, body, query) ?? respond(method, path, body)
         }
         let response = HTTPURLResponse(url: request.url ?? URL(fileURLWithPath: "/"), statusCode: status,

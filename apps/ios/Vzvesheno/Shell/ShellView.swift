@@ -1,4 +1,5 @@
 import Client
+import Curator
 import DesignSystem
 import Navigation
 import SwiftUI
@@ -31,6 +32,7 @@ struct ShellView: View {
                         }
                 }
                 .tabItem { Label(tab.title, systemImage: tab.systemImage) }
+                .badge(tabBadge(tab))
                 .tag(Optional(tab))
                 .accessibilityIdentifier("tab.\(tab.rawValue)")
             }
@@ -65,6 +67,15 @@ struct ShellView: View {
             }
         }
         #endif
+    }
+
+    /// «Чаты» — непрочитанные, «Обращения» — эскалированные без ответа.
+    private func tabBadge(_ tab: AppTab) -> Int {
+        switch tab {
+        case .chats: return model.curator?.chatsBadge ?? 0
+        case .support: return model.curator?.supportBadge ?? 0
+        default: return 0
+        }
     }
 
     private var timeZoneQuestion: String {
@@ -137,6 +148,10 @@ private struct TabRoot: View {
         case (.client, .diary): DiaryScreen(offline: offline)
         case (.client, .menu): MenuScreen(offline: offline)
         case (.client, .articles): ArticlesScreen(offline: offline)
+        case (.curator, .clients): HubScreen()
+        case (.curator, .chats): ConversationListScreen()
+        case (.curator, .leads), (.admin, .leads): LeadsScreen()
+        case (.curator, .support), (.admin, .support): SupportQueueScreen()
         default: placeholder
         }
     }
@@ -221,6 +236,13 @@ private struct DestinationView: View {
         case .export: SettingsSectionView(section: .export)
         case let .settings(section):
             if let section = SettingsSection(rawValue: section) { SettingsSectionView(section: section) } else { placeholder }
+        case let .client(id, tab):
+            if let clientID = Int64(id) { ClientCardScreen(clientID: clientID, initialTab: ClientCardTab(link: tab)) } else { placeholder }
+        case let .conversation(id): CuratorConversationScreen(reference: .conversation(id))
+        case let .clientConversation(clientID):
+            if let id = Int64(clientID) { CuratorConversationScreen(reference: .client(id)) } else { placeholder }
+        case let .supportConversation(id): SupportThreadScreen(conversationID: id)
+        case let .lead(id): LeadsScreen(focus: id)
         default: placeholder
         }
     }
@@ -258,7 +280,7 @@ private struct DestinationView: View {
         case .plan: return "План"
         case .export: return "Выгрузка данных"
         case .client: return "Клиент"
-        case .conversation: return "Переписка"
+        case .conversation, .clientConversation: return "Переписка"
         case .supportConversation: return "Обращение"
         case .lead: return "Заявка"
         }
@@ -279,6 +301,7 @@ private struct DestinationView: View {
         case .export: return "export"
         case .client: return "client"
         case .conversation: return "conversation"
+        case .clientConversation: return "clientConversation"
         case .supportConversation: return "supportConversation"
         case .lead: return "lead"
         }
