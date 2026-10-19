@@ -55,8 +55,9 @@ public actor Outbox {
 
     /// Ставит изменение в очередь. Интерфейс уже применил его оптимистично.
     @discardableResult
-    public func enqueue(kind: String, endpoint: Endpoint, userID: Int64) throws -> OutboxItem {
-        let item = OutboxItem(userID: userID, kind: kind, method: endpoint.method, path: endpoint.path, body: endpoint.body)
+    public func enqueue(kind: String, endpoint: Endpoint, userID: Int64, preview: Data? = nil) throws -> OutboxItem {
+        let item = OutboxItem(userID: userID, kind: kind, method: endpoint.method, path: endpoint.path, body: endpoint.body,
+                              preview: preview)
         try store.append(item)
         return item
     }

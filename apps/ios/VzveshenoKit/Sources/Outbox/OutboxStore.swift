@@ -20,9 +20,15 @@ public struct OutboxItem: Codable, Equatable, Sendable, Identifiable {
     public let body: Data?
     public let createdAt: Date
     public var attempts: Int
+    /// Что показать, пока изменение ждёт отправки, — только на устройстве, на
+    /// сервер не уходит. «Съел» в «Меню» шлёт вес и время, а строке дневника
+    /// нужны название и КБЖУ. Поле необязательное: очередь, записанная до
+    /// него, читается как прежде.
+    public let preview: Data?
 
     public init(id: UUID = UUID(), userID: Int64, idempotencyKey: String = UUID().uuidString.lowercased(),
-                kind: String, method: HTTPMethod, path: String, body: Data?, createdAt: Date = Date(), attempts: Int = 0) {
+                kind: String, method: HTTPMethod, path: String, body: Data?, createdAt: Date = Date(), attempts: Int = 0,
+                preview: Data? = nil) {
         self.id = id
         self.userID = userID
         self.idempotencyKey = idempotencyKey
@@ -32,6 +38,7 @@ public struct OutboxItem: Codable, Equatable, Sendable, Identifiable {
         self.body = body
         self.createdAt = createdAt
         self.attempts = attempts
+        self.preview = preview
     }
 
     public var endpoint: Endpoint {

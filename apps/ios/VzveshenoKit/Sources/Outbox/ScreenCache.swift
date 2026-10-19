@@ -32,11 +32,17 @@ public struct CachedScreen: Equatable, Sendable {
 /// резервной копии. Кэш принадлежит пользователю: чужой не читается, выход
 /// стирает всё.
 public final class ScreenCache: @unchecked Sendable {
-    private let root: URL
+    /// Сколько ответов держится на аккаунт: день дневника, статья и переписка —
+    /// у каждого свой ключ, и без предела каталог рос бы бесконечно.
+    public static let defaultLimit = 300
+
+    public let root: URL
+    private let limit: Int
     private let lock = NSLock()
 
-    public init(root: URL) {
+    public init(root: URL, limit: Int = ScreenCache.defaultLimit) {
         self.root = root
+        self.limit = limit
     }
 
     public func store(_ data: Data, for key: String, userID: Int64, at date: Date = Date()) throws {
@@ -45,6 +51,7 @@ public final class ScreenCache: @unchecked Sendable {
         try lock.withLock {
             try ProtectedFiles.prepareDirectory(directory(userID))
             try ProtectedFiles.write(encoded, to: url(for: key, userID: userID))
+            prune(directory(userID))
         }
     }
 
@@ -65,8 +72,37 @@ public final class ScreenCache: @unchecked Sendable {
     }
 
     func url(for key: String, userID: Int64) -> URL {
-        let safe = key.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) ? String($0) : "_" }.joined()
-        return directory(userID).appendingPathComponent("\(safe).json")
+        directory(userID).appendingPathComponent("\(Self.fileName(key)).json")
+    }
+
+    /// Имя файла по ключу без совпадений: латиница и цифры — как есть,
+    /// остальное — `_` и код символа. Длинный ключ — с хэшем вместо хвоста.
+    static func fileName(_ key: String) -> String {
+        var name = ""
+        for scalar in key.unicodeScalars {
+            let ascii = scalar.isASCII && (CharacterSet.alphanumerics.contains(scalar))
+            name += ascii ? String(scalar) : "_" + String(scalar.value, radix: 16) + "_"
+        }
+        guard name.count > 180 else { return name }
+        // FNV-1a: имя файла, а не защита; хвост ключа различает дни и статьи.
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in key.utf8 {
+            hash = (hash ^ UInt64(byte)) &* 0x100000001b3
+        }
+        return String(name.prefix(160)) + "_" + String(hash, radix: 16)
+    }
+
+    /// Старейшие ответы сверх предела удаляются.
+    private func prune(_ directory: URL) {
+        let keys: [URLResourceKey] = [.contentModificationDateKey]
+        guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: keys),
+              files.count > limit else { return }
+        let dated = files.map { url in
+            (url, (try? url.resourceValues(forKeys: Set(keys)))?.contentModificationDate ?? .distantPast)
+        }
+        for (url, _) in dated.sorted(by: { $0.1 < $1.1 }).prefix(files.count - limit) {
+            try? FileManager.default.removeItem(at: url)
+        }
     }
 
     private func directory(_ userID: Int64) -> URL {
