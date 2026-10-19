@@ -113,11 +113,11 @@ final class ShellUITests: XCTestCase {
 final class AccessibilityAuditUITests: XCTestCase {
     /// Аудит с описанием каждой находки в журнале: без него в CI видно лишь
     /// «Contrast failed», но не какой элемент.
-    private func audit(_ app: XCUIApplication) throws {
+    private func audit(_ app: XCUIApplication, _ screen: String = "") throws {
         var found: [String] = []
         defer {
             // Журнал CI оставляет только строки с «error:» — находки одной строкой.
-            if !found.isEmpty { XCTFail("аудит: " + found.joined(separator: " ;; ")) }
+            if !found.isEmpty { XCTFail("аудит \(screen): " + found.joined(separator: " ;; ")) }
         }
         try app.performAccessibilityAudit { issue in
             // Контраст недоступного элемента WCAG 1.4.3 не нормирует: кнопка
@@ -260,5 +260,119 @@ final class AccessibilityAuditUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["catalogue.nutritionCard"].waitForExistence(timeout: 5)
                       || app.scrollViews.firstMatch.exists)
         try audit(app)
+    }
+
+    // MARK: Экраны клиента и куратора (ios-client-app 7.x, ios-curator-app)
+
+    private func wait(_ app: XCUIApplication, _ identifier: String, timeout: TimeInterval = 10) -> XCUIElement {
+        let element = app.descendants(matching: .any)[identifier].firstMatch
+        XCTAssertTrue(element.waitForExistence(timeout: timeout), "нет \(identifier): \(app.screenSummary)")
+        return element
+    }
+
+    private func scrollTo(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+        let element = app.descendants(matching: .any)[identifier].firstMatch
+        var swipes = 0
+        while !(element.exists && element.isHittable) && swipes < 10 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(element.exists, "нет \(identifier): \(app.screenSummary)")
+        return element
+    }
+
+    /// Лист «Записать еду»: поиск с результатами, затем порция.
+    func testAddFoodSearchAndPortion() throws {
+        let app = launch("client")
+        wait(app, "accessory.search").tap()
+        let field = app.textFields["search.field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5), app.screenSummary)
+        field.tap()
+        // Перевод строки убирает клавиатуру: аудит — экрана, а не клавиатуры.
+        field.typeText("гр\n")
+        _ = wait(app, "food.p1", timeout: 5)
+        try audit(app, "поиск")
+        app.buttons["food.p1"].tap()
+        _ = wait(app, "portion.card", timeout: 5)
+        try audit(app, "порция")
+    }
+
+    /// Результат распознавания фото.
+    func testPhotoResult() throws {
+        let app = launch("client")
+        wait(app, "accessory.photo").tap()
+        wait(app, "photo.camera").tap()
+        _ = wait(app, "photo.apply.0")
+        try audit(app, "результат фото")
+    }
+
+    func testMenu() throws {
+        let app = launch("client")
+        app.tabBars.buttons["Меню"].tap()
+        _ = wait(app, "menu.dish.breakfast")
+        try audit(app, "меню")
+    }
+
+    /// Онбординг: все три шага.
+    func testOnboarding() throws {
+        let app = launch("newClient")
+        _ = wait(app, "onboarding.skip")
+        try audit(app, "онбординг: настройки")
+        app.buttons["onboarding.skip"].tap()
+        _ = wait(app, "screen.onboarding.body", timeout: 5)
+        try audit(app, "онбординг: тело")
+        app.buttons["onboarding.skip"].tap()
+        _ = wait(app, "health.notNow", timeout: 5)
+        try audit(app, "онбординг: Здоровье")
+    }
+
+    /// Каждый раздел профиля.
+    func testSettingsSections() throws {
+        let app = launch("client")
+        for section in ["name", "body-goals", "locale", "notifications", "telegram", "password", "sign-in", "export", "delete"] {
+            wait(app, "header.profile").tap()
+            scrollTo(app, "profile.\(section)").tap()
+            // Раздел грузит данные: аудит — по загруженному экрану.
+            Thread.sleep(forTimeInterval: 1.5)
+            try audit(app, "настройки: \(section)")
+            // Назад к «Сегодня»: «Профиль» открыт поверх него.
+            for _ in 0..<2 where app.navigationBars.buttons.firstMatch.exists {
+                app.navigationBars.buttons.firstMatch.tap()
+            }
+        }
+    }
+
+    func testCuratorClientCard() throws {
+        let app = launch("coordinator", ["-uiTestOpenURL", "https://new.burcev.team/curator/clients/11"])
+        _ = wait(app, "card.name")
+        Thread.sleep(forTimeInterval: 1)
+        try audit(app, "карточка клиента")
+    }
+
+    /// Переписка куратора и лист КБЖУ по фото.
+    func testCuratorConversationAndFoodSheet() throws {
+        let app = launch("coordinator", ["-uiTestOpenURL", "https://new.burcev.team/curator/chat/11"])
+        _ = wait(app, "conversation.name")
+        // Лента докручивается к последнему сообщению с анимацией.
+        Thread.sleep(forTimeInterval: 1.5)
+        try audit(app, "переписка куратора")
+        wait(app, "food.enter.k2").tap()
+        _ = wait(app, "sheet.foodEntry", timeout: 5)
+        try audit(app, "лист КБЖУ")
+    }
+
+    func testCuratorLeads() throws {
+        let app = launch("coordinator")
+        app.tabBars.buttons["Заявки"].tap()
+        _ = wait(app, "lead.l1")
+        try audit(app, "заявки")
+    }
+
+    func testCuratorSupportThread() throws {
+        let app = launch("coordinator")
+        app.tabBars.buttons["Обращения"].tap()
+        wait(app, "support.s1").tap()
+        _ = wait(app, "support.reply")
+        try audit(app, "тред обращения")
     }
 }
