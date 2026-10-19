@@ -530,14 +530,22 @@ func (h *Handler) SubmitWeeklyReport(c *gin.Context) {
 		return
 	}
 
+	if req.WeekStart.IsZero() || req.WeekEnd.IsZero() {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
 	// Validate date range
-	if req.WeekEnd.Before(req.WeekStart) {
+	if req.WeekEnd.Before(req.WeekStart.Time) {
 		response.Error(c, http.StatusBadRequest, "Конец недели должен быть не раньше начала недели")
 		return
 	}
 
+	// Неделя отчёта — с понедельника, содержащая week_start (как фото недели).
+	weekStart, weekEnd := calendarWeek(req.WeekStart.Time)
+
 	// Validate week data before creating report
-	valid, validationErrors, err := h.service.ValidateWeekData(c.Request.Context(), userID, req.WeekStart, req.WeekEnd)
+	valid, validationErrors, err := h.service.ValidateWeekData(c.Request.Context(), userID, weekStart, weekEnd)
 	if err != nil {
 		h.log.Errorw("Не удалось проверить данные недели", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось проверить данные недели")
@@ -553,7 +561,7 @@ func (h *Handler) SubmitWeeklyReport(c *gin.Context) {
 	}
 
 	// Call service to create weekly report
-	report, err := h.service.CreateWeeklyReport(c.Request.Context(), userID, req.WeekStart, req.WeekEnd)
+	report, err := h.service.CreateWeeklyReport(c.Request.Context(), userID, weekStart, weekEnd)
 	if err != nil {
 		h.log.Errorw("Failed to create weekly report", "error", err, "user_id", userID)
 		response.Error(c, http.StatusBadRequest, err.Error())

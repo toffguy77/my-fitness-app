@@ -23,13 +23,24 @@
         }
       }
     },
+    "health.connect.headline": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шаги и вес — без ручного ввода"
+          }
+        }
+      }
+    },
     "health.connect.intro": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Взвешено будет брать данные из Apple Здоровья, чтобы вам не вводить их вручную, а куратор видел вашу активность."
+            "value": "Подключите Здоровье, и Взвешено будет брать данные с часов, телефона и умных весов. Куратор увидит их так же, как введённые вручную."
           }
         }
       }
@@ -40,7 +51,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Введённое вручную всегда главнее: данные из Здоровья его не перезапишут. После «Продолжить» iPhone спросит, к каким данным открыть доступ."
+            "value": "Введённое вручную главнее: данные из Здоровья его не перезапишут. Отключить можно в любой момент в профиле."
           }
         }
       }
@@ -52,6 +63,72 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не сейчас"
+          }
+        }
+      }
+    },
+    "health.connect.read.steps": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шаги"
+          }
+        }
+      }
+    },
+    "health.connect.read.steps.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "сумма за день"
+          }
+        }
+      }
+    },
+    "health.connect.read.weight": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вес"
+          }
+        }
+      }
+    },
+    "health.connect.read.weight.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "первое взвешивание за день"
+          }
+        }
+      }
+    },
+    "health.connect.read.workouts": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тренировки"
+          }
+        }
+      }
+    },
+    "health.connect.read.workouts.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "тип и длительность — поднимают норму"
           }
         }
       }
@@ -73,7 +150,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Читаем из Здоровья"
+            "value": "Читать из Здоровья"
           }
         }
       }
@@ -85,6 +162,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключение Здоровья"
+          }
+        }
+      }
+    },
+    "health.connect.write.food": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Еда: калории, белки, жиры, углеводы"
+          }
+        }
+      }
+    },
+    "health.connect.write.water": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вода"
           }
         }
       }
@@ -106,7 +205,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Записываем в Здоровье"
+            "value": "Записывать в Здоровье"
           }
         }
       }
@@ -199,6 +298,39 @@
         }
       }
     },
+    "onboarding.health.connect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключить"
+          }
+        }
+      }
+    },
+    "onboarding.health.later": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позже"
+          }
+        }
+      }
+    },
+    "tab.articles": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Статьи"
+          }
+        }
+      }
+    },
     "tab.chats": {
       "extractionState": "manual",
       "localizations": {
@@ -250,17 +382,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Меню"
-          }
-        }
-      }
-    },
-    "tab.more": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ещё"
           }
         }
       }

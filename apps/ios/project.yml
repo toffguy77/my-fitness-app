@@ -122,6 +122,8 @@ targets:
         product: Navigation
       - package: VzveshenoKit
         product: Health
+      - package: VzveshenoKit
+        product: Client
       - package: Sentry
         product: Sentry
     info:
@@ -152,6 +154,8 @@ targets:
         NSHealthUpdateUsageDescription: "Взвешено записывает в Здоровье съеденные калории, белки, жиры, углеводы и выпитую воду."
         NSCameraUsageDescription: "Камера нужна, чтобы сканировать штрихкод продукта и фотографировать блюдо для распознавания."
         NSPhotoLibraryUsageDescription: "Доступ к фото нужен, чтобы выбрать снимок блюда или фотографию прогресса."
+        # «Сохранить изображение» из share sheet вложения в переписке.
+        NSPhotoLibraryAddUsageDescription: "Разрешите сохранять в Фото снимки из переписки с куратором."
     entitlements:
       path: Vzvesheno/Vzvesheno.entitlements
       properties:
@@ -264,6 +268,7 @@ schemes:
         - package: VzveshenoKit/OutboxTests
         - package: VzveshenoKit/NavigationTests
         - package: VzveshenoKit/HealthTests
+        - package: VzveshenoKit/ClientTests
     profile:
       config: Dev-Release
     analyze:

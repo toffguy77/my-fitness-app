@@ -10,16 +10,20 @@ SwiftUI, iOS 18+, Swift 6 со строгой проверкой паралле�
 
 | Путь | Что |
 |---|---|
-| `Vzvesheno/` | приложение: запуск, модель (`AppModel`), вход, оболочки по роли |
+| `Vzvesheno/` | приложение: запуск, модель (`AppModel`), вход, онбординг, «Сегодня», «Записать еду» (`FoodLogging/`), «Дневник», «Меню», профиль, оболочки по роли |
 | `VzveshenoWidgets/` | расширение виджетов (каркас; виджеты — `ios-system-surfaces`) |
-| `VzveshenoKit/` | локальный Swift-пакет: `DesignSystem`, `API`, `Session`, `Outbox`, `Navigation`, `Health` и их тесты |
-| `VzveshenoTests/` | тесты внутри приложения: манифест, Info.plist, Keychain, модель |
+| `VzveshenoKit/` | локальный Swift-пакет: `DesignSystem`, `API`, `Session`, `Outbox`, `Navigation`, `Health`, `Client` и их тесты |
+| `VzveshenoTests/` | тесты внутри приложения: манифест, Info.plist, Keychain, модель, снапшоты экранов с макетами |
 | `VzveshenoUITests/` | UI-тесты: оболочки ролей, «Обновите приложение», справочник, аудит доступности |
 | `_legacy/` | приложение 0.3.x (`Burcev`) — источник для переноса экранов; ни в одну цель не входит |
 | `fastlane/`, `scripts/` | выкладка, скриншоты, проверки сборки |
 
 Ядро модулей `VzveshenoKit` — только Foundation: клиент API, сессия, очередь
-изменений, маршрутизатор, модели компонентов. Keychain, SwiftUI, Network,
+изменений, маршрутизатор, модели компонентов, модели экранов клиента
+(`Client`: «Сегодня», онбординг, запись еды, «Дневник», нутриенты,
+«Меню» — числа сверяются с вебом на общих фикстурах `docs/ios/fixtures/`;
+задержки поиска и окна отмены — через `Sleeper`, тесты гоняют их
+виртуальным временем). Keychain, SwiftUI, Network,
 BackgroundTasks, WidgetKit и HealthKit — адаптеры под `#if canImport(...)`. Токены
 дизайн-системы подключены ссылкой
 `VzveshenoKit/Sources/DesignSystem/Generated → packages/design-tokens/dist/ios`
@@ -73,13 +77,19 @@ xcodebuild test -scheme Vzvesheno-Dev -destination 'platform=iOS Simulator,name=
 
 ### Снапшоты
 
-Эталоны — `VzveshenoKit/Tests/DesignSystemTests/__Snapshots__/*.png`. Нет
-эталона — тест записывает его и падает; при расхождении рядом кладётся
-`*.actual.png`. CI всегда выкладывает каталог артефактом `ios-snapshots`:
+Эталоны компонентов — `VzveshenoKit/Tests/DesignSystemTests/__Snapshots__/*.png`,
+экранов — `VzveshenoTests/__Snapshots__/*.png` (экран в окне приложения 390 ×
+844 pt, как макеты: так рисуются и поля ввода, и кнопка Apple). Нет
+эталона — на Mac тест записывает его и падает; при расхождении рядом
+кладётся `*.actual.png`. В CI (`TEST_RUNNER_CI`) снимок без эталона ложится
+рядом как `*.new.png`, и тест падает при каждом повторе: иначе повтор нашёл
+бы только что записанный эталон и прогон стал бы зелёным с эталоном, которого
+нет в git. CI всегда выкладывает каталог артефактом `ios-snapshots`:
 
 ```bash
 gh run download <id> -n ios-snapshots -D /tmp/snap
-# просмотреть, затем скопировать эталоны (без *.actual.png) и закоммитить
+# просмотреть *.new.png, переименовать без .new (*.actual.png — не эталоны)
+# и закоммитить в __Snapshots__
 ```
 
 Перезаписать все эталоны: `TEST_RUNNER_SNAPSHOT_RECORD=1 xcodebuild test …`.
@@ -118,7 +128,8 @@ App ID `.dev`, App Groups и запись приложения в App Store Conn
 
 ## Сбои и аналитика
 
-Sentry — единственный сторонний пакет, только отчёты о сбоях: без трассировки,
+Sentry — единственный сторонний пакет приложения (у `VzveshenoKit` — ещё
+`apple/swift-markdown` для статей), только отчёты о сбоях: без трассировки,
 сетевых крошек и снимков экрана. События продукта — только
 `POST /api/v1/public/analytics/events` (`AnalyticsClient`), без сторонних SDK и
 без запроса App Tracking Transparency.

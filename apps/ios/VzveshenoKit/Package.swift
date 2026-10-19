@@ -60,6 +60,13 @@ let package = Package(
         .library(name: "Outbox", targets: ["Outbox"]),
         .library(name: "Navigation", targets: ["Navigation"]),
         .library(name: "Health", targets: ["Health"]),
+        .library(name: "Client", targets: ["Client"]),
+    ],
+    // Единственная внешняя зависимость пакета — apple/swift-markdown (Apple,
+    // swiftlang): статьи разбираются как Markdown с GFM и рисуются своими
+    // представлениями на токенах (design.md ios-client-app, «Markdown статей»).
+    dependencies: [
+        .package(url: "https://github.com/swiftlang/swift-markdown.git", exact: "0.7.3"),
     ],
     targets: sqliteTargets + [
         // Токены — сгенерированный packages/design-tokens/dist/ios по ссылке
@@ -77,6 +84,11 @@ let package = Package(
         // Apple Здоровье (healthkit-sync): ядро на Foundation, HealthKit — адаптер
         // `HealthKitStore` под `#if canImport(HealthKit) && os(iOS)`.
         .target(name: "Health", dependencies: ["API", "Outbox"], swiftSettings: strictSwift),
+        // Экраны клиента (`ios-client-app`): ядро на Foundation — модели
+        // «Сегодня», онбординга и правила, которые сверяются с вебом.
+        .target(name: "Client", dependencies: ["API", "Outbox", "Session", "Health", "Navigation",
+                                              .product(name: "Markdown", package: "swift-markdown")],
+                swiftSettings: strictSwift),
 
         // Заглушки транспорта и пути к файлам репозитория — общие для тестов.
         .target(name: "TestSupport", dependencies: ["API"], path: "Tests/TestSupport", swiftSettings: strictSwift),
@@ -87,6 +99,8 @@ let package = Package(
         .testTarget(name: "SessionTests", dependencies: ["Session", "API", "TestSupport"], swiftSettings: strictSwift),
         .testTarget(name: "OutboxTests", dependencies: ["Outbox", "API", "TestSupport"], swiftSettings: strictSwift),
         .testTarget(name: "NavigationTests", dependencies: ["Navigation", "TestSupport"], swiftSettings: strictSwift),
+        .testTarget(name: "ClientTests", dependencies: ["Client", "API", "Outbox", "Session", "Health", "Navigation", "TestSupport"],
+                    swiftSettings: strictSwift),
         .testTarget(name: "HealthTests", dependencies: ["Health", "Outbox", "API", "TestSupport"], swiftSettings: strictSwift),
     ]
 )

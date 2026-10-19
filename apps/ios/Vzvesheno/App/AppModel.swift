@@ -1,4 +1,5 @@
 import API
+import Client
 import DesignSystem
 import Foundation
 import Health
@@ -10,38 +11,6 @@ import Session
 import WidgetKit
 #endif
 
-/// Всё, что связано с аккаунтом на устройстве, кроме Keychain: стирается при выходе.
-struct AccountEraser: AccountDataEraser {
-    let cache: ScreenCache
-    let outbox: Outbox
-    let snapshot: DaySnapshotStore
-    let health: HealthSync
-
-    func eraseAccountData() async {
-        // Наблюдатели и фоновая доставка Здоровья останавливаются: иначе
-        // HealthKit будил бы приложение без сессии.
-        await health.erase()
-        cache.eraseAll()
-        await outbox.eraseAll()
-        snapshot.erase()
-        #if canImport(WidgetKit)
-        // Виджет не показывает данные прежнего аккаунта ни минуты.
-        WidgetCenter.shared.reloadAllTimelines()
-        #endif
-    }
-}
-
-/// Ссылка на сессию для Здоровья: кто вошёл сейчас.
-final class SessionRef: @unchecked Sendable {
-    private let lock = NSLock()
-    private weak var _store: SessionStore?
-
-    var store: SessionStore? {
-        get { lock.withLock { _store } }
-        set { lock.withLock { _store = newValue } }
-    }
-}
-
 /// Состояние приложения: сессия, выбор оболочки, навигация и вход.
 @MainActor
 @Observable
@@ -51,10 +20,12 @@ final class AppModel {
         case form
         case pending(PendingSignIn)
         case resetPassword(token: String)
+        /// Ссылка из письма не подошла: просрочена, использована или чужая.
+        case linkExpired
     }
 
     private(set) var launch: LaunchState = .loading
-    private(set) var user: SessionUser?
+    internal(set) var user: SessionUser?
     private(set) var offline = false
     private(set) var config: ClientConfig?
     var selectedTab: AppTab?
@@ -64,6 +35,37 @@ final class AppModel {
     var signInStep: SignInStep = .form
     /// Ссылка из письма не сработала — почему.
     var linkError: String?
+    /// Вход аккаунта, ждущего удаления: экран «Аккаунт будет удалён».
+    internal(set) var pendingDeletion: PendingDeletion?
+    /// Имя из профиля — для аватара в шапке.
+    private(set) var profileName: String?
+    /// Модель «Сегодня» вошедшего клиента.
+    private(set) var today: TodayModel?
+    /// «Дневник», нутриенты и «Меню» вошедшего клиента.
+    internal(set) var diary: DiaryModel?
+    internal(set) var nutrients: NutrientsModel?
+    internal(set) var mealPlan: MealPlanModel?
+    internal(set) var recipes: RecipeCatalogModel?
+    internal(set) var shopping: ShoppingModel?
+    /// Открытый лист «Записать еду».
+    var foodLog: FoodLogRequest?
+    /// Переписка с куратором, лента статей и уведомления вошедшего клиента.
+    internal(set) var chat: ChatModel?
+    internal(set) var articles: ArticleFeedModel?
+    internal(set) var notifications: NotificationsModel?
+    /// Задача, подсвеченная на «Сегодня» (пуш или уведомление о задаче).
+    var highlightedTask: String?
+    /// «Выполнено» в пуше задачи-тренировки: лист вида и длительности.
+    var workoutSheetTask: String?
+    /// «Сменить часовой пояс на {пояс}?» — пояс устройства.
+    var timeZoneOffer: String?
+    /// Разрешение iOS на уведомления — колонка «Пуш» в настройках.
+    internal(set) var notificationPermission: NotificationPermission = .notDetermined
+    /// «Оформление» — на устройстве.
+    var appearance: Appearance = .auto {
+        didSet { preferences.set(appearance.rawValue, forKey: "appearance") }
+    }
+    var profileTimeZone = TimeZone.current
     /// Ссылка входа пришла при открытой сессии — ждёт подтверждения
     /// «Войти в другой аккаунт? Текущий сеанс завершится».
     var authLinkAwaitingConfirmation: AuthLink?
@@ -90,7 +92,19 @@ final class AppModel {
     let health: HealthSync
     private let healthStore: HealthStore
     let messages = ErrorMessages()
-    private let pendingLinks = PendingLinkStore()
+    let realtime: RealtimeConnection
+    let push: PushRegistrar
+    /// Вложения переписки и архив выгрузки — в каталоге аккаунта.
+    let files: AccountFiles
+    let permissions: NotificationPermissionProvider
+    let timeZones: TimeZoneSuggestionStore
+    let preferences: UserDefaults
+    let photoWeeks: PhotoWeekStore
+    /// Найденные по штрихкоду продукты — на 90 дней.
+    let barcodeCache: BarcodeCache
+    let shoppingMarks: FileShoppingMarks
+    private var realtimeTask: Task<Void, Never>?
+    let pendingLinks = PendingLinkStore()
     private let configLoader: ConfigLoader
     private let configCache: ConfigCache
     private var pendingPKCE: PKCEPair?
@@ -98,7 +112,10 @@ final class AppModel {
     private var started = false
 
     init(environment: AppEnvironment, transport: HTTPTransport, secure: SecureStore, installMarker: InstallMarker,
-         directory: URL, deviceName: String, healthStore: HealthStore) {
+         directory: URL, deviceName: String, healthStore: HealthStore,
+         installation: SecureStore = InMemorySecureStore(), pushTokens: DeviceTokenStore = InMemoryDeviceTokenStore(),
+         permissions: NotificationPermissionProvider = FixedNotificationPermission(.notDetermined),
+         preferences: UserDefaults = .standard) {
         self.environment = environment
         let api = APIClient(baseURL: environment.apiBaseURL, clientHeader: environment.clientHeader, transport: transport)
         self.api = api
@@ -123,15 +140,39 @@ final class AppModel {
         self.outbox = outbox
         self.health = health
         self.healthStore = healthStore
+        let photoWeeks = FilePhotoWeekStore(url: directory.appendingPathComponent("photo-weeks.json"))
+        self.photoWeeks = photoWeeks
+        let barcodeCache = BarcodeCache(url: directory.appendingPathComponent("barcodes.json"))
+        self.barcodeCache = barcodeCache
+        let shoppingMarks = FileShoppingMarks(url: directory.appendingPathComponent("shopping-marks.json"))
+        self.shoppingMarks = shoppingMarks
+        let files = AccountFiles(root: directory)
+        self.files = files
+        let timeZones = FileTimeZoneSuggestionStore(url: directory.appendingPathComponent("timezone-suggestion.json"))
+        self.timeZones = timeZones
+        // Выход отписывает телефон от пушей и через `native/logout`
+        // (`device_token`): так отписка доходит и без сети в момент выхода.
         session = SessionStore(api: api, secure: secure, installMarker: installMarker,
-                               erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health)])
+                               erasers: [AccountEraser(cache: cache, outbox: outbox, snapshot: snapshot, health: health,
+                                                       photoWeeks: photoWeeks, barcodes: barcodeCache,
+                                                       shoppingMarks: shoppingMarks, timeZones: timeZones,
+                                                       files: files)],
+                               deviceToken: { [pushTokens] in pushTokens.load() })
         sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
+        realtime = RealtimeConnection(api: api)
+        // Идентификатор установки — в отдельной записи Keychain: выход его не
+        // стирает, по нему сервер переносит токен к следующему вошедшему.
+        push = PushRegistrar(api: api, tokens: pushTokens, environment: PushEnvironment.forApp(environment.name),
+                             appVersion: environment.version, installationID: { InstallationID.value(in: installation) })
+        self.permissions = permissions
+        self.preferences = preferences
         let configCache = FileConfigCache(url: directory.appendingPathComponent("config.json"))
         self.configCache = configCache
         configLoader = ConfigLoader(cache: configCache) {
             try await api.sendBare(.get("/api/v1/config", requiresAuth: false), as: ClientConfig.self)
         }
+        appearance = preferences.string(forKey: "appearance").flatMap(Appearance.init(rawValue:)) ?? .auto
     }
 
     /// Приложение на устройстве: Keychain с общей группой, файлы в App Group.
@@ -146,9 +187,12 @@ final class AppModel {
         try? ProtectedFiles.prepareDirectory(directory)
         let secure = KeychainStore(policy: KeychainPolicy(service: "\(environment.bundleID).session",
                                                           accessGroup: environment.keychainAccessGroup))
+        let installation = KeychainStore(policy: KeychainPolicy(service: "\(environment.bundleID).installation",
+                                                                accessGroup: environment.keychainAccessGroup))
         return AppModel(environment: environment, transport: URLSessionTransport(), secure: secure,
                         installMarker: UserDefaultsInstallMarker(), directory: directory, deviceName: AppEnvironment.deviceName,
-                        healthStore: HealthKitStore())
+                        healthStore: HealthKitStore(), installation: installation, pushTokens: UserDefaultsDeviceTokenStore(),
+                        permissions: SystemNotificationPermission())
     }
 
     // MARK: Запуск
@@ -162,6 +206,8 @@ final class AppModel {
         // Решение о версии — сразу по сохранённой конфигурации, затем по свежей.
         config = configCache.load()
         user = await session.restore()
+        // Запрошенное удаление — и после перезапуска, до любого другого экрана.
+        if user != nil { pendingDeletion = await session.storedPendingDeletion() }
         recompute()
         // Наблюдатели Здоровья живут до конца процесса: при каждом запуске,
         // в том числе фоновом по событию Здоровья, — заново и после restore(),
@@ -205,6 +251,7 @@ final class AppModel {
                 user = current
             }
             Telemetry.identify(id: me.user.id, role: me.user.role)
+            await refreshDeletion()
             await refreshLanguage()
         } catch APIError.network {
             offline = true
@@ -214,34 +261,124 @@ final class AppModel {
         recompute()
     }
 
+    /// `GET /users/profile` → `{profile: {name, onboarding_completed, settings}}`:
+    /// язык запросов, пояс профиля и признак онбординга. (Раньше разбиралось
+    /// без обёртки `profile`, и язык с поясом не применялись.)
     private func refreshLanguage() async {
-        struct Profile: Decodable, Sendable {
-            struct Settings: Decodable, Sendable {
-                let language: String?
-                let timezone: String?
+        struct Answer: Decodable, Sendable {
+            struct Profile: Decodable, Sendable {
+                struct Settings: Decodable, Sendable {
+                    let language: String?
+                    let timezone: String?
+                }
+                let name: String?
+                let onboardingCompleted: Bool?
+                let settings: Settings?
+
+                enum CodingKeys: String, CodingKey {
+                    case name, settings
+                    case onboardingCompleted = "onboarding_completed"
+                }
             }
-            let settings: Settings?
+            let profile: Profile
         }
-        let profile = try? await api.send(.get("/api/v1/users/profile"), as: Profile.self)
-        await api.setLanguage(profile?.settings?.language)
+        guard let answer = try? await api.send(.get("/api/v1/users/profile"), as: Answer.self) else { return }
+        let profile = answer.profile
+        profileName = profile.name
+        await api.setLanguage(profile.settings?.language)
         // Сутки шагов и дата взвешивания — по поясу профиля, не устройства.
-        if let timezone = profile?.settings?.timezone {
+        if let timezone = profile.settings?.timezone {
             await health.setTimeZone(timezone)
+            if let zone = TimeZone(identifier: timezone), zone != profileTimeZone {
+                profileTimeZone = zone
+                today = nil
+                diary = nil
+                // Время сообщений — по поясу профиля.
+                chat = nil
+            }
+        }
+        if let completed = profile.onboardingCompleted, var current = await session.user, current.onboardingCompleted != completed {
+            current.onboardingCompleted = completed
+            await session.updateUser(current)
+            user = current
         }
     }
 
-    private func recompute() {
+    func recompute() {
         let before = launch
         launch = LaunchState.resolve(
             isSignedIn: user != nil,
             serverRole: serverRole,
             cachedRole: user.map { Role($0.role) },
             serverUnreachable: offline,
-            updateRequired: VersionGate.isUpdateRequired(current: environment.version, config: config)
+            updateRequired: VersionGate.isUpdateRequired(current: environment.version, config: config),
+            pendingDeletion: pendingDeletion != nil,
+            emailVerified: user?.emailVerified,
+            onboardingCompleted: user?.onboardingCompleted
         )
         if case let .shell(shell, _) = launch {
             if case .shell = before {} else { selectedTab = shell.rootTab }
+            if shell == .client { startClient() }
+        } else {
+            stopClient()
         }
+    }
+
+    // MARK: Клиент
+
+    /// «Сегодня» и сокет — пока открыта клиентская оболочка.
+    private func startClient() {
+        if chat == nil, let userID = user?.id {
+            let chat = ChatModel(api: api, outbox: outbox, calendar: DayCalendar(timeZone: profileTimeZone), userID: userID)
+            chat.sendTyping = { [realtime] id in await realtime.sendTyping(conversationID: id) }
+            chat.onRead = { [weak self] in Task { await self?.refreshBadge() } }
+            self.chat = chat
+            articles = ArticleFeedModel(api: api)
+        }
+        if today == nil {
+            let model = TodayModel(api: api, outbox: outbox, cache: cache, photoWeeks: photoWeeks,
+                                   calendar: DayCalendar(timeZone: profileTimeZone),
+                                   userID: { [session] in await session.user?.id })
+            model.onWaterChanged = { [health] day, glasses, glassSize in
+                Task { await health.setWater(day: day, glasses: glasses, glassMilliliters: Double(glassSize), at: Date()) }
+            }
+            model.observeDayChanges()
+            today = model
+            Task { await model.load() }
+        }
+        if diary == nil { startFood() }
+        if realtimeTask == nil { connectRealtime() }
+    }
+
+    private func stopClient() {
+        stopFood()
+        today = nil
+        chat = nil
+        articles = nil
+        notifications = nil
+        highlightedTask = nil
+        workoutSheetTask = nil
+        realtimeTask?.cancel()
+        realtimeTask = nil
+        Task { await realtime.disconnect() }
+    }
+
+    private func connectRealtime() {
+        realtimeTask?.cancel()
+        realtimeTask = Task { [weak self, realtime] in
+            for await event in await realtime.connect() {
+                await self?.today?.handle(event)
+                await self?.chat?.handle(event)
+                if case .unreadCount = event { await self?.refreshBadge() }
+            }
+        }
+    }
+
+    /// Приложение ушло в фон: сокет закрывается, вернётся по переднему плану.
+    func onBackground() {
+        realtimeTask?.cancel()
+        realtimeTask = nil
+        Task { await realtime.disconnect() }
     }
 
     private func watchSessionEndings() async {
@@ -253,6 +390,8 @@ final class AppModel {
             serverRole = nil
             paths = [:]
             signInStep = .form
+            pendingDeletion = nil
+            profileName = nil
             Telemetry.identify(id: nil, role: nil)
             recompute()
         }
@@ -270,6 +409,7 @@ final class AppModel {
             // смену аккаунта человек подтверждает до этого — confirmSwitchingAccount.
             try await session.adopt(newSession)
             user = newSession.user
+            pendingDeletion = newSession.pendingDeletion
             sessionMessage = nil
             signInStep = .form
             serverRole = nil
@@ -302,93 +442,11 @@ final class AppModel {
         try await complete(try await auth.exchange(code: code, pkce: pkce))
     }
 
-    /// Причина отказа из `/auth/native-complete?error=…` — человеческими словами.
-    static func providerFailureMessage(_ reason: String?) -> String {
-        switch reason {
-        case "cancelled": return "Вход отменён."
-        case "unavailable": return "Вход через этот сервис сейчас недоступен."
-        default: return "Не получилось войти. Попробуйте ещё раз или войдите по ссылке из письма."
-        }
-    }
-
+    /// Выход: сначала отписка устройства (пока сессия действует), затем
+    /// `native/logout` и стирание данных аккаунта.
     func signOut() async {
+        await push.unregister()
         await session.signOut()
-    }
-
-    // MARK: Ссылки
-
-    /// Universal link: ссылки входа — без сессии, экраны — после входа.
-    func open(_ url: URL) async {
-        guard let link = Router.parse(url) else { return }
-        switch link {
-        case let .auth(authLink):
-            // Не `user`: при холодном запуске по ссылке restore() ещё не
-            // прошёл, и сессия есть только в Keychain.
-            let hasSession = await session.hasStoredSession()
-            switch AuthLinkDecision.decide(authLink, hasSession: hasSession) {
-            case .handle:
-                await handle(authLink)
-            case .confirmSwitchingAccount:
-                authLinkAwaitingConfirmation = authLink
-            }
-        case let .screen(screen):
-            open(screen)
-        }
-    }
-
-    /// Человек подтвердил вход в другой аккаунт: текущий сеанс завершается,
-    /// затем ссылка обрабатывается.
-    func confirmSwitchingAccount() async {
-        guard let link = authLinkAwaitingConfirmation else { return }
-        authLinkAwaitingConfirmation = nil
-        await signOut()
-        user = nil
-        recompute()
-        await handle(link)
-    }
-
-    func cancelSwitchingAccount() {
-        authLinkAwaitingConfirmation = nil
-    }
-
-    private func handle(_ link: AuthLink) async {
-        switch link {
-        case let .magicLink(token):
-            do {
-                try await complete(try await auth.consumeMagicLink(token: token))
-            } catch {
-                linkError = messages.message(for: error)
-            }
-        case let .resetPassword(token):
-            signInStep = .resetPassword(token: token)
-        case let .providerComplete(code, reason):
-            guard let code else {
-                linkError = Self.providerFailureMessage(reason)
-                return
-            }
-            do {
-                try await finishProviderSignIn(code: code)
-            } catch {
-                linkError = messages.message(for: error)
-            }
-        }
-    }
-
-    /// `target` пуша.
-    func open(_ target: PushTarget) {
-        open(Router.link(for: target))
-    }
-
-    func open(_ link: ScreenLink) {
-        guard case let .shell(shell, _) = launch else {
-            Task { await pendingLinks.remember(link) }
-            return
-        }
-        let target = Router.target(for: link, shell: shell)
-        selectedTab = target.tab
-        if let tab = target.tab {
-            paths[tab] = target.path
-        }
     }
 
     // MARK: Очередь
@@ -396,7 +454,15 @@ final class AppModel {
     func onForeground() async {
         await session.flushPendingLogout()
         await drainOutbox()
+        if today != nil {
+            connectRealtime()
+            await today?.refresh()
+        }
+        await refreshFood()
+        await chat?.flush()
         await refreshConfig()
+        await refreshPushState()
+        checkTimeZone()
         await health.refresh()
         await refreshHealthState()
     }

@@ -2113,8 +2113,9 @@ func TestCuratorClientNotificationProperty(t *testing.T) {
 			weekStart := time.Now().AddDate(0, 0, -7)
 			weekEnd := time.Now()
 
-			// Calculate week number (same as service does)
-			weekNumber := int(weekStart.Sub(time.Date(weekStart.Year(), 1, 1, 0, 0, 0, 0, time.UTC)).Hours()/24/7) + 1
+			// Номер недели — от понедельника недели weekStart, как в сервисе.
+			monday, _ := calendarWeek(weekStart)
+			weekNumber := reportWeekNumber(monday)
 
 			// Mock validation queries
 			// Check nutrition days

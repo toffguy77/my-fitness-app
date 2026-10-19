@@ -6,7 +6,7 @@ import XCTest
 final class ShellTests: XCTestCase {
     // ios-role-shell: интерфейс по роли.
     func testShellPerRole() {
-        XCTAssertEqual(Shell(role: Role("client")).tabs, [.today, .diary, .menu, .more])
+        XCTAssertEqual(Shell(role: Role("client")).tabs, [.today, .diary, .menu, .articles])
         XCTAssertEqual(Shell(role: Role("coordinator")).tabs, [.clients, .chats, .leads, .support])
         XCTAssertEqual(Shell(role: Role("super_admin")).tabs, [.leads, .support])
         // Сценарий «Новая серверная роль»: nutritionist — «доступно в веб-версии».
@@ -105,5 +105,39 @@ final class VersionGateTests: XCTestCase {
         let config = try JSONDecoder().decode(ClientConfig.self, from: Data(json.utf8))
         XCTAssertEqual(config.ios.minSupportedVersion, "1.0.0")
         XCTAssertEqual(config.legal?.termsURL, "https://burcev.team/legal/terms")
+    }
+}
+
+/// Маршрут после входа (`ios-auth-flows`).
+final class PostSignInRouteTests: XCTestCase {
+    private func resolve(role: Role = .client, deletion: Bool = false, verified: Bool? = true, onboarded: Bool? = true) -> LaunchState {
+        LaunchState.resolve(isSignedIn: true, serverRole: role, cachedRole: nil, serverUnreachable: false, updateRequired: false,
+                            pendingDeletion: deletion, emailVerified: verified, onboardingCompleted: onboarded)
+    }
+
+    /// «Почта не подтверждена» — экран кода.
+    func testUnverifiedEmailOpensTheCodeScreen() {
+        XCTAssertEqual(resolve(verified: false), .verifyEmail)
+        XCTAssertEqual(resolve(role: .coordinator, verified: false), .verifyEmail)
+    }
+
+    func testOnboardingOnlyForClients() {
+        XCTAssertEqual(resolve(onboarded: false), .onboarding)
+        XCTAssertEqual(resolve(role: .coordinator, onboarded: false), .shell(.curator, offline: false))
+    }
+
+    func testPendingDeletionComesFirst() {
+        XCTAssertEqual(resolve(deletion: true, verified: false, onboarded: false), .pendingDeletion)
+    }
+
+    func testEverythingDoneOpensTheRolesRoot() {
+        XCTAssertEqual(resolve(), .shell(.client, offline: false))
+        XCTAssertEqual(resolve(verified: nil, onboarded: nil), .shell(.client, offline: false), "старая сессия без признаков")
+    }
+
+    func testExportOpensUnderTheProfile() {
+        XCTAssertEqual(Router.target(for: .export, shell: .client), NavigationTarget(tab: .today, path: [.profile, .export]))
+        XCTAssertEqual(Router.target(for: .article(slug: "x"), shell: .client),
+                       NavigationTarget(tab: .articles, path: [.article(slug: "x")]))
     }
 }

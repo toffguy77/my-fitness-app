@@ -14,7 +14,11 @@ public struct URLSessionTransport: HTTPTransport {
     private let session: URLSession
 
     public init(configuration: URLSessionConfiguration = URLSessionTransport.defaultConfiguration) {
+        #if canImport(Darwin)
+        session = URLSession(configuration: configuration, delegate: RedirectGuard(), delegateQueue: nil)
+        #else
         session = URLSession(configuration: configuration)
+        #endif
     }
 
     public static var defaultConfiguration: URLSessionConfiguration {
@@ -32,6 +36,21 @@ public struct URLSessionTransport: HTTPTransport {
         return (data, http)
     }
 }
+
+#if canImport(Darwin)
+/// Переход на другой хост (выгрузка данных отвечает 302 на подписанный адрес
+/// хранилища) — без `Authorization`: токен не уходит чужому серверу, а
+/// подписанный адрес не получает второй способ авторизации.
+final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendable {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest) async -> URLRequest? {
+        guard request.url?.host != task.originalRequest?.url?.host else { return request }
+        var stripped = request
+        stripped.setValue(nil, forHTTPHeaderField: "Authorization")
+        return stripped
+    }
+}
+#endif
 
 /// Кто выдаёт access-токен и обновляет его. Реализует `SessionStore`.
 public protocol AccessTokenProvider: Sendable {

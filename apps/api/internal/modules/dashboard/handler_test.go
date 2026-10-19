@@ -616,8 +616,8 @@ func TestSubmitWeeklyReport_Success(t *testing.T) {
 	})
 
 	reqBody := SubmitWeeklyReportRequest{
-		WeekStart: weekStart,
-		WeekEnd:   weekEnd,
+		WeekStart: WeekDate{weekStart},
+		WeekEnd:   WeekDate{weekEnd},
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/weekly-report", bytes.NewBuffer(body))
@@ -645,8 +645,8 @@ func TestSubmitWeeklyReport_ValidationFailed(t *testing.T) {
 	})
 
 	reqBody := SubmitWeeklyReportRequest{
-		WeekStart: weekStart,
-		WeekEnd:   weekEnd,
+		WeekStart: WeekDate{weekStart},
+		WeekEnd:   WeekDate{weekEnd},
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/weekly-report", bytes.NewBuffer(body))
@@ -1095,8 +1095,8 @@ func TestSubmitWeeklyReport_InvalidDateRange(t *testing.T) {
 	weekEnd := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 
 	reqBody := SubmitWeeklyReportRequest{
-		WeekStart: weekStart,
-		WeekEnd:   weekEnd,
+		WeekStart: WeekDate{weekStart},
+		WeekEnd:   WeekDate{weekEnd},
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/weekly-report", bytes.NewBuffer(body))
@@ -1117,8 +1117,8 @@ func TestSubmitWeeklyReport_Unauthorized(t *testing.T) {
 	weekEnd := time.Date(2024, 1, 21, 0, 0, 0, 0, time.UTC)
 
 	reqBody := SubmitWeeklyReportRequest{
-		WeekStart: weekStart,
-		WeekEnd:   weekEnd,
+		WeekStart: WeekDate{weekStart},
+		WeekEnd:   WeekDate{weekEnd},
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/weekly-report", bytes.NewBuffer(body))
@@ -1384,8 +1384,8 @@ func TestSubmitWeeklyReport_ValidationServiceError(t *testing.T) {
 	})
 
 	reqBody := SubmitWeeklyReportRequest{
-		WeekStart: weekStart,
-		WeekEnd:   weekEnd,
+		WeekStart: WeekDate{weekStart},
+		WeekEnd:   WeekDate{weekEnd},
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/weekly-report", bytes.NewBuffer(body))
@@ -1413,8 +1413,8 @@ func TestSubmitWeeklyReport_CreateServiceError(t *testing.T) {
 	})
 
 	reqBody := SubmitWeeklyReportRequest{
-		WeekStart: weekStart,
-		WeekEnd:   weekEnd,
+		WeekStart: WeekDate{weekStart},
+		WeekEnd:   WeekDate{weekEnd},
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/weekly-report", bytes.NewBuffer(body))

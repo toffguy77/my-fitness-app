@@ -23,6 +23,17 @@ final class ComplianceTests: XCTestCase {
         XCTAssertEqual(AppEnvironment.current().apiBaseURL.absoluteString, "https://new.burcev.team")
     }
 
+    /// 7.1: тексты системных разрешений — по-русски и про то, зачем они.
+    func testPermissionStringsAreRussian() {
+        let keys = ["NSCameraUsageDescription", "NSPhotoLibraryUsageDescription", "NSPhotoLibraryAddUsageDescription",
+                    "NSHealthShareUsageDescription", "NSHealthUpdateUsageDescription"]
+        for key in keys {
+            let text = info[key] as? String ?? ""
+            XCTAssertFalse(text.isEmpty, key)
+            XCTAssertNotNil(text.range(of: "[А-Яа-яЁё]", options: .regularExpression), "\(key): \(text)")
+        }
+    }
+
     // Сценарий «Проверка сборки»: манифест в .app и .appex.
     func testPrivacyManifestsInAppAndExtension() throws {
         var bundles = [Bundle.main.bundleURL]
@@ -53,7 +64,8 @@ final class ComplianceTests: XCTestCase {
         XCTAssertTrue(types.allSatisfy { $0["NSPrivacyCollectedDataTypeTracking"] as? Bool == false })
     }
 
-    // Сценарий «Проверка зависимостей»: из сторонних — только Sentry (отчёты о сбоях).
+    // Сценарий «Проверка зависимостей»: из сторонних — только Sentry (отчёты о сбоях);
+    // у пакета — только swift-markdown Apple (статьи).
     func testOnlyAllowedThirdPartyPackages() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let project = try String(contentsOf: root.appendingPathComponent("project.yml"), encoding: .utf8)
@@ -61,7 +73,11 @@ final class ComplianceTests: XCTestCase {
 
         let packages = Self.topLevelPackages(project)
         XCTAssertEqual(Set(packages), ["VzveshenoKit", "Sentry"], "сторонний пакет приложения — только Sentry")
-        XCTAssertFalse(manifest.contains(".package("), "у VzveshenoKit нет внешних зависимостей")
+        // Единственная зависимость VzveshenoKit — apple/swift-markdown (Apple,
+        // swiftlang): разбор статей (design.md ios-client-app).
+        let dependencies = manifest.components(separatedBy: ".package(url:").dropFirst()
+            .map { String($0.split(separator: "\"")[1]) }
+        XCTAssertEqual(dependencies, ["https://github.com/swiftlang/swift-markdown.git"], "у VzveshenoKit только swift-markdown")
 
         let forbidden = ["appmetrica", "firebase", "adjust", "appsflyer", "amplitude", "mixpanel", "branch", "facebook",
                          "yandexmobile", "mytracker"]

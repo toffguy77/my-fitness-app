@@ -1,4 +1,5 @@
 import API
+import Client
 import Foundation
 import Navigation
 import Session
@@ -42,14 +43,19 @@ final class AppModelTests: XCTestCase {
     func testClientTabsHaveNoChatTab() async {
         let model = await started(.client)
         guard case let .shell(shell, _) = model.launch else { return XCTFail("нет оболочки") }
-        XCTAssertEqual(shell.tabs.map(\.title), ["Сегодня", "Дневник", "Меню", "Ещё"])
+        XCTAssertEqual(shell.tabs.map(\.title), ["Сегодня", "Дневник", "Меню", "Статьи"])
     }
 
+    /// «Дневник» — корень своей вкладки: ссылка открывает его на дате из
+    /// `?date=` и лист «Записать еду» на способе из `?add=`, а не кладёт
+    /// второй дневник в путь навигации.
     func testDeepLinkOpensTabAndPath() async throws {
         let model = await started(.client)
         await model.open(try XCTUnwrap(URL(string: "https://new.burcev.team/food-tracker?date=2026-10-15&add=barcode")))
         XCTAssertEqual(model.selectedTab, .diary)
-        XCTAssertEqual(model.paths[.diary], [.diaryDay(date: "2026-10-15", add: .barcode)])
+        XCTAssertEqual(model.paths[.diary], [])
+        XCTAssertEqual(model.foodLog?.method, .barcode)
+        XCTAssertEqual(model.foodLog?.date, "2026-10-15")
     }
 
     /// Сценарий «Пуш на устройстве после выхода».
@@ -103,5 +109,31 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.launch, .signedOut)
         let user = await model.session.user
         XCTAssertNil(user)
+    }
+}
+
+/// `ios-auth-flows`, «Аккаунт в процессе удаления» на модели приложения.
+@MainActor
+final class PendingDeletionModelTests: XCTestCase {
+    func testCancelDeletionOpensTheRolesRoot() async throws {
+        let model = UITestScenario.signedOut.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        let outcome = try await model.auth.login(email: "deleting@example.com", password: "Secret12!")
+        try await model.complete(outcome)
+        XCTAssertEqual(model.launch, .pendingDeletion)
+        XCTAssertEqual(model.pendingDeletion?.title, "Аккаунт будет удалён 31 октября")
+        try await model.cancelDeletion()
+        XCTAssertNil(model.pendingDeletion)
+        XCTAssertEqual(model.launch, .shell(.client, offline: false))
+    }
+
+    func testCurrentWeightGoesAsMeasurementThroughTheApp() async throws {
+        let model = UITestScenario.newClient.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        XCTAssertEqual(model.launch, .onboarding)
+        var draft = OnboardingDraft()
+        draft.currentWeight = 78.4
+        try await model.completeOnboarding(draft)
+        XCTAssertEqual(model.launch, .shell(.client, offline: false))
     }
 }

@@ -402,9 +402,11 @@ type UpdateTaskStatusRequest struct {
 }
 
 // SubmitWeeklyReportRequest represents the request to submit a weekly report
+// Даты — «ГГГГ-ММ-ДД» или RFC 3339 (WeekDate); неделя приводится к
+// неделе с понедельника, содержащей week_start.
 type SubmitWeeklyReportRequest struct {
-	WeekStart time.Time `json:"week_start" binding:"required"`
-	WeekEnd   time.Time `json:"week_end" binding:"required"`
+	WeekStart WeekDate `json:"week_start"`
+	WeekEnd   WeekDate `json:"week_end"`
 }
 
 // WeightTrendPoint represents a single weight data point

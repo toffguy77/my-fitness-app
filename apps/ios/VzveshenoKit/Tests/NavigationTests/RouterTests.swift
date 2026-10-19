@@ -15,7 +15,8 @@ final class RouterTests: XCTestCase {
 
     func testClientTable() throws {
         let rows: [(String, NavigationTarget)] = [
-            ("https://burcev.team/content/kak-schitat-kbzhu", NavigationTarget(tab: .more, path: [.article(slug: "kak-schitat-kbzhu")])),
+            ("https://burcev.team/content/kak-schitat-kbzhu",
+             NavigationTarget(tab: .articles, path: [.article(slug: "kak-schitat-kbzhu")])),
             ("https://burcev.team/dashboard?task=17", NavigationTarget(tab: .today, path: [.task(id: "17")])),
             ("https://burcev.team/dashboard", NavigationTarget(tab: .today)),
             ("https://burcev.team/food-tracker?date=2026-10-15&add=barcode",
@@ -25,6 +26,10 @@ final class RouterTests: XCTestCase {
             ("https://burcev.team/notifications", NavigationTarget(tab: .today, path: [.notifications])),
             ("https://new.burcev.team/food-tracker?date=2026-10-15&add=photo",
              NavigationTarget(tab: .diary, path: [.diaryDay(date: "2026-10-15", add: .photo)])),
+            ("https://burcev.team/food-tracker?add=manual",
+             NavigationTarget(tab: .diary, path: [.diaryDay(date: nil, add: .manual)])),
+            ("https://burcev.team/food-tracker?add=search",
+             NavigationTarget(tab: .diary, path: [.diaryDay(date: nil, add: .search)])),
         ]
         for (url, expected) in rows {
             XCTAssertEqual(try target(url, .client), expected, url)

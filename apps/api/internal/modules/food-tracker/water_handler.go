@@ -63,7 +63,8 @@ func (h *Handler) GetWaterIntake(c *gin.Context) {
 // Adds water intake for the authenticated user
 // Request body:
 //   - date: required, format YYYY-MM-DD
-//   - glasses: optional, number of glasses to add (default 1)
+//   - glasses: optional, −1…10: −1 removes a glass (never below zero),
+//     missing or 0 adds one, as before
 //
 // Requirements: 21.1, 21.2
 func (h *Handler) AddWater(c *gin.Context) {
@@ -96,11 +97,7 @@ func (h *Handler) AddWater(c *gin.Context) {
 		return
 	}
 
-	// Default to 1 glass if not specified
-	glasses := req.Glasses
-	if glasses <= 0 {
-		glasses = 1
-	}
+	glasses := req.WaterChange()
 
 	// Call service to add water
 	waterLog, err := h.extras.AddWater(c.Request.Context(), userID, date, glasses)

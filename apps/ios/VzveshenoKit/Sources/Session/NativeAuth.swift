@@ -32,6 +32,9 @@ public struct NativeSession: Codable, Sendable, Equatable {
     public let accessToken: String
     public let refreshToken: String
     public var user: SessionUser
+    /// Аккаунт ждёт удаления: вход успешен, но сначала — экран «Аккаунт будет
+    /// удалён». В Keychain не сохраняется — это ответ входа, а не сессия.
+    public var pendingDeletion: PendingDeletion?
 
     public init(accessToken: String, refreshToken: String, user: SessionUser) {
         self.accessToken = accessToken
@@ -61,6 +64,13 @@ public struct PendingSignIn: Sendable, Equatable {
     public let pendingToken: String
     public let provider: String?
     public let email: String?
+
+    public init(step: Step, pendingToken: String, provider: String?, email: String?) {
+        self.step = step
+        self.pendingToken = pendingToken
+        self.provider = provider
+        self.email = email
+    }
 }
 
 /// Итог шага входа.
@@ -104,18 +114,22 @@ struct NativeSignInResponse: Decodable, Sendable {
     let provider: String?
     let email: String?
     let created: Bool?
+    let pendingDeletion: PendingDeletion?
 
     enum CodingKeys: String, CodingKey {
         case status, user, provider, email, created
         case accessToken = "access_token"
         case refreshToken = "refresh_token"
         case pendingToken = "pending_token"
+        case pendingDeletion = "pending_deletion"
     }
 
     func outcome() throws -> SignInOutcome {
         if let accessToken, let refreshToken, let user, !accessToken.isEmpty, !refreshToken.isEmpty {
             let created = self.created ?? (status == "registered")
-            return .signedIn(NativeSession(accessToken: accessToken, refreshToken: refreshToken, user: user), created: created)
+            var session = NativeSession(accessToken: accessToken, refreshToken: refreshToken, user: user)
+            session.pendingDeletion = pendingDeletion
+            return .signedIn(session, created: created)
         }
         guard let status, let step = PendingSignIn.Step(rawValue: status), let pendingToken else {
             throw APIError.decoding("ни сессии, ни продолжения входа")

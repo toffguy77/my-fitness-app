@@ -31,7 +31,7 @@ struct HealthScreen: View {
             .padding(.vertical, DS.Space.s4)
         }
         .background(DS.Color.bgCanvas)
-        .navigationTitle(Text("health.title"))
+        .navigationTitle(Text(LocalizedStringKey(model.healthConnected ? "health.title" : "health.connect.title")))
         .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("screen.health")
     }
@@ -39,73 +39,11 @@ struct HealthScreen: View {
     // MARK: Подключение
 
     private var explainer: some View {
-        VStack(alignment: .leading, spacing: DS.Space.s4) {
-            Text("health.connect.title")
-                .dsText(DS.Typography.title2)
-                .foregroundStyle(DS.Color.fgDefault)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("health.connect.title")
-            Text("health.connect.intro")
-                .dsText(DS.Typography.body)
-                .foregroundStyle(DS.Color.fgMuted)
-                .fixedSize(horizontal: false, vertical: true)
-            DSCard {
-                VStack(alignment: .leading, spacing: DS.Space.s3) {
-                    item(icon: "arrow.down.circle", title: "health.connect.reads.title", detail: "health.connect.reads")
-                    Divider().overlay(DS.Color.lineDefault)
-                    item(icon: "arrow.up.circle", title: "health.connect.writes.title", detail: "health.connect.writes")
-                }
-            }
-            Text("health.connect.manualWins")
-                .dsText(DS.Typography.caption)
-                .foregroundStyle(DS.Color.fgMuted)
-                .fixedSize(horizontal: false, vertical: true)
-            if failed {
-                Text("health.connect.failed")
-                    .dsText(DS.Typography.callout)
-                    .foregroundStyle(DS.Color.statusDangerFg)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("health.connect.failed")
-            }
-            VStack(spacing: DS.Space.s2) {
-                Button {
-                    Task { await connect() }
-                } label: {
-                    Text("health.connect.continue").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(DSButtonStyle(.primary))
-                .disabled(working)
-                .accessibilityIdentifier("health.continue")
-                Button {
-                    // Без запроса: системное окно появится только по «Продолжить».
-                    dismiss()
-                } label: {
-                    Text("health.connect.notNow").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(DSButtonStyle(.ghost))
-                .disabled(working)
-                .accessibilityIdentifier("health.notNow")
-            }
-            .padding(.top, DS.Space.s2)
-        }
-    }
-
-    private func item(icon: String, title: LocalizedStringKey, detail: LocalizedStringKey) -> some View {
-        HStack(alignment: .top, spacing: DS.Space.s3) {
-            Image(systemName: icon)
-                .foregroundStyle(DS.Color.primaryDefault)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: DS.Space.s1) {
-                Text(title)
-                    .dsText(DS.Typography.headline)
-                    .foregroundStyle(DS.Color.fgDefault)
-                Text(detail)
-                    .dsText(DS.Typography.callout)
-                    .foregroundStyle(DS.Color.fgMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityElement(children: .combine)
+        HealthExplainer(failed: failed, working: working,
+                        continueTitle: "health.connect.continue", notNowTitle: "health.connect.notNow",
+                        onContinue: { Task { await connect() } },
+                        // Без запроса: системное окно появится только по «Продолжить».
+                        onNotNow: { dismiss() })
     }
 
     private func connect() async {
@@ -191,5 +129,119 @@ struct HealthAccessHintCard: View {
     private func openHealthSettings() {
         guard let health = URL(string: "x-apple-health://") else { return }
         openURL(health)
+    }
+}
+
+/// «Подключение Здоровья» (макет HealthConnect.png): что читаем и что
+/// пишем — до системного запроса. Тот же вид — третий шаг онбординга.
+/// Выбор отдельных данных — в системном окне Здоровья, поэтому строки
+/// здесь — перечень, а не переключатели.
+struct HealthExplainer: View {
+    let failed: Bool
+    let working: Bool
+    let continueTitle: LocalizedStringKey
+    let notNowTitle: LocalizedStringKey
+    let onContinue: () -> Void
+    let onNotNow: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Space.s4) {
+            Image(systemName: "heart")
+                .font(.system(.title, weight: .medium))
+                .foregroundStyle(DS.Color.primaryDefault)
+                .frame(width: 64, height: 64)
+                .background(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous).fill(DS.Color.bgSurface))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.m, style: .continuous).strokeBorder(DS.Color.lineDefault))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: DS.Space.s2) {
+                Text("health.connect.headline")
+                    .dsText(DS.Typography.title1)
+                    .foregroundStyle(DS.Color.fgDefault)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("health.connect.title")
+                Text("health.connect.intro")
+                    .dsText(DS.Typography.body)
+                    .foregroundStyle(DS.Color.fgMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            section("health.connect.reads.title", rows: [
+                ("health.connect.read.steps", "health.connect.read.steps.detail"),
+                ("health.connect.read.weight", "health.connect.read.weight.detail"),
+                ("health.connect.read.workouts", "health.connect.read.workouts.detail"),
+            ])
+            section("health.connect.writes.title", rows: [
+                ("health.connect.write.food", nil),
+                ("health.connect.write.water", nil),
+            ])
+            Text("health.connect.manualWins")
+                .dsText(DS.Typography.caption)
+                .foregroundStyle(DS.Color.fgMuted)
+                .fixedSize(horizontal: false, vertical: true)
+            if failed {
+                Text("health.connect.failed")
+                    .dsText(DS.Typography.callout)
+                    .foregroundStyle(DS.Color.statusDangerFg)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("health.connect.failed")
+            }
+            VStack(spacing: DS.Space.s2) {
+                Button(action: onContinue) {
+                    Text(continueTitle).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(DSButtonStyle(.primary))
+                .disabled(working)
+                .accessibilityIdentifier("health.continue")
+                Button(action: onNotNow) {
+                    Text(notNowTitle)
+                        .dsText(DS.Typography.headline)
+                        .foregroundStyle(DS.Color.primaryDefault)
+                        .frame(maxWidth: .infinity, minHeight: DS.Size.touch)
+                }
+                .disabled(working)
+                .accessibilityIdentifier("health.notNow")
+            }
+            .padding(.top, DS.Space.s2)
+        }
+    }
+
+    private func section(_ title: LocalizedStringKey, rows: [(LocalizedStringKey, LocalizedStringKey?)]) -> some View {
+        VStack(alignment: .leading, spacing: DS.Space.s2) {
+            Text(title)
+                .dsText(DS.Typography.overline)
+                .foregroundStyle(DS.Color.fgMuted)
+                .padding(.leading, DS.Space.s4)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                    if index > 0 { Divider().overlay(DS.Color.lineDefault) }
+                    HStack(spacing: DS.Space.s3) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.0)
+                                .dsText(DS.Typography.body)
+                                .foregroundStyle(DS.Color.fgDefault)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if let detail = row.1 {
+                                Text(detail)
+                                    .dsText(DS.Typography.caption)
+                                    .foregroundStyle(DS.Color.fgMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Spacer(minLength: DS.Space.s2)
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(DS.Color.statusSuccess)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.horizontal, DS.Space.s4)
+                    .padding(.vertical, DS.Space.s3)
+                    .frame(minHeight: 56)
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).fill(DS.Color.bgSurface))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).strokeBorder(DS.Color.lineDefault))
+        }
     }
 }

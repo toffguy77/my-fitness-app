@@ -6,9 +6,12 @@ import XCTest
 
 /// Снапшот вида: PNG рядом с тестом в `__Snapshots__`.
 ///
-/// Эталона нет (или `SNAPSHOT_RECORD=1`, в CI — `TEST_RUNNER_SNAPSHOT_RECORD=1`) —
-/// эталон записывается, а тест падает: новый эталон смотрит человек и
-/// коммитит. Расхождение — рядом кладётся `.actual.png` для сравнения.
+/// Что делать, решает `SnapshotPolicy`: эталона нет (или `SNAPSHOT_RECORD=1`,
+/// через xcodebuild — `TEST_RUNNER_SNAPSHOT_RECORD=1`) — снимок записывается,
+/// а тест падает: новый эталон смотрит человек и коммитит. В CI снимок без
+/// эталона ложится рядом как `.new.png`, а не на место эталона, — иначе
+/// повтор упавшего теста нашёл бы его и прошёл. Расхождение — рядом
+/// кладётся `.actual.png` для сравнения.
 /// Эталоны сняты на iPhone 16 Pro с iOS 18.5 (ios.yml); на другой версии
 /// системы шрифты сглаживаются иначе.
 @MainActor
@@ -44,13 +47,24 @@ func assertSnapshot<V: View>(
     let actual = directory.appendingPathComponent("\(test).\(name).actual.png")
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     try? FileManager.default.removeItem(at: actual)
+    try? FileManager.default.removeItem(at: directory.appendingPathComponent("\(test).\(name).new.png"))
 
-    let record = ProcessInfo.processInfo.environment["SNAPSHOT_RECORD"] == "1"
-    guard !record, let stored = try? Data(contentsOf: reference), let expected = UIImage(data: stored)?.cgImage else {
+    let stored = (try? Data(contentsOf: reference)).flatMap { UIImage(data: $0)?.cgImage }
+    switch SnapshotPolicy.decide(hasReference: stored != nil, environment: ProcessInfo.processInfo.environment) {
+    case .record:
         try? png.write(to: reference)
         XCTFail("записан эталон \(reference.lastPathComponent) — проверьте и закоммитьте", file: file, line: line)
         return
+    case .missingInCI:
+        let fresh = directory.appendingPathComponent("\(test).\(name).new.png")
+        try? png.write(to: fresh)
+        XCTFail("нет эталона \(reference.lastPathComponent): снимок — \(fresh.lastPathComponent) в артефакте ios-snapshots; "
+                + "проверьте, переименуйте без .new и закоммитьте", file: file, line: line)
+        return
+    case .compare:
+        break
     }
+    guard let expected = stored else { return }
     if let difference = ImageDifference.compare(expected, image), difference > 0.001 {
         try? png.write(to: actual)
         XCTFail("снапшот \(name) разошёлся с эталоном: \(String(format: "%.2f", difference * 100))% точек", file: file, line: line)
@@ -90,3 +104,22 @@ enum ImageDifference {
     }
 }
 #endif
+
+/// Записать снимок, сверить с эталоном или упасть без эталона.
+///
+/// Без эталона на Mac снимок записывается на его место (человек смотрит и
+/// коммитит). В CI (`CI` — через `TEST_RUNNER_CI` у xcodebuild) так нельзя:
+/// раннер повторяет упавший тест, повтор нашёл бы только что записанный
+/// эталон и прошёл, и прогон стал бы зелёным с эталоном, которого нет в git.
+enum SnapshotPolicy: Equatable {
+    case record
+    case missingInCI
+    case compare
+
+    static func decide(hasReference: Bool, environment: [String: String]) -> SnapshotPolicy {
+        if environment["SNAPSHOT_RECORD"] == "1" { return .record }
+        if hasReference { return .compare }
+        let ci = environment["CI"].map { !$0.isEmpty && $0 != "0" && $0.lowercased() != "false" } ?? false
+        return ci ? .missingInCI : .record
+    }
+}

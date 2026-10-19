@@ -14,6 +14,7 @@ import (
 	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/google/uuid"
 )
@@ -1615,12 +1616,14 @@ func (s *Service) GetReportFeedback(ctx context.Context, userID int64, reportID 
 }
 
 // ValidateWeekData validates that sufficient data exists for weekly report
-func (s *Service) ValidateWeekData(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (bool, []string, error) {
+// weekEnd не используется: неделя — с понедельника, содержащая weekStart.
+func (s *Service) ValidateWeekData(ctx context.Context, userID int64, weekStart, _ time.Time) (bool, []string, error) {
 	startTime := time.Now()
 
-	// Normalize dates
-	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
-	weekEnd = time.Date(weekEnd.Year(), weekEnd.Month(), weekEnd.Day(), 0, 0, 0, 0, weekEnd.Location())
+	// Неделя с понедельника, содержащая weekStart; даты — строками
+	// «ГГГГ-ММ-ДД», чтобы драйвер не переводил момент в другой пояс.
+	monday, sunday := calendarWeek(weekStart)
+	from, to := monday.Format(weekDateLayout), sunday.Format(weekDateLayout)
 
 	errors := make([]string, 0)
 
@@ -1632,7 +1635,7 @@ func (s *Service) ValidateWeekData(ctx context.Context, userID int64, weekStart,
 	`
 
 	var nutritionDays int
-	err := s.db.QueryRowContext(ctx, nutritionQuery, userID, weekStart, weekEnd).Scan(&nutritionDays)
+	err := s.db.QueryRowContext(ctx, nutritionQuery, userID, from, to).Scan(&nutritionDays)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to check nutrition days: %w", err)
 	}
@@ -1649,7 +1652,7 @@ func (s *Service) ValidateWeekData(ctx context.Context, userID int64, weekStart,
 	`
 
 	var weightDays int
-	err = s.db.QueryRowContext(ctx, weightQuery, userID, weekStart, weekEnd).Scan(&weightDays)
+	err = s.db.QueryRowContext(ctx, weightQuery, userID, from, to).Scan(&weightDays)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to check weight days: %w", err)
 	}
@@ -1667,7 +1670,7 @@ func (s *Service) ValidateWeekData(ctx context.Context, userID int64, weekStart,
 	`
 
 	var hasPhoto bool
-	err = s.db.QueryRowContext(ctx, photoQuery, userID, weekStart, weekEnd).Scan(&hasPhoto)
+	err = s.db.QueryRowContext(ctx, photoQuery, userID, from, to).Scan(&hasPhoto)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to check weekly photo: %w", err)
 	}
@@ -1678,8 +1681,8 @@ func (s *Service) ValidateWeekData(ctx context.Context, userID int64, weekStart,
 
 	s.log.LogDatabaseQuery("ValidateWeekData", time.Since(startTime), nil, map[string]interface{}{
 		"user_id":        userID,
-		"week_start":     weekStart,
-		"week_end":       weekEnd,
+		"week_start":     from,
+		"week_end":       to,
 		"nutrition_days": nutritionDays,
 		"weight_days":    weightDays,
 		"has_photo":      hasPhoto,
@@ -1690,8 +1693,13 @@ func (s *Service) ValidateWeekData(ctx context.Context, userID int64, weekStart,
 }
 
 // CreateWeeklyReport creates a weekly report
-func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (*WeeklyReport, error) {
+// Неделя — с понедельника, содержащая requestedStart (та же, что у фото
+// недели); конец недели вычисляется, а не берётся из запроса.
+func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, requestedStart, _ time.Time) (*WeeklyReport, error) {
 	startTime := time.Now()
+
+	weekStart, weekEnd := calendarWeek(requestedStart)
+	from, to := weekStart.Format(weekDateLayout), weekEnd.Format(weekDateLayout)
 
 	// Validate week data
 	valid, validationErrors, err := s.ValidateWeekData(ctx, userID, weekStart, weekEnd)
@@ -1741,7 +1749,7 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 		WorkoutsCompleted int
 	}
 
-	err = s.db.QueryRowContext(ctx, summaryQuery, userID, weekStart, weekEnd).Scan(
+	err = s.db.QueryRowContext(ctx, summaryQuery, userID, from, to).Scan(
 		&summary.DaysWithNutrition,
 		&summary.DaysWithWeight,
 		&summary.DaysWithActivity,
@@ -1756,14 +1764,15 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 
 	// Get photo URL
 	var photoURL *string
-	photoQuery := `SELECT photo_url FROM weekly_photos WHERE user_id = $1 AND week_start = $2 AND week_end = $3`
-	err = s.db.QueryRowContext(ctx, photoQuery, userID, weekStart, weekEnd).Scan(&photoURL)
+	photoQuery := `SELECT photo_url FROM weekly_photos WHERE user_id = $1 AND week_start = $2 AND week_end = $3
+		ORDER BY uploaded_at DESC LIMIT 1`
+	err = s.db.QueryRowContext(ctx, photoQuery, userID, from, to).Scan(&photoURL)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("failed to get photo: %w", err)
 	}
 
 	// Calculate week number
-	weekNumber := int(weekStart.Sub(time.Date(weekStart.Year(), 1, 1, 0, 0, 0, 0, time.UTC)).Hours()/24/7) + 1
+	weekNumber := reportWeekNumber(weekStart)
 
 	// Create report
 	report := &WeeklyReport{
@@ -1798,8 +1807,8 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 		report.ID,
 		report.UserID,
 		report.CuratorID,
-		report.WeekStart,
-		report.WeekEnd,
+		from,
+		to,
 		report.WeekNumber,
 		report.Summary,
 		report.PhotoURL,
@@ -1882,17 +1891,19 @@ func (s *Service) UploadPhoto(ctx context.Context, userID int64, weekIdentifier 
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Parse week identifier (format: "2024-W01")
-	// For now, use current week
-	weekStart := time.Now().AddDate(0, 0, -int(time.Now().Weekday()))
-	weekEnd := weekStart.AddDate(0, 0, 6)
+	// Фото — текущей недели в поясе профиля. Идентификатор клиента не
+	// используется для выбора недели: веб считает номер недели не по ISO,
+	// приложение — по ISO, и один номер значил бы у них разные недели.
+	uploadedAt := time.Now().In(middleware.GetUserTimezone(ctx, s.db, userID))
+	monday, _ := calendarWeek(uploadedAt)
+	canonical := isoWeekIdentifier(monday)
 
 	// Generate unique filename with proper extension
 	ext := getFileExtension(mimeType)
 	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
 
 	// Generate S3 key: weekly-photos/{userID}/{weekIdentifier}/{filename}
-	s3Key := fmt.Sprintf("weekly-photos/%d/%s/%s", userID, weekIdentifier, filename)
+	s3Key := fmt.Sprintf("weekly-photos/%d/%s/%s", userID, canonical, filename)
 
 	// Upload to S3
 	photoURL, err := s.s3Client.UploadFile(ctx, s3Key, fileData, mimeType, int64(fileSize))
@@ -1906,61 +1917,7 @@ func (s *Service) UploadPhoto(ctx context.Context, userID int64, weekIdentifier 
 		return nil, fmt.Errorf("failed to upload photo to S3: %w", err)
 	}
 
-	// Create photo data
-	photo := &PhotoData{
-		ID:             uuid.New().String(),
-		UserID:         userID,
-		WeekStart:      weekStart,
-		WeekEnd:        weekEnd,
-		WeekIdentifier: weekIdentifier,
-		PhotoURL:       photoURL,
-		FileSize:       fileSize,
-		MimeType:       mimeType,
-		UploadedAt:     time.Now(),
-		CreatedAt:      time.Now(),
-	}
-
-	// Insert photo metadata into database
-	query := `
-		INSERT INTO weekly_photos (
-			id, user_id, week_start, week_end, week_identifier, photo_url, file_size, mime_type,
-			uploaded_at, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-		ON CONFLICT (user_id, week_identifier)
-		DO UPDATE SET
-			photo_url = EXCLUDED.photo_url,
-			file_size = EXCLUDED.file_size,
-			mime_type = EXCLUDED.mime_type,
-			uploaded_at = EXCLUDED.uploaded_at
-		RETURNING id, user_id, week_start, week_end, week_identifier, photo_url, file_size, mime_type,
-		          uploaded_at, created_at
-	`
-
-	err = s.db.QueryRowContext(
-		ctx,
-		query,
-		photo.ID,
-		photo.UserID,
-		photo.WeekStart,
-		photo.WeekEnd,
-		photo.WeekIdentifier,
-		photo.PhotoURL,
-		photo.FileSize,
-		photo.MimeType,
-		photo.UploadedAt,
-	).Scan(
-		&photo.ID,
-		&photo.UserID,
-		&photo.WeekStart,
-		&photo.WeekEnd,
-		&photo.WeekIdentifier,
-		&photo.PhotoURL,
-		&photo.FileSize,
-		&photo.MimeType,
-		&photo.UploadedAt,
-		&photo.CreatedAt,
-	)
-
+	photo, err := s.recordWeeklyPhoto(ctx, userID, uploadedAt, photoURL, fileSize, mimeType)
 	if err != nil {
 		// If database insert fails, try to delete the uploaded file from S3
 		deleteErr := s.s3Client.DeleteFile(ctx, s3Key)
@@ -1970,29 +1927,65 @@ func (s *Service) UploadPhoto(ctx context.Context, userID int64, weekIdentifier 
 				"s3_key", s3Key,
 			)
 		}
-
-		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+		s.log.LogDatabaseQuery("INSERT INTO weekly_photos", time.Since(startTime), err, map[string]interface{}{
 			"user_id":         userID,
-			"week_identifier": weekIdentifier,
+			"week_identifier": canonical,
 		})
-		return nil, fmt.Errorf("failed to save photo metadata: %w", err)
+		return nil, err
 	}
-
-	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
-		"user_id":         userID,
-		"week_identifier": weekIdentifier,
-		"photo_id":        photo.ID,
-		"s3_key":          s3Key,
-	})
 
 	s.log.LogBusinessEvent("photo_uploaded", map[string]interface{}{
 		"photo_id":        photo.ID,
 		"user_id":         userID,
-		"week_identifier": weekIdentifier,
+		"week_identifier": canonical,
 		"s3_key":          s3Key,
 		"file_size":       fileSize,
 	})
 
+	return photo, nil
+}
+
+// recordWeeklyPhoto записывает фото в неделю с понедельника, содержащую
+// календарную дату uploadedAt в её поясе (поясе профиля). Повторная загрузка
+// за ту же неделю заменяет фото.
+func (s *Service) recordWeeklyPhoto(ctx context.Context, userID int64, uploadedAt time.Time, photoURL string, fileSize int, mimeType string) (*PhotoData, error) {
+	monday, sunday := calendarWeek(uploadedAt)
+	photo := &PhotoData{
+		ID:             uuid.New().String(),
+		UserID:         userID,
+		WeekIdentifier: isoWeekIdentifier(monday),
+		PhotoURL:       photoURL,
+		FileSize:       fileSize,
+		MimeType:       mimeType,
+		UploadedAt:     uploadedAt,
+	}
+
+	query := `
+		INSERT INTO weekly_photos (
+			id, user_id, week_start, week_end, week_identifier, photo_url, file_size, mime_type,
+			uploaded_at, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+		ON CONFLICT (user_id, week_identifier)
+		DO UPDATE SET
+			week_start = EXCLUDED.week_start,
+			week_end = EXCLUDED.week_end,
+			photo_url = EXCLUDED.photo_url,
+			file_size = EXCLUDED.file_size,
+			mime_type = EXCLUDED.mime_type,
+			uploaded_at = EXCLUDED.uploaded_at
+		RETURNING id, user_id, week_start, week_end, week_identifier, photo_url, file_size, mime_type,
+		          uploaded_at, created_at
+	`
+	err := s.db.QueryRowContext(ctx, query,
+		photo.ID, photo.UserID, monday.Format(weekDateLayout), sunday.Format(weekDateLayout), photo.WeekIdentifier,
+		photo.PhotoURL, photo.FileSize, photo.MimeType, photo.UploadedAt,
+	).Scan(
+		&photo.ID, &photo.UserID, &photo.WeekStart, &photo.WeekEnd, &photo.WeekIdentifier,
+		&photo.PhotoURL, &photo.FileSize, &photo.MimeType, &photo.UploadedAt, &photo.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save photo metadata: %w", err)
+	}
 	return photo, nil
 }
 
