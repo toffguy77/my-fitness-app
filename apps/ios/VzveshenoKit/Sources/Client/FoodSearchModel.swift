@@ -104,6 +104,30 @@ public final class FoodSearchModel {
     }
 }
 
+/// «Вручную»: свой продукт (`POST /user-foods`). Если его завели после
+/// ненайденного штрихкода, код запоминается на устройстве (`BarcodeCache`,
+/// 90 дней): следующий скан того же кода сразу находит этот продукт. На
+/// сервере у своего продукта штрихкода нет — общий поиск по коду глобальный,
+/// и чужой продукт не должен находиться у других.
+public struct ManualFoodService: Sendable {
+    private let api: APIClient
+    private let cache: BarcodeCache
+
+    public init(api: APIClient, cache: BarcodeCache) {
+        self.api = api
+        self.cache = cache
+    }
+
+    public func create(_ body: NewUserFoodBody, barcode: String?) async throws -> FoodItem {
+        let food: UserFood = try await api.send(try Endpoint.post("/api/v1/food-tracker/user-foods", body: body))
+        let item = food.asFoodItem
+        if let code = barcode.flatMap(BarcodeInput.normalize) {
+            cache.store(item, for: code)
+        }
+        return item
+    }
+}
+
 /// Итог поиска по штрихкоду.
 public enum BarcodeLookup: Equatable, Sendable {
     case found(FoodItem, cached: Bool)

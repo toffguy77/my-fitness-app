@@ -167,6 +167,43 @@ final class FoodLoggingTests: XCTestCase {
         XCTAssertEqual(transport.requests(to: "/api/v1/food-tracker/barcode/12345670").count, 2)
     }
 
+    /// Ненайденный код → «Вручную» → свой продукт: следующий скан того же кода
+    /// находит его на устройстве, без сети и без «не найдено».
+    func testManualFoodAfterUnknownBarcodeIsFoundNextScan() async throws {
+        let transport = StubTransport { request in
+            switch (request.method, request.path) {
+            case ("POST", "/api/v1/food-tracker/user-foods"):
+                return .success(#"{"id":"uf-1","name":"Сырок","calories_per_100":350,"protein_per_100":9,"fat_per_100":23,"carbs_per_100":28}"#,
+                                status: 201)
+            default:
+                return .success(#"{"found":false,"cached":false}"#)
+            }
+        }
+        let cache = BarcodeCache(url: nil)
+        let lookup = BarcodeLookupService(api: api(transport), cache: cache)
+        let miss = await lookup.lookup("4600000000017")
+        XCTAssertEqual(miss, .notFound(code: "4600000000017"))
+
+        let body = NewUserFoodBody(name: "Сырок", brand: nil, per100: Nutrition(calories: 350, protein: 9, fat: 23, carbs: 28))
+        let created = try await ManualFoodService(api: api(transport), cache: cache).create(body, barcode: "4600000000017")
+        XCTAssertEqual(created.id, "uf-1")
+
+        let next = await lookup.lookup("4600000000017")
+        XCTAssertEqual(next, .found(created, cached: true))
+        XCTAssertEqual(transport.requests(to: "/api/v1/food-tracker/barcode/4600000000017").count, 1, "второй скан — без сети")
+    }
+
+    /// Без кода (обычное «Вручную») кэш не трогается.
+    func testManualFoodWithoutBarcodeLeavesCacheEmpty() async throws {
+        let transport = StubTransport { _ in
+            .success(#"{"id":"uf-2","name":"Каша","calories_per_100":100}"#, status: 201)
+        }
+        let cache = BarcodeCache(url: nil)
+        let body = NewUserFoodBody(name: "Каша", brand: nil, per100: Nutrition(calories: 100, protein: 3, fat: 2, carbs: 18))
+        _ = try await ManualFoodService(api: api(transport), cache: cache).create(body, barcode: nil)
+        XCTAssertNil(cache.food(for: "4600000000017"))
+    }
+
     func testManualBarcodeIs8To14Digits() async {
         XCTAssertEqual(BarcodeInput.normalize("4607012345678"), "4607012345678")
         XCTAssertEqual(BarcodeInput.normalize(" 12345670 "), "12345670")
