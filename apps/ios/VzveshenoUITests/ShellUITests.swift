@@ -197,6 +197,9 @@ final class AccessibilityAuditUITests: XCTestCase {
         let app = launch("client")
         open(app, "header.chat")
         XCTAssertTrue(app.descendants(matching: .any)["message.m5"].waitForExistence(timeout: 10), app.screenSummary)
+        // Лента докручивается к последнему сообщению с анимацией: аудит посреди
+        // прокрутки сравнивал текст пузыря с тем, что под ним проезжало.
+        Thread.sleep(forTimeInterval: 1.5)
         try audit(app)
     }
 
