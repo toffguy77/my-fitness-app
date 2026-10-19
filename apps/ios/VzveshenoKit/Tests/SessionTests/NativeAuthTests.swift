@@ -162,7 +162,7 @@ final class MagicLinkRequestsTests: XCTestCase {
     }
 
     func testRefusedRequestIsNotRemembered() async {
-        let transport = StubTransport { _ in .success(#"{"status":"error","code":"rate_limited"}"#, status: 429) }
+        let transport = StubTransport { _ in .error(429, code: "rate_limited") }
         let defaults = freshDefaults()
         let memory = requests(transport, defaults)
         _ = try? await memory.request(email: "anna@example.com", consents: nil)
