@@ -25,10 +25,17 @@ public struct OutboxItem: Codable, Equatable, Sendable, Identifiable {
     /// нужны название и КБЖУ. Поле необязательное: очередь, записанная до
     /// него, читается как прежде.
     public let preview: Data?
+    /// Тип тела, если не JSON (загрузка файла — `multipart/form-data`).
+    public let contentType: String?
+    /// Большое тело (фото, файл) — отдельным файлом рядом с очередью, а не в
+    /// строке SQLite: очередь читается часто, мегабайты в ней читались бы каждый раз.
+    public let bodyFile: String?
+    /// Что поставить в очередь после доставки (сообщение с адресом файла).
+    public let followUp: OutboxFollowUp?
 
     public init(id: UUID = UUID(), userID: Int64, idempotencyKey: String = UUID().uuidString.lowercased(),
                 kind: String, method: HTTPMethod, path: String, body: Data?, createdAt: Date = Date(), attempts: Int = 0,
-                preview: Data? = nil) {
+                preview: Data? = nil, contentType: String? = nil, bodyFile: String? = nil, followUp: OutboxFollowUp? = nil) {
         self.id = id
         self.userID = userID
         self.idempotencyKey = idempotencyKey
@@ -39,10 +46,28 @@ public struct OutboxItem: Codable, Equatable, Sendable, Identifiable {
         self.createdAt = createdAt
         self.attempts = attempts
         self.preview = preview
+        self.contentType = contentType
+        self.bodyFile = bodyFile
+        self.followUp = followUp
     }
 
     public var endpoint: Endpoint {
-        Endpoint(method: method, path: path, body: body, idempotencyKey: idempotencyKey)
+        Endpoint(method: method, path: path, body: body, contentType: contentType ?? "application/json",
+                 idempotencyKey: idempotencyKey)
+    }
+}
+
+/// Второй шаг изменения из двух: загрузка вложения, затем сообщение с его
+/// адресом. Сообщение ставится в очередь, когда сервер принял файл, и
+/// получает свой `Idempotency-Key`.
+public struct OutboxFollowUp: Codable, Equatable, Sendable {
+    public let kind: String
+    /// Куда отправить сообщение: `/api/v1/conversations/<id>/messages`.
+    public let path: String
+
+    public init(kind: String, path: String) {
+        self.kind = kind
+        self.path = path
     }
 }
 

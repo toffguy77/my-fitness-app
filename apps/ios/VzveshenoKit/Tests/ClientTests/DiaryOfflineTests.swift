@@ -104,7 +104,8 @@ final class DiaryOfflineTests: XCTestCase {
     func testQueuedMenuEatIsAPendingRow() async throws {
         let store = InMemoryOutboxStore()
         let body = NewEntryBody(foodId: "", mealType: .breakfast, portionType: .grams, portionAmount: 180, time: "08:00",
-                                date: "2025-10-17", foodName: "Сырники", nutrition: Nutrition(calories: 420, protein: 30, fat: 15, carbs: 40))
+                                date: "2025-10-17", foodName: "Сырники",
+                                nutrition: Nutrition(calories: 420, protein: 30, fat: 15, carbs: 40))
         try store.append(OutboxItem(userID: 7, kind: DiaryModel.eatKind, method: .post,
                                     path: "/api/v1/meal-plans/2025-10-17/items/breakfast/eat", body: Data("{}".utf8),
                                     preview: try JSONEncoder().encode(EatenPreview(entry: body))))

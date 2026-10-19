@@ -20,6 +20,9 @@ struct ConversationListScreen: View {
                                         onOpen: { open($0) }, onRetry: { Task { await chats.load() } },
                                         avatar: { CuratorProfileMenu() })
                 .refreshable { await chats.load() }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    FreshnessBanner(offline: chats.offline, updatedLabel: chats.updatedLabel).padding(.horizontal, DS.Space.screenX)
+                }
                 .task { if !chats.loaded { await chats.load() } }
             } else {
                 LoadingView()
@@ -130,6 +133,10 @@ struct CuratorConversationScreen: View {
         Group {
             if let conversation {
                 content(conversation)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        FreshnessBanner(offline: conversation.offline, updatedLabel: conversation.updatedLabel)
+                            .padding(.horizontal, DS.Space.screenX)
+                    }
             } else {
                 LoadingView()
             }
@@ -142,7 +149,7 @@ struct CuratorConversationScreen: View {
         .task {
             guard conversation == nil, let curator = model.curator else { return }
             let loaded = CuratorConversationModel(api: model.api, reference: reference, curatorID: curator.curatorID,
-                                                  calendar: curator.calendar)
+                                                  calendar: curator.calendar, cache: model.cache)
             if case let .client(id) = reference { loaded.client = curator.hub?.client(id) }
             loaded.onRead = { [weak model] in Task { await model?.curator?.chats?.load() } }
             loaded.isVisible = true

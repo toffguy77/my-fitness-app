@@ -2,6 +2,7 @@ import API
 import Client
 import Foundation
 import Observation
+import Outbox
 
 /// Карточка клиента (`ios-curator-client-card`). Действия куратора — только
 /// онлайн: ошибка возвращает прежнее значение и показывает «Не удалось сохранить».
@@ -29,34 +30,60 @@ public final class ClientCardModel {
     /// «Не удалось сохранить» и тексты ошибок форм.
     public var notice: String?
 
+    /// Сохранённая карточка на экране / обновление не дошло. Только чтение:
+    /// изменения куратора — онлайн.
+    public private(set) var freshness = Freshness()
+
     public let calendar: DayCalendar
     private let api: APIClient
+    private let reader: ScreenReader
+    private let account: Int64?
     private let now: @Sendable () -> Date
     private let messages: ErrorMessages
 
     public init(api: APIClient, clientID: Int64, tab: ClientCardTab = .overview, calendar: DayCalendar,
-                messages: ErrorMessages = ErrorMessages(), now: @escaping @Sendable () -> Date = { Date() }) {
+                messages: ErrorMessages = ErrorMessages(), cache: ScreenCache? = nil, account: Int64? = nil,
+                now: @escaping @Sendable () -> Date = { Date() }) {
         self.api = api
+        reader = ScreenReader(api: api, cache: cache, now: now)
+        self.account = account
         self.clientID = clientID
         self.tab = tab
         self.calendar = calendar
         self.messages = messages
         self.now = now
+        if let cached = reader.cached(ClientDetail.self, detailEndpoint, userID: account) {
+            detail = cached.value
+            freshness.cachedAt = cached.updatedAt
+            phase = .loaded
+            notices = reader.cached([ClientNotice].self, .get("\(base)/notices"), userID: account)?.value ?? []
+        }
     }
 
     private var base: String { "/api/v1/curator/clients/\(clientID)" }
+    private var detailEndpoint: Endpoint { .get(base, query: [URLQueryItem(name: "days", value: "7")]) }
     public var today: String { calendar.key(now()) }
+    public var updatedLabel: String? { freshness.label(now: now(), timeZone: calendar.timeZone) }
+    public var offline: Bool { freshness.offline }
+
+    /// Свежий список, без сети — сохранённый; ошибка — прежний.
+    private func list<T: Decodable & Sendable>(_ type: T.Type, _ path: String) async -> T? {
+        try? await reader.fetchOrCached(T.self, .get(path), userID: account).get().0
+    }
 
     // MARK: Загрузка
 
     public func load() async {
-        do {
-            detail = try await api.send(.get(base, query: [URLQueryItem(name: "days", value: "7")]))
+        switch await reader.fetch(ClientDetail.self, detailEndpoint, userID: account) {
+        case let .success(value):
+            detail = value
             phase = .loaded
-        } catch {
+            freshness.markFresh()
+        case let .failure(error):
+            freshness.markFailed(error)
             if detail == nil { phase = .failed(messages.message(for: error)) }
         }
-        notices = (try? await api.send(.get("\(base)/notices"))) ?? notices
+        notices = await list([ClientNotice].self, "\(base)/notices") ?? notices
         await loadTab()
     }
 
@@ -71,15 +98,15 @@ public final class ClientCardModel {
     }
 
     public func loadPlans() async {
-        if let list: [ClientPlan] = try? await api.send(.get("\(base)/weekly-plans")) { plans = list }
+        if let list = await list([ClientPlan].self, "\(base)/weekly-plans") { plans = list }
     }
 
     public func loadTasks() async {
-        if let list: [ClientTask] = try? await api.send(.get("\(base)/tasks")) { tasks = list }
+        if let list = await list([ClientTask].self, "\(base)/tasks") { tasks = list }
     }
 
     public func loadReports() async {
-        if let list: [WeeklyReport] = try? await api.send(.get("\(base)/weekly-reports")) { reports = list }
+        if let list = await list([WeeklyReport].self, "\(base)/weekly-reports") { reports = list }
     }
 
     // MARK: Производные

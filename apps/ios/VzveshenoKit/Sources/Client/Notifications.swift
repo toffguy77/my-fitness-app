@@ -2,6 +2,7 @@ import API
 import Foundation
 import Navigation
 import Observation
+import Outbox
 
 /// Уведомление `GET /notifications` (поля в camelCase).
 public struct AppNotification: Decodable, Sendable, Equatable, Identifiable {
@@ -51,6 +52,12 @@ public struct AppNotification: Decodable, Sendable, Equatable, Identifiable {
     }
 }
 
+/// Страница `GET /notifications`.
+struct NotificationPage: Decodable, Sendable {
+    let notifications: [AppNotification]
+    let hasMore: Bool?
+}
+
 /// Экран уведомлений (`ios-notifications-center`): «Основные» и «Контент»,
 /// по 20, прочтение после 2 с на экране, «Прочитать все» — только вкладка.
 @MainActor
@@ -71,15 +78,40 @@ public final class NotificationsModel {
     public private(set) var hasMore: [Tab: Bool] = [:]
     public private(set) var loaded: Set<Tab> = []
     public var error: String?
+    public private(set) var freshness = Freshness()
     private let api: APIClient
+    private let reader: ScreenReader
+    private let account: Int64?
     private let sleeper: Sleeper
     @ObservationIgnored private var readDelays: [String: Task<Void, Never>] = [:]
     /// Счётчики изменились — колокольчик «Сегодня» и значок.
     @ObservationIgnored public var onCountsChanged: (@MainActor (UnreadCounts) -> Void)?
 
-    public init(api: APIClient, sleeper: Sleeper = TaskSleeper()) {
+    public init(api: APIClient, sleeper: Sleeper = TaskSleeper(), cache: ScreenCache? = nil, account: Int64? = nil) {
         self.api = api
+        reader = ScreenReader(api: api, cache: cache)
+        self.account = account
         self.sleeper = sleeper
+        for tab in Tab.allCases {
+            guard let cached = reader.cached(NotificationPage.self, Self.endpoint(tab, offset: 0), userID: account) else { continue }
+            items[tab] = cached.value.notifications
+            hasMore[tab] = false
+            freshness.cachedAt = min(freshness.cachedAt ?? cached.updatedAt, cached.updatedAt)
+        }
+        if let counts = reader.cached(UnreadCounts.self, Self.countsEndpoint, userID: account)?.value { self.counts = counts }
+    }
+
+    public var updatedLabel: String? { freshness.label() }
+    public var offline: Bool { freshness.offline }
+
+    static let countsEndpoint = Endpoint.get("/api/v1/notifications/unread-counts")
+
+    static func endpoint(_ tab: Tab, offset: Int) -> Endpoint {
+        .get("/api/v1/notifications", query: [
+            URLQueryItem(name: "category", value: tab.rawValue),
+            URLQueryItem(name: "limit", value: "\(pageSize)"),
+            URLQueryItem(name: "offset", value: "\(offset)"),
+        ])
     }
 
     public var visible: [AppNotification] { items[tab] ?? [] }
@@ -106,29 +138,24 @@ public final class NotificationsModel {
     }
 
     public func refreshCounts() async {
-        if let fresh: UnreadCounts = try? await api.send(.get("/api/v1/notifications/unread-counts")) {
+        if case let .success(fresh) = await reader.fetch(UnreadCounts.self, Self.countsEndpoint, userID: account) {
             counts = fresh
             onCountsChanged?(fresh)
         }
     }
 
     private func fetch(_ tab: Tab, offset: Int) async {
-        struct Page: Decodable, Sendable {
-            let notifications: [AppNotification]
-            let hasMore: Bool?
-        }
-        do {
-            let page: Page = try await api.send(.get("/api/v1/notifications", query: [
-                URLQueryItem(name: "category", value: tab.rawValue),
-                URLQueryItem(name: "limit", value: "\(Self.pageSize)"),
-                URLQueryItem(name: "offset", value: "\(offset)"),
-            ]))
+        // Сохраняется первая страница вкладки — её показывают при открытии.
+        switch await reader.fetch(NotificationPage.self, Self.endpoint(tab, offset: offset), userID: offset == 0 ? account : nil) {
+        case let .success(page):
             items[tab] = offset == 0 ? page.notifications : (items[tab] ?? []) + page.notifications
             hasMore[tab] = page.hasMore ?? (page.notifications.count == Self.pageSize)
             loaded.insert(tab)
             error = nil
-        } catch {
-            self.error = ErrorMessages().message(for: error)
+            freshness.markFresh()
+        case let .failure(failure):
+            freshness.markFailed(failure)
+            if (items[tab] ?? []).isEmpty || failure != .network { error = ErrorMessages().message(for: failure) }
         }
     }
 

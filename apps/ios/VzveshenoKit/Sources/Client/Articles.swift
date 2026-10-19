@@ -2,6 +2,7 @@ import API
 import Foundation
 import Markdown
 import Observation
+import Outbox
 
 /// Категория статьи (`content_category` сервера).
 public enum ArticleCategory: String, CaseIterable, Sendable, Identifiable {
@@ -79,7 +80,14 @@ public enum ArticleShare {
     }
 }
 
-/// Лента статей по категориям (`ios-content-reader`).
+/// Страница ленты `GET /content/feed`.
+struct ArticlePage: Decodable, Sendable {
+    let articles: [Article]
+    let total: Int
+}
+
+/// Лента статей по категориям (`ios-content-reader`). Первая страница
+/// каждой категории сохраняется: открытие — сразу из кэша, затем свежая.
 @MainActor
 @Observable
 public final class ArticleFeedModel {
@@ -91,19 +99,30 @@ public final class ArticleFeedModel {
     public private(set) var loading = false
     public private(set) var loaded = false
     public private(set) var error: String?
-    private let api: APIClient
+    public private(set) var freshness = Freshness()
+    private let reader: ScreenReader
+    private let account: Int64?
+    private let now: @Sendable () -> Date
     @ObservationIgnored private var generation = 0
 
-    public init(api: APIClient) {
-        self.api = api
+    public init(api: APIClient, cache: ScreenCache? = nil, account: Int64? = nil, now: @escaping @Sendable () -> Date = { Date() }) {
+        reader = ScreenReader(api: api, cache: cache, now: now)
+        self.account = account
+        self.now = now
+        hydrate()
     }
 
     public var hasMore: Bool { articles.count < total }
+    public var updatedLabel: String? { freshness.label(now: now()) }
+    public var offline: Bool { freshness.offline }
 
     /// Чип категории: первая страница заменяет прежнюю.
     public func select(_ category: ArticleCategory?) async {
         self.category = category
         generation += 1
+        articles = []
+        loaded = false
+        hydrate()
         await fetch(offset: 0, generation: generation)
     }
 
@@ -114,64 +133,95 @@ public final class ArticleFeedModel {
 
     /// Прокрутка к концу — следующая страница.
     public func loadMore() async {
-        guard hasMore, !loading else { return }
+        guard hasMore, !loading, freshness.cachedAt == nil else { return }
         await fetch(offset: articles.count, generation: generation)
     }
 
-    private func fetch(offset: Int, generation: Int) async {
-        struct Page: Decodable, Sendable {
-            let articles: [Article]
-            let total: Int
-        }
+    private func endpoint(offset: Int) -> Endpoint {
         var query = [URLQueryItem(name: "limit", value: "\(Self.pageSize)"), URLQueryItem(name: "offset", value: "\(offset)")]
         if let category { query.insert(URLQueryItem(name: "category", value: category.rawValue), at: 0) }
+        return .get("/api/v1/content/feed", query: query)
+    }
+
+    private func hydrate() {
+        guard let cached = reader.cached(ArticlePage.self, endpoint(offset: 0), userID: account) else { return }
+        articles = cached.value.articles
+        total = cached.value.total
+        loaded = true
+        freshness.cachedAt = cached.updatedAt
+    }
+
+    private func fetch(offset: Int, generation: Int) async {
         loading = true
         defer { loading = false }
-        do {
-            let page: Page = try await api.send(.get("/api/v1/content/feed", query: query))
-            guard generation == self.generation else { return }
+        // Сохраняется только первая страница: её показывают при открытии.
+        let result = await reader.fetch(ArticlePage.self, endpoint(offset: offset), userID: offset == 0 ? account : nil)
+        guard generation == self.generation else { return }
+        switch result {
+        case let .success(page):
             articles = offset == 0 ? page.articles : articles + page.articles.filter { new in !articles.contains { $0.id == new.id } }
             total = page.total
             error = nil
-            loaded = true
-        } catch {
-            guard generation == self.generation else { return }
-            self.error = ErrorMessages().message(for: error)
-            loaded = true
+            freshness.markFresh()
+        case let .failure(failure):
+            freshness.markFailed(failure)
+            // С сохранённой лентой нет сети — не ошибка, а плашка.
+            if articles.isEmpty || failure != .network { error = ErrorMessages().message(for: failure) }
         }
+        loaded = true
     }
 }
 
-/// Статья по ссылке, пушу или из ленты: uuid — личная лента, иначе slug — публичная.
+/// Статья по ссылке, пушу или из ленты: uuid — личная лента, иначе slug —
+/// публичная. Открытая статья сохраняется и читается без сети.
 @MainActor
 @Observable
 public final class ArticleModel {
     public private(set) var article: Article?
     public private(set) var document: ArticleDocument?
     public private(set) var error: String?
+    public private(set) var freshness = Freshness()
     public let reference: String
-    private let api: APIClient
+    private let reader: ScreenReader
+    private let account: Int64?
 
-    public init(api: APIClient, reference: String, preview: Article? = nil) {
-        self.api = api
+    public init(api: APIClient, reference: String, preview: Article? = nil, cache: ScreenCache? = nil, account: Int64? = nil) {
+        reader = ScreenReader(api: api, cache: cache)
         self.reference = reference
+        self.account = account
         article = preview
+        if let cached = reader.cached(Article.self, endpoint, userID: account) {
+            show(cached.value)
+            freshness.cachedAt = cached.updatedAt
+        }
     }
 
     public static func isUUID(_ value: String) -> Bool { UUID(uuidString: value) != nil }
 
+    public var updatedLabel: String? { freshness.label() }
+    public var offline: Bool { freshness.offline }
+
+    /// Из ленты — по id в личной ленте; по ссылке — slug в публичной.
+    private var endpoint: Endpoint {
+        Self.isUUID(reference) || article?.id == reference
+            ? .get("/api/v1/content/feed/\(reference)")
+            : .get("/api/v1/public/content/\(reference)", requiresAuth: false)
+    }
+
+    private func show(_ loaded: Article) {
+        article = loaded
+        document = ArticleDocument(markdown: loaded.body ?? "")
+    }
+
     public func load() async {
-        do {
-            // Из ленты — по id в личной ленте; по ссылке — slug в публичной.
-            let endpoint: Endpoint = Self.isUUID(reference) || article?.id == reference
-                ? .get("/api/v1/content/feed/\(reference)")
-                : .get("/api/v1/public/content/\(reference)", requiresAuth: false)
-            let loaded: Article = try await api.send(endpoint)
-            article = loaded
-            document = ArticleDocument(markdown: loaded.body ?? "")
+        switch await reader.fetch(Article.self, endpoint, userID: account) {
+        case let .success(loaded):
+            show(loaded)
             error = nil
-        } catch {
-            self.error = ErrorMessages().message(for: error)
+            freshness.markFresh()
+        case let .failure(failure):
+            freshness.markFailed(failure)
+            if document == nil || failure != .network { error = ErrorMessages().message(for: failure) }
         }
     }
 }

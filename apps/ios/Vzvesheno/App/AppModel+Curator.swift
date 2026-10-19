@@ -4,10 +4,12 @@ import Curator
 import Foundation
 import Navigation
 import Observation
+import Outbox
 
 /// Экраны куратора (`ios-curator-app`) и суперадмина: модели вкладок живут,
 /// пока открыта оболочка роли. Всё в памяти — выход стирает их вместе с
-/// оболочкой; кэша на диске у куратора нет, действия — только онлайн.
+/// оболочкой. Последние ответы «Клиентов», «Чатов», переписок и карточек
+/// хранятся в кэше аккаунта только на чтение; действия — онлайн.
 @MainActor
 @Observable
 final class CuratorWorkspace {
@@ -24,12 +26,13 @@ final class CuratorWorkspace {
     /// Открытая переписка — ей тоже нужны события сокета.
     @ObservationIgnored weak var openConversation: CuratorConversationModel?
 
-    init(shell: Shell, api: APIClient, curatorID: Int64, calendar: DayCalendar) {
+    init(shell: Shell, api: APIClient, curatorID: Int64, calendar: DayCalendar, cache: ScreenCache? = nil) {
         self.shell = shell
         self.curatorID = curatorID
         self.calendar = calendar
-        hub = shell == .curator ? HubModel(api: api, calendar: calendar) : nil
-        chats = shell == .curator ? ConversationListModel(api: api) : nil
+        // Сохранённые «Клиенты» и «Чаты» — сразу при запуске; кэш только на чтение.
+        hub = shell == .curator ? HubModel(api: api, calendar: calendar, cache: cache, account: curatorID) : nil
+        chats = shell == .curator ? ConversationListModel(api: api, cache: cache, account: curatorID) : nil
         leads = LeadsModel(api: api)
         support = SupportQueueModel(api: api)
     }
@@ -56,7 +59,8 @@ final class CuratorWorkspace {
 extension AppModel {
     func startCurator(_ shell: Shell) {
         guard curator?.shell != shell, let userID = user?.id else { return }
-        let workspace = CuratorWorkspace(shell: shell, api: api, curatorID: userID, calendar: DayCalendar(timeZone: profileTimeZone))
+        let workspace = CuratorWorkspace(shell: shell, api: api, curatorID: userID, calendar: DayCalendar(timeZone: profileTimeZone),
+                                         cache: cache)
         curator = workspace
         publishStaffSnapshot()
         Task { [weak self] in

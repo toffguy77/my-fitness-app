@@ -27,7 +27,7 @@ struct MenuScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Space.s3) {
                 header
-                if offline { OfflineBanner().accessibilityIdentifier("banner.offline") }
+                FreshnessBanner(offline: offline || model.mealPlan?.offline == true, updatedLabel: model.mealPlan?.updatedLabel)
                 BetaNote()
                 SegmentedTabs(items: [(MenuTab.plan, "План"), (MenuTab.recipes, "Рецепты")], selection: $tab) {
                     "menu.tab.\($0.rawValue)"

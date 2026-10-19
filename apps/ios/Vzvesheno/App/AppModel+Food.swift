@@ -17,7 +17,7 @@ extension AppModel {
         }
         self.diary = diary
         nutrients = NutrientsModel(api: api)
-        let plan = MealPlanModel(api: api, calendar: calendar)
+        let plan = MealPlanModel(api: api, calendar: calendar, outbox: outbox, cache: cache, account: user?.id)
         plan.onEaten = { [weak self] day, _ in
             await self?.diary?.syncDay(day)
             await self?.today?.load()

@@ -3,6 +3,7 @@ import Client
 import Foundation
 import Navigation
 import Observation
+import Outbox
 
 /// Тон бейджа причины.
 public enum BadgeTone: Sendable, Equatable {
@@ -169,15 +170,44 @@ public final class HubModel {
     /// Непрочитанные сообщения — показатель и бейдж «Чатов».
     public private(set) var unread = 0
     public var query = ""
+    /// Сохранённые «Клиенты» на экране / последнее обновление не дошло.
+    public private(set) var freshness = Freshness()
 
     public let calendar: DayCalendar
-    private let api: APIClient
+    private let reader: ScreenReader
+    private let account: Int64?
     private let now: @Sendable () -> Date
 
-    public init(api: APIClient, calendar: DayCalendar, now: @escaping @Sendable () -> Date = { Date() }) {
-        self.api = api
+    /// Кэш — только на чтение: действия куратора идут онлайн.
+    public init(api: APIClient, calendar: DayCalendar, cache: ScreenCache? = nil, account: Int64? = nil,
+                now: @escaping @Sendable () -> Date = { Date() }) {
+        reader = ScreenReader(api: api, cache: cache, now: now)
+        self.account = account
         self.calendar = calendar
         self.now = now
+        hydrate()
+    }
+
+    public var updatedLabel: String? { freshness.label(now: now(), timeZone: calendar.timeZone) }
+    public var offline: Bool { freshness.offline }
+
+    private static let analyticsEndpoint = Endpoint.get("/api/v1/curator/analytics")
+    private static let attentionEndpoint = Endpoint.get("/api/v1/curator/attention")
+    private static let clientsEndpoint = Endpoint.get("/api/v1/curator/clients")
+    private static let benchmarkEndpoint = Endpoint.get("/api/v1/curator/analytics/benchmark",
+                                                        query: [URLQueryItem(name: "weeks", value: "4")])
+
+    private func hydrate() {
+        guard let analytics = reader.cached(CuratorAnalytics.self, Self.analyticsEndpoint, userID: account),
+              let attention = reader.cached([AttentionItem].self, Self.attentionEndpoint, userID: account),
+              let clients = reader.cached([CuratorClient].self, Self.clientsEndpoint, userID: account) else { return }
+        self.analytics = analytics.value
+        self.attention = attention.value
+        self.clients = clients.value
+        unread = analytics.value.totalUnread
+        benchmark = reader.cached(CuratorBenchmark.self, Self.benchmarkEndpoint, userID: account)?.value
+        freshness.cachedAt = min(analytics.updatedAt, attention.updatedAt, clients.updatedAt)
+        phase = .loaded
     }
 
     // MARK: Производные
@@ -199,23 +229,33 @@ public final class HubModel {
     // MARK: Загрузка
 
     /// Сводка, внимание и клиенты — вместе; бенчмарк — отдельно и молча.
+    /// Без сети — сохранённые с подписью; «Не удалось загрузить» — только
+    /// когда показать нечего.
     public func load() async {
         if analytics == nil { phase = .loading }
-        do {
-            async let analytics: CuratorAnalytics = api.send(.get("/api/v1/curator/analytics"))
-            async let attention: [AttentionItem] = api.send(.get("/api/v1/curator/attention"))
-            async let clients: [CuratorClient] = api.send(.get("/api/v1/curator/clients"))
-            let loaded = try await (analytics, attention, clients)
-            self.analytics = loaded.0
-            self.attention = loaded.1
-            self.clients = loaded.2
-            unread = loaded.0.totalUnread
+        let reader = reader
+        let account = account
+        async let analytics = reader.fetchOrCached(CuratorAnalytics.self, Self.analyticsEndpoint, userID: account)
+        async let attention = reader.fetchOrCached([AttentionItem].self, Self.attentionEndpoint, userID: account)
+        async let clients = reader.fetchOrCached([CuratorClient].self, Self.clientsEndpoint, userID: account)
+        let loaded = await (analytics, attention, clients)
+        switch (loaded.0, loaded.1, loaded.2) {
+        case let (.success(analytics), .success(attention), .success(clients)):
+            self.analytics = analytics.0
+            self.attention = attention.0
+            self.clients = clients.0
+            unread = analytics.0.totalUnread
             phase = .loaded
-        } catch {
-            phase = .failed
+            let cached = [analytics.1, attention.1, clients.1].compactMap { $0 }
+            freshness = Freshness(cachedAt: cached.min(), offline: !cached.isEmpty)
+        default:
+            let errors = [loaded.0.failure, loaded.1.failure, loaded.2.failure].compactMap { $0 }
+            if let error = errors.first { freshness.markFailed(error) }
+            if self.analytics == nil { phase = .failed }
         }
-        benchmark = try? await api.send(.get("/api/v1/curator/analytics/benchmark",
-                                             query: [URLQueryItem(name: "weeks", value: "4")]))
+        if case let .success((value, _)) = await reader.fetchOrCached(CuratorBenchmark.self, Self.benchmarkEndpoint, userID: account) {
+            benchmark = value
+        }
     }
 
     /// Событие сокета: счётчик — сразу, новое сообщение — тихое обновление.
@@ -230,5 +270,12 @@ public final class HubModel {
         default:
             break
         }
+    }
+}
+
+extension Result {
+    var failure: Failure? {
+        if case let .failure(error) = self { return error }
+        return nil
     }
 }

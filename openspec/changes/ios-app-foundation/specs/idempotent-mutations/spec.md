@@ -2,7 +2,7 @@
 
 ### Requirement: Повтор с тем же ключом возвращает первый ответ
 
-Для `POST /api/v1/food-tracker/entries`, `PUT` и `DELETE /api/v1/food-tracker/entries/:id`, `POST /api/v1/food-tracker/water`, `POST /api/v1/dashboard/daily`, `POST /api/v1/dashboard/tasks/:id/complete` и `POST /api/v1/conversations/:id/messages` сервер SHALL сохранять ответ на запрос с заголовком `Idempotency-Key` на 24 часа и на повтор с тем же ключом, пользователем, методом, путём и телом MUST возвращать сохранённый ответ с заголовком `Idempotent-Replayed: true`, не выполняя действие снова.
+Для `POST /api/v1/food-tracker/entries`, `PUT` и `DELETE /api/v1/food-tracker/entries/:id`, `POST /api/v1/food-tracker/water`, `POST /api/v1/dashboard/daily`, `POST /api/v1/dashboard/tasks/:id/complete`, `POST /api/v1/meal-plans/:date/items/:mealType/eat` («Съел» в «Меню») и `POST /api/v1/conversations/:id/messages` сервер SHALL сохранять ответ на запрос с заголовком `Idempotency-Key` на 24 часа и на повтор с тем же ключом, пользователем, методом, путём и телом MUST возвращать сохранённый ответ с заголовком `Idempotent-Replayed: true`, не выполняя действие снова.
 
 #### Scenario: Двойная отправка записи еды
 

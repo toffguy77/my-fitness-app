@@ -141,7 +141,8 @@ final class AppModel {
         let snapshot = DaySnapshotStore(url: directory.appendingPathComponent(SnapshotRepository.fileName))
         let outboxStore: OutboxStore = (try? SQLiteOutboxStore(url: directory.appendingPathComponent("outbox.sqlite")))
             ?? InMemoryOutboxStore()
-        let outbox = Outbox(store: outboxStore, api: api)
+        // Вложения переписки, ждущие отправки, — файлами рядом с очередью.
+        let outbox = Outbox(store: outboxStore, api: api, files: directory.appendingPathComponent("outbox-files", isDirectory: true))
         // Сессия создаётся после Здоровья (её стиратели включают Здоровье),
         // а Здоровью нужен вошедший пользователь — ссылка заполняется ниже.
         let sessionRef = SessionRef()
@@ -361,11 +362,12 @@ final class AppModel {
     /// «Сегодня» и сокет — пока открыта клиентская оболочка.
     private func startClient() {
         if chat == nil, let userID = user?.id {
-            let chat = ChatModel(api: api, outbox: outbox, calendar: DayCalendar(timeZone: profileTimeZone), userID: userID)
+            let chat = ChatModel(api: api, outbox: outbox, cache: cache, calendar: DayCalendar(timeZone: profileTimeZone),
+                                 userID: userID)
             chat.sendTyping = { [realtime] id in await realtime.sendTyping(conversationID: id) }
             chat.onRead = { [weak self] in Task { await self?.refreshBadge() } }
             self.chat = chat
-            articles = ArticleFeedModel(api: api)
+            articles = ArticleFeedModel(api: api, cache: cache, account: userID)
         }
         if water == nil { startWater() }
         if today == nil {
