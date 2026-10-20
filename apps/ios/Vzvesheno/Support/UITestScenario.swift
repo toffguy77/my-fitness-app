@@ -43,6 +43,8 @@ enum UITestScenario: String {
     case newClient
     /// Вход выполнен, почта не подтверждена.
     case unverified
+    /// Стенд аудита обрезки текста (`TruncationProbeView`) вместо оболочки.
+    case truncationProbe
 
     static var current: UITestScenario? {
         argument("-uiTestScenario").flatMap(UITestScenario.init(rawValue:))

@@ -120,64 +120,59 @@ final class AccessibilityAuditUITests: XCTestCase {
             if !found.isEmpty { XCTFail("аудит \(screen): " + found.joined(separator: " ;; ")) }
         }
         try app.performAccessibilityAudit { issue in
-            // Контраст недоступного элемента WCAG 1.4.3 не нормирует: кнопка
-            // «Войти» до ввода почты и пароля и должна выглядеть погашенной.
-            if issue.auditType == .contrast, let element = issue.element, !element.isEnabled {
-                return true
-            }
-            // Пустое поле с подсказкой («name@example.ru»): аудит считает
-            // выносной «p» подсказки обрезанным, хотя на снимке он виден целиком.
-            if issue.auditType == .textClipped, let element = issue.element, element.elementType == .textField,
-               (element.value as? String ?? "").isEmpty || element.value as? String == element.placeholderValue {
-                return true
-            }
-            // Под полупрозрачным таббаром контраст считается по тому, что за
-            // ним, — это не цвет текста экрана.
-            let tabBar = app.tabBars.firstMatch
-            if issue.auditType == .contrast, let element = issue.element, tabBar.exists,
-               element.frame.maxY > tabBar.frame.minY {
-                return true
-            }
-            // Под плавающей панелью «Записать еду» (iOS 18) аудит сравнивает
-            // цвет подписи карточки, прокрученной под панель, с тем, что
-            // за ней в иерархии, а не с непрозрачной подложкой панели (пара
-            // токенов fgDefault/bgSurface — контраст выше 12:1). Проверено в
-            // фазе C: без исключения падает «Записать тренировку» под панелью.
-            // Обрезку подписи панели исключение больше не прячет.
-            let accessory = app.buttons["accessory.open"]
-            if issue.auditType == .contrast, let element = issue.element, accessory.exists,
-               element.frame.maxY > accessory.frame.minY - 4, element.frame.minY < accessory.frame.maxY + 4 {
-                return true
-            }
-            // Панель «Записать еду» — как таббар: высота постоянная, шрифт
-            // растёт до xxxLarge, дальше — увеличенный вид долгим нажатием
-            // (Large Content Viewer, HIG). Аудит называет это «частичной»
-            // поддержкой Dynamic Type.
-            if issue.auditType == .dynamicType, let element = issue.element, element.identifier.hasPrefix("accessory.") {
-                return true
-            }
-            if Self.isJustifiedException(issue, in: app) { return true }
-            let element = issue.element.map { "\($0.elementType.rawValue) «\($0.label)» [\($0.identifier)] \($0.frame)" } ?? "нет элемента"
-            found.append("\(issue.compactDescription): \(element)".replacingOccurrences(of: "\n", with: " "))
+            if Self.isExcluded(issue, in: app) { return true }
+            found.append(Self.describe(issue))
             return false
         }
     }
 
-    /// Исключения, найденные аудитом новых экранов (C7) и разобранные по
-    /// снимкам CI. Каждое — с причиной; всё остальное чинится в коде.
-    static func isJustifiedException(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication) -> Bool {
-        // «Text clipped» на тексте, который на снимке виден целиком: у шрифта
-        // бренда выносные элементы кириллицы и латиницы (р, у, д, ц, щ, ф, g,
-        // p, y, j) и надстрочные (ё, й) выходят за строку, и аудит принимает
-        // их за обрезку — «Переписка», «Обработана», «Гречка отварная»,
-        // значение поля «Дарья» (снимки C7, run 39323038736). Подпись без
-        // таких букв это исключение не прикрывает — обрезка там настоящая.
-        if issue.auditType == .textClipped, let element = issue.element {
-            let text = [element.label, element.value as? String ?? "", element.placeholderValue ?? ""].joined()
-            if text.range(of: "[руфдцщДЦЩУgpqyjёйЁЙ]", options: .regularExpression) != nil { return true }
-            // Пустое защищённое поле — та же подсказка, что у текстового поля выше.
-            if element.elementType == .secureTextField, (element.value as? String ?? "").isEmpty { return true }
+    /// Находка одной строкой: тип, элемент, рамка и подробности аудита
+    /// (у контраста — измеренные цвета).
+    static func describe(_ issue: XCUIAccessibilityAuditIssue) -> String {
+        let element = issue.element.map { "\($0.elementType.rawValue) «\($0.label)» [\($0.identifier)] \($0.frame)" } ?? "нет элемента"
+        return "\(issue.compactDescription): \(element) — \(issue.detailedDescription)"
+            .replacingOccurrences(of: "\n", with: " ")
+    }
+
+    /// Исключения аудита, каждое с причиной; всё остальное чинится в коде.
+    /// Общие для всех экранов и для стенда обрезки (`TruncationProbeUITests`):
+    /// стенд проверяет, что настоящую обрезку они не прячут.
+    static func isExcluded(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication) -> Bool {
+        // Контраст недоступного элемента WCAG 1.4.3 не нормирует: кнопка
+        // «Войти» до ввода почты и пароля и должна выглядеть погашенной.
+        if issue.auditType == .contrast, let element = issue.element, !element.isEnabled {
+            return true
         }
+        // Под полупрозрачным таббаром контраст считается по тому, что за
+        // ним, — это не цвет текста экрана.
+        let tabBar = app.tabBars.firstMatch
+        if issue.auditType == .contrast, let element = issue.element, tabBar.exists,
+           element.frame.maxY > tabBar.frame.minY {
+            return true
+        }
+        // Под плавающей панелью «Записать еду» (iOS 18) аудит сравнивает
+        // цвет подписи карточки, прокрученной под панель, с тем, что
+        // за ней в иерархии, а не с непрозрачной подложкой панели (пара
+        // токенов fgDefault/bgSurface — контраст выше 12:1). Проверено в
+        // фазе C: без исключения падает «Записать тренировку» под панелью.
+        let accessory = app.buttons["accessory.open"]
+        if issue.auditType == .contrast, let element = issue.element, accessory.exists,
+           element.frame.maxY > accessory.frame.minY - 4, element.frame.minY < accessory.frame.maxY + 4 {
+            return true
+        }
+        // Панель «Записать еду» — как таббар: высота постоянная, шрифт
+        // растёт до xxxLarge, дальше — увеличенный вид долгим нажатием
+        // (Large Content Viewer, HIG). Аудит называет это «частичной»
+        // поддержкой Dynamic Type.
+        if issue.auditType == .dynamicType, let element = issue.element, element.identifier.hasPrefix("accessory.") {
+            return true
+        }
+        return isJustifiedException(issue, in: app)
+    }
+
+    /// Исключения, найденные аудитом новых экранов (C7) и разобранные по
+    /// снимкам CI.
+    static func isJustifiedException(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication) -> Bool {
         // «Contrast nearly passed» — пары токенов packages/design-tokens,
         // общие с вебом: основная кнопка (primaryFg на primaryDefault), мягкая
         // (primaryDefault на primarySoft), fgSubtle на bgSubtle. Их меняет
@@ -198,7 +193,6 @@ final class AccessibilityAuditUITests: XCTestCase {
         if issue.element == nil, issue.compactDescription.contains("Potentially inaccessible text") { return true }
         return false
     }
-
     private func launch(_ scenario: String, _ extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestScenario", scenario, "-AppleLanguages", "(ru)", "-AppleLocale", "ru_RU"] + extra
@@ -244,9 +238,14 @@ final class AccessibilityAuditUITests: XCTestCase {
         let app = launch("client")
         open(app, "header.notifications")
         XCTAssertTrue(app.descendants(matching: .any)["notification.n1"].waitForExistence(timeout: 10), app.screenSummary)
-        // Вкладки «Основные/Контент» перерисовываются, пока приходят счётчики:
-        // аудит посреди анимации сравнивал подпись с проезжающей подложкой.
-        Thread.sleep(forTimeInterval: 1.5)
+        // Через 2 с на экране n1 и n2 становятся прочитанными: «Основные · 2»
+        // превращается в «Основные», и «Контент · 1» сдвигается влево на ширину
+        // счётчика. Аудит, снявший экран до сдвига, а рамку — после, мерил
+        // тёмную подпись «Контента» по тёмному хвосту выбранной вкладки
+        // («Contrast failed»). Аудит — по экрану после отметки прочитанным.
+        let main = app.buttons["notifications.tab.main"]
+        let settled = expectation(for: NSPredicate(format: "label == %@", "Основные"), evaluatedWith: main)
+        wait(for: [settled], timeout: 10)
         try audit(app)
     }
 
