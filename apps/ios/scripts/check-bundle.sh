@@ -35,6 +35,15 @@ check_manifest "$app"
 info="$app/Info.plist"
 [ "$(value "$info" ITSAppUsesNonExemptEncryption)" = "false" ] && ok "ITSAppUsesNonExemptEncryption = false" \
   || err "ITSAppUsesNonExemptEncryption должен быть false"
+# Только iPhone: универсальная сборка с одной портретной ориентацией не
+# принимается App Store Connect (2026-10-20, 1.0.0 отвергнута при загрузке).
+family=$(value "$info" UIDeviceFamily | tr -d ' \n{}' | sed 's/Array//')
+[ "$family" = "1" ] && ok "UIDeviceFamily = iPhone" || err "UIDeviceFamily должен быть только 1 (iPhone), сейчас: $family"
+for appex in "$app"/PlugIns/*.appex; do
+  [ -d "$appex" ] || continue
+  f=$(value "$appex/Info.plist" UIDeviceFamily | tr -d ' \n{}' | sed 's/Array//')
+  [ -z "$f" ] || [ "$f" = "1" ] || err "$(basename "$appex"): UIDeviceFamily должен быть 1, сейчас: $f"
+done
 modes=$(value "$info" UIBackgroundModes)
 for mode in remote-notification fetch; do
   grep -q "$mode" <<<"$modes" && ok "UIBackgroundModes: $mode" || err "UIBackgroundModes без $mode"

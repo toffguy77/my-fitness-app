@@ -160,11 +160,14 @@ platform :ios do
     keys = File.expand_path("~/.appstoreconnect/private_keys")
     FileUtils.mkdir_p(keys)
     FileUtils.cp(ENV["ASC_KEY_PATH"], File.join(keys, "AuthKey_#{ENV['APP_STORE_CONNECT_KEY_ID']}.p8"))
-    Dir.chdir("..") do
+    output = Dir.chdir("..") do
       sh("xcrun", "altool", "--validate-app", "-f", IPA, "-t", "ios",
          "--apiKey", ENV["APP_STORE_CONNECT_KEY_ID"], "--apiIssuer", ENV["APP_STORE_CONNECT_ISSUER_ID"],
          "--output-format", "normal")
     end
+    # altool выходит с нулём и при отказе: «VERIFY FAILED» только в выводе.
+    # 2026-10-20 сборка 1.0.0 прошла этот шаг «успешно» с Invalid bundle.
+    UI.user_error!("Apple отверг пакет при проверке — ошибка выше") if output =~ /VERIFY FAILED|Validation failed/
   end
 
   desc "Entitlements подписанного приложения и профиля — что сверяет Apple при приёме"
@@ -224,8 +227,12 @@ platform :ios do
       sh("xcrun", "altool", "--upload-app", "-f", IPA, "-t", "ios", *auth, "--output-format", "normal")
     end
     delivery = output[/Delivery UUID:\s*([0-9a-fA-F-]{36})/, 1] || output[/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/, 1]
+    # altool выходит с нулём и при отказе в загрузке — «UPLOAD FAILED» только
+    # в выводе, а номер в нём — номер отказа, не доставки.
+    UI.user_error!("Загрузка отвергнута — ошибка выше") if output =~ /UPLOAD FAILED|Validation failed/
     UI.user_error!("altool не вернул номер доставки") unless delivery
     UI.message("Доставка #{delivery}")
+    state = nil
     40.times do
       status = sh("xcrun", "altool", "--build-status", "--delivery-id", delivery, *auth, "--output-format", "normal",
                   error_callback: ->(_) {})
@@ -235,6 +242,9 @@ platform :ios do
       break if %w[VALID COMPLETE].include?(state)
       sleep(30)
     end
+    # Без подтверждённого состояния успехом это не считается: раньше lane
+    # завершался зелёным, а сборки в TestFlight не было.
+    UI.user_error!("Обработка не подтверждена за 20 минут — проверьте тегом ios-status-*") unless %w[VALID COMPLETE].include?(state)
   end
 
   desc "Тексты и скриншоты страницы в App Store без отправки на ревью"
