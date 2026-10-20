@@ -190,6 +190,10 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: "$(APP_BUNDLE_ID)"
         PRODUCT_NAME: Vzvesheno
+        # Только iPhone. Уровня проекта мало: XcodeGen ставит целям iOS-приложения
+        # свой "1,2", и универсальная сборка с одной портретной ориентацией
+        # отвергается App Store Connect (ориентации iPad обязательны).
+        TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
         # Симулятор подписывается локально, без профиля и сертификата.
@@ -244,6 +248,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: "$(APP_BUNDLE_ID).widget"
+        TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
         "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
 

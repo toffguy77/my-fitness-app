@@ -25,6 +25,13 @@ final class ComplianceTests: XCTestCase {
     }
 
     /// 7.1: тексты системных разрешений — по-русски и про то, зачем они.
+    /// Только iPhone. Универсальная сборка с одной портретной ориентацией не
+    /// проходит проверку App Store Connect: 1.0.0 (1764) отвергнута при загрузке.
+    func testBuildIsIPhoneOnly() {
+        XCTAssertEqual(info["UIDeviceFamily"] as? [Int], [1])
+        XCTAssertEqual(info["UISupportedInterfaceOrientations"] as? [String], ["UIInterfaceOrientationPortrait"])
+    }
+
     func testPermissionStringsAreRussian() {
         let keys = ["NSCameraUsageDescription", "NSPhotoLibraryUsageDescription", "NSPhotoLibraryAddUsageDescription",
                     "NSHealthShareUsageDescription", "NSHealthUpdateUsageDescription"]
