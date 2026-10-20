@@ -232,10 +232,12 @@ struct SignInContent: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .background(DS.Color.bgCanvas)
+        .accessibilityIdentifier("screen.signIn")
+        // Журнал — после идентификатора экрана: иначе тот достаётся и подписи
+        // журнала, и UI-тест не находит «uitest.signOutRequests».
         #if DEBUG
         .overlay(alignment: .bottom) { UITestSignOutLog().padding(.bottom, DS.Space.s2) }
         #endif
-        .accessibilityIdentifier("screen.signIn")
     }
 }
 

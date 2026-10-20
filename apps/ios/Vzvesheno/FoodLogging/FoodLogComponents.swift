@@ -72,6 +72,10 @@ struct MacroLine: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Белки \(nutrition.protein.jsRoundedText) г, жиры \(nutrition.fat.jsRoundedText) г, "
                             + "углеводы \(nutrition.carbs.jsRoundedText) г")
+        // Без признака текста собранный элемент — «other», и аудит проверял
+        // его как элемент управления: «Hit area is too small» у строки БЖУ
+        // на карточке порции.
+        .accessibilityAddTraits(.isStaticText)
     }
 
     private func part(_ letter: String, _ value: Double, _ color: Color) -> some View {
