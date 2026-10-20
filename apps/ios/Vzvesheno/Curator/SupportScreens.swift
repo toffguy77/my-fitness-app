@@ -213,9 +213,13 @@ struct SupportThreadContent: View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Space.s3) {
                 VStack(alignment: .leading, spacing: 0) {
+                    // Шапка вне прокрутки: без fixedSize на крупном шрифте её
+                    // строки сжимаются по высоте и обрезаются.
                     Text(conversation.title).dsText(DS.Typography.title3).foregroundStyle(DS.Color.fgDefault)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                     Text(conversation.subtitle(now: now)).dsText(DS.Typography.caption).foregroundStyle(DS.Color.fgMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("support.subtitle")
                 }
                 Spacer(minLength: 0)
@@ -225,7 +229,8 @@ struct SupportThreadContent: View {
                             .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout).weight(.medium))
                             .foregroundStyle(DS.Color.fgDefault)
                             .padding(.horizontal, DS.Space.s3)
-                            .frame(height: 34)
+                            // Не меньше 34 pt, но растёт с крупным шрифтом.
+                            .frame(minHeight: 34)
                             .background(Capsule().fill(DS.Color.bgSubtle))
                             .frame(minHeight: DS.Size.touch)
                     }

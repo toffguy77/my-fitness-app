@@ -170,9 +170,25 @@ final class AccessibilityAuditUITests: XCTestCase {
         return isJustifiedException(issue, in: app)
     }
 
+    /// Однострочные поля, проверенные по записям CI (см. `isJustifiedException`).
+    static let singleLineFields: Set<String> = ["signIn.email", "name.field", "password.current",
+                                                "search.field", "food.name"]
+
     /// Исключения, найденные аудитом новых экранов (C7) и разобранные по
     /// снимкам CI.
     static func isJustifiedException(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication) -> Bool {
+        // «Text clipped» у однострочных полей ввода. Аудит перерисовывает экран
+        // на крупных размерах Dynamic Type; на записях этих прогонов (run
+        // 39370996550) подсказка и значение полей видны целиком на каждом
+        // размере — «name@example.ru», «гр», «Например, омлет» (имя и пароль —
+        // то же поле DSField, что почта). Однострочное
+        // поле не переносит текст, а прокручивает его; находка — о поле как
+        // классе, а не об этих экранах. Только эти поля, по идентификатору.
+        if issue.auditType == .textClipped, let element = issue.element,
+           [.textField, .secureTextField].contains(element.elementType),
+           singleLineFields.contains(element.identifier) {
+            return true
+        }
         // «Contrast nearly passed» — пары токенов packages/design-tokens,
         // общие с вебом: основная кнопка (primaryFg на primaryDefault), мягкая
         // (primaryDefault на primarySoft), fgSubtle на bgSubtle. Их меняет

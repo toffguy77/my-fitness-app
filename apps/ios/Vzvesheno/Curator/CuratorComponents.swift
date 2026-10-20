@@ -92,7 +92,8 @@ struct SegmentBar<Item: Hashable>: View {
                     Text(title(item))
                         .font(.custom(DS.FontFamily.sans, size: 13, relativeTo: .footnote).weight(.medium))
                         .foregroundStyle(selected ? DS.Color.fgDefault : DS.Color.fgMuted)
-                        .lineLimit(1)
+                        // Без lineLimit: на крупном шрифте подпись переносится, а
+                        // не обрезается (аудит «Text clipped» на крупных размерах).
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, minHeight: 18)
                         .padding(.vertical, 7)

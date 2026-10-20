@@ -27,10 +27,12 @@ final class TruncationProbeUITests: XCTestCase {
         // Журнал CI оставляет только строки с «error:»: все находки — в сообщении.
         XCTAssertTrue(ids.contains("probe.truncated"), "обрезка по ширине не найдена: \(log)")
         XCTAssertTrue(ids.contains("probe.clippedHeight"), "обрезка по высоте не найдена: \(log)")
-        let controls = ["probe.sys", "probe.golos", "probe.golosRegular", "probe.golosV1", "probe.golosV3", "probe.golosH2",
-                        "probe.golosClean", "probe.literata", "probe.caption", "probe.cardStyle", "probe.btnLimit",
-                        "probe.btnScale", "probe.btnPlain", "probe.btnSystem", "probe.fieldGolos", "probe.fieldSystem",
-                        "probe.Обзор", "probe.План", "probe.Задачи", "probe.Отчёты"]
+        XCTAssertTrue(ids.contains("probe.lineLimit"), "одна строка на крупном шрифте не найдена: \(log)")
+        // Контроли: шрифты бренда с выносными (р, у, д, щ) и надстрочными (ё, й)
+        // и те же компоненты, что на экранах (сегменты, кнопки карточки).
+        let controls = ["probe.sys", "probe.golos", "probe.golosClean", "probe.literata", "probe.caption",
+                        "probe.cardStyle", "probe.btnScale", "probe.btnPlain", "probe.btnSystem",
+                        "segment.probe.Обзор", "segment.probe.План", "segment.probe.Задачи", "segment.probe.Отчёты"]
         let falsePositives = controls.filter(ids.contains)
         XCTAssertTrue(falsePositives.isEmpty, "контроли без обрезки: \(falsePositives) — \(log)")
     }

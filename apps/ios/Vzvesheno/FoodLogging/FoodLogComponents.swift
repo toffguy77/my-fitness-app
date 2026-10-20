@@ -101,8 +101,9 @@ struct SheetPrimaryButton: View {
         Button(action: action) {
             Text(title)
                 .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .headline).weight(.semibold))
-                .lineLimit(1)
+                // Без lineLimit: на крупном шрифте подпись переносится, а не обрезается.
                 .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
                 .foregroundStyle(enabled ? DS.Color.primaryFg : DS.Color.fgDisabled)
                 .frame(maxWidth: .infinity, minHeight: 50)
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous)

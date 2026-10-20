@@ -2,10 +2,14 @@
 import DesignSystem
 import SwiftUI
 
-/// Стенд для аудита «Text clipped» (`-uiTestScenario truncationProbe`):
-/// подписи заведомо обрезаны и подписи-контроли рядом. UI-тест проверяет, что
-/// аудит находит первые и молчит о вторых — иначе исключения в аудите могли
-/// бы тихо выключить проверку обрезки целиком. Только отладочная сборка.
+/// Стенд для аудита «Text clipped» (`-uiTestScenario truncationProbe`).
+/// Аудит перерисовывает экран на крупных размерах Dynamic Type и ищет текст,
+/// который там обрезается: `lineLimit`, фиксированная высота, сжатие по
+/// вертикали. Выносные элементы шрифта тут ни при чём — глифы Literata и
+/// Golos лежат внутри строки шрифта. Здесь подписи, обрезанные заведомо, и
+/// контроли, которые аудит находить не должен: UI-тест проверяет и то и
+/// другое, чтобы исключения аудита не выключили проверку обрезки тихо.
+/// Только отладочная сборка.
 struct TruncationProbeView: View {
     private static var golos: Font { Font.custom(DS.FontFamily.sans, size: 13, relativeTo: .footnote).weight(.medium) }
     private static var golos14: Font { Font.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout).weight(.medium) }
@@ -24,18 +28,13 @@ struct TruncationProbeView: View {
                     .frame(height: 8)
                     .clipped()
                     .accessibilityIdentifier("probe.clippedHeight")
-                // Контроли и варианты шрифта.
+                // Контроли: шрифты бренда с выносными элементами и надстрочными.
                 Text("Задачи Отчёты").font(.system(size: 13, weight: .medium)).accessibilityIdentifier("probe.sys")
                 Text("Задачи Отчёты").font(Self.golos).accessibilityIdentifier("probe.golos")
-                Text("Задачи Отчёты").font(.custom(DS.FontFamily.sans, size: 13)).accessibilityIdentifier("probe.golosRegular")
-                Text("Задачи Отчёты").font(Self.golos).padding(.vertical, 1).accessibilityIdentifier("probe.golosV1")
-                Text("Задачи Отчёты").font(Self.golos).padding(.vertical, 3).accessibilityIdentifier("probe.golosV3")
-                Text("Задачи Отчёты").font(Self.golos).padding(.horizontal, 2).accessibilityIdentifier("probe.golosH2")
                 Text("Отмена").font(Self.golos).accessibilityIdentifier("probe.golosClean")
                 Text("Запись для Марии").dsText(DS.Typography.title2).accessibilityIdentifier("probe.literata")
                 Text("Telegram · ждёт ответа 12 мин").dsText(DS.Typography.caption).accessibilityIdentifier("probe.caption")
                 buttons
-                fields
                 SegmentBar(items: ["Обзор", "План", "Задачи", "Отчёты"], selection: .constant("Обзор"),
                            title: { $0 }, identifier: { "probe.\($0)" })
             }
@@ -51,12 +50,13 @@ struct TruncationProbeView: View {
                 Button("Обработана") {}
                     .buttonStyle(CardButtonStyle(kind: .dark))
                     .accessibilityIdentifier("probe.cardStyle")
+                // Обрезана на крупных размерах: одна строка при любом шрифте.
                 Button {} label: {
                     Text("Обработана").font(Self.golos14).lineLimit(1)
                         .frame(maxWidth: .infinity, minHeight: 44).background(DS.Color.bgSubtle)
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("probe.btnLimit")
+                .accessibilityIdentifier("probe.lineLimit")
             }
             HStack(spacing: 8) {
                 Button {} label: {
@@ -78,17 +78,6 @@ struct TruncationProbeView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("probe.btnSystem")
             }
-        }
-    }
-
-    private var fields: some View {
-        HStack(spacing: 8) {
-            TextField("Текущий пароль", text: .constant(""))
-                .font(.custom(DS.FontFamily.sans, size: 17, relativeTo: .body))
-                .accessibilityIdentifier("probe.fieldGolos")
-            TextField("Текущий пароль", text: .constant(""))
-                .font(.system(size: 17))
-                .accessibilityIdentifier("probe.fieldSystem")
         }
     }
 }
