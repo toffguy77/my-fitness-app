@@ -187,6 +187,38 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(TelegramLink(linked: false).summary, "не привязан")
         XCTAssertEqual(TelegramLink(linked: true, username: "anna").summary, "@anna")
     }
+
+    /// «Привязка Apple к существующему аккаунту» (`external-identity`):
+    /// `native/apple/link` с access-токеном; серверу — исходный nonce.
+    func testLinkAppleSendsTheCredentialWithTheRawNonce() async throws {
+        let transport = StubTransport { _ in .success(#"{"linked":true,"provider":"apple"}"#) }
+        let nonce = AppleNonce(raw: "raw-nonce")
+        try await AccountService(api: api(transport)).linkApple(identityToken: "id-token", authorizationCode: "code", nonce: nonce)
+        let request = try XCTUnwrap(transport.requests.last)
+        XCTAssertEqual(request.method, "POST")
+        XCTAssertEqual(request.path, "/api/v1/auth/native/apple/link")
+        XCTAssertEqual(request.json?["identity_token"] as? String, "id-token")
+        XCTAssertEqual(request.json?["authorization_code"] as? String, "code")
+        XCTAssertEqual(request.json?["nonce"] as? String, "raw-nonce", "серверу — исходное значение, не хэш")
+    }
+
+    /// Apple ID уже у другого аккаунта — ошибка сервера доходит до экрана.
+    func testLinkAppleConflictIsReported() async {
+        let transport = StubTransport { _ in .error(409, code: "conflict") }
+        do {
+            try await AccountService(api: api(transport)).linkApple(identityToken: "t", authorizationCode: "c",
+                                                                     nonce: AppleNonce(raw: "n"))
+            XCTFail("ожидалась ошибка")
+        } catch {
+            guard case APIError.server(409, "conflict", _) = error else { return XCTFail("\(error)") }
+        }
+    }
+
+    func testOnlyAppleIsLinkedInTheApp() {
+        XCTAssertTrue(AccountService.linkableInApp("apple"))
+        XCTAssertFalse(AccountService.linkableInApp("yandex"))
+        XCTAssertFalse(AccountService.linkableInApp("vk"))
+    }
 }
 
 /// Запрошенное удаление переживает перезапуск (phase A: экран не возвращался).

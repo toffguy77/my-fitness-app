@@ -410,10 +410,12 @@ struct FoodEntryContent: View {
                 HStack {
                     Button("Отмена", action: onCancel)
                         .dsText(DS.Typography.headline).foregroundStyle(DS.Color.primaryDefault)
+                        .touchTarget()
                         .accessibilityIdentifier("food.cancel")
                     Spacer()
                     Text("Запись для \(FoodEntryContent.genitive(clientName))")
-                        .dsText(DS.Typography.title3).foregroundStyle(DS.Color.fgDefault).lineLimit(1).minimumScaleFactor(0.8)
+                        .dsText(DS.Typography.title3).foregroundStyle(DS.Color.fgDefault)
+                        .multilineTextAlignment(.center).minimumScaleFactor(0.8)
                     Spacer()
                     Button("Готово", action: onSave)
                         .dsText(DS.Typography.headline)

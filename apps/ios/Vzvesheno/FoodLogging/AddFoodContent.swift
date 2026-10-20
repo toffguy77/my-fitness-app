@@ -17,6 +17,7 @@ struct AddFoodContent<Method: View>: View {
                     .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.medium))
                     .foregroundStyle(DS.Color.primaryDefault)
                     .frame(minHeight: DS.Size.touch)
+                    .touchTarget()
                     .accessibilityIdentifier("addFood.cancel")
                 Spacer()
                 Menu {
@@ -92,6 +93,7 @@ struct FoodSearchContent: View {
                 if !query.isEmpty {
                     Button { query = "" } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(DS.Color.fgSubtle)
+                            .touchTarget()
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Очистить")
@@ -155,14 +157,16 @@ struct FoodRow: View {
         HStack(spacing: DS.Space.s3) {
             Button(action: onSelect) {
                 VStack(alignment: .leading, spacing: 0) {
+                    // fixedSize по вертикали: на крупном шрифте стопка иначе
+                    // ужимала название в одну строку с многоточием.
                     Text(item.name)
                         .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout))
                         .foregroundStyle(DS.Color.fgDefault)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(item.subtitle)
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.fgMuted)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -202,7 +206,6 @@ struct PortionCard: View {
                 Text(food.name)
                     .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .headline).weight(.semibold))
                     .foregroundStyle(DS.Color.fgDefault)
-                    .lineLimit(2)
                 Spacer()
                 Text("\(NumberText.grouped(nutrition.kcal)) ккал")
                     .dsText(DS.Typography.caption)
@@ -235,6 +238,7 @@ struct PortionCard: View {
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.fgMuted)
                         .multilineTextAlignment(.trailing)
+                        .touchTarget()
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("portion.wheelToggle")

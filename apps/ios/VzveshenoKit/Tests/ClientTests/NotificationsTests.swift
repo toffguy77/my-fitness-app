@@ -195,12 +195,36 @@ final class PushTests: XCTestCase {
     /// «Выполнено» — `POST /dashboard/tasks/9/complete` через очередь, без открытия.
     func testCompleteActionGoesThroughOutbox() async {
         let transport = StubTransport { _ in .success(#"{"task":{"id":"9"},"metric_synced":false}"#) }
-        let performer = PushActionPerformer(outbox: outbox(transport), userID: { 7 })
+        let performer = PushActionPerformer(outbox: outbox(transport), userID: { 7 }, today: { "2026-10-19" })
         let queued = await performer.perform(.completeTask(id: "9"))
         XCTAssertTrue(queued)
         let request = transport.requests.first
         XCTAssertEqual(request?.path, "/api/v1/dashboard/tasks/9/complete")
         XCTAssertNotNil(request?.header("Idempotency-Key"))
+        XCTAssertEqual(request?.json?["date"] as? String, "2026-10-19", "местная дата нажатия, а не день часов сервера")
+    }
+
+    /// Дата фиксируется при нажатии: досылка после полуночи отмечает задачу
+    /// тем днём, когда человек нажал «Выполнено».
+    func testCompleteKeepsTapDateAcrossMidnight() async {
+        let offline = LockedFlag(true)
+        let transport = StubTransport { _ in offline.value ? .offline : .success(#"{"task":{"id":"9"}}"#) }
+        let queue = outbox(transport)
+        let day = LockedValue("2026-10-19")
+        let performer = PushActionPerformer(outbox: queue, userID: { 7 }, today: { day.value })
+        await performer.perform(.completeTask(id: "9"))
+        day.value = "2026-10-20"
+        offline.value = false
+        await queue.drain(userID: 7)
+        let posts = transport.requests(to: "/api/v1/dashboard/tasks/9/complete")
+        XCTAssertEqual(posts.last?.json?["date"] as? String, "2026-10-19")
+    }
+
+    /// По умолчанию — сегодняшний день телефона в формате сервера.
+    func testCompleteDefaultsToDeviceToday() async {
+        let transport = StubTransport { _ in .success(#"{"task":{"id":"9"}}"#) }
+        await PushActionPerformer(outbox: outbox(transport), userID: { 7 }).perform(.completeTask(id: "9"))
+        XCTAssertEqual(transport.requests.first?.json?["date"] as? String, DayCalendar().key(Date()))
     }
 
     /// Ответ из пуша переживает обрыв сети: тот же `Idempotency-Key` при досылке.
@@ -231,9 +255,13 @@ final class PushTests: XCTestCase {
         XCTAssertTrue(transport.requests.isEmpty)
     }
 
-    func testEnvironmentByBuild() {
-        XCTAssertEqual(PushEnvironment.forApp("dev"), "sandbox")
-        XCTAssertEqual(PushEnvironment.forApp("prod"), "production")
+    /// Окружение — по конфигурации сборки, а не по стенду: выпускная сборка
+    /// Dev-стенда (TestFlight) подписана дистрибутивно и получает боевой токен.
+    func testEnvironmentByBuildConfiguration() {
+        XCTAssertEqual(PushEnvironment.forBuild(apsEnvironment: "development"), "sandbox")
+        XCTAssertEqual(PushEnvironment.forBuild(apsEnvironment: "production"), "production")
+        XCTAssertEqual(PushEnvironment.forBuild(apsEnvironment: nil), "production", "без значения — боевой")
+        XCTAssertEqual(PushEnvironment.forBuild(apsEnvironment: ""), "production")
     }
 
     func testRegistrationBodyAndUnregister() async {
@@ -242,7 +270,8 @@ final class PushTests: XCTestCase {
         let secure = InMemorySecureStore()
         let installation = InstallationID.value(in: secure)
         XCTAssertEqual(InstallationID.value(in: secure), installation, "один на установку")
-        let registrar = PushRegistrar(api: api, tokens: InMemoryDeviceTokenStore(), environment: PushEnvironment.forApp("dev"),
+        let registrar = PushRegistrar(api: api, tokens: InMemoryDeviceTokenStore(),
+                                      environment: PushEnvironment.forBuild(apsEnvironment: "development"),
                                       appVersion: "1.0.0", installationID: { installation })
         let registered = await registrar.didReceive(token: Data([0xAB, 0x01, 0xFF]))
         XCTAssertTrue(registered)

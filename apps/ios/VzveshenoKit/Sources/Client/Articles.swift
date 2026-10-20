@@ -292,23 +292,44 @@ public enum ArticleLinks {
     public static let bodyGoals = URL(string: "vzvesheno-app:body-goals")!
     public static let site = URL(string: "https://burcev.team")!
 
+    /// Хосты нашего сайта (оба стенда).
+    static let ownHosts: Set<String> = ["burcev.team", "www.burcev.team", "new.burcev.team"]
+
     public enum Decision: Equatable, Sendable {
-        /// Ссылка остаётся (статьи, внешние источники).
+        /// Внешняя ссылка (источники, исследования) — остаётся.
         case keep(URL)
+        /// Статья нашего сайта `/content/<slug>` — открывается в приложении
+        /// (ссылка — адрес сайта, его разбирает `Router`).
+        case article(slug: String, url: URL)
         /// Калькулятор нормы — «Тело и цели».
         case bodyGoals
-        /// Тарифы и оплата: в приложении — только текст без ссылки (App Review 3.1.1(a)).
+        /// Всё остальное на нашем сайте (главная, тарифы, онбординг, кабинет)
+        /// и опасные схемы — только текст без ссылки: приложение не уводит на
+        /// страницы, где продаётся доступ (App Review 3.1.1(a)).
         case drop
     }
 
+    /// Белый список для своего сайта: статьи и калькулятор; прочее — текст.
+    /// Новая страница сайта не станет ссылкой из приложения сама собой.
     public static func decide(_ destination: String) -> Decision {
         guard let url = URL(string: destination, relativeTo: site)?.absoluteURL else { return .drop }
         let host = url.host?.lowercased() ?? ""
-        let path = url.path.lowercased()
-        let ours = ["burcev.team", "www.burcev.team", "new.burcev.team"].contains(host)
-        if ours, ["/pricing", "/tariffs", "/tarify", "/oplata", "/checkout"].contains(where: path.hasPrefix) { return .drop }
-        if ours, path.hasPrefix("/kalkulyator-kbzhu") || path.hasPrefix("/calculator") { return .bodyGoals }
-        guard ["https", "http", "mailto"].contains(url.scheme ?? "") else { return .drop }
+        let scheme = url.scheme?.lowercased() ?? ""
+        if ownHosts.contains(host) {
+            guard ["https", "http"].contains(scheme) else { return .drop }
+            let segments = url.path.lowercased().split(separator: "/").map(String.init)
+            if segments.count == 2, segments[0] == "content", !segments[1].isEmpty {
+                let slug = url.path.split(separator: "/").map(String.init)[1]
+                var components = URLComponents()
+                components.scheme = "https"
+                components.host = host
+                components.path = "/content/\(slug)"
+                return components.url.map { .article(slug: slug, url: $0) } ?? .drop
+            }
+            if segments.first == "kalkulyator-kbzhu" || segments.first == "calculator" { return .bodyGoals }
+            return .drop
+        }
+        guard ["https", "http", "mailto"].contains(scheme) else { return .drop }
         return .keep(url)
     }
 }
@@ -419,6 +440,7 @@ public struct ArticleDocument: Equatable, Sendable {
             switch ArticleLinks.decide(anchor.destination ?? "") {
             case .drop: target = nil
             case .bodyGoals: target = ArticleLinks.bodyGoals
+            case let .article(_, url): target = url
             case let .keep(url): target = url
             }
             // Ссылка внутри ссылки невозможна; внешняя побеждает.

@@ -1,4 +1,5 @@
 import Client
+import DesignSystem
 import Foundation
 
 /// Подписи экранов куратора, общие с вебом.
@@ -10,7 +11,7 @@ public enum CuratorText {
         let minutes = Int((seconds / 60).rounded(.down))
         let hours = Int((seconds / 3600).rounded(.down))
         if minutes < 1 { return "только что" }
-        if minutes < 60 { return "\(minutes) мин назад" }
+        if minutes < 60 { return DS.Plural.format("plural.minutes_ago %lld", minutes) }
         if hours < 24 { return "\(hours) ч назад" }
         let day = calendar.key(date)
         if day == calendar.adding(days: -1, to: calendar.key(now)) { return "вчера" }
@@ -47,25 +48,11 @@ public enum CuratorText {
 
     /// «32 года», «41 год», «25 лет».
     public static func years(_ age: Int) -> String {
-        let tens = age % 100
-        let ones = age % 10
-        if (11...14).contains(tens) { return "\(age) лет" }
-        switch ones {
-        case 1: return "\(age) год"
-        case 2...4: return "\(age) года"
-        default: return "\(age) лет"
-        }
+        DS.Plural.format("plural.years %lld", age)
     }
 
     /// «3 дня», «1 день», «5 дней».
     public static func days(_ count: Int) -> String {
-        let tens = count % 100
-        let ones = count % 10
-        if (11...14).contains(tens) { return "\(count) дней" }
-        switch ones {
-        case 1: return "\(count) день"
-        case 2...4: return "\(count) дня"
-        default: return "\(count) дней"
-        }
+        DS.Plural.format("plural.days %lld", count)
     }
 }

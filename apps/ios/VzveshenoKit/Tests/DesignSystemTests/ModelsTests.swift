@@ -92,13 +92,60 @@ final class PluralTests: XCTestCase {
         XCTAssertEqual(DS.Plural.format("plural.add_items %lld", 14), "Добавить 14 позиций")
         XCTAssertEqual(DS.Plural.format("plural.minutes_ago %lld", 22), "22 мин назад")
         XCTAssertEqual(DS.Plural.format("plural.earlier_days %lld", 3), "Ранее (3 дн.)")
+        XCTAssertEqual(DS.Plural.format("plural.of_records %lld", 1), "из 1 записи")
+        XCTAssertEqual(DS.Plural.format("plural.of_records %lld", 3), "из 3 записей")
+        XCTAssertEqual(DS.Plural.format("plural.of_records %lld", 21), "из 21 записи")
+        XCTAssertEqual(DS.Plural.format("plural.years %lld", 41), "41 год")
+        XCTAssertEqual(DS.Plural.format("plural.years %lld", 32), "32 года")
+        XCTAssertEqual(DS.Plural.format("plural.years %lld", 12), "12 лет")
+        XCTAssertEqual(DS.Plural.format("plural.of_clients %lld", 1), "1 клиента")
+        XCTAssertEqual(DS.Plural.format("plural.of_clients %lld", 3), "3 клиентов")
+        XCTAssertEqual(DS.Plural.format("plural.of_clients %lld", 11), "11 клиентов")
+    }
+
+    static let sourceRoots = ["apps/ios/Vzvesheno", "apps/ios/Shared", "apps/ios/VzveshenoWidgets", "apps/ios/VzveshenoKit/Sources"]
+
+    static func sources() throws -> [(path: String, text: String)] {
+        let root = RepositoryFiles.root().standardizedFileURL.path + "/"
+        var result: [(String, String)] = []
+        for folder in sourceRoots {
+            guard let walker = FileManager.default.enumerator(at: RepositoryFiles.url(folder), includingPropertiesForKeys: nil) else {
+                continue
+            }
+            for case let url as URL in walker where url.pathExtension == "swift" {
+                result.append((String(url.standardizedFileURL.path.dropFirst(root.count)), try String(contentsOf: url, encoding: .utf8)))
+            }
+        }
+        return result
+    }
+
+    /// Каждая форма каталога кем-то используется: неиспользуемый ключ — знак,
+    /// что рядом собирают склонение руками.
+    func testEveryPluralKeyHasACallSite() throws {
+        let catalog = try StringCatalog(relativePath: "apps/ios/VzveshenoKit/Sources/DesignSystem/Strings/Plurals.xcstrings")
+        let sources = try Self.sources()
+        XCTAssertGreaterThan(sources.count, 100, "исходники не нашлись")
+        let unused = catalog.keys.filter { key in !sources.contains { $0.text.contains("\"\(key)\"") } }
+        XCTAssertEqual(unused.sorted(), [], "ключи каталога без вызова DS.Plural.format")
+    }
+
+    /// Склонение выбирает только `DS.Plural`: правила CLDR вручную (`% 10 == 1`,
+    /// `mod10`, `11...14`) в исходниках — ручная форма мимо каталога.
+    func testNoHandBuiltPluralForms() throws {
+        let pattern = try NSRegularExpression(pattern: #"%\s*10\s*==\s*1\b|\bmod10\b|%\s*100\s*!=\s*11|\(1[12]\.\.\.14\)"#)
+        var offending: [String] = []
+        for (path, text) in try Self.sources() where !path.hasSuffix("DesignSystem/Plural.swift") {
+            if pattern.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil { offending.append(path) }
+        }
+        XCTAssertEqual(offending, [], "склонение руками — используйте DS.Plural.format с ключом каталога")
     }
 
     /// Каждая строка с числом в каталоге — с формами one, few, many, other.
     func testCatalogHasAllRussianForms() throws {
         let catalog = try StringCatalog(relativePath: "apps/ios/VzveshenoKit/Sources/DesignSystem/Strings/Plurals.xcstrings")
         let required = ["plural.days %lld", "plural.minutes_ago %lld", "plural.add_items %lld", "plural.glasses %lld",
-                        "plural.earlier_days %lld", "plural.waiting_days %lld"]
+                        "plural.earlier_days %lld", "plural.waiting_days %lld", "plural.of_records %lld", "plural.years %lld",
+                        "plural.of_clients %lld"]
         for key in required {
             let forms = Set(try XCTUnwrap(catalog.entries[key], key).keys)
             XCTAssertTrue(forms.isSuperset(of: ["one", "few", "many", "other"]), "\(key): \(forms)")

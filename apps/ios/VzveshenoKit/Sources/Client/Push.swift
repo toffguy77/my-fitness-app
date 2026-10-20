@@ -103,10 +103,16 @@ public enum PushRouting {
 public struct PushActionPerformer: Sendable {
     private let outbox: Outbox
     private let userID: @Sendable () async -> Int64?
+    private let today: @Sendable () -> String
 
-    public init(outbox: Outbox, userID: @escaping @Sendable () async -> Int64?) {
+    /// `today` — местная дата телефона `yyyy-MM-dd` в момент нажатия: без неё
+    /// сервер отметил бы задачу днём своих часов, а очередь может дослать
+    /// изменение уже после полуночи.
+    public init(outbox: Outbox, userID: @escaping @Sendable () async -> Int64?,
+                today: @escaping @Sendable () -> String = { DayCalendar().key(Date()) }) {
         self.outbox = outbox
         self.userID = userID
+        self.today = today
     }
 
     struct MessageBody: Encodable, Sendable {
@@ -114,14 +120,20 @@ public struct PushActionPerformer: Sendable {
         let content: String
     }
 
+    struct CompleteBody: Encodable, Sendable {
+        let date: String
+    }
+
     /// `true` — изменение поставлено в очередь.
     @discardableResult
     public func perform(_ response: PushResponse) async -> Bool {
+        // Дата — в момент нажатия, до ожидания сессии и очереди.
+        let date = today()
         guard let user = await userID() else { return false }
         let item: (kind: String, endpoint: Endpoint)?
         switch response {
         case let .completeTask(id):
-            item = (try? Endpoint.post("/api/v1/dashboard/tasks/\(id)/complete", body: [String: String]()))
+            item = (try? Endpoint.post("/api/v1/dashboard/tasks/\(id)/complete", body: CompleteBody(date: date)))
                 .map { ("push.task", $0) }
         case let .reply(conversation, text):
             item = (try? Endpoint.post("/api/v1/conversations/\(conversation)/messages", body: MessageBody(type: "text", content: text)))
@@ -139,10 +151,19 @@ public struct PushActionPerformer: Sendable {
 
 // MARK: Регистрация устройства
 
-/// Окружение APNs по сборке: Dev — песочница, Prod — боевой.
+/// Окружение APNs по конфигурации сборки, а не по стенду: токен выдаёт
+/// подпись. Отладочная сборка (подпись разработчика, `aps-environment` =
+/// `development`) — песочница; выпускная (архив, TestFlight, App Store) —
+/// боевой, и для Dev-стенда тоже. Значение — `APSEnvironment` из Info.plist,
+/// тот же build setting, что и entitlement.
 public enum PushEnvironment {
-    public static func forApp(_ environment: String) -> String {
-        environment == "dev" ? "sandbox" : "production"
+    public static let sandbox = "sandbox"
+    public static let production = "production"
+
+    /// `development` → `sandbox`; `production`, пусто или неизвестно → `production`:
+    /// дистрибутивная подпись всегда даёт боевой токен.
+    public static func forBuild(apsEnvironment: String?) -> String {
+        apsEnvironment == "development" ? sandbox : production
     }
 }
 

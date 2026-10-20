@@ -258,3 +258,52 @@ public struct NativeAuthAPI: Sendable {
         }
     }
 }
+
+/// Последний запрос ссылки на вход — адрес и согласия, с которыми письмо
+/// просили. «Получить новую» на экране «Ссылка устарела» отправляет новое
+/// письмо на тот же адрес, а не возвращает человека вводить его заново.
+/// Забывается после входа: дальше он не нужен.
+public final class MagicLinkRequests: @unchecked Sendable {
+    public struct Last: Codable, Equatable, Sendable {
+        public let email: String
+        public let consents: Consents?
+
+        public init(email: String, consents: Consents?) {
+            self.email = email
+            self.consents = consents
+        }
+    }
+
+    public static let key = "magic_link_last_request"
+    private let defaults: UserDefaults
+    private let auth: NativeAuthAPI
+
+    public init(auth: NativeAuthAPI, defaults: UserDefaults) {
+        self.auth = auth
+        self.defaults = defaults
+    }
+
+    public var last: Last? {
+        defaults.data(forKey: Self.key).flatMap { try? JSONDecoder().decode(Last.self, from: $0) }
+    }
+
+    /// Письмо со ссылкой; адрес запоминается, только если сервер принял запрос.
+    public func request(email: String, consents: Consents?) async throws {
+        try await auth.requestMagicLink(email: email, consents: consents)
+        if let data = try? JSONEncoder().encode(Last(email: email, consents: consents)) {
+            defaults.set(data, forKey: Self.key)
+        }
+    }
+
+    /// Новое письмо на прежний адрес. `nil` — адреса нет (ссылку просили на
+    /// другом телефоне или уже вошли): тогда человек начинает вход заново.
+    public func resend() async throws -> String? {
+        guard let last else { return nil }
+        try await auth.requestMagicLink(email: last.email, consents: last.consents)
+        return last.email
+    }
+
+    public func forget() {
+        defaults.removeObject(forKey: Self.key)
+    }
+}

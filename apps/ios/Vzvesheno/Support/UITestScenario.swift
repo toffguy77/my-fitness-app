@@ -43,6 +43,8 @@ enum UITestScenario: String {
     case newClient
     /// Вход выполнен, почта не подтверждена.
     case unverified
+    /// Стенд аудита обрезки текста (`TruncationProbeView`) вместо оболочки.
+    case truncationProbe
 
     static var current: UITestScenario? {
         argument("-uiTestScenario").flatMap(UITestScenario.init(rawValue:))
@@ -101,8 +103,20 @@ enum UITestScenario: String {
                              secure: secure, installMarker: MarkedInstall(), directory: directory, deviceName: "UI test",
                              // Системный запрос Здоровья в UI-тесте не показывается:
                              // подделка считает запросы, «Профиль» показывает счёт.
-                             healthStore: InMemoryHealthStore(), permissions: FixedNotificationPermission(permission),
-                             preferences: preferences)
+                             healthStore: InMemoryHealthStore(),
+                             // Токен APNs симулятор не получает: выход проверяет отписку по нему.
+                             pushTokens: InMemoryDeviceTokenStore(Self.argument("-uiTestPushToken")),
+                             permissions: FixedNotificationPermission(permission), preferences: preferences)
+        // «Почта не подтверждена» — сразу после регистрации: код только что ушёл.
+        if self == .unverified {
+            VerificationSendClock(defaults: preferences).markSent()
+        }
+        // Письмо со ссылкой уже запрашивали на этом телефоне — «Получить новую»
+        // на «Ссылка устарела» отправит новое туда же.
+        if let email = Self.argument("-uiTestMagicLinkEmail"),
+           let data = try? JSONEncoder().encode(MagicLinkRequests.Last(email: email, consents: nil)) {
+            preferences.set(data, forKey: MagicLinkRequests.key)
+        }
         if ProcessInfo.processInfo.arguments.contains("-uiTestPendingConsents") {
             model.signInStep = .pending(PendingSignIn(step: .needsConsents, pendingToken: "pending", provider: "yandex", email: nil))
         }
@@ -177,6 +191,11 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
         if path.hasSuffix("/food-entry"), ProcessInfo.processInfo.arguments.contains("-uiTestFoodEntryOffline") {
             throw URLError(.notConnectedToInternet)
         }
+        if path == "/api/v1/auth/native/logout" || path.hasPrefix("/api/v1/notifications/devices/") {
+            let token = (body["device_token"] as? String).map { " device_token=\($0)" } ?? ""
+            let line = "\(method) \(path)\(token)"
+            Task { @MainActor in UITestCounters.shared.signOutRequests.append(line) }
+        }
         let query = Dictionary((URLComponents(url: request.url ?? URL(fileURLWithPath: "/"), resolvingAgainstBaseURL: false)?
             .queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
         let (status, text) = lock.withLock {
@@ -244,6 +263,8 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
             return Self.ok(#"{"cancelled":true}"#)
         case "/api/v1/auth/native/magic-link/consume":
             return Self.error(400, "token_invalid")
+        case "/api/v1/auth/native/magic-link/request":
+            return Self.ok("null")
         case "/api/v1/auth/native/consents":
             return Self.ok(#"{"status":"registered","access_token":"a3","refresh_token":"r3","user":\#(user),"created":true}"#)
         case "/api/v1/auth/verify-email":

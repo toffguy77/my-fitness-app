@@ -53,6 +53,12 @@ struct ArticleScreen: View {
                             MainActor.assumeIsolated { openBodyGoals() }
                             return .handled
                         }
+                        // Статья нашего сайта — в приложении: universal link
+                        // из самого приложения iOS открыл бы в Safari.
+                        if case let .screen(.article(slug))? = Router.parse(url) {
+                            MainActor.assumeIsolated { openArticle(slug) }
+                            return .handled
+                        }
                         return .systemAction
                     })
             } else if let error = article?.error {
@@ -81,6 +87,11 @@ struct ArticleScreen: View {
             article = loaded
             await loaded.load()
         }
+    }
+
+    private func openArticle(_ slug: String) {
+        let tab = model.selectedTab ?? .articles
+        model.paths[tab, default: []].append(.article(slug: slug))
     }
 
     private func openBodyGoals() {

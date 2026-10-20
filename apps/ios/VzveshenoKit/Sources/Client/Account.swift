@@ -77,6 +77,19 @@ public struct AccountService: Sendable {
         try await api.send(.get("/api/v1/auth/providers/linked"))
     }
 
+    /// Привязать Apple к аккаунту, в который уже вошли: `POST /auth/native/apple/link`
+    /// с access-токеном (`external-identity`). `nonce` — исходное значение, не хэш;
+    /// Apple ID другого аккаунта — `409 conflict`.
+    public func linkApple(identityToken: String, authorizationCode: String, nonce: AppleNonce) async throws {
+        let body = ["identity_token": identityToken, "authorization_code": authorizationCode, "nonce": nonce.raw]
+        _ = try await api.send(try .post("/api/v1/auth/native/apple/link", body: body), as: EmptyResponse.self)
+    }
+
+    /// Яндекс и VK привязываются в вебе: вход через них из приложения
+    /// (`native-oauth-handoff`) умеет только войти или создать аккаунт, режима
+    /// привязки к уже вошедшему у него нет. Apple — здесь, своим эндпоинтом.
+    public static func linkableInApp(_ provider: String) -> Bool { provider == "apple" }
+
     /// Отвязать провайдера; последний способ без пароля сервер не отвяжет (`provider_only_way_in`).
     public func unlink(_ provider: String) async throws {
         _ = try await api.send(.delete("/api/v1/auth/providers/\(provider)"), as: EmptyResponse.self)

@@ -1,6 +1,7 @@
 import API
 @testable import Client
 import Foundation
+import Navigation
 import TestSupport
 import XCTest
 
@@ -131,6 +132,36 @@ final class ArticleDocumentTests: XCTestCase {
         XCTAssertEqual(ArticleLinks.decide("https://new.burcev.team/pricing?plan=1"), .drop)
         XCTAssertEqual(ArticleLinks.decide("javascript:alert(1)"), .drop)
         XCTAssertEqual(ArticleLinks.decide("https://example.org/a"), .keep(URL(string: "https://example.org/a")!))
+    }
+
+    /// Свой сайт — белый список: статья открывается в приложении, калькулятор —
+    /// «Тело и цели», всё остальное (главная, онбординг, тарифы на главной,
+    /// кабинет, новая страница) — только текст.
+    func testOwnSiteLinksAreAllowListed() {
+        let article = URL(string: "https://burcev.team/content/x")!
+        XCTAssertEqual(ArticleLinks.decide("https://burcev.team/content/x"), .article(slug: "x", url: article))
+        XCTAssertEqual(ArticleLinks.decide("/content/x"), .article(slug: "x", url: article), "относительная ссылка")
+        XCTAssertEqual(ArticleLinks.decide("https://new.burcev.team/content/x?utm=1#part"),
+                       .article(slug: "x", url: URL(string: "https://new.burcev.team/content/x")!))
+        XCTAssertEqual(ArticleLinks.decide("https://burcev.team/kalkulyator-kbzhu"), .bodyGoals)
+        for dropped in ["https://burcev.team/", "https://burcev.team", "/", "/onboarding", "https://burcev.team/#tariffs",
+                        "/#tariffs", "https://new.burcev.team/onboarding?step=2", "https://burcev.team/content",
+                        "https://burcev.team/content/x/comments", "https://www.burcev.team/dashboard",
+                        "https://burcev.team/some-new-landing", "javascript:alert(1)"] {
+            XCTAssertEqual(ArticleLinks.decide(dropped), .drop, dropped)
+        }
+        XCTAssertEqual(ArticleLinks.decide("mailto:someone@example.org"), .keep(URL(string: "mailto:someone@example.org")!))
+    }
+
+    /// Ссылка на статью в тексте — адрес сайта, который `Router` разбирает в
+    /// экран статьи; главная и онбординг — текст без ссылки.
+    func testArticleLinkRoutesInsideTheApp() {
+        let markdown = "Читайте [статью](/content/sugar), [главную](/) и [анкету](https://burcev.team/onboarding), [тарифы](/#tariffs)."
+        guard case let .paragraph(text) = ArticleDocument(markdown: markdown).blocks.first else { return XCTFail("нет абзаца") }
+        XCTAssertEqual(Self.plain(text), "Читайте статью, главную и анкету, тарифы.")
+        let links = Self.links(text)
+        XCTAssertEqual(links, [URL(string: "https://burcev.team/content/sugar")!])
+        XCTAssertEqual(links.first.flatMap(Router.parse), .screen(.article(slug: "sugar")))
     }
 
     func testEscapedMarkdownCharactersStayText() {

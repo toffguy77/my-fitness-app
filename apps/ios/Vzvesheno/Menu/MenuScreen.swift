@@ -1,3 +1,4 @@
+import API
 import Client
 import DesignSystem
 import SwiftUI
@@ -36,7 +37,8 @@ struct MenuScreen: View {
                 case .plan:
                     if let plan = model.mealPlan {
                         MealPlanDayContent(model: plan, onReplace: { replacing = $0 }, onEat: { eating = $0 },
-                                           onFillProfile: { model.paths[.today, default: []] = [.profile]; model.selectedTab = .today })
+                                           onFillProfile: { model.paths[.today, default: []] = [.profile]; model.selectedTab = .today },
+                                           onEvent: { model.track($0) })
                             .task { if plan.plan == nil { await plan.load() } }
                     }
                 case .recipes:
@@ -56,6 +58,7 @@ struct MenuScreen: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("screen.menu")
+        .task { model.track(ProductEvent.menuOpened) }
         .navigationDestination(item: $route) { route in
             switch route {
             case let .recipe(id): RecipeScreen(recipeID: id)
@@ -116,7 +119,7 @@ struct BetaNote: View {
         VStack(alignment: .leading, spacing: DS.Space.s1) {
             HStack(spacing: DS.Space.s2) {
                 Text("бета")
-                    .dsText(DS.Typography.micro)
+                    .microScaled()
                     .foregroundStyle(DS.Color.primaryFg)
                     .padding(.horizontal, DS.Space.s2)
                     .background(Capsule().fill(DS.Color.primaryDefault))
@@ -140,6 +143,8 @@ struct MealPlanDayContent: View {
     let onReplace: (MealPlanItem) -> Void
     let onEat: (MealPlanItem) -> Void
     let onFillProfile: () -> Void
+    /// Событие продукта (`ProductEvent`): «Подогнать» и «Пересобрать».
+    var onEvent: (String) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s3) {
@@ -182,7 +187,8 @@ struct MealPlanDayContent: View {
                 VStack(alignment: .leading, spacing: DS.Space.s2) {
                     Text("Норма изменилась с тех пор, как меню собрано.").dsText(DS.Typography.headline)
                         .foregroundStyle(DS.Color.fgDefault)
-                    Button("Пересобрать") { Task { await model.regenerate() } }.buttonStyle(DSButtonStyle(.secondary, size: .small))
+                    Button("Пересобрать") { onEvent(ProductEvent.planRegenerated); Task { await model.regenerate() } }
+                        .buttonStyle(DSButtonStyle(.secondary, size: .small))
                 }
             }
             .accessibilityIdentifier("menu.targetChanged")
@@ -207,10 +213,13 @@ struct MealPlanDayContent: View {
         ForEach(plan.mealTypes, id: \.self) { meal in
             slot(meal, plan)
         }
-        HStack(spacing: DS.Space.s2) {
-            Button("Подогнать порции") { Task { await model.refit() } }.buttonStyle(DSButtonStyle(.secondary, size: .medium))
+        // Подписи длинные — кнопки друг под другом, а не в строку.
+        VStack(alignment: .leading, spacing: DS.Space.s2) {
+            Button("Подогнать оставшиеся порции") { onEvent(ProductEvent.planRefit); Task { await model.refit() } }
+                .buttonStyle(DSButtonStyle(.secondary, size: .medium))
                 .accessibilityIdentifier("menu.refit")
-            Button("Пересобрать") { Task { await model.regenerate() } }.buttonStyle(DSButtonStyle(.secondary, size: .medium))
+            Button("Пересобрать") { onEvent(ProductEvent.planRegenerated); Task { await model.regenerate() } }
+                .buttonStyle(DSButtonStyle(.secondary, size: .medium))
                 .accessibilityIdentifier("menu.regenerate")
         }
         .disabled(model.working)
@@ -244,6 +253,7 @@ struct MealPlanDayContent: View {
                                 Image(systemName: item.locked ? "lock.fill" : "lock.open")
                                     .foregroundStyle(DS.Color.fgDefault)
                                     .frame(width: DS.Size.touch, height: DS.Size.touch)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(item.locked ? "Открепить" : "Закрепить")
@@ -279,6 +289,7 @@ struct MealPlanDayContent: View {
             Image(systemName: icon).font(.system(size: 18, weight: .medium))
                 .foregroundStyle(model.canShift(days) ? DS.Color.fgDefault : DS.Color.fgSubtle)
                 .frame(width: 36, height: DS.Size.touch)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!model.canShift(days))

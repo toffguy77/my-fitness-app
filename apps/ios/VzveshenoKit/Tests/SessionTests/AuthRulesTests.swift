@@ -36,6 +36,25 @@ final class AuthRulesTests: XCTestCase {
         XCTAssertEqual(countdown.title(now: sent.addingTimeInterval(61)), "Отправить повторно")
     }
 
+    /// Отсчёт — от момента отправки письма, а не от показа экрана: экран,
+    /// открытый заново через 40 с (или после перезапуска), ждёт ещё 20 с.
+    func testResendCountdownRunsFromTheSendTime() {
+        let name = "verify-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        let sent = Date(timeIntervalSince1970: 10_000)
+        VerificationSendClock(defaults: defaults).markSent(at: sent)
+
+        let reopened = VerificationSendClock(defaults: defaults).countdown
+        XCTAssertEqual(reopened.sentAt, sent)
+        XCTAssertEqual(reopened.remaining(now: sent.addingTimeInterval(40)), 20)
+        XCTAssertTrue(reopened.canResend(now: sent.addingTimeInterval(60)))
+
+        // Отправка неизвестна (код просили на другом телефоне) — сразу можно.
+        VerificationSendClock(defaults: defaults).forget()
+        XCTAssertTrue(VerificationSendClock(defaults: defaults).countdown.canResend(now: sent))
+    }
+
     func testPendingDeletionTitle() {
         XCTAssertEqual(PendingDeletion(scheduledFor: "2026-11-17T10:00:00Z").title, "Аккаунт будет удалён 17 ноября")
     }

@@ -87,6 +87,7 @@ struct NameAndPhotoScreen: View {
                 .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: DS.Space.s2) {
                     PhotosPicker("Сменить фото", selection: $item, matching: .images)
+                        .touchTarget()
                         .accessibilityIdentifier("name.photo")
                     if avatarURL != nil {
                         Button("Удалить фото", role: .destructive) { Task { await deletePhoto() } }

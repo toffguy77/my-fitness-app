@@ -88,6 +88,18 @@ final class AuthUITests: XCTestCase {
         XCTAssertTrue(app.buttons["signIn.magicLink"].waitForExistence(timeout: 5))
     }
 
+    /// «Получить новую» помнит адрес: ссылку просили на этом телефоне — новое
+    /// письмо уходит туда же, без возврата к вводу почты.
+    func testExpiredMagicLinkSendsANewOneToTheSameAddress() {
+        let app = launch("signedOut", ["-uiTestMagicLinkEmail", "anna@example.com",
+                                       "-uiTestOpenURL", "https://new.burcev.team/auth/link/consume?token=old"])
+        XCTAssertTrue(app.staticTexts["Ссылка устарела"].waitForExistence(timeout: 10))
+        app.buttons["linkExpired.again"].tap()
+        let sent = app.staticTexts["linkExpired.sent"]
+        XCTAssertTrue(sent.waitForExistence(timeout: 5), app.screenSummary)
+        XCTAssertTrue(sent.label.contains("anna@example.com"), sent.label)
+    }
+
     /// «Слабый пароль»: «qwerty12» — «Сохранить» недоступна, пункты отмечены.
     func testWeakPasswordOnReset() {
         let app = launch("signedOut", ["-uiTestOpenURL", "https://new.burcev.team/reset-password?token=r1"])

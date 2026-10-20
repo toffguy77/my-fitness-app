@@ -41,6 +41,59 @@ final class SessionStoreTests: XCTestCase {
 
     private let anna = SessionUser(id: 7, email: "anna@example.com", role: "client", emailVerified: true, onboardingCompleted: true)
 
+    private func freshDefaults() -> UserDefaults {
+        let name = "visitor-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        return defaults
+    }
+
+    /// Выход сбрасывает посетителя аналитики: следующий вошедший на этом
+    /// телефоне не склеивается с прежним аккаунтом.
+    func testSignOutRotatesTheAnalyticsVisitor() async throws {
+        let defaults = freshDefaults()
+        let (_, store) = await make(StubTransport { _ in StubResponse(status: 204) },
+                                    erasers: [AnalyticsVisitorEraser(defaults: defaults)])
+        try await store.adopt(NativeSession(accessToken: "a", refreshToken: "r", user: anna))
+        let first = try XCTUnwrap(AnalyticsVisitor.idToIdentify(userID: anna.id, in: defaults))
+
+        await store.signOut()
+        let afterSignOut = AnalyticsVisitor.id(in: defaults)
+        XCTAssertNotEqual(afterSignOut, first, "после выхода — новый посетитель")
+
+        let boris = SessionUser(id: 8, email: "boris@example.com", role: "client", emailVerified: true, onboardingCompleted: true)
+        try await store.adopt(NativeSession(accessToken: "b", refreshToken: "r2", user: boris))
+        let second = AnalyticsVisitor.idToIdentify(userID: boris.id, in: defaults)
+        XCTAssertNotNil(second)
+        XCTAssertNotEqual(second, first, "второй аккаунт не связывается с идентификатором первого")
+    }
+
+    /// Отозванная сессия (и удаление аккаунта, которое её завершает) — тоже конец сессии.
+    func testEndedSessionRotatesTheAnalyticsVisitor() async throws {
+        let defaults = freshDefaults()
+        let transport = StubTransport { request in
+            request.path == "/api/v1/auth/native/refresh" ? .error(401, code: "session_ended") : .error(401, code: "token_expired")
+        }
+        let (api, store) = await make(transport, erasers: [AnalyticsVisitorEraser(defaults: defaults)])
+        try await store.adopt(NativeSession(accessToken: "old", refreshToken: "r1", user: anna))
+        let first = try XCTUnwrap(AnalyticsVisitor.idToIdentify(userID: anna.id, in: defaults))
+        let _: EmptyResponse? = try? await api.send(.get("/api/v1/dashboard"))
+        XCTAssertNotEqual(AnalyticsVisitor.id(in: defaults), first)
+    }
+
+    /// Даже если стирание не прошло, идентификатор, связанный с другим
+    /// аккаунтом, перед связыванием заменяется; повторно тот же аккаунт не связывается.
+    func testVisitorLinkedToAnotherAccountIsNeverReused() {
+        let defaults = freshDefaults()
+        let first = AnalyticsVisitor.idToIdentify(userID: 7, in: defaults)
+        XCTAssertNotNil(first)
+        XCTAssertNil(AnalyticsVisitor.idToIdentify(userID: 7, in: defaults), "уже связан с этим аккаунтом")
+        let other = AnalyticsVisitor.idToIdentify(userID: 8, in: defaults)
+        XCTAssertNotNil(other)
+        XCTAssertNotEqual(other, first)
+        XCTAssertEqual(AnalyticsVisitor.id(in: defaults), other, "события дальше — с новым идентификатором")
+    }
+
     // ios-api-client / ios-session-storage: три запроса — один refresh.
     func testThreeExpiredRequestsShareOneRefresh() async throws {
         let transport = StubTransport { request in

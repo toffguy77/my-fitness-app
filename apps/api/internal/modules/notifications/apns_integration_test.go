@@ -520,6 +520,66 @@ func TestQuietHoursDelayWebPushAndHushIPhone(t *testing.T) {
 	assert.Equal(t, 1, listed)
 }
 
+// Тихое время считается в поясе получателя на момент каждой доставки: смена
+// пояса между двумя уведомлениями меняет решение для второго. Пояс читается
+// из user_settings при каждой доставке, а не запоминается с первой.
+func TestQuietHoursFollowATimezoneChange(t *testing.T) {
+	s := newPushStand(t, "push_quiet_tz")
+	id := s.user("quiet-tz@e.test", "client", "Т")
+	s.browserOf(id)
+	s.phone(id, tokenA, APNSProduction, phoneA)
+
+	// Тихие два часа с текущего часа UTC; в UTC+12 сейчас вне их при любом часе.
+	_, err := s.db.ExecContext(s.ctx, `
+		UPDATE users SET quiet_hours_start = EXTRACT(HOUR FROM NOW() AT TIME ZONE 'UTC')::int,
+		                 quiet_hours_end = (EXTRACT(HOUR FROM NOW() AT TIME ZONE 'UTC')::int + 2) % 24
+		WHERE id = $1`, id)
+	require.NoError(t, err)
+	setZone := func(zone string) {
+		t.Helper()
+		_, err := s.db.ExecContext(s.ctx,
+			`INSERT INTO user_settings (user_id, timezone) VALUES ($1, $2)
+			 ON CONFLICT (user_id) DO UPDATE SET timezone = EXCLUDED.timezone`, id, zone)
+		require.NoError(t, err)
+	}
+	webPushWaits := func(n *Notification) bool {
+		t.Helper()
+		var later bool
+		require.NoError(t, s.db.QueryRowContext(s.ctx,
+			`SELECT not_before > NOW() + INTERVAL '30 minutes' FROM push_deliveries
+			 WHERE notification_id = $1 AND transport = 'webpush'`, n.ID).Scan(&later))
+		return later
+	}
+	lastAlert := func() applePush {
+		t.Helper()
+		alerts := s.apple.alerts()
+		require.NotEmpty(t, alerts)
+		return alerts[len(alerts)-1]
+	}
+
+	setZone("UTC")
+	first := s.notify(id, TypeFeedbackReceived, CategoryMain, IDs{"report_id": "r-1"})
+	s.send()
+	assert.True(t, webPushWaits(first), "в UTC сейчас тихое время — Web Push ждёт")
+	assert.Equal(t, "passive", lastAlert().aps()["interruption-level"])
+
+	// Человек улетел: в его новом поясе сейчас не тихое время.
+	setZone("Etc/GMT-12")
+	second := s.notify(id, TypeFeedbackReceived, CategoryMain, IDs{"report_id": "r-2"})
+	s.send()
+	assert.False(t, webPushWaits(second), "после смены пояса тихое время прошло — Web Push не ждёт")
+	alert := lastAlert()
+	assert.NotContains(t, alert.aps(), "interruption-level", "пуш на iPhone всё ещё тихий по старому поясу")
+	assert.Contains(t, alert.aps(), "sound")
+
+	// И обратно: вернулся — снова тихо.
+	setZone("UTC")
+	third := s.notify(id, TypeFeedbackReceived, CategoryMain, IDs{"report_id": "r-3"})
+	s.send()
+	assert.True(t, webPushWaits(third))
+	assert.Equal(t, "passive", lastAlert().aps()["interruption-level"])
+}
+
 // «Чтение предпочтений»: chat_message — только push, включён по умолчанию.
 func TestDeliveryPreferencesListChatMessagesPushOnly(t *testing.T) {
 	s := newPushStand(t, "push_prefs")

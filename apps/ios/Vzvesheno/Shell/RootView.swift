@@ -8,6 +8,18 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        #if DEBUG
+        if UITestScenario.current == .truncationProbe {
+            TruncationProbeView()
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+
+    private var content: some View {
         Group {
             switch model.launch {
             case .loading:

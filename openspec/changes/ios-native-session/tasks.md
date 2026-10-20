@@ -23,7 +23,7 @@
 
 - [x] 3.1 Адаптер `oauth/apple.go`: JWKS с кэшем на час и перечитыванием по неизвестному `kid` не чаще раза в минуту; проверка `iss`, `aud`, `exp`, `nonce`, `email_verified`. Проверка: `apple_test.go` на подписанных тестовым ключом токенах — каждый сценарий `apple-sign-in`.
 - [x] 3.2 Обмен `authorization_code` на refresh Apple (client secret — ES256 JWT из `APPLE_PRIVATE_KEY`), хранение в зашифрованном виде. Проверка: тест со заглушкой `appleid.apple.com/auth/token`.
-- [x] 3.3 `POST /auth/native/apple` и общий `POST /auth/native/consents`: новый аккаунт создаётся только после согласий, с назначением куратора через общий поток; то же для Яндекса и VK (`needs_consents`). Новый код ошибки `consents_required` в `apperrors/codes.go` и его текст в словарях веба. Проверка: `TestEveryAccountPathAssignsCurator` расширен путём Apple; тест «нет согласий».
+- [x] 3.3 `POST /auth/native/apple` и общий `POST /auth/native/consents`: новый аккаунт создаётся только после согласий, куратор — через общий поток (живому нет, служебному — служебный); то же для Яндекса и VK (`needs_consents`). Новый код ошибки `consents_required` в `apperrors/codes.go` и его текст в словарях веба. Проверка: `TestEveryAccountPathAssignsCuratorOnlyToServiceAccounts` расширен путём Apple; тест «нет согласий» (`TestNativeConsentsWithoutMandatoryConsents`).
 - [x] 3.4 Отзыв при удалении: шаг в `modules/account` и фоновая задача повтора. Проверка: тест со заглушкой — ошибка сети ставит задачу, аккаунт удалён.
 - [x] 3.5 Привязка и отвязка Apple в `providers/linked`. Проверка: тест «последний способ входа» → `409 provider_only_way_in`.
 

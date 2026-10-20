@@ -1,4 +1,5 @@
 import API
+import DesignSystem
 import Foundation
 
 /// Уверенность распознавания: как в вебе — от 0,9 высокая, от 0,7 средняя.
@@ -118,15 +119,7 @@ public struct RecognitionResult: Sendable, Equatable {
     public func addTitle(meal: MealType) -> String {
         let count = addable.count
         guard count > 0 else { return "Укажите вес позиций" }
-        return "Добавить \(count) \(Self.positions(count)) в \(meal.accusative)"
-    }
-
-    static func positions(_ count: Int) -> String {
-        let mod10 = count % 10
-        let mod100 = count % 100
-        if mod10 == 1 && mod100 != 11 { return "позицию" }
-        if (2...4).contains(mod10) && !(12...14).contains(mod100) { return "позиции" }
-        return "позиций"
+        return "\(DS.Plural.format("plural.add_items %lld", count)) в \(meal.accusative)"
     }
 
     /// Записи дневника: `ai-` и все пять переопределений — по ним сервер

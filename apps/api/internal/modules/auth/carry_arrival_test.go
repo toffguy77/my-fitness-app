@@ -94,7 +94,7 @@ func TestCarryArrival_SurvivesWithoutLeads(t *testing.T) {
 
 // Every way into a new account carries the arrival across. The assignment of
 // a curator was once forgotten on one of three paths
-// (TestEveryAccountPathAssignsCurator); this holds the same line for where the
+// (TestEveryAccountPathAssignsCuratorOnlyToServiceAccounts); this holds the same line for where the
 // person came from. The provider callback cannot be driven end to end without
 // a provider, so the check is on the code: each handler calls carryArrival,
 // directly or through afterSignIn — which every handler finishing an external

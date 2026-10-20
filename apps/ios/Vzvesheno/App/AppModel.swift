@@ -187,14 +187,17 @@ final class AppModel {
                                                        surfaceRoutes: surfaceRoutes, health: health,
                                                        photoWeeks: photoWeeks, barcodes: barcodeCache,
                                                        shoppingMarks: shoppingMarks, timeZones: timeZones,
-                                                       files: files, rejections: rejections)],
+                                                       files: files, rejections: rejections),
+                                         // Аналитика: новый посетитель после конца сессии.
+                                         AnalyticsVisitorEraser(defaults: preferences)],
                                deviceToken: { [pushTokens] in pushTokens.load() })
         sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
         realtime = RealtimeConnection(api: api)
         // Идентификатор установки — в отдельной записи Keychain: выход его не
         // стирает, по нему сервер переносит токен к следующему вошедшему.
-        push = PushRegistrar(api: api, tokens: pushTokens, environment: PushEnvironment.forApp(environment.name),
+        push = PushRegistrar(api: api, tokens: pushTokens,
+                             environment: PushEnvironment.forBuild(apsEnvironment: environment.apsEnvironment),
                              appVersion: environment.version, installationID: { InstallationID.value(in: installation) })
         self.permissions = permissions
         self.preferences = preferences
@@ -408,6 +411,8 @@ final class AppModel {
             // Сессию другого человека молча не заменяет (AccountSwitchNotConfirmed);
             // смену аккаунта человек подтверждает до этого — confirmSwitchingAccount.
             try await session.adopt(newSession)
+            magicLinks.forget()
+            identifyAnalytics(userID: newSession.user.id)
             user = newSession.user
             pendingDeletion = newSession.pendingDeletion
             sessionMessage = nil

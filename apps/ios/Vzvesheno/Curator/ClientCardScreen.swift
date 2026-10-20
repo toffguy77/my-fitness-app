@@ -41,6 +41,9 @@ struct ClientCardScreen: View {
                         .background(Capsule().fill(DS.Color.primarySoft))
                 }
                 .buttonStyle(.plain)
+                // Панель навигации не растёт с Dynamic Type: крупная подпись —
+                // долгим нажатием (Large Content Viewer, HIG).
+                .accessibilityShowsLargeContentViewer()
                 .accessibilityIdentifier("card.write")
             }
         }

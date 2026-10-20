@@ -239,6 +239,59 @@ func TestNativeOAuthNewUserWaitsForConsents(t *testing.T) {
 	assert.Equal(t, []string{"ios"}, clientKindOf(t, f, userID))
 }
 
+// «Нет согласий» для каждого способа их не дать: без поля consents, без
+// любого одного из трёх обязательных, все три false. Каждый раз — 400
+// consents_required, и не записано ничего: ни аккаунта, ни согласий, ни
+// привязки провайдера, ни сессии. Попытка при этом не сгорает: с согласиями
+// тот же pending_token создаёт аккаунт.
+func TestNativeConsentsWithoutMandatoryConsents(t *testing.T) {
+	const email = "vk-no-consents@example.test"
+	f := newProviderFlow(t, "native_no_consents", "vk", oauth.Profile{ProviderUserID: "vk-nc", Email: email, Name: "Без согласий"})
+
+	_, code := f.nativeCallback(t)
+	res, body := f.exchange(t, code, appVerifier)
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	pending, _ := data(body)["pending_token"].(string)
+	require.NotEmpty(t, pending)
+
+	nothingWritten := func(t *testing.T) {
+		t.Helper()
+		ctx := context.Background()
+		assert.Equal(t, 0, f.users(t, email), "аккаунт создан без согласий")
+		var consents, identities, sessions int
+		require.NoError(t, f.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM user_consents`).Scan(&consents))
+		require.NoError(t, f.db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM external_identities WHERE provider = 'vk'`).Scan(&identities))
+		require.NoError(t, f.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM refresh_tokens`).Scan(&sessions))
+		assert.Zero(t, consents, "согласия записаны без аккаунта")
+		assert.Zero(t, identities, "привязка провайдера записана без аккаунта")
+		assert.Zero(t, sessions, "сессия выдана без согласий")
+	}
+
+	cases := map[string]string{
+		"без поля consents":     ``,
+		"пустой объект":         `,"consents":{}`,
+		"без оферты":            `,"consents":{"privacy_policy":true,"data_processing":true}`,
+		"без политики":          `,"consents":{"terms_of_service":true,"data_processing":true}`,
+		"без обработки данных":  `,"consents":{"terms_of_service":true,"privacy_policy":true}`,
+		"все три false":         `,"consents":{"terms_of_service":false,"privacy_policy":false,"data_processing":false}`,
+		"только необязательное": `,"consents":{"marketing":true}`,
+	}
+	for name, consents := range cases {
+		t.Run(name, func(t *testing.T) {
+			res := f.post(t, "/api/v1/auth/native/consents", nil, `{"pending_token":"`+pending+`"`+consents+`}`)
+			assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+			assert.Equal(t, apperrors.CodeConsentsRequired, decode(t, res)["code"])
+			nothingWritten(t)
+		})
+	}
+
+	res = f.post(t, "/api/v1/auth/native/consents", nil,
+		`{"pending_token":"`+pending+`","consents":{"terms_of_service":true,"privacy_policy":true,"data_processing":true}}`)
+	require.Equal(t, http.StatusOK, res.StatusCode, "отказ без согласий сжёг попытку")
+	assert.Equal(t, 1, f.users(t, email))
+}
+
 // «Аккаунт уже существует»: needs_link_confirmation, затем native/oauth/link
 // с паролем — пара токенов и привязка VK.
 func TestNativeOAuthExistingAccountIsClaimedWithThePassword(t *testing.T) {

@@ -334,15 +334,25 @@ final class SettingsUITests: ClientUITestCase {
         XCTAssertEqual(result.label, "Пароль изменён")
     }
 
-    // Сценарий «Выход».
+    // Сценарий «Выход»: подтверждение, экран входа, на сервер ушли отписка
+    // телефона от пушей и `native/logout` с токеном устройства.
     func testSignOutAsksThenShowsSignIn() {
-        let app = launch()
+        let app = launch(["-uiTestPushToken", "ab01ff"])
         tap(app, "header.profile")
         tap(app, "profile.signOut")
         let alert = app.alerts["Выйти из аккаунта?"]
         XCTAssertTrue(alert.waitForExistence(timeout: 5), app.screenSummary)
         alert.buttons["Выйти"].tap()
         XCTAssertTrue(element(app, "screen.signIn").waitForExistence(timeout: 10), app.screenSummary)
+
+        // Симулятор может получить и настоящий токен APNs поверх подставленного:
+        // проверяется, что отписка и native/logout несут один и тот же токен.
+        let log = element(app, "uitest.signOutRequests")
+        let both = NSPredicate(format: "label MATCHES %@",
+                               ".*DELETE /api/v1/notifications/devices/([0-9a-f]+).*"
+                               + "POST /api/v1/auth/native/logout device_token=\\1.*")
+        expectation(for: both, evaluatedWith: log)
+        waitForExpectations(timeout: 15)
     }
 
     // Сценарий «Тёмная тема».

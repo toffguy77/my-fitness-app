@@ -232,6 +232,22 @@ final class UITestCounters {
     static let shared = UITestCounters()
     /// Изменения непрочитанного во вкладке «Контент».
     var contentWrites = 0
+    /// Запросы выхода и отписки телефона: «METHOD путь» (у `native/logout` —
+    /// с `device_token` из тела), чтобы UI-тест видел, что ушло на сервер.
+    var signOutRequests: [String] = []
+}
+
+/// Запросы выхода внизу экрана входа — только в сценарии UI-теста.
+struct UITestSignOutLog: View {
+    var body: some View {
+        let lines = UITestCounters.shared.signOutRequests
+        if UITestScenario.current != nil, !lines.isEmpty {
+            Text(verbatim: "Запросы выхода: " + lines.joined(separator: " | "))
+                .dsText(DS.Typography.caption)
+                .foregroundStyle(DS.Color.fgMuted)
+                .accessibilityIdentifier("uitest.signOutRequests")
+        }
+    }
 }
 
 /// «content.writes=N» внизу экрана уведомлений — только в сценарии UI-теста.

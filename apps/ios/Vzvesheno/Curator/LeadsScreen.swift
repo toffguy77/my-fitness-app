@@ -13,8 +13,9 @@ struct CardButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .callout).weight(.medium))
-            .lineLimit(1)
+            // Без lineLimit: на крупном шрифте подпись переносится, а не обрезается.
             .minimumScaleFactor(0.8)
+            .multilineTextAlignment(.center)
             .foregroundStyle(kind == .soft ? DS.Color.primaryDefault : DS.Color.bgCanvas)
             .frame(maxWidth: .infinity, minHeight: 40)
             .background(RoundedRectangle(cornerRadius: DS.Radius.s + 2, style: .continuous)

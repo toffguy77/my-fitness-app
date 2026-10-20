@@ -7,6 +7,21 @@ public protocol AccountDataEraser: Sendable {
     func eraseAccountData() async
 }
 
+/// Сбрасывает идентификатор посетителя аналитики при любом конце сессии —
+/// выходе, отзыве, удалении аккаунта и смене аккаунта (она идёт через выход):
+/// следующий вошедший на этом телефоне получает новый.
+public struct AnalyticsVisitorEraser: AccountDataEraser, @unchecked Sendable {
+    private let defaults: UserDefaults
+
+    public init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    public func eraseAccountData() async {
+        AnalyticsVisitor.reset(in: defaults)
+    }
+}
+
 /// Отметка «приложение уже запускалось после установки».
 ///
 /// Keychain переживает удаление приложения, а `UserDefaults` — нет: отметки

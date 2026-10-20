@@ -113,7 +113,8 @@ struct AddFoodSheet: View {
                             onResult: { result, image in photo = (result, image) },
                             onSearch: { method = .search }, onBarcode: { method = .barcode })
         case .manual:
-            ManualFoodView(api: model.api, barcode: manualCode, selected: $selected, portion: $portion, meal: meal) {
+            ManualFoodView(service: ManualFoodService(api: model.api, cache: model.barcodeCache), barcode: manualCode,
+                           selected: $selected, portion: $portion, meal: meal) {
                 if let selected {
                     Task { await add([EntryDraft(food: selected, meal: meal, date: request.date, portion: portion)]) }
                 }
@@ -124,6 +125,9 @@ struct AddFoodSheet: View {
     private func add(_ drafts: [EntryDraft]) async {
         guard let diary = model.diary else { return }
         await diary.add(drafts)
+        for draft in drafts {
+            model.track(ProductEvent.foodEntryCreated, ["meal_type": draft.meal.rawValue])
+        }
         added += 1
         dismiss()
     }
@@ -136,7 +140,7 @@ struct AddFoodSheet: View {
 
 /// Способ «Вручную»: свой продукт (`POST /user-foods`), затем порция.
 struct ManualFoodView: View {
-    let api: APIClient
+    let service: ManualFoodService
     /// Код, который сервер не знает: подставлен в название.
     let barcode: String?
     @Binding var selected: FoodItem?
@@ -156,7 +160,7 @@ struct ManualFoodView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s3) {
             if let barcode {
-                Text("Продукта с кодом \(barcode) нет в базе. Добавьте его — в следующий раз найдётся.")
+                Text("Продукта с кодом \(barcode) нет в базе. Добавьте его — следующий скан этого кода на этом телефоне сразу его найдёт.")
                     .dsText(DS.Typography.callout).foregroundStyle(DS.Color.fgMuted)
                     .accessibilityIdentifier("manual.barcode")
             }
@@ -199,8 +203,7 @@ struct ManualFoodView: View {
         defer { saving = false }
         do {
             let body = NewUserFoodBody(name: title, brand: brand.trimmingCharacters(in: .whitespaces).nilIfEmpty, per100: per100)
-            let food: UserFood = try await api.send(try Endpoint.post("/api/v1/food-tracker/user-foods", body: body))
-            selected = food.asFoodItem
+            selected = try await service.create(body, barcode: barcode)
             portion = Portion()
         } catch APIError.network {
             error = "Нет сети: свой продукт сохраняется на сервере. Попробуйте, когда сеть появится."

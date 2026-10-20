@@ -17,7 +17,7 @@
 
 ## 4. Согласия при регистрации через провайдера
 
-- [x] 4.1 Колбэк: новый аккаунт → ожидающий вход и редирект на `/auth/consents`; `POST /auth/oauth/consents` создаёт аккаунт, пишет `user_consents`, назначает куратора. Проверка: `oauth_service_test.go` — сценарии `external-identity`; `TestEveryAccountPathAssignsCurator` проходит.
+- [x] 4.1 Колбэк: новый аккаунт → ожидающий вход и редирект на `/auth/consents`; `POST /auth/oauth/consents` создаёт аккаунт, пишет `user_consents`; куратор — по правилу `curator-access` (живому нет, служебному — служебный). Проверка: `oauth_service_test.go` — сценарии `external-identity`; `TestEveryAccountPathAssignsCuratorOnlyToServiceAccounts` проходит.
 - [x] 4.2 Аккаунт без обязательных согласий при входе через провайдера проходит экран. Проверка: интеграционный тест на пользователе без строк в `user_consents`.
 - [x] 4.3 Страница `/auth/consents` с `ConsentSection`. Проверка: тест страницы; e2e регистрации через заглушку провайдера.
 

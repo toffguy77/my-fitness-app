@@ -48,8 +48,7 @@ struct SourceTag: View {
 
     var body: some View {
         Text(text)
-            .dsText(DS.Typography.micro)
-            .fontWeight(.regular)
+            .microScaled(weight: .regular)
             .foregroundStyle(DS.Color.fgSubtle)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -73,6 +72,10 @@ struct MacroLine: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Белки \(nutrition.protein.jsRoundedText) г, жиры \(nutrition.fat.jsRoundedText) г, "
                             + "углеводы \(nutrition.carbs.jsRoundedText) г")
+        // Без признака текста собранный элемент — «other», и аудит проверял
+        // его как элемент управления: «Hit area is too small» у строки БЖУ
+        // на карточке порции.
+        .accessibilityAddTraits(.isStaticText)
     }
 
     private func part(_ letter: String, _ value: Double, _ color: Color) -> some View {
@@ -98,8 +101,9 @@ struct SheetPrimaryButton: View {
         Button(action: action) {
             Text(title)
                 .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .headline).weight(.semibold))
-                .lineLimit(1)
+                // Без lineLimit: на крупном шрифте подпись переносится, а не обрезается.
                 .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
                 .foregroundStyle(enabled ? DS.Color.primaryFg : DS.Color.fgDisabled)
                 .frame(maxWidth: .infinity, minHeight: 50)
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous)

@@ -1,4 +1,5 @@
 import API
+import AuthenticationServices
 import Client
 import DesignSystem
 import Session
@@ -138,10 +139,17 @@ struct PasswordScreen: View {
 // MARK: Способы входа
 
 /// Привязанные провайдеры; последний способ без пароля сервер не отвяжет.
+/// Привязать здесь можно Apple (`native/apple/link`); Яндекс и VK — в вебе:
+/// у входа через них из приложения нет режима привязки (`ios-client-settings`).
 struct SignInMethodsScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var colorScheme
     @State private var linked: LinkedProviders?
+    @State private var available: [String] = []
+    @State private var appleNonce = AppleNonce.random()
+    @State private var working = false
     @State private var error: String?
+    @State private var result: String?
 
     var body: some View {
         SettingsForm(error: error) {
@@ -167,6 +175,31 @@ struct SignInMethodsScreen: View {
                 Text(linked.hasPassword ? "Пароль задан." : "Пароля нет: последний способ входа отвязать нельзя.")
                     .dsText(DS.Typography.caption)
                     .foregroundStyle(DS.Color.fgMuted)
+                if available.contains("apple"), !linked.linked.contains(where: { $0.provider == "apple" }) {
+                    SignInWithAppleButton(.continue, onRequest: { request in
+                        appleNonce = AppleNonce.random()
+                        request.requestedScopes = []
+                        request.nonce = appleNonce.hashed
+                    }, onCompletion: { outcome in Task { await linkApple(outcome) } })
+                    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                    .frame(height: DS.Size.control)
+                    .clipShape(Capsule())
+                    .disabled(working)
+                    .accessibilityIdentifier("signIn.link.apple")
+                }
+                if let result {
+                    Text(result).dsText(DS.Typography.callout).foregroundStyle(DS.Color.statusSuccessFg)
+                        .accessibilityIdentifier("signIn.link.result")
+                }
+                let webOnly = available.filter { !AccountService.linkableInApp($0) }
+                    .filter { name in !linked.linked.contains(where: { $0.provider == name }) }
+                if !webOnly.isEmpty {
+                    Text("Яндекс ID и VK ID привязываются в веб-версии: настройки профиля, раздел «Вход через сервисы».")
+                        .dsText(DS.Typography.caption)
+                        .foregroundStyle(DS.Color.fgMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("signIn.link.webOnly")
+                }
             } else {
                 DSSpinner()
             }
@@ -176,6 +209,32 @@ struct SignInMethodsScreen: View {
 
     private func load() async {
         linked = try? await AccountService(api: model.api).linkedProviders()
+        available = (try? await model.auth.providers()) ?? []
+    }
+
+    private func linkApple(_ outcome: Result<ASAuthorization, Error>) async {
+        switch outcome {
+        case let .success(authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = credential.identityToken, let token = String(data: tokenData, encoding: .utf8),
+                  let codeData = credential.authorizationCode, let code = String(data: codeData, encoding: .utf8) else {
+                error = "Apple не передала данные. Попробуйте ещё раз."
+                return
+            }
+            working = true
+            defer { working = false }
+            do {
+                try await AccountService(api: model.api).linkApple(identityToken: token, authorizationCode: code, nonce: appleNonce)
+                error = nil
+                result = "Apple привязан: теперь можно входить через Apple."
+                await load()
+            } catch {
+                self.error = model.messages.message(for: error)
+            }
+        case let .failure(failure):
+            if (failure as? ASAuthorizationError)?.code == .canceled { return }
+            error = "Не получилось привязать Apple. Попробуйте ещё раз."
+        }
     }
 
     private func unlink(_ provider: String) async {
