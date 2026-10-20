@@ -10,13 +10,16 @@ struct ArticlesScreen: View {
 
     var body: some View {
         ScrollView {
-            if offline {
-                OfflineBanner().padding(.horizontal, DS.Space.screenX).accessibilityIdentifier("banner.offline")
-            }
             if let feed = model.articles {
-                ArticlesContent(category: feed.category, articles: feed.articles, loading: feed.loading, error: feed.error,
+                FreshnessBanner(offline: offline || feed.offline, updatedLabel: feed.updatedLabel)
+                    .padding(.horizontal, DS.Space.screenX)
+                if feed.articles.isEmpty && feed.offline {
+                    OfflineEmptyView(text: "Сохранённых статей пока нет. Лента обновится, когда появится сеть.")
+                } else {
+                    ArticlesContent(category: feed.category, articles: feed.articles, loading: feed.loading, error: feed.error,
                                 onSelect: { category in Task { await feed.select(category) } },
-                                onReachEnd: { Task { await feed.loadMore() } })
+                                    onReachEnd: { Task { await feed.loadMore() } })
+                }
             }
         }
         .background(DS.Color.bgCanvas)
@@ -24,7 +27,8 @@ struct ArticlesScreen: View {
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("screen.articles")
         .task {
-            if let feed = model.articles, !feed.loaded { await feed.select(feed.category) }
+            // Сохранённая лента уже на экране — свежая заменит её.
+            if let feed = model.articles, !feed.loaded || feed.updatedLabel != nil { await feed.reload() }
         }
     }
 }
@@ -37,6 +41,10 @@ struct ArticleScreen: View {
 
     var body: some View {
         ScrollView {
+            if let article {
+                FreshnessBanner(offline: article.offline && article.document != nil, updatedLabel: article.updatedLabel)
+                    .padding(.horizontal, DS.Space.screenX)
+            }
             if let article, let shown = article.article {
                 ArticleContent(article: shown, document: article.document, onCalculate: { openBodyGoals() })
                     .environment(\.openURL, OpenURLAction { url in
@@ -68,7 +76,8 @@ struct ArticleScreen: View {
         .task {
             guard article == nil else { return }
             let preview = model.articles?.articles.first { $0.id == reference || $0.slug == reference }
-            let loaded = ArticleModel(api: model.api, reference: reference, preview: preview)
+            let loaded = ArticleModel(api: model.api, reference: reference, preview: preview, cache: model.cache,
+                                      account: model.user?.id)
             article = loaded
             await loaded.load()
         }

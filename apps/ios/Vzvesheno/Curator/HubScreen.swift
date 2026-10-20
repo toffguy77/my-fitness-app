@@ -18,6 +18,9 @@ struct HubScreen: View {
                     CuratorProfileMenu()
                 }
                 .refreshable { await hub.load() }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    FreshnessBanner(offline: hub.offline, updatedLabel: hub.updatedLabel).padding(.horizontal, DS.Space.screenX)
+                }
             } else {
                 LoadingView()
             }

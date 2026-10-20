@@ -379,7 +379,7 @@ public struct NewEntryBody: Codable, Sendable, Equatable {
 }
 
 /// `PUT /food-tracker/entries/:id`.
-public struct EntryUpdateBody: Encodable, Sendable, Equatable {
+public struct EntryUpdateBody: Codable, Sendable, Equatable {
     public var mealType: MealType
     public var portionType: PortionUnit
     public var portionAmount: Double

@@ -54,9 +54,17 @@ enum SurfaceEnvironment {
         let build = info["CFBundleVersion"] as? String ?? "0"
         let api = APIClient(baseURL: siteURL, clientHeader: "ios/\(version)/\(build)")
         await api.setTokenProvider(ReadOnlyTokenProvider(reader: reader))
+        // Очередь не открылась — действие сообщает «не записано»: очередь в
+        // памяти расширения пропала бы вместе с процессом, а снимок уже
+        // показывал бы стакан, которого нет.
         let store: OutboxStore = (try? SQLiteOutboxStore(url: directory.appendingPathComponent("outbox.sqlite")))
-            ?? InMemoryOutboxStore()
-        return SurfaceContext(snapshots: snapshots, outbox: Outbox(store: store, api: api), reloader: WidgetCenterReloader(),
+            ?? UnavailableOutboxStore()
+        // Каталог тел — тот же, что у приложения: вложение переписки в очереди
+        // расширение досылает, а не считает отказом.
+        let outbox = Outbox(store: store, api: api, files: directory.appendingPathComponent("outbox-files", isDirectory: true))
+        // Отказ сервера здесь показать некому — его покажет приложение.
+        await outbox.setObserver(RejectionLog(directory: directory))
+        return SurfaceContext(snapshots: snapshots, outbox: outbox, reloader: WidgetCenterReloader(),
                               sessionUser: { reader.user })
     }
 }

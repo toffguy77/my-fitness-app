@@ -18,11 +18,14 @@ struct AccountEraser: AccountDataEraser {
     let shoppingMarks: FileShoppingMarks
     let timeZones: FileTimeZoneSuggestionStore
     let files: AccountFiles
+    let rejections: RejectionLog
 
     func eraseAccountData() async {
         // Наблюдатели и фоновая доставка Здоровья останавливаются: иначе
         // HealthKit будил бы приложение без сессии.
         await health.erase()
+        // Кэш экранов и изображения аккаунта (аватары, фото переписки) —
+        // один каталог `Cache/`.
         cache.eraseAll()
         await outbox.eraseAll()
         // Снимок дня и виджеты: «Войдите во Взвешено» сразу, без данных
@@ -35,6 +38,7 @@ struct AccountEraser: AccountDataEraser {
         timeZones.erase()
         // Вложения переписки и архив выгрузки данных.
         files.eraseAll()
+        rejections.erase()
     }
 }
 

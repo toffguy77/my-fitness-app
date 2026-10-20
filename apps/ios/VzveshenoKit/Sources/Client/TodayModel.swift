@@ -15,13 +15,15 @@ public struct TodaySnapshot: Sendable, Equatable {
     public var progress: ProgressData?
     public var history: CalorieHistory?
     public var unread: UnreadCounts?
-    /// Показан кэш: сервер недоступен.
+    /// Показан сохранённый ответ (до свежего или без сети).
     public var fromCache: Bool
+    /// Когда сохранён показанный ответ — для «Обновлено в 14:20».
+    public var updatedAt: Date?
 
     public init(day: DailyMetrics, week: [DailyMetrics] = [], plan: WeeklyPlan? = nil, targets: TargetsAnswer? = nil,
                 water: WaterDay? = nil, tasks: [CuratorTask] = [], onboarding: FirstWeekState? = nil,
                 progress: ProgressData? = nil, history: CalorieHistory? = nil, unread: UnreadCounts? = nil,
-                fromCache: Bool = false) {
+                fromCache: Bool = false, updatedAt: Date? = nil) {
         self.day = day
         self.week = week
         self.plan = plan
@@ -33,6 +35,7 @@ public struct TodaySnapshot: Sendable, Equatable {
         self.history = history
         self.unread = unread
         self.fromCache = fromCache
+        self.updatedAt = updatedAt
     }
 }
 
@@ -79,29 +82,38 @@ public final class TodayModel {
     public private(set) var reloadCount = 0
     /// Сообщение после отвергнутого изменения из очереди.
     public var notice: String?
+    /// Последнее обновление не дошло до сервера: плашка «Нет подключения».
+    public internal(set) var offline = false
 
     public let calendar: DayCalendar
-    private let api: APIClient
-    private let outbox: Outbox?
-    private let cache: ScreenCache?
+    let api: APIClient
+    let outbox: Outbox?
+    let reader: ScreenReader
     private let photoWeeks: PhotoWeekStore
-    private let userID: @Sendable () async -> Int64?
-    private let now: @Sendable () -> Date
+    let userID: @Sendable () async -> Int64?
+    let now: @Sendable () -> Date
+    /// Итог дня из дневника — поверх ответа сервера, пока записи ждут отправки.
+    @ObservationIgnored var diaryTotals: (day: String, totals: Nutrition)?
     @ObservationIgnored private var dayObserver: NSObjectProtocol?
     @ObservationIgnored private var generation = 0
-    /// Вода изменилась — для записи в Здоровье (`healthkit-sync`).
+    /// Вода — общая с «Дневником»; без неё (тесты) — своя в снимке.
+    @ObservationIgnored public var waterLedger: WaterLedger?
+    /// Вода изменилась — для записи в Здоровье (`healthkit-sync`), если нет
+    /// общего счётчика (он пишет в Здоровье сам).
     @ObservationIgnored public var onWaterChanged: (@MainActor (_ day: String, _ glasses: Int, _ glassSize: Int) -> Void)?
     /// Сегодняшний день загружен или изменён — для снимка виджетов
     /// (`ios-system-surfaces`). Прошлые дни, открытые в полосе недели, сюда
     /// не попадают.
     @ObservationIgnored public var onDayChanged: (@MainActor (_ snapshot: TodaySnapshot, _ date: String) -> Void)?
 
+    /// `account` — кто вошёл, если он известен сразу: тогда сохранённый день
+    /// показывается уже в первом кадре, до любого обращения к сети.
     public init(api: APIClient, outbox: Outbox?, cache: ScreenCache? = nil, photoWeeks: PhotoWeekStore = InMemoryPhotoWeekStore(),
-                calendar: DayCalendar, now: @escaping @Sendable () -> Date = { Date() },
+                calendar: DayCalendar, now: @escaping @Sendable () -> Date = { Date() }, account: Int64? = nil,
                 userID: @escaping @Sendable () async -> Int64?) {
         self.api = api
         self.outbox = outbox
-        self.cache = cache
+        reader = ScreenReader(api: api, cache: cache, now: now)
         self.photoWeeks = photoWeeks
         self.calendar = calendar
         self.now = now
@@ -109,6 +121,7 @@ public final class TodayModel {
         let today = calendar.key(now())
         self.today = today
         selected = today
+        if let account { snapshot = cachedSnapshot(date: today, userID: account) }
     }
 
     // MARK: Производные
@@ -125,9 +138,16 @@ public final class TodayModel {
     public var title: String { state.title }
     public var subtitle: String { state.subtitle }
 
+    /// «Обновлено в 14:20», пока на экране сохранённый день.
+    public var updatedLabel: String? {
+        guard snapshot?.fromCache == true else { return nil }
+        return Freshness(cachedAt: snapshot?.updatedAt).label(now: now(), timeZone: calendar.timeZone)
+    }
+
     // MARK: Загрузка
 
-    /// Первая загрузка и pull-to-refresh.
+    /// Первая загрузка и pull-to-refresh: сохранённый день — сразу, затем
+    /// свежий. Без сети остаётся сохранённый с ждущими отправки изменениями.
     public func load() async {
         generation += 1
         let started = generation
@@ -135,16 +155,31 @@ public final class TodayModel {
         isLoading = true
         defer { if started == generation { isLoading = false } }
         let user = await userID()
+        let pending = await pendingItems(user)
+        guard started == generation else { return }
+        if snapshot == nil || snapshot?.day.date.prefix(10) != Substring(date),
+           let cached = cachedSnapshot(date: date, userID: user) {
+            snapshot = overlay(cached, pending: pending, date: date)
+        }
         let loaded = await fetch(date: date, userID: user)
+        let fresh = await pendingItems(user)
         guard started == generation else { return }
         reloadCount += 1
         switch loaded {
         case let .success(snapshot):
-            self.snapshot = snapshot
+            self.snapshot = overlay(snapshot, pending: fresh, date: date)
+            waterLedger?.set(self.snapshot?.water, day: date)
             loadError = nil
+            offline = false
             dayChanged()
         case let .failure(error):
-            loadError = error
+            offline = error == .network
+            if error == .network, let cached = cachedSnapshot(date: date, userID: user) {
+                snapshot = overlay(cached, pending: fresh, date: date)
+                loadError = nil
+            } else if snapshot == nil || error != .network {
+                loadError = error
+            }
         }
         if let user {
             photoUploaded = photoWeeks.contains(calendar.isoWeekIdentifier(today), userID: user)
@@ -206,27 +241,24 @@ public final class TodayModel {
         }
     }
 
+    /// Свежий день. Без ответа на сам день — ошибка; остальные карточки
+    /// без сети берутся из сохранённых.
     private func fetch(date: String, userID: Int64?) async -> Result<TodaySnapshot, APIError> {
-        let week = calendar.week(of: date)
-        async let day = getCached(DailyMetrics.self, "/api/v1/dashboard/daily/\(date)", userID: userID)
-        async let weekMetrics = getCached(WeekMetrics.self, "/api/v1/dashboard/week",
-                                          [URLQueryItem(name: "start", value: week[0]), URLQueryItem(name: "end", value: week[6])],
-                                          userID: userID)
-        async let plan = getCached(WeeklyPlanAnswer.self, "/api/v1/dashboard/weekly-plan", userID: userID)
-        async let targets = getCached(TargetsAnswer.self, "/api/v1/nutrition-calc/targets",
-                                      [URLQueryItem(name: "date", value: date)], userID: userID)
-        async let water = getCached(WaterDay.self, "/api/v1/food-tracker/water",
-                                    [URLQueryItem(name: "date", value: date)], userID: userID)
-        async let tasks = getCached(TasksAnswer.self, "/api/v1/dashboard/tasks", userID: userID)
-        async let onboarding = getCached(FirstWeekState.self, "/api/v1/dashboard/onboarding", userID: userID)
-        async let progress = getCached(ProgressData.self, "/api/v1/dashboard/progress",
-                                       [URLQueryItem(name: "weeks", value: "4")], userID: userID)
-        async let history = getCached(CalorieHistory.self, "/api/v1/nutrition-calc/history",
-                                      [URLQueryItem(name: "days", value: "7")], userID: userID)
-        async let unread = getCached(UnreadCounts.self, "/api/v1/notifications/unread-counts", userID: userID)
+        let endpoints = TodayEndpoints(date: date, calendar: calendar)
+        let reader = reader
+        async let day = reader.fetch(DailyMetrics.self, endpoints.day, userID: userID)
+        async let weekMetrics = reader.fetchOrCached(WeekMetrics.self, endpoints.week, userID: userID)
+        async let plan = reader.fetchOrCached(WeeklyPlanAnswer.self, endpoints.plan, userID: userID)
+        async let targets = reader.fetchOrCached(TargetsAnswer.self, endpoints.targets, userID: userID)
+        async let water = reader.fetchOrCached(WaterDay.self, endpoints.water, userID: userID)
+        async let tasks = reader.fetchOrCached(TasksAnswer.self, endpoints.tasks, userID: userID)
+        async let onboarding = reader.fetchOrCached(FirstWeekState.self, endpoints.onboarding, userID: userID)
+        async let progress = reader.fetchOrCached(ProgressData.self, endpoints.progress, userID: userID)
+        async let history = reader.fetchOrCached(CalorieHistory.self, endpoints.history, userID: userID)
+        async let unread = reader.fetchOrCached(UnreadCounts.self, endpoints.unread, userID: userID)
 
         let dayResult = await day
-        guard case let .success((dayValue, dayCached)) = dayResult else {
+        guard case let .success(dayValue) = dayResult else {
             if case let .failure(error) = dayResult { return .failure(error) }
             return .failure(.network)
         }
@@ -240,33 +272,8 @@ public final class TodayModel {
             onboarding: try? await onboarding.get().0,
             progress: try? await progress.get().0,
             history: try? await history.get().0,
-            unread: try? await unread.get().0,
-            fromCache: dayCached
+            unread: try? await unread.get().0
         ))
-    }
-
-    /// GET с кэшем экрана: ответ сохраняется; без сети — последний сохранённый.
-    private nonisolated func getCached<T: Decodable & Sendable>(
-        _ type: T.Type, _ path: String, _ query: [URLQueryItem] = [], userID: Int64?
-    ) async -> Result<(T, Bool), APIError> {
-        let endpoint = Endpoint.get(path, query: query)
-        let key = "today" + path + query.map { "_\($0.name)=\($0.value ?? "")" }.joined()
-        do {
-            let raw = try await api.sendRaw(endpoint)
-            let value = try raw.decoded(T.self)
-            if let userID { try? cache?.store(raw.data, for: key, userID: userID) }
-            return .success((value, false))
-        } catch APIError.network {
-            if let userID, let cached = cache?.load(key, userID: userID),
-               let value = try? RawResponse(data: cached.data, status: 200).decoded(T.self) {
-                return .success((value, true))
-            }
-            return .failure(.network)
-        } catch let error as APIError {
-            return .failure(error)
-        } catch {
-            return .failure(.network)
-        }
     }
 
     private func get<T: Decodable & Sendable>(_ type: T.Type, _ path: String) async throws -> T {
@@ -278,6 +285,15 @@ public final class TodayModel {
     /// «+» на карточке «Вода»: счётчик сразу, запрос — через очередь с
     /// `Idempotency-Key`.
     public func addGlass() async {
+        if let waterLedger {
+            if waterLedger.water(selected) == nil { waterLedger.set(snapshot?.water, day: selected) }
+            guard let (report, water) = await waterLedger.change(day: selected, by: 1, kind: "today.water") else { return }
+            applyWater(day: selected, water)
+            if let report, !report.rejected.isEmpty {
+                notice = "Не удалось сохранить изменение. Проверьте значение и попробуйте ещё раз."
+            }
+            return
+        }
         guard var water = snapshot?.water, water.enabled else { return }
         water.glasses += 1
         snapshot?.water = water
@@ -345,6 +361,7 @@ public final class TodayModel {
     /// Дневник изменил итог дня (запись добавлена, в том числе без сети,
     /// удалена или поправлена): остаток на «Сегодня» меняется сразу.
     public func applyDiaryTotals(day: String, totals: Nutrition) {
+        diaryTotals = (day, totals)
         guard day == selected, snapshot != nil else { return }
         snapshot?.day.calories = totals.calories.jsRounded
         snapshot?.day.protein = totals.protein.jsRounded
@@ -353,9 +370,16 @@ public final class TodayModel {
         dayChanged()
     }
 
-    private func dayChanged() {
+    func dayChanged() {
         guard selected == today, let snapshot else { return }
         onDayChanged?(snapshot, today)
+    }
+
+    /// Общая вода изменилась (в том числе в «Дневнике») — карточка сразу.
+    public func applyWater(day: String, _ water: WaterDay) {
+        guard day == selected, snapshot != nil, snapshot?.water != water else { return }
+        snapshot?.water = water
+        dayChanged()
     }
 
     /// Счётчики уведомлений изменились на экране уведомлений — колокольчик сразу.

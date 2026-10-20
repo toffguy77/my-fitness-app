@@ -21,6 +21,10 @@ struct NotificationsScreen: View {
                     onOpen: { open($0) },
                     onMore: { Task { await notifications.loadMore() } },
                     onReadAll: { Task { await notifications.markAllRead() } })
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    FreshnessBanner(offline: notifications.offline, updatedLabel: notifications.updatedLabel)
+                        .padding(.horizontal, DS.Space.screenX)
+                }
             } else {
                 LoadingView()
             }
@@ -31,7 +35,7 @@ struct NotificationsScreen: View {
         .accessibilityIdentifier("screen.notifications")
         .task {
             if model.notifications == nil {
-                let notifications = NotificationsModel(api: model.api)
+                let notifications = NotificationsModel(api: model.api, cache: model.cache, account: model.user?.id)
                 notifications.onCountsChanged = { [weak model] counts in
                     model?.today?.applyUnread(counts)
                     Task { await model?.refreshBadge() }

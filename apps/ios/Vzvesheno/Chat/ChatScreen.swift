@@ -69,7 +69,7 @@ struct ChatScreen: View {
             Task { await sendFile(url) }
         }
         .quickLookPreview($preview)
-        .alert("Вложение", isPresented: Binding(get: { model.chat?.notice != nil }, set: { if !$0 { model.chat?.notice = nil } })) {
+        .alert("Переписка", isPresented: Binding(get: { model.chat?.notice != nil }, set: { if !$0 { model.chat?.notice = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(model.chat?.notice ?? "")
@@ -87,28 +87,35 @@ struct ChatScreen: View {
             CuratorAccessContent(kind: .noCurator, onSupport: { openSupport() })
         case let .failed(message):
             VStack(spacing: DS.Space.s4) {
-                Text(message).dsText(DS.Typography.body).foregroundStyle(DS.Color.fgMuted).multilineTextAlignment(.center)
+                if chat.offline { OfflineEmptyView(text: "Сохранённой переписки пока нет. Она загрузится, когда появится сеть.") }
+                if !chat.offline {
+                    Text(message).dsText(DS.Typography.body).foregroundStyle(DS.Color.fgMuted).multilineTextAlignment(.center)
+                }
                 Button("Повторить") { Task { await chat.load() } }.buttonStyle(DSButtonStyle(.secondary))
             }
             .padding(DS.Space.screenX)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(DS.Color.bgCanvas)
         case .chat:
-            ChatContent(curatorName: chat.curatorName, typing: chat.curatorTyping, items: chat.timeline, pending: chat.pending,
-                        userID: chat.userID, calendar: chat.calendar, canSend: chat.canSend, expiredNotice: chat.expiredNotice,
-                        hasEarlier: chat.hasEarlier, text: $text, uploading: chat.uploading, actions: ChatActions(
-                            send: {
-                                let message = text
-                                text = ""
-                                Task { await chat.send(message) }
-                            },
-                            attach: { choosingAttachment = true },
-                            loadEarlier: { Task { await chat.loadEarlier() } },
-                            open: { message in
-                                Task { preview = await AttachmentFiles.local(message, files: model.files, accountID: chat.userID) }
-                            },
-                            typed: { chat.userTyped() },
-                            dismissFailed: { chat.dismissFailed($0) }))
+            VStack(spacing: 0) {
+                FreshnessBanner(offline: chat.offline, updatedLabel: chat.updatedLabel)
+                    .padding(.horizontal, DS.Space.screenX)
+                ChatContent(curatorName: chat.curatorName, typing: chat.curatorTyping, items: chat.timeline, pending: chat.pending,
+                            userID: chat.userID, calendar: chat.calendar, canSend: chat.canSend, expiredNotice: chat.expiredNotice,
+                            hasEarlier: chat.hasEarlier, text: $text, uploading: chat.uploading, actions: ChatActions(
+                                send: {
+                                    let message = text
+                                    text = ""
+                                    Task { await chat.send(message) }
+                                },
+                                attach: { choosingAttachment = true },
+                                loadEarlier: { Task { await chat.loadEarlier() } },
+                                open: { message in
+                                    Task { preview = await AttachmentFiles.local(message, files: model.files, accountID: chat.userID) }
+                                },
+                                typed: { chat.userTyped() },
+                                dismissFailed: { chat.dismissFailed($0) }))
+            }
         }
     }
 

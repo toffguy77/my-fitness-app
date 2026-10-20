@@ -2,6 +2,7 @@ import API
 import Client
 import Foundation
 import Observation
+import Outbox
 
 /// «Чаты»: список переписок куратора.
 @MainActor
@@ -10,21 +11,34 @@ public final class ConversationListModel {
     public private(set) var conversations: [CuratorConversation] = []
     public private(set) var loaded = false
     public private(set) var error: String?
+    public private(set) var freshness = Freshness()
 
-    private let api: APIClient
+    private let reader: ScreenReader
+    private let account: Int64?
+    static let endpoint = Endpoint.get("/api/v1/conversations")
 
-    public init(api: APIClient) {
-        self.api = api
+    public init(api: APIClient, cache: ScreenCache? = nil, account: Int64? = nil) {
+        reader = ScreenReader(api: api, cache: cache)
+        self.account = account
+        if let cached = reader.cached([CuratorConversation].self, Self.endpoint, userID: account) {
+            conversations = cached.value
+            freshness.cachedAt = cached.updatedAt
+        }
     }
 
     public var sorted: [CuratorConversation] { ConversationOrder.sorted(conversations) }
+    public var updatedLabel: String? { freshness.label() }
+    public var offline: Bool { freshness.offline }
 
     public func load() async {
-        do {
-            conversations = try await api.send(.get("/api/v1/conversations"))
+        switch await reader.fetch([CuratorConversation].self, Self.endpoint, userID: account) {
+        case let .success(list):
+            conversations = list
             error = nil
-        } catch {
-            if conversations.isEmpty { self.error = ErrorMessages().message(for: error) }
+            freshness.markFresh()
+        case let .failure(failure):
+            freshness.markFailed(failure)
+            if conversations.isEmpty { error = ErrorMessages().message(for: failure) }
         }
         loaded = true
     }
@@ -75,16 +89,60 @@ public final class CuratorConversationModel {
     /// Пояс куратора — время сообщений.
     public let calendar: DayCalendar
     private let api: APIClient
+    private let reader: ScreenReader
     private let now: @Sendable () -> Date
     @ObservationIgnored public var onRead: (@MainActor () -> Void)?
+    /// Сохранённые сообщения на экране / обновление не дошло. Только чтение:
+    /// отправка куратора — онлайн.
+    public private(set) var freshness = Freshness()
 
     public init(api: APIClient, reference: ConversationReference, curatorID: Int64, calendar: DayCalendar,
-                now: @escaping @Sendable () -> Date = { Date() }) {
+                cache: ScreenCache? = nil, now: @escaping @Sendable () -> Date = { Date() }) {
         self.api = api
+        reader = ScreenReader(api: api, cache: cache, now: now)
         self.reference = reference
         self.curatorID = curatorID
         self.calendar = calendar
         self.now = now
+        hydrate()
+    }
+
+    public var updatedLabel: String? { freshness.label(now: now(), timeZone: calendar.timeZone) }
+    public var offline: Bool { freshness.offline }
+
+    private func conversationEndpoint() -> Endpoint {
+        switch reference {
+        case let .client(id): return .get("/api/v1/conversations/by-participant/\(id)")
+        case .conversation: return ConversationListModel.endpoint
+        }
+    }
+
+    private static func messagesEndpoint(_ id: String) -> Endpoint {
+        .get("/api/v1/conversations/\(id)/messages", query: [URLQueryItem(name: "limit", value: "\(pageSize)")])
+    }
+
+    private func find(_ list: [CuratorConversation]) -> CuratorConversation? {
+        if case let .conversation(id) = reference { return list.first { $0.id == id } }
+        return nil
+    }
+
+    /// Сохранённая переписка — сразу, без сети.
+    private func hydrate() {
+        let found: CuratorConversation?
+        switch reference {
+        case .client:
+            found = reader.cached(CuratorConversation.self, conversationEndpoint(), userID: curatorID)?.value
+        case .conversation:
+            found = find(reader.cached([CuratorConversation].self, conversationEndpoint(), userID: curatorID)?.value ?? [])
+        }
+        guard let found, let page = reader.cached([ChatMessage].self, Self.messagesEndpoint(found.id), userID: curatorID) else {
+            return
+        }
+        conversation = found
+        merge(page.value)
+        hasEarlier = page.value.count >= Self.pageSize
+        freshness.cachedAt = page.updatedAt
+        phase = .chat
     }
 
     // MARK: Производные
@@ -123,11 +181,11 @@ public final class CuratorConversationModel {
     public func load() async {
         do {
             switch reference {
-            case let .client(id):
-                conversation = try await api.send(.get("/api/v1/conversations/by-participant/\(id)"))
-            case let .conversation(id):
-                let list: [CuratorConversation] = try await api.send(.get("/api/v1/conversations"))
-                guard let found = list.first(where: { $0.id == id }) else {
+            case .client:
+                conversation = try await reader.fetch(CuratorConversation.self, conversationEndpoint(), userID: curatorID).get()
+            case .conversation:
+                let list = try await reader.fetch([CuratorConversation].self, conversationEndpoint(), userID: curatorID).get()
+                guard let found = find(list) else {
                     phase = .notFound
                     return
                 }
@@ -135,18 +193,19 @@ public final class CuratorConversationModel {
             }
             try await loadLatest()
             phase = .chat
+            freshness.markFresh()
             if isVisible { await markRead() }
         } catch APIError.server(404, _, _) {
             phase = .notFound
         } catch {
+            if let error = error as? APIError { freshness.markFailed(error) }
             if messages.isEmpty { phase = .failed(ErrorMessages().message(for: error)) }
         }
     }
 
     public func loadLatest() async throws {
         guard let conversation else { return }
-        let page: [ChatMessage] = try await api.send(.get("/api/v1/conversations/\(conversation.id)/messages",
-                                                          query: [URLQueryItem(name: "limit", value: "\(Self.pageSize)")]))
+        let page = try await reader.fetch([ChatMessage].self, Self.messagesEndpoint(conversation.id), userID: curatorID).get()
         if messages.isEmpty { hasEarlier = page.count >= Self.pageSize }
         merge(page)
     }

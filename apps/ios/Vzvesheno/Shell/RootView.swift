@@ -27,7 +27,7 @@ struct RootView: View {
                 case .webOnly:
                     WebOnlyView()
                 default:
-                    ShellView(shell: shell, offline: offline)
+                    ShellView(shell: shell, offline: offline || model.offline)
                 }
             }
         }
@@ -43,6 +43,12 @@ struct RootView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(model.linkError ?? "")
+        }
+        .alert("Не сохранилось", isPresented: Binding(
+            get: { model.outboxNotice != nil }, set: { if !$0 { model.outboxNotice = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.outboxNotice ?? "")
         }
     }
 }

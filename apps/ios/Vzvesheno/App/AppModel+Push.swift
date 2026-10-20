@@ -42,6 +42,8 @@ extension AppModel {
 
     /// Ответ на действие с пушем.
     func handlePush(_ response: PushResponse) async {
+        // Нажатие на пуш может разбудить приложение раньше восстановления сессии.
+        await ensureRestored()
         switch response {
         case let .open(link):
             open(link)

@@ -56,6 +56,8 @@ public enum WaterOutcome: Equatable, Sendable {
     /// Записано: стаканов за сегодня и цель (если снимок сегодняшний),
     /// отправлено ли сразу.
     case added(glasses: Int?, goal: Int?, delivered: Bool)
+    /// Очередь недоступна: ничего не записано, снимок не тронут.
+    case failed
 
     public var dialog: String {
         switch self {
@@ -64,6 +66,7 @@ public enum WaterOutcome: Equatable, Sendable {
         case .disabled: return "Куратор пока не задал цель по воде"
         case let .added(glasses?, goal?, _): return "Записано: \(glasses) \(SurfaceText.ofGlasses(goal))"
         case .added: return "Стакан воды записан"
+        case .failed: return SurfaceDialogs.notSaved
         }
     }
 }
@@ -71,6 +74,7 @@ public enum WaterOutcome: Equatable, Sendable {
 public enum SurfaceDialogs {
     public static let signedOut = "Откройте Взвешено и войдите в аккаунт"
     public static let clientsOnly = "Это действие доступно клиентам"
+    public static let notSaved = "Не получилось записать. Откройте Взвешено и попробуйте ещё раз"
 }
 
 /// «Добавить стакан воды» без открытия приложения (`ios-controls`).
@@ -93,6 +97,11 @@ public struct AddWaterAction: Sendable {
         guard snapshot.isClient else { return .wrongRole }
         guard let water = snapshot.water, water.enabled else { return .disabled }
         let today = context.today(snapshot)
+        // Сначала очередь: снимок показывает стакан, только если он записан.
+        guard let endpoint = try? Endpoint.post("/api/v1/food-tracker/water", body: WaterRequest(date: today, glasses: 1)),
+              let item = try? await context.outbox.enqueue(kind: PendingWater.kind, endpoint: endpoint, userID: user.id) else {
+            return .failed
+        }
         var counts: (Int, Int)?
         if snapshot.date == today {
             var updated = snapshot
@@ -101,10 +110,6 @@ public struct AddWaterAction: Sendable {
             try? context.snapshots.save(updated)
             context.reloader.reloadAllTimelines()
             counts = (water.glasses + 1, water.goal)
-        }
-        guard let endpoint = try? Endpoint.post("/api/v1/food-tracker/water", body: WaterRequest(date: today, glasses: 1)),
-              let item = try? await context.outbox.enqueue(kind: PendingWater.kind, endpoint: endpoint, userID: user.id) else {
-            return .added(glasses: counts?.0, goal: counts?.1, delivered: false)
         }
         let delivered = await context.trySending(item.id, userID: user.id)
         return .added(glasses: counts?.0, goal: counts?.1, delivered: delivered)
@@ -134,6 +139,8 @@ public enum WeightOutcome: Equatable, Sendable {
     case wrongRole
     case outOfRange
     case logged(kilograms: Double, delivered: Bool)
+    /// Очередь недоступна: вес не записан.
+    case failed
 
     public var dialog: String {
         switch self {
@@ -141,6 +148,7 @@ public enum WeightOutcome: Equatable, Sendable {
         case .wrongRole: return SurfaceDialogs.clientsOnly
         case .outOfRange: return VoiceWeight.outOfRange
         case let .logged(kilograms, _): return "Записала \(SurfaceText.oneDecimal(kilograms)) кг"
+        case .failed: return SurfaceDialogs.notSaved
         }
     }
 }
@@ -161,7 +169,7 @@ public struct LogWeightAction: Sendable {
         let body = WeightRequest(date: context.today(snapshot), metric: .init(type: "weight", data: .init(weight: kilograms)))
         guard let endpoint = try? Endpoint.post("/api/v1/dashboard/daily", body: body),
               let item = try? await context.outbox.enqueue(kind: "surface.weight", endpoint: endpoint, userID: user.id) else {
-            return .logged(kilograms: kilograms, delivered: false)
+            return .failed
         }
         let delivered = await context.trySending(item.id, userID: user.id)
         return .logged(kilograms: kilograms, delivered: delivered)

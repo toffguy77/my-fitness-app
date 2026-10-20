@@ -72,6 +72,12 @@ public final class StubTransport: HTTPTransport, @unchecked Sendable {
         requests.filter { $0.path == path }
     }
 
+    /// Ответ обработчика без записи запроса — для составных заглушек.
+    public func handle(_ request: RecordedRequest) -> StubResponse {
+        let handler = lock.withLock { self.handler }
+        return handler(request)
+    }
+
     public func setHandler(_ handler: @escaping Handler) {
         lock.withLock { self.handler = handler }
     }

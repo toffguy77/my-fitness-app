@@ -9,6 +9,32 @@ public protocol ConnectivityMonitor: Sendable {
     func updates() -> AsyncStream<Bool>
 }
 
+/// Переходы «сеть пропала / появилась» из потока состояний монитора.
+///
+/// Первое значение — текущее состояние: без сети на запуске — это `.lost`
+/// (плашка сразу), с сетью — ничего (досылку на запуске делает передний план).
+public struct ConnectivityEdges: Sendable {
+    public enum Edge: Equatable, Sendable {
+        /// Сети не стало: плашка «Нет подключения».
+        case lost
+        /// Сеть появилась: досылка очереди и обновление экранов.
+        case restored
+    }
+
+    private var last: Bool?
+
+    public init() {}
+
+    public mutating func next(_ online: Bool) -> Edge? {
+        defer { last = online }
+        switch (last, online) {
+        case (nil, false), (true?, false): return .lost
+        case (false?, true): return .restored
+        default: return nil
+        }
+    }
+}
+
 #if canImport(Network)
 /// `NWPathMonitor` как поток «есть сеть / нет сети».
 public final class PathConnectivityMonitor: ConnectivityMonitor, @unchecked Sendable {

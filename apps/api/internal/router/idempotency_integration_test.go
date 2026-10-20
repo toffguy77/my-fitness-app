@@ -174,6 +174,7 @@ func TestIdempotencyKeyAcceptedOnExactlyTheListedRoutes(t *testing.T) {
 		"POST /api/v1/dashboard/tasks/:id/complete",
 		"POST /api/v1/food-tracker/entries",
 		"POST /api/v1/food-tracker/water",
+		"POST /api/v1/meal-plans/:date/items/:mealType/eat",
 		"PUT /api/v1/food-tracker/entries/:id",
 	}, got)
 }

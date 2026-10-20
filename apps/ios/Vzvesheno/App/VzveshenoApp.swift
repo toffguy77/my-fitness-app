@@ -28,6 +28,8 @@ struct VzveshenoApp: App {
         return WindowGroup {
             RootView()
                 .environment(model)
+                .environment(\.imageLoaders, model.imageLoaders)
+                .environment(\.imageOwner, model.user?.id)
                 .tint(DS.Color.primaryDefault)
                 // «Оформление»: сразу ко всему приложению; «Авто» — тема системы.
                 .preferredColorScheme(model.appearance.colorScheme)
@@ -52,7 +54,7 @@ struct VzveshenoApp: App {
         // Досылка очереди в фоне (BGAppRefreshTask): идентификатор — в
         // BGTaskSchedulerPermittedIdentifiers (project.yml).
         .backgroundTask(.appRefresh(model.environment.outboxTaskID)) { [model] in
-            await model.drainOutbox()
+            await model.backgroundRefresh()
         }
     }
 }

@@ -23,7 +23,8 @@ struct TodayScreen: View {
         ScrollViewReader { proxy in
             ScrollView {
                 if let today = model.today {
-                    TodayContent(state: today.state, avatarInitial: model.avatarInitial, offline: offline,
+                    TodayContent(state: today.state, avatarInitial: model.avatarInitial, offline: offline || today.offline,
+                                 updatedLabel: today.updatedLabel,
                                  healthHint: model.healthAccessHint, highlightedTask: model.highlightedTask,
                                  actions: actions(today))
                         .padding(.top, DS.Space.s2)

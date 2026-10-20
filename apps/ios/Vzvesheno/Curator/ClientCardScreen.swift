@@ -19,6 +19,9 @@ struct ClientCardScreen: View {
         Group {
             if let card {
                 content(card)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        FreshnessBanner(offline: card.offline, updatedLabel: card.updatedLabel).padding(.horizontal, DS.Space.screenX)
+                    }
             } else {
                 LoadingView()
             }
@@ -46,7 +49,8 @@ struct ClientCardScreen: View {
         .task {
             guard card == nil else { return }
             let loaded = ClientCardModel(api: model.api, clientID: clientID, tab: initialTab,
-                                         calendar: model.curator?.calendar ?? DayCalendar(timeZone: model.profileTimeZone))
+                                         calendar: model.curator?.calendar ?? DayCalendar(timeZone: model.profileTimeZone),
+                                         cache: model.cache, account: model.user?.id)
             card = loaded
             await loaded.load()
         }

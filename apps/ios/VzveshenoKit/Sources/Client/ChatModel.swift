@@ -39,11 +39,16 @@ public final class ChatModel {
     public var notice: String?
     /// Экран переписки на виду: новые сообщения сразу помечаются прочитанными.
     public var isVisible = false
+    /// Сохранённая переписка на экране / последнее обновление не дошло.
+    public private(set) var freshness = Freshness()
+    /// Откуда данные текущего прохода загрузки — на экран после него.
+    @ObservationIgnored private var pass = Freshness()
 
     public let calendar: DayCalendar
     public let userID: Int64
     private let api: APIClient
     private let outbox: Outbox?
+    private let reader: ScreenReader
     private let sleeper: Sleeper
     private let now: @Sendable () -> Date
     @ObservationIgnored private var typingTask: Task<Void, Never>?
@@ -52,14 +57,61 @@ public final class ChatModel {
     /// Прочтение отправлено — счётчики «Сегодня» и значка.
     @ObservationIgnored public var onRead: (@MainActor () -> Void)?
 
-    public init(api: APIClient, outbox: Outbox?, calendar: DayCalendar, userID: Int64, sleeper: Sleeper = TaskSleeper(),
-                now: @escaping @Sendable () -> Date = { Date() }) {
+    public init(api: APIClient, outbox: Outbox?, cache: ScreenCache? = nil, calendar: DayCalendar, userID: Int64,
+                sleeper: Sleeper = TaskSleeper(), now: @escaping @Sendable () -> Date = { Date() }) {
         self.api = api
         self.outbox = outbox
+        reader = ScreenReader(api: api, cache: cache, now: now)
         self.calendar = calendar
         self.userID = userID
         self.sleeper = sleeper
         self.now = now
+        hydrate()
+    }
+
+    public var updatedLabel: String? { freshness.label(now: now(), timeZone: calendar.timeZone) }
+    public var offline: Bool { freshness.offline }
+
+    // MARK: Кэш
+
+    private static let accessEndpoint = Endpoint.get("/api/v1/conversations/access")
+    private static let listEndpoint = Endpoint.get("/api/v1/conversations")
+
+    private static func messagesEndpoint(_ id: String) -> Endpoint {
+        .get("/api/v1/conversations/\(id)/messages", query: [URLQueryItem(name: "limit", value: "\(pageSize)")])
+    }
+
+    /// Сохранённая переписка — в первом кадре, без сети.
+    private func hydrate() {
+        guard let access = reader.cached(CuratorChatAccess.self, Self.accessEndpoint, userID: userID)?.value else { return }
+        self.access = access
+        guard access.allowed || access.expired else {
+            phase = .noAccess
+            return
+        }
+        let list = reader.cached([Conversation].self, Self.listEndpoint, userID: userID)?.value ?? []
+        let id = access.expired ? access.conversationID : list.first?.id
+        guard let id, let found = list.first(where: { $0.id == id }) ?? (access.expired ? Conversation(id: id) : nil) else { return }
+        conversation = found
+        guard let page = reader.cached([ChatMessage].self, Self.messagesEndpoint(id), userID: userID) else { return }
+        merge(page.value)
+        hasEarlier = page.value.count >= Self.pageSize
+        freshness.cachedAt = page.updatedAt
+        phase = .chat
+    }
+
+    /// Свежий ответ, без сети — сохранённый; отметка, что на экране кэш.
+    private func get<T: Decodable & Sendable>(_ type: T.Type, _ endpoint: Endpoint) async throws -> T {
+        switch await reader.fetchOrCached(T.self, endpoint, userID: userID) {
+        case let .success((value, cachedAt)):
+            if let cachedAt {
+                pass.cachedAt = cachedAt
+                pass.offline = true
+            }
+            return value
+        case let .failure(error):
+            throw error
+        }
     }
 
     // MARK: Производные
@@ -83,13 +135,15 @@ public final class ChatModel {
     // MARK: Загрузка
 
     public func load() async {
+        await restorePending()
+        pass = Freshness()
         do {
-            let access: CuratorChatAccess = try await api.send(.get("/api/v1/conversations/access"))
+            let access = try await get(CuratorChatAccess.self, Self.accessEndpoint)
             self.access = access
             if access.expired {
                 // История — только для чтения; переписка известна из ответа доступа.
                 let id = access.conversationID
-                let list: [Conversation] = (try? await api.send(.get("/api/v1/conversations"))) ?? []
+                let list = (try? await get([Conversation].self, Self.listEndpoint)) ?? []
                 conversation = list.first { $0.id == id } ?? list.first ?? id.map { Conversation(id: $0) }
                 guard conversation != nil else {
                     phase = .noAccess
@@ -99,7 +153,7 @@ public final class ChatModel {
                 phase = .noAccess
                 return
             } else {
-                let list: [Conversation] = try await api.send(.get("/api/v1/conversations"))
+                let list = try await get([Conversation].self, Self.listEndpoint)
                 guard let first = list.first else {
                     phase = .noCurator
                     return
@@ -108,9 +162,14 @@ public final class ChatModel {
             }
             try await loadLatest()
             phase = .chat
+            freshness = pass
+            // Переписка стала известна только сейчас (кэша не было): ждущие
+            // отправки сообщения прошлого запуска — на экран.
+            await restorePending()
             await reconcilePending()
-            if isVisible { await markRead() }
+            if isVisible, !freshness.offline { await markRead() }
         } catch {
+            if let error = error as? APIError { freshness.markFailed(error) }
             if messages.isEmpty { phase = .failed(ErrorMessages().message(for: error)) }
         }
     }
@@ -118,8 +177,7 @@ public final class ChatModel {
     /// Последняя страница: новые сообщения добавляются к показанным.
     public func loadLatest() async throws {
         guard let conversation else { return }
-        let page: [ChatMessage] = try await api.send(.get("/api/v1/conversations/\(conversation.id)/messages",
-                                                          query: [URLQueryItem(name: "limit", value: "\(Self.pageSize)")]))
+        let page = try await get([ChatMessage].self, Self.messagesEndpoint(conversation.id))
         if messages.isEmpty { hasEarlier = page.count >= Self.pageSize }
         merge(page)
     }
@@ -207,31 +265,39 @@ public final class ChatModel {
         await enqueue(Body(type: "text", content: trimmed), shown: trimmed)
     }
 
-    /// Вложение: больше 10 МБ — отказ до отправки; иначе загрузка
-    /// `POST /conversations/:id/upload` и сообщение с адресом файла.
+    /// Вложение: больше 10 МБ — отказ до отправки; иначе — в очередь двумя
+    /// шагами: загрузка `POST /conversations/:id/upload`, затем сообщение с
+    /// адресом файла (`Idempotency-Key`). Без сети пузырь «ждёт отправки».
     @discardableResult
     public func send(_ attachment: AttachmentDraft) async -> Bool {
         if let rejection = attachment.rejection {
             notice = rejection
             return false
         }
-        guard canSend, let conversation else { return false }
-        uploading = true
-        defer { uploading = false }
+        guard canSend, let conversation, let outbox else { return false }
+        let form = MultipartForm(fields: [:], file: (name: "file", filename: attachment.fileName,
+                                                     mime: attachment.mimeType, data: attachment.data))
+        let endpoint = Endpoint(method: .post, path: "/api/v1/conversations/\(conversation.id)/upload", body: form.body,
+                                contentType: form.contentType)
+        let shown = attachment.isImage ? "Фото" : attachment.fileName
+        let followUp = OutboxFollowUp(kind: Self.messageKind, path: "/api/v1/conversations/\(conversation.id)/messages")
         do {
-            let form = MultipartForm(fields: [:], file: (name: "file", filename: attachment.fileName,
-                                                         mime: attachment.mimeType, data: attachment.data))
-            let endpoint = Endpoint(method: .post, path: "/api/v1/conversations/\(conversation.id)/upload", body: form.body,
-                                    contentType: form.contentType)
-            let uploaded: ChatAttachment = try await api.send(endpoint)
-            let type = uploaded.mimeType.hasPrefix("image/") ? "image" : "file"
-            await enqueue(Body(type: type, content: uploaded.fileURL), shown: type == "image" ? "Фото" : uploaded.fileName)
-            return true
+            let item = try await outbox.enqueue(kind: Self.uploadKind, endpoint: endpoint, userID: userID,
+                                                preview: Data(shown.utf8), followUp: followUp)
+            pending.append(PendingChatMessage(id: item.id, text: shown, createdAt: now()))
         } catch {
-            notice = ErrorMessages().message(for: error)
+            // Очередь не записала файл (нет места) — черновик остаётся у человека.
+            notice = "Не удалось сохранить вложение для отправки. Попробуйте ещё раз."
             return false
         }
+        uploading = true
+        defer { uploading = false }
+        await flush()
+        return true
     }
+
+    public static let messageKind = "chat.message"
+    public static let uploadKind = "chat.upload"
 
     struct Body: Encodable, Sendable {
         let type: String
@@ -241,7 +307,8 @@ public final class ChatModel {
     private func enqueue(_ body: Body, shown: String) async {
         guard let conversation, let outbox,
               let endpoint = try? Endpoint.post("/api/v1/conversations/\(conversation.id)/messages", body: body),
-              let item = try? await outbox.enqueue(kind: "chat.message", endpoint: endpoint, userID: userID) else { return }
+              let item = try? await outbox.enqueue(kind: Self.messageKind, endpoint: endpoint, userID: userID,
+                                                   preview: Data(shown.utf8)) else { return }
         pending.append(PendingChatMessage(id: item.id, text: shown, createdAt: now()))
         await flush()
     }
@@ -250,13 +317,36 @@ public final class ChatModel {
     public func flush() async {
         guard let outbox else { return }
         let report = await outbox.drain(userID: userID)
-        for id in report.rejected {
-            if let index = pending.firstIndex(where: { $0.id == id }) {
-                pending[index].status = .failed("Сообщение не отправлено")
-            }
-        }
+        for id in report.rejected { markFailed(id) }
         if !report.delivered.isEmpty { try? await loadLatest() }
         await reconcilePending()
+        await restorePending()
+    }
+
+    func markFailed(_ id: UUID) {
+        if let index = pending.firstIndex(where: { $0.id == id }) {
+            pending[index].status = .failed("Сообщение не отправлено")
+        }
+    }
+
+    /// Ждущие отправки сообщения этой переписки — и после перезапуска: из
+    /// очереди, включая второй шаг вложения, поставленный после загрузки.
+    private func restorePending() async {
+        guard let outbox, let conversation, let items = try? await outbox.pending() else { return }
+        let prefix = "/api/v1/conversations/\(conversation.id)/"
+        let failed = pending.filter { $0.status != .waiting }
+        let waiting = items.filter { $0.userID == userID && $0.path.hasPrefix(prefix)
+            && ($0.kind == Self.messageKind || $0.kind == Self.uploadKind) }
+            .map { item in
+                PendingChatMessage(id: item.id, text: item.preview.flatMap { String(data: $0, encoding: .utf8) } ?? Self.text(of: item),
+                                   createdAt: item.createdAt)
+            }
+        pending = failed + waiting.filter { item in !failed.contains { $0.id == item.id } }
+    }
+
+    private static func text(of item: OutboxItem) -> String {
+        guard let body = item.body, let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { return "Сообщение" }
+        return json["type"] as? String == "text" ? (json["content"] as? String ?? "") : "Вложение"
     }
 
     /// Ушедшие из очереди (досланы другим проходом) — больше не «ждут».

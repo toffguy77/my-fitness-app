@@ -25,8 +25,8 @@ final class AppModel {
 
     private(set) var launch: LaunchState = .loading
     internal(set) var user: SessionUser?
-    private(set) var offline = false
-    private(set) var config: ClientConfig?
+    internal(set) var offline = false
+    internal(set) var config: ClientConfig?
     var selectedTab: AppTab?
     var paths: [AppTab: [Destination]] = [:]
     /// Текст над формой входа: «Сессия завершена, войдите снова».
@@ -37,11 +37,13 @@ final class AppModel {
     /// Вход аккаунта, ждущего удаления: экран «Аккаунт будет удалён».
     internal(set) var pendingDeletion: PendingDeletion?
     /// Имя из профиля — для аватара в шапке.
-    private(set) var profileName: String?
+    internal(set) var profileName: String?
     /// Модель «Сегодня» вошедшего клиента.
-    private(set) var today: TodayModel?
+    internal(set) var today: TodayModel?
     /// «Дневник», нутриенты и «Меню» вошедшего клиента.
     internal(set) var diary: DiaryModel?
+    /// Вода дня — одна на «Сегодня» и «Дневник».
+    internal(set) var water: WaterLedger?
     internal(set) var nutrients: NutrientsModel?
     internal(set) var mealPlan: MealPlanModel?
     internal(set) var recipes: RecipeCatalogModel?
@@ -70,6 +72,9 @@ final class AppModel {
     /// Ссылка входа пришла при открытой сессии — ждёт подтверждения
     /// «Войти в другой аккаунт? Текущий сеанс завершится».
     var authLinkAwaitingConfirmation: AuthLink?
+    /// Отказ сервера на изменение из очереди без своего экрана (Здоровье,
+    /// виджеты у куратора и т. п.) — общее сообщение.
+    var outboxNotice: String?
     /// Справочник компонентов открыт (только Dev-сборка).
     var showCatalogue = false
     /// Здоровье подключено в профиле приложения.
@@ -111,12 +116,20 @@ final class AppModel {
     let barcodeCache: BarcodeCache
     let shoppingMarks: FileShoppingMarks
     var realtimeTask: Task<Void, Never>?
-    let pendingLinks = PendingLinkStore()
+    /// Экран из ссылки или пуша, пришедших до оболочки (`ios-deep-links`).
+    var pendingLink: ScreenLink?
     private let configLoader: ConfigLoader
-    private let configCache: ConfigCache
+    let configCache: ConfigCache
     private var pendingPKCE: PKCEPair?
     private var serverRole: Role?
     private var started = false
+    /// Восстановление сессии из Keychain: досылка, передний план и пуш ждут
+    /// его, иначе они видели бы «никто не вошёл».
+    var restoring: Task<Void, Never>?
+    /// Отказы из расширения виджетов (App Group).
+    let rejections: RejectionLog
+    /// Изображения: общий кэш и кэш аккаунта (в `Cache/` — стирается с кэшем экранов).
+    let imageLoaders: ImageLoaders
 
     init(environment: AppEnvironment, transport: HTTPTransport, secure: SecureStore, installMarker: InstallMarker,
          directory: URL, deviceName: String, healthStore: HealthStore,
@@ -130,7 +143,8 @@ final class AppModel {
         let snapshot = DaySnapshotStore(url: directory.appendingPathComponent(SnapshotRepository.fileName))
         let outboxStore: OutboxStore = (try? SQLiteOutboxStore(url: directory.appendingPathComponent("outbox.sqlite")))
             ?? InMemoryOutboxStore()
-        let outbox = Outbox(store: outboxStore, api: api)
+        // Вложения переписки, ждущие отправки, — файлами рядом с очередью.
+        let outbox = Outbox(store: outboxStore, api: api, files: directory.appendingPathComponent("outbox-files", isDirectory: true))
         // Сессия создаётся после Здоровья (её стиратели включают Здоровье),
         // а Здоровью нужен вошедший пользователь — ссылка заполняется ниже.
         let sessionRef = SessionRef()
@@ -159,6 +173,11 @@ final class AppModel {
         self.shoppingMarks = shoppingMarks
         let files = AccountFiles(root: directory)
         self.files = files
+        let rejections = RejectionLog(directory: directory)
+        self.rejections = rejections
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
+        imageLoaders = ImageLoaders.make(shared: caches.appendingPathComponent("vzvesheno-images", isDirectory: true),
+                                         account: cache.root.appendingPathComponent("images", isDirectory: true))
         let timeZones = FileTimeZoneSuggestionStore(url: directory.appendingPathComponent("timezone-suggestion.json"))
         self.timeZones = timeZones
         // Выход отписывает телефон от пушей и через `native/logout`
@@ -168,7 +187,7 @@ final class AppModel {
                                                        surfaceRoutes: surfaceRoutes, health: health,
                                                        photoWeeks: photoWeeks, barcodes: barcodeCache,
                                                        shoppingMarks: shoppingMarks, timeZones: timeZones,
-                                                       files: files)],
+                                                       files: files, rejections: rejections)],
                                deviceToken: { [pushTokens] in pushTokens.load() })
         sessionRef.store = session
         auth = NativeAuthAPI(api: api, deviceName: deviceName)
@@ -210,16 +229,13 @@ final class AppModel {
     // MARK: Запуск
 
     func start() async {
-        guard !started else { return }
+        guard !started else {
+            await ensureRestored()
+            return
+        }
         started = true
-        await session.attach()
+        await ensureRestored()
         Task { await watchSessionEndings() }
-
-        // Решение о версии — сразу по сохранённой конфигурации, затем по свежей.
-        config = configCache.load()
-        user = await session.restore()
-        // Запрошенное удаление — и после перезапуска, до любого другого экрана.
-        if user != nil { pendingDeletion = await session.storedPendingDeletion() }
         // Никто не вошёл — снимка дня быть не должно (выход без сети, сбой
         // посреди стирания): виджет не покажет данных прежнего аккаунта.
         if user == nil { surfaces.erase() }
@@ -278,50 +294,6 @@ final class AppModel {
         recompute()
     }
 
-    /// `GET /users/profile` → `{profile: {name, onboarding_completed, settings}}`:
-    /// язык запросов, пояс профиля и признак онбординга. (Раньше разбиралось
-    /// без обёртки `profile`, и язык с поясом не применялись.)
-    private func refreshLanguage() async {
-        struct Answer: Decodable, Sendable {
-            struct Profile: Decodable, Sendable {
-                struct Settings: Decodable, Sendable {
-                    let language: String?
-                    let timezone: String?
-                }
-                let name: String?
-                let onboardingCompleted: Bool?
-                let settings: Settings?
-
-                enum CodingKeys: String, CodingKey {
-                    case name, settings
-                    case onboardingCompleted = "onboarding_completed"
-                }
-            }
-            let profile: Profile
-        }
-        guard let answer = try? await api.send(.get("/api/v1/users/profile"), as: Answer.self) else { return }
-        let profile = answer.profile
-        profileName = profile.name
-        await api.setLanguage(profile.settings?.language)
-        // Сутки шагов и дата взвешивания — по поясу профиля, не устройства.
-        if let timezone = profile.settings?.timezone {
-            await health.setTimeZone(timezone)
-            if let zone = TimeZone(identifier: timezone), zone != profileTimeZone {
-                profileTimeZone = zone
-                today = nil
-                diary = nil
-                // Время сообщений — по поясу профиля; куратору — тоже.
-                chat = nil
-                curator = nil
-            }
-        }
-        if let completed = profile.onboardingCompleted, var current = await session.user, current.onboardingCompleted != completed {
-            current.onboardingCompleted = completed
-            await session.updateUser(current)
-            user = current
-        }
-    }
-
     func recompute() {
         let before = launch
         launch = LaunchState.resolve(
@@ -335,8 +307,11 @@ final class AppModel {
             onboardingCompleted: user?.onboardingCompleted
         )
         if case let .shell(shell, _) = launch {
-            if case .shell = before {} else { selectedTab = shell.rootTab }
+            var entering = true
+            if case .shell = before { entering = false }
+            if entering { selectedTab = shell.rootTab }
             if shell == .client { stopCurator(); startClient() } else { startStaff(shell) }
+            if entering { openPendingLink() }
         } else {
             stopClient()
             stopCurator()
@@ -348,19 +323,20 @@ final class AppModel {
     /// «Сегодня» и сокет — пока открыта клиентская оболочка.
     private func startClient() {
         if chat == nil, let userID = user?.id {
-            let chat = ChatModel(api: api, outbox: outbox, calendar: DayCalendar(timeZone: profileTimeZone), userID: userID)
+            let chat = ChatModel(api: api, outbox: outbox, cache: cache, calendar: DayCalendar(timeZone: profileTimeZone),
+                                 userID: userID)
             chat.sendTyping = { [realtime] id in await realtime.sendTyping(conversationID: id) }
             chat.onRead = { [weak self] in Task { await self?.refreshBadge() } }
             self.chat = chat
-            articles = ArticleFeedModel(api: api)
+            articles = ArticleFeedModel(api: api, cache: cache, account: userID)
         }
+        if water == nil { startWater() }
         if today == nil {
+            // Сохранённый день — в первом кадре: аккаунт известен без ожидания.
             let model = TodayModel(api: api, outbox: outbox, cache: cache, photoWeeks: photoWeeks,
-                                   calendar: DayCalendar(timeZone: profileTimeZone),
+                                   calendar: DayCalendar(timeZone: profileTimeZone), account: user?.id,
                                    userID: { [session] in await session.user?.id })
-            model.onWaterChanged = { [health] day, glasses, glassSize in
-                Task { await health.setWater(day: day, glasses: glasses, glassMilliliters: Double(glassSize), at: Date()) }
-            }
+            model.waterLedger = water
             model.observeDayChanges()
             attachSurface(to: model)
             today = model
@@ -372,6 +348,7 @@ final class AppModel {
 
     func stopClient() {
         stopFood()
+        water = nil
         today = nil
         todaySurface = nil
         chat = nil
@@ -438,9 +415,6 @@ final class AppModel {
             serverRole = nil
             recompute()
             await refreshProfile()
-            if let link = await pendingLinks.take() {
-                open(link)
-            }
         }
     }
 
@@ -475,8 +449,10 @@ final class AppModel {
     // MARK: Очередь
 
     func onForeground() async {
+        await ensureRestored()
         await session.flushPendingLogout()
         await drainOutbox()
+        await showExtensionRejections()
         openPendingSurfaceRoute()
         if today != nil {
             connectRealtime()
@@ -517,9 +493,5 @@ extension AppModel {
         #if DEBUG
         uiTestHealthAuthorizationRequests = (healthStore as? InMemoryHealthStore)?.authorizationRequests
         #endif
-    }
-
-    func drainOutbox() async {
-        await outbox.drain(userID: user?.id)
     }
 }

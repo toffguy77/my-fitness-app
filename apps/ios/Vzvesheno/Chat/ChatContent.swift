@@ -367,11 +367,9 @@ struct AttachmentImage: View {
     let url: URL?
 
     var body: some View {
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case let .success(image): image.resizable().scaledToFill()
-            default: Rectangle().fill(DS.Color.bgSubtle)
-            }
+        // Фото переписки — в кэше аккаунта: без сети видно, выход стирает.
+        CachedImage(url: url, scope: .account) {
+            Rectangle().fill(DS.Color.bgSubtle)
         }
     }
 }

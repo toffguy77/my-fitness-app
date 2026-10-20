@@ -23,7 +23,12 @@ import Session
 /// - куратор (`UITestScenario+Curator.swift`): `-uiTestBenchmarkDown` — бенчмарк
 ///   отвечает 500; `-uiTestCuratorSaveFails` — цели клиента не сохраняются;
 ///   `-uiTestFoodEntryOffline` — КБЖУ по фото не доходит; `-uiTestLeadConflict`
-///   — «Обработана» отвечает 409 `lead_already_claimed`.
+///   — «Обработана» отвечает 409 `lead_already_claimed`;
+/// - `-uiTestStore <имя>` — каталог данных постоянный между запусками
+///   (`tmp/uitest-<имя>`), `-uiTestResetStore` — очистить его при запуске:
+///   первый запуск с сетью наполняет кэш экранов, второй его показывает;
+/// - `-uiTestOffline` — нет сети совсем (любая роль), в отличие от
+///   `offlineClient`, у которого роль закреплена, а кэша нет.
 enum UITestScenario: String {
     case client
     case coordinator
@@ -58,9 +63,21 @@ enum UITestScenario: String {
         }
     }
 
+    /// Каталог запуска: свой на каждый запуск или общий `-uiTestStore`.
+    static func storeDirectory() -> URL {
+        guard let name = argument("-uiTestStore"), !name.isEmpty, name.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" }) else {
+            return FileManager.default.temporaryDirectory.appendingPathComponent("uitest-\(UUID().uuidString)")
+        }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("uitest-\(name)")
+        if ProcessInfo.processInfo.arguments.contains("-uiTestResetStore") {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        return directory
+    }
+
     @MainActor
     func makeModel(environment: AppEnvironment) -> AppModel {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("uitest-\(UUID().uuidString)")
+        let directory = Self.storeDirectory()
         let secure = InMemorySecureStore()
         if self != .signedOut {
             let user = SessionUser(id: 7, email: "anna@example.com", name: "Анна", role: role,
@@ -147,6 +164,9 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let path = request.url?.path ?? ""
         if scenario == .offlineClient && path != "/api/v1/config" {
+            throw URLError(.notConnectedToInternet)
+        }
+        if ProcessInfo.processInfo.arguments.contains("-uiTestOffline") {
             throw URLError(.notConnectedToInternet)
         }
         let body = request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]

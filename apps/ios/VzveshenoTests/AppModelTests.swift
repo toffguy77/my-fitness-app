@@ -2,6 +2,7 @@ import API
 import Client
 import Foundation
 import Navigation
+import Outbox
 import Session
 @testable import Vzvesheno
 import XCTest
@@ -109,6 +110,100 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.launch, .signedOut)
         let user = await model.session.user
         XCTAssertNil(user)
+    }
+}
+
+/// Очередь изменений на уровне приложения (`ios-offline-outbox`): досылка до
+/// восстановления сессии, отказы из любой досылки, ссылки до оболочки.
+@MainActor
+final class OutboxAppTests: XCTestCase {
+    private func breakfast() throws -> Endpoint {
+        try Endpoint.post("/api/v1/food-tracker/entries", body: ["foodId": "p1", "date": "2026-10-17"])
+    }
+
+    /// Фоновая задача или тихий пуш раньше `start()`: очередь не стирается.
+    func testDrainBeforeStartKeepsTheQueueOffline() async throws {
+        let model = UITestScenario.offlineClient.makeModel(environment: AppEnvironment.current())
+        try await model.outbox.enqueue(kind: "diary.add", endpoint: try breakfast(), userID: 7)
+        await model.drainOutbox()
+        let left = try await model.outbox.pending()
+        XCTAssertEqual(left.count, 1, "запись в метро на месте")
+    }
+
+    /// До `start()` досылка сначала поднимает сессию — и отправляет своим токеном.
+    func testDrainBeforeStartUsesTheRestoredSession() async throws {
+        let model = UITestScenario.client.makeModel(environment: AppEnvironment.current())
+        try await model.outbox.enqueue(kind: "diary.add", endpoint: try breakfast(), userID: 7)
+        await model.drainOutbox()
+        let left = try await model.outbox.pending()
+        XCTAssertTrue(left.isEmpty)
+    }
+
+    /// Поводы досылки: передний план и фоновое обновление (BGAppRefreshTask).
+    func testForegroundAndBackgroundRefreshDrainTheQueue() async throws {
+        let model = UITestScenario.client.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        try await model.outbox.enqueue(kind: "diary.add", endpoint: try breakfast(), userID: 7)
+        await model.onForeground()
+        var left = try await model.outbox.pending()
+        XCTAssertTrue(left.isEmpty, "передний план досылает")
+        try await model.outbox.enqueue(kind: "diary.add", endpoint: try breakfast(), userID: 7)
+        await model.backgroundRefresh()
+        left = try await model.outbox.pending()
+        XCTAssertTrue(left.isEmpty, "фоновое обновление досылает")
+    }
+
+    /// Отказ из досылки приложения доходит до «Сегодня»: сообщение по коду.
+    func testRejectionFromAppDrainReachesToday() async throws {
+        let model = UITestScenario.client.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        try await model.outbox.enqueue(kind: "today.metric.weight",
+                                       endpoint: try Endpoint.post("/api/v1/uitest/rejected", body: ["date": "2026-10-17"]),
+                                       userID: 7)
+        await model.drainOutbox()
+        XCTAssertNotNil(model.today?.notice)
+        let left = try await model.outbox.pending()
+        XCTAssertTrue(left.isEmpty)
+    }
+
+    /// Изменение без своего экрана (Здоровье) — общее сообщение приложения.
+    func testRejectionWithoutScreenIsAnAppNotice() async throws {
+        let model = UITestScenario.client.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        try await model.outbox.enqueue(kind: "health.import",
+                                       endpoint: try Endpoint.post("/api/v1/uitest/rejected", body: ["a": 1]), userID: 7)
+        await model.drainOutbox()
+        XCTAssertNotNil(model.outboxNotice)
+    }
+
+    /// Отказ, записанный расширением виджетов, показывается при выходе на передний план.
+    func testExtensionRejectionIsShownOnForeground() async throws {
+        let model = UITestScenario.client.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        model.rejections.append(RejectedChange(id: UUID(), userID: 7, kind: "surface.water", code: "validation", status: 422))
+        await model.showExtensionRejections()
+        XCTAssertNotNil(model.today?.notice)
+        XCTAssertTrue(model.rejections.take(userID: 7).isEmpty)
+    }
+
+    /// Пуш на холодном запуске: оболочки ещё нет — экран открывается с ней.
+    func testLinkDuringColdStartOpensWhenShellAppears() async throws {
+        let model = UITestScenario.client.makeModel(environment: AppEnvironment.current())
+        XCTAssertEqual(model.launch, .loading)
+        await model.open(try XCTUnwrap(URL(string: "https://new.burcev.team/chat")))
+        await model.start()
+        XCTAssertEqual(model.paths[.today], [.curatorChat])
+    }
+
+    /// Ссылка во время онбординга открывается, когда он пройден.
+    func testLinkDuringOnboardingOpensAfterIt() async throws {
+        let model = UITestScenario.newClient.makeModel(environment: AppEnvironment.current())
+        await model.start()
+        XCTAssertEqual(model.launch, .onboarding)
+        await model.open(try XCTUnwrap(URL(string: "https://new.burcev.team/chat")))
+        try await model.completeOnboarding(OnboardingDraft())
+        XCTAssertEqual(model.launch, .shell(.client, offline: false))
+        XCTAssertEqual(model.paths[.today], [.curatorChat])
     }
 }
 

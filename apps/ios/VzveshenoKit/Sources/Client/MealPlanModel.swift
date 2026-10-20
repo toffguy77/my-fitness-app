@@ -1,6 +1,7 @@
 import API
 import Foundation
 import Observation
+import Outbox
 
 /// Что показывает вкладка «Меню» на день.
 public enum MealPlanState: Equatable, Sendable {
@@ -24,15 +25,50 @@ public final class MealPlanModel {
     /// запись уходит в Здоровье.
     @ObservationIgnored public var onEaten: (@MainActor (_ day: String, _ entryID: String) async -> Void)?
 
+    /// Сохранённый план на экране / обновление не дошло.
+    public private(set) var freshness = Freshness()
+
     public let calendar: DayCalendar
     private let api: APIClient
+    private let reader: ScreenReader
+    private let outbox: Outbox?
+    private let account: Int64?
     private let now: @Sendable () -> Date
 
-    public init(api: APIClient, calendar: DayCalendar, now: @escaping @Sendable () -> Date = { Date() }) {
+    /// С очередью «Съел» работает и без сети (`ios-offline-outbox`).
+    public init(api: APIClient, calendar: DayCalendar, outbox: Outbox? = nil, cache: ScreenCache? = nil, account: Int64? = nil,
+                now: @escaping @Sendable () -> Date = { Date() }) {
         self.api = api
+        reader = ScreenReader(api: api, cache: cache, now: now)
+        self.outbox = outbox
+        self.account = account
         self.calendar = calendar
         self.now = now
         selected = calendar.key(now())
+        hydrate()
+    }
+
+    public var updatedLabel: String? { freshness.label(now: now(), timeZone: calendar.timeZone) }
+    public var offline: Bool { freshness.offline }
+
+    private func planEndpoint(_ day: String) -> Endpoint { .get("/api/v1/meal-plans/\(day)") }
+
+    /// Сохранённый план дня с «Съел», ждущими отправки.
+    private func hydrate() {
+        guard let cached = reader.cached(MealPlan.self, planEndpoint(selected), userID: account) else { return }
+        freshness.cachedAt = cached.updatedAt
+        state = .plan(cached.value)
+    }
+
+    private func applyPendingEaten(_ plan: MealPlan, day: String) async -> MealPlan {
+        guard let outbox, let account, let pending = try? await outbox.pending() else { return plan }
+        var plan = plan
+        let prefix = "/api/v1/meal-plans/\(day)/items/"
+        for item in pending where item.userID == account && item.kind == DiaryModel.eatKind && item.path.hasPrefix(prefix) {
+            let meal = item.path.dropFirst(prefix.count).dropLast("/eat".count)
+            if let index = plan.items.firstIndex(where: { $0.mealType == meal }) { plan.items[index].eaten = true }
+        }
+        return plan
     }
 
     public var today: String { calendar.key(now()) }
@@ -58,11 +94,29 @@ public final class MealPlanModel {
         guard canShift(days) else { return }
         selected = calendar.adding(days: days, to: selected)
         state = .loading
+        freshness = Freshness()
+        hydrate()
         await load()
     }
 
+    /// Сохранённый план — сразу, затем свежий; без сети — сохранённый.
     public func load() async {
-        await perform { try await self.api.send(.get("/api/v1/meal-plans/\(self.selected)"), as: MealPlan.self) }
+        let day = selected
+        switch await reader.fetch(MealPlan.self, planEndpoint(day), userID: account) {
+        case let .success(plan):
+            guard day == selected else { return }
+            state = .plan(await applyPendingEaten(plan, day: day))
+            freshness.markFresh()
+        case let .failure(error):
+            guard day == selected else { return }
+            freshness.markFailed(error)
+            if error == .network, let cached = reader.cached(MealPlan.self, planEndpoint(day), userID: account) {
+                state = .plan(await applyPendingEaten(cached.value, day: day))
+                freshness.cachedAt = cached.updatedAt
+                return
+            }
+            await perform { throw error }
+        }
     }
 
     /// «Пересобрать»: закреплённые и съеденные остаются.
@@ -109,6 +163,9 @@ public final class MealPlanModel {
         let day = selected
         let time = day == today ? ClockText.hhmm(now(), calendar: calendar) : nil
         let customGrams = grams.flatMap { $0 != item.grams ? Portion.clamp($0, unit: .grams) : nil }
+        if outbox != nil, account != nil {
+            return await eatQueued(item, day: day, time: time, grams: customGrams)
+        }
         working = true
         defer { working = false }
         do {
@@ -122,6 +179,44 @@ public final class MealPlanModel {
             notice = message(for: error)
             return false
         }
+    }
+
+    /// «Съел» через очередь с `Idempotency-Key`: блюдо отмечено сразу, в
+    /// дневнике — строка «ждёт отправки» (из локального описания изменения).
+    /// Отказ сервера возвращает план и показывает сообщение.
+    private func eatQueued(_ item: MealPlanItem, day: String, time: String?, grams: Double?) async -> Bool {
+        struct Body: Encodable, Sendable {
+            let grams: Double?
+            let time: String?
+        }
+        guard let outbox, let user = account else { return false }
+        let body = Body(grams: grams, time: time)
+        let eatenGrams = grams ?? item.grams
+        let scale = item.grams > 0 ? eatenGrams / item.grams : 1
+        let entry = NewEntryBody(foodId: "", mealType: item.meal ?? .snack, portionType: .grams, portionAmount: eatenGrams,
+                                 time: time ?? "12:00", date: day, foodName: item.name,
+                                 nutrition: Nutrition(calories: item.nutrition.kcal * scale, protein: item.nutrition.protein * scale,
+                                                      fat: item.nutrition.fat * scale, carbs: item.nutrition.carbs * scale))
+        guard let endpoint = try? Endpoint.post("/api/v1/meal-plans/\(day)/items/\(item.mealType)/eat", body: body),
+              let queued = try? await outbox.enqueue(kind: DiaryModel.eatKind, endpoint: endpoint, userID: user,
+                                                     preview: JSONEncoder().encode(EatenPreview(entry: entry))) else {
+            notice = "Не получилось записать. Попробуйте ещё раз."
+            return false
+        }
+        if case var .plan(plan) = state, let index = plan.items.firstIndex(where: { $0.mealType == item.mealType }) {
+            plan.items[index].eaten = true
+            plan.items[index].eatenGrams = eatenGrams
+            state = .plan(plan)
+        }
+        let report = await outbox.drain(userID: user)
+        if report.rejected.contains(queued.id) {
+            notice = "Не получилось отметить блюдо. Попробуйте ещё раз."
+            await load()
+            return false
+        }
+        if report.delivered.contains(queued.id) { await load() }
+        await onEaten?(day, "")
+        return true
     }
 
     private func perform(_ request: @escaping @MainActor () async throws -> MealPlan) async {
