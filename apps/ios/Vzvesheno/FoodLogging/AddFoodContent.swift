@@ -157,12 +157,16 @@ struct FoodRow: View {
         HStack(spacing: DS.Space.s3) {
             Button(action: onSelect) {
                 VStack(alignment: .leading, spacing: 0) {
+                    // fixedSize по вертикали: на крупном шрифте стопка иначе
+                    // ужимала название в одну строку с многоточием.
                     Text(item.name)
                         .font(.custom(DS.FontFamily.sans, size: 15, relativeTo: .callout))
                         .foregroundStyle(DS.Color.fgDefault)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(item.subtitle)
                         .dsText(DS.Typography.caption)
                         .foregroundStyle(DS.Color.fgMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
