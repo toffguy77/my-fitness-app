@@ -1,9 +1,11 @@
 package config
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -40,9 +42,13 @@ type Features struct {
 	SupportBot      bool
 	SupportBridge   bool
 	WebPush         bool
-	// IOSPush — уведомления на iPhone через APNs: ключ .p8 с правом APNs,
-	// его идентификатор и команда Apple.
-	IOSPush bool
+	// APNS — уведомления на iPhone через APNs: ключ .p8 с правом APNs,
+	// его идентификатор и команда Apple. Хост (sandbox или production)
+	// выбирается по окружению, с которым зарегистрировалось устройство.
+	APNS bool
+	// AppleSignIn — вход через Apple из приложения: команда, bundle id и ключ
+	// с правом Sign in with Apple. Без всех четырёх провайдер выключен.
+	AppleSignIn bool
 	// Observability, reported for the same reason as the rest: "is it on?" has
 	// to be answerable from outside, or the only way to find out is to break
 	// something and see whether anybody hears.
@@ -76,7 +82,8 @@ func (f Features) Disabled() []string {
 		{"support_bot", f.SupportBot},
 		{"support_bridge", f.SupportBridge},
 		{"web_push", f.WebPush},
-		{"ios_push", f.IOSPush},
+		{"apns", f.APNS},
+		{"apple_sign_in", f.AppleSignIn},
 		{"error_reporting", f.ErrorReporting},
 		{"tracing", f.Tracing},
 		{"ads_attribution", f.AdsAttribution},
@@ -102,7 +109,8 @@ func (f Features) Map() map[string]bool {
 		"support_bot":      f.SupportBot,
 		"support_bridge":   f.SupportBridge,
 		"web_push":         f.WebPush,
-		"ios_push":         f.IOSPush,
+		"apns":             f.APNS,
+		"apple_sign_in":    f.AppleSignIn,
 		"error_reporting":  f.ErrorReporting,
 		"tracing":          f.Tracing,
 		"ads_attribution":  f.AdsAttribution,
@@ -199,6 +207,20 @@ type Config struct {
 	YandexOAuthClientSecret string
 	VKOAuthClientID         string
 	VKOAuthClientSecret     string
+	// OAuthYandexBaseURL replaces the Yandex endpoints with `<base>/authorize`,
+	// `<base>/token` and `<base>/info` — the stub the end-to-end suite signs up
+	// through (scripts/oauth-stub.mjs). Like LLM_BASE_URL, it points the
+	// service at somebody other than the real provider, so production refuses
+	// to start with it set: a sign-in answered by an arbitrary server is an
+	// account handed to whoever runs that server.
+	OAuthYandexBaseURL string
+	// OAuthAppOrigin is the origin the external sign-in flow returns the
+	// browser to, when it is not `https://` + APP_DOMAIN. Locally and under
+	// test the browser has to come back through the routing proxy on 3070:
+	// the default, Next on 3069, drops Set-Cookie on the way to the API, and
+	// the flow cannot finish without its cookies. Refused in production, where
+	// APP_DOMAIN is the origin.
+	OAuthAppOrigin string
 
 	// Модели: текст и зрение
 	LLMAPIKey                 string
@@ -221,6 +243,24 @@ type Config struct {
 	APNSTeamID     string
 	APNSPrivateKey string
 	APNSTopic      string
+
+	// Sign in with Apple. Ключ создаётся в developer.apple.com → Keys с
+	// правом «Sign in with Apple»; AppleBundleID — audience identity token'а.
+	AppleTeamID     string
+	AppleBundleID   string
+	AppleKeyID      string
+	ApplePrivateKey string
+	// AppleTokenEncryptionKey — 32 байта в base64, ключ AES-256-GCM, которым
+	// зашифрованы refresh-токены Apple в базе (external_identities,
+	// oauth_pending_links, apple_token_revocations). Отдельный секрет, а не
+	// производная JWT_SECRET: смена того не должна осиротить сохранённые
+	// токены, без которых доступ у Apple не отозвать.
+	AppleTokenEncryptionKey string
+
+	// IOSMinSupportedVersion — минимальная версия iOS-приложения, с которой
+	// сервер ещё работает (MAJOR.MINOR.PATCH). Отдаётся в GET /api/v1/config;
+	// приложение ниже неё просит обновиться.
+	IOSMinSupportedVersion string
 
 	TelegramBotToken      string
 	TelegramWebhookSecret string
@@ -398,6 +438,8 @@ func Load() (*Config, error) {
 		YandexOAuthClientSecret: getEnv("YANDEX_OAUTH_CLIENT_SECRET", ""),
 		VKOAuthClientID:         getEnv("VK_OAUTH_CLIENT_ID", ""),
 		VKOAuthClientSecret:     getEnv("VK_OAUTH_CLIENT_SECRET", ""),
+		OAuthYandexBaseURL:      strings.TrimRight(getEnv("OAUTH_YANDEX_BASE_URL", ""), "/"),
+		OAuthAppOrigin:          strings.TrimRight(getEnv("OAUTH_APP_ORIGIN", ""), "/"),
 
 		// Модель: распознавание еды и бот поддержки.
 		//
@@ -426,6 +468,12 @@ func Load() (*Config, error) {
 		APNSTeamID:                getEnv("APNS_TEAM_ID", ""),
 		APNSPrivateKey:            getEnv("APNS_PRIVATE_KEY", ""),
 		APNSTopic:                 getEnv("APNS_TOPIC", "team.burcev.app"),
+		AppleTeamID:               getEnv("APPLE_TEAM_ID", ""),
+		AppleBundleID:             getEnv("APPLE_BUNDLE_ID", ""),
+		AppleKeyID:                getEnv("APPLE_KEY_ID", ""),
+		ApplePrivateKey:           getEnv("APPLE_PRIVATE_KEY", ""),
+		AppleTokenEncryptionKey:   getEnv("APPLE_TOKEN_ENCRYPTION_KEY", ""),
+		IOSMinSupportedVersion:    getEnv("IOS_MIN_SUPPORTED_VERSION", DefaultIOSMinSupportedVersion),
 		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
 		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
@@ -498,6 +546,24 @@ func vkusvillMCPURL(value string) string {
 	return value
 }
 
+// ValidAppleTokenEncryptionKey reports whether value is 32 bytes in standard
+// base64 — an AES-256 key.
+func ValidAppleTokenEncryptionKey(value string) bool {
+	key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(value))
+	return err == nil && len(key) == 32
+}
+
+// DefaultIOSMinSupportedVersion — значение без IOS_MIN_SUPPORTED_VERSION:
+// обновляться не требуется никому.
+const DefaultIOSMinSupportedVersion = "0.0.0"
+
+var iosVersionPattern = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+
+// ValidIOSVersion reports whether value is MAJOR.MINOR.PATCH.
+func ValidIOSVersion(value string) bool {
+	return iosVersionPattern.MatchString(value)
+}
+
 // deriveFeatures turns the presence of credentials into capability flags.
 func deriveFeatures(c *Config) Features {
 	s3 := func(key, secret string) bool { return key != "" && secret != "" }
@@ -535,7 +601,14 @@ func deriveFeatures(c *Config) Features {
 		// refuses a request signed without any of them.
 		WebPush: c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != "",
 		// Ключ без идентификатора или команды Apple не принимает.
-		IOSPush: c.APNSKeyID != "" && c.APNSTeamID != "" && c.APNSPrivateKey != "",
+		APNS: c.APNSKeyID != "" && c.APNSTeamID != "" && c.APNSPrivateKey != "",
+		// Без команды и ключа не подписать client secret для обмена кода и
+		// отзыва, без bundle id не проверить audience identity token'а.
+		// Без ключа шифрования токен Apple негде хранить, а без него не
+		// отозвать доступ при удалении аккаунта (Guideline 5.1.1(v)).
+		AppleSignIn: c.AppleTeamID != "" && c.AppleBundleID != "" &&
+			c.AppleKeyID != "" && c.ApplePrivateKey != "" &&
+			ValidAppleTokenEncryptionKey(c.AppleTokenEncryptionKey),
 
 		// Обе разом: токен без счётчика некуда загружать, счётчик без токена
 		// не пишется.
@@ -574,6 +647,24 @@ func (c *Config) validate() error {
 		problems = append(problems, err)
 	}
 
+	// Версия в неверном формате в проде — ошибка, а не тихое «0.0.0»: иначе
+	// опечатка в панели отключила бы требование обновиться у всех, и никто бы
+	// этого не заметил. Вне прода — только предупреждение вызывающего.
+	if c.IsProduction() && !ValidIOSVersion(c.IOSMinSupportedVersion) {
+		problems = append(problems, fmt.Errorf(
+			"IOS_MIN_SUPPORTED_VERSION must be MAJOR.MINOR.PATCH (e.g. 1.2.0), got %q",
+			c.IOSMinSupportedVersion))
+	}
+
+	// Apple настроена, а ключа шифрования нет или он не того вида: вход
+	// через Apple молча выключился бы, и в проде это ошибка, а не WARN.
+	appleConfigured := c.AppleTeamID != "" && c.AppleBundleID != "" &&
+		c.AppleKeyID != "" && c.ApplePrivateKey != ""
+	if c.IsProduction() && appleConfigured && !ValidAppleTokenEncryptionKey(c.AppleTokenEncryptionKey) {
+		problems = append(problems, errors.New(
+			"APPLE_TOKEN_ENCRYPTION_KEY must be 32 random bytes in base64 (openssl rand -base64 32) when Sign in with Apple is configured"))
+	}
+
 	if c.IsProduction() {
 		required := []struct {
 			name  string
@@ -587,6 +678,22 @@ func (c *Config) validate() error {
 		for _, r := range required {
 			if r.value == "" {
 				problems = append(problems, fmt.Errorf("%s is required when NODE_ENV=production", r.name))
+			}
+		}
+
+		// Test-only overrides of the external sign-in. Either one in
+		// production would let a server other than the provider decide who
+		// is signing in, or send the browser somewhere other than the site.
+		forbidden := []struct {
+			name  string
+			value string
+		}{
+			{"OAUTH_YANDEX_BASE_URL", c.OAuthYandexBaseURL},
+			{"OAUTH_APP_ORIGIN", c.OAuthAppOrigin},
+		}
+		for _, f := range forbidden {
+			if f.value != "" {
+				problems = append(problems, fmt.Errorf("%s must not be set when NODE_ENV=production: it is for local runs and the end-to-end suite only", f.name))
 			}
 		}
 	}

@@ -5,9 +5,8 @@ INDEX analytics_events idx_analytics_events_user btree (user_id, occurred_at) WH
 INDEX analytics_events idx_analytics_events_visitor btree (visitor_id, occurred_at)
 INDEX analytics_identities analytics_identities_pkey btree (visitor_id)
 INDEX analytics_identities idx_analytics_identities_user btree (user_id)
-INDEX apns_devices apns_devices_pkey btree (id)
-INDEX apns_devices apns_devices_token_key btree (token)
-INDEX apns_devices idx_apns_devices_user_id btree (user_id)
+INDEX apple_token_revocations apple_token_revocations_pkey btree (id)
+INDEX apple_token_revocations idx_apple_token_revocations_next_attempt_at btree (next_attempt_at)
 INDEX article_audience article_audience_pkey btree (article_id, client_id)
 INDEX article_audience idx_article_audience_client btree (client_id)
 INDEX articles articles_pkey btree (id)
@@ -72,6 +71,11 @@ INDEX food_items idx_food_items_search gin (search_vector)
 INDEX food_items idx_food_items_source btree (source)
 INDEX food_recognition_usage food_recognition_usage_pkey btree (id)
 INDEX food_recognition_usage idx_food_recognition_usage_user_date btree (user_id, used_at)
+INDEX health_workouts health_workouts_pkey btree (id)
+INDEX health_workouts health_workouts_user_external_key btree (user_id, external_id)
+INDEX health_workouts idx_health_workouts_user_date btree (user_id, date)
+INDEX idempotency_keys idempotency_keys_pkey btree (user_id, key)
+INDEX idempotency_keys idx_idempotency_keys_created_at btree (created_at)
 INDEX job_runs idx_job_runs_name_started btree (job_name, started_at DESC)
 INDEX job_runs idx_job_runs_started btree (started_at)
 INDEX job_runs job_runs_pkey btree (id)
@@ -120,8 +124,9 @@ INDEX nutrient_recommendations nutrient_recommendations_pkey btree (id)
 INDEX nutrients idx_nutrients_group btree (nutrient_group)
 INDEX nutrients idx_nutrients_product btree (product_id)
 INDEX nutrients nutrients_pkey btree (id)
-INDEX oauth_app_handoffs idx_oauth_app_handoffs_user_id btree (user_id)
-INDEX oauth_app_handoffs oauth_app_handoffs_pkey btree (code_hash)
+INDEX oauth_handoff_codes idx_oauth_handoff_codes_expires_at btree (expires_at)
+INDEX oauth_handoff_codes idx_oauth_handoff_codes_user_id btree (user_id) WHERE (user_id IS NOT NULL)
+INDEX oauth_handoff_codes oauth_handoff_codes_pkey btree (code_hash)
 INDEX oauth_pending_links idx_oauth_pending_links_expires_at btree (expires_at)
 INDEX oauth_pending_links oauth_pending_links_pkey btree (id)
 INDEX password_reset_attempts idx_reset_attempts_email_time btree (email, attempted_at DESC)
@@ -136,6 +141,16 @@ INDEX products idx_products_name_trgm gin (name gin_trgm_ops)
 INDEX products idx_products_source btree (source)
 INDEX products idx_products_vendor_code btree (vendor_code)
 INDEX products products_pkey btree (id)
+INDEX push_deliveries idx_push_deliveries_chat_message btree (chat_message_id) WHERE (chat_message_id IS NOT NULL)
+INDEX push_deliveries idx_push_deliveries_device btree (device_id) WHERE (device_id IS NOT NULL)
+INDEX push_deliveries idx_push_deliveries_due btree (not_before) WHERE (status = 'pending'::text)
+INDEX push_deliveries idx_push_deliveries_notification btree (notification_id) WHERE (notification_id IS NOT NULL)
+INDEX push_deliveries idx_push_deliveries_subscription btree (subscription_id) WHERE (subscription_id IS NOT NULL)
+INDEX push_deliveries idx_push_deliveries_user btree (user_id)
+INDEX push_deliveries push_deliveries_pkey btree (id)
+INDEX push_devices idx_push_devices_user_id btree (user_id)
+INDEX push_devices push_devices_pkey btree (id)
+INDEX push_devices push_devices_token_key btree (token)
 INDEX push_subscriptions idx_push_subscriptions_user btree (user_id)
 INDEX push_subscriptions push_subscriptions_endpoint_key btree (endpoint)
 INDEX push_subscriptions push_subscriptions_pkey btree (id)
@@ -244,15 +259,12 @@ analytics_events.visitor_id uuid NOT NULL
 analytics_identities.linked_at timestamp with time zone NOT NULL DEFAULT now()
 analytics_identities.user_id bigint NOT NULL
 analytics_identities.visitor_id uuid NOT NULL
-apns_devices.app_version text
-apns_devices.created_at timestamp with time zone NOT NULL DEFAULT now()
-apns_devices.environment text NOT NULL
-apns_devices.failures integer NOT NULL DEFAULT 0
-apns_devices.id bigint NOT NULL DEFAULT nextval('apns_devices_id_seq')
-apns_devices.installation_id text NOT NULL
-apns_devices.last_used_at timestamp with time zone
-apns_devices.token text NOT NULL
-apns_devices.user_id bigint NOT NULL
+apple_token_revocations.attempts integer NOT NULL DEFAULT 0
+apple_token_revocations.created_at timestamp with time zone NOT NULL DEFAULT now()
+apple_token_revocations.id bigint NOT NULL DEFAULT nextval('apple_token_revocations_id_seq')
+apple_token_revocations.last_error text
+apple_token_revocations.next_attempt_at timestamp with time zone NOT NULL DEFAULT now()
+apple_token_revocations.token_enc text NOT NULL
 article_audience.article_id uuid NOT NULL
 article_audience.client_id bigint NOT NULL
 articles.audience_scope USER-DEFINED NOT NULL DEFAULT 'my_clients'_type
@@ -362,11 +374,14 @@ daily_metrics.fat integer DEFAULT 0
 daily_metrics.id uuid NOT NULL DEFAULT gen_random_uuid()
 daily_metrics.protein integer DEFAULT 0
 daily_metrics.steps integer DEFAULT 0
+daily_metrics.steps_source text
 daily_metrics.updated_at timestamp with time zone DEFAULT now()
 daily_metrics.user_id bigint NOT NULL
 daily_metrics.weight numeric
+daily_metrics.weight_source text
 daily_metrics.workout_completed boolean DEFAULT false
 daily_metrics.workout_duration integer
+daily_metrics.workout_source text
 daily_metrics.workout_type text
 data_exports.completed_at timestamp with time zone
 data_exports.downloaded_at timestamp with time zone
@@ -394,6 +409,7 @@ external_identities.id uuid NOT NULL DEFAULT gen_random_uuid()
 external_identities.last_login_at timestamp with time zone
 external_identities.name text
 external_identities.provider text NOT NULL
+external_identities.provider_refresh_token_enc text
 external_identities.provider_user_id text NOT NULL
 external_identities.user_id bigint NOT NULL
 food_entries.calories numeric NOT NULL
@@ -440,6 +456,24 @@ food_recognition_usage.id integer NOT NULL DEFAULT nextval('food_recognition_usa
 food_recognition_usage.photo_url text
 food_recognition_usage.used_at timestamp with time zone NOT NULL DEFAULT now()
 food_recognition_usage.user_id bigint NOT NULL
+health_workouts.created_at timestamp with time zone NOT NULL DEFAULT now()
+health_workouts.date date NOT NULL
+health_workouts.duration_min integer NOT NULL
+health_workouts.external_id text NOT NULL
+health_workouts.id uuid NOT NULL DEFAULT gen_random_uuid()
+health_workouts.started_at timestamp with time zone NOT NULL
+health_workouts.type text NOT NULL
+health_workouts.updated_at timestamp with time zone NOT NULL DEFAULT now()
+health_workouts.user_id bigint NOT NULL
+idempotency_keys.body_hash text NOT NULL
+idempotency_keys.content_type text
+idempotency_keys.created_at timestamp with time zone NOT NULL DEFAULT now()
+idempotency_keys.key uuid NOT NULL
+idempotency_keys.method text NOT NULL
+idempotency_keys.path text NOT NULL
+idempotency_keys.response bytea
+idempotency_keys.status integer
+idempotency_keys.user_id bigint NOT NULL
 job_runs.error text
 job_runs.finished_at timestamp with time zone
 job_runs.id uuid NOT NULL DEFAULT gen_random_uuid()
@@ -593,6 +627,7 @@ notifications.created_at timestamp with time zone NOT NULL DEFAULT now()
 notifications.icon_url character varying
 notifications.id uuid NOT NULL DEFAULT gen_random_uuid()
 notifications.read_at timestamp with time zone
+notifications.target jsonb NOT NULL DEFAULT '{"kind": "notifications"}'
 notifications.title character varying NOT NULL
 notifications.type character varying NOT NULL
 notifications.user_id bigint NOT NULL
@@ -626,18 +661,23 @@ nutrients.nutrient_group text NOT NULL
 nutrients.nutrient_name text NOT NULL
 nutrients.product_id bigint NOT NULL
 nutrients.unit text NOT NULL
-oauth_app_handoffs.challenge text NOT NULL
-oauth_app_handoffs.code_hash text NOT NULL
-oauth_app_handoffs.created_at timestamp with time zone NOT NULL DEFAULT now()
-oauth_app_handoffs.expires_at timestamp with time zone NOT NULL
-oauth_app_handoffs.user_id bigint NOT NULL
+oauth_handoff_codes.app_challenge text NOT NULL
+oauth_handoff_codes.code_hash text NOT NULL
+oauth_handoff_codes.created_at timestamp with time zone NOT NULL DEFAULT now()
+oauth_handoff_codes.expires_at timestamp with time zone NOT NULL
+oauth_handoff_codes.result jsonb NOT NULL
+oauth_handoff_codes.used_at timestamp with time zone
+oauth_handoff_codes.user_id bigint
 oauth_pending_links.avatar_url text
 oauth_pending_links.created_at timestamp with time zone NOT NULL DEFAULT now()
 oauth_pending_links.email text
+oauth_pending_links.email_from_provider boolean NOT NULL DEFAULT false
 oauth_pending_links.expires_at timestamp with time zone NOT NULL
+oauth_pending_links.failed_attempts integer NOT NULL DEFAULT 0
 oauth_pending_links.id uuid NOT NULL DEFAULT gen_random_uuid()
 oauth_pending_links.name text
 oauth_pending_links.provider text NOT NULL
+oauth_pending_links.provider_refresh_token_enc text
 oauth_pending_links.provider_user_id text NOT NULL
 password_reset_attempts.attempted_at timestamp without time zone NOT NULL DEFAULT now()
 password_reset_attempts.email character varying NOT NULL
@@ -669,6 +709,33 @@ products.source text NOT NULL DEFAULT 'database'
 products.source_url text
 products.vendor_code text
 products.water numeric
+push_deliveries.attempts integer NOT NULL DEFAULT 0
+push_deliveries.chat_message_id uuid
+push_deliveries.created_at timestamp with time zone NOT NULL DEFAULT now()
+push_deliveries.device_id bigint
+push_deliveries.id bigint NOT NULL DEFAULT nextval('push_deliveries_id_seq')
+push_deliveries.last_error text
+push_deliveries.not_before timestamp with time zone NOT NULL DEFAULT now()
+push_deliveries.notification_id uuid
+push_deliveries.status text NOT NULL DEFAULT 'pending'
+push_deliveries.subscription_id bigint
+push_deliveries.transport text NOT NULL
+push_deliveries.updated_at timestamp with time zone NOT NULL DEFAULT now()
+push_deliveries.user_id bigint NOT NULL
+push_devices.app_version text
+push_devices.badge_dirty_at timestamp with time zone
+push_devices.badge_pushed_at timestamp with time zone
+push_devices.created_at timestamp with time zone NOT NULL DEFAULT now()
+push_devices.disabled_at timestamp with time zone
+push_devices.environment text NOT NULL
+push_devices.failures integer NOT NULL DEFAULT 0
+push_devices.id bigint NOT NULL DEFAULT nextval('push_devices_id_seq')
+push_devices.installation_id text NOT NULL
+push_devices.last_seen_at timestamp with time zone NOT NULL DEFAULT now()
+push_devices.last_used_at timestamp with time zone
+push_devices.platform text NOT NULL DEFAULT 'ios'
+push_devices.token text NOT NULL
+push_devices.user_id bigint NOT NULL
 push_subscriptions.auth text NOT NULL
 push_subscriptions.created_at timestamp with time zone NOT NULL DEFAULT now()
 push_subscriptions.endpoint text NOT NULL
@@ -724,7 +791,9 @@ recipes.source text NOT NULL DEFAULT 'manual'
 recipes.source_ref text
 recipes.status text NOT NULL DEFAULT 'published'
 recipes.updated_at timestamp with time zone NOT NULL DEFAULT now()
+refresh_tokens.client_kind text NOT NULL DEFAULT 'web'
 refresh_tokens.created_at timestamp without time zone NOT NULL DEFAULT now()
+refresh_tokens.device_name text
 refresh_tokens.expires_at timestamp without time zone NOT NULL
 refresh_tokens.id bigint NOT NULL DEFAULT nextval('refresh_tokens_id_seq')
 refresh_tokens.ip_address character varying
@@ -766,6 +835,7 @@ support_messages.author text NOT NULL
 support_messages.conversation_id uuid NOT NULL
 support_messages.created_at timestamp with time zone NOT NULL DEFAULT now()
 support_messages.delivered_at timestamp with time zone
+support_messages.delivery_unknown boolean NOT NULL DEFAULT false
 support_messages.id uuid NOT NULL DEFAULT gen_random_uuid()
 support_messages.operator_id bigint
 support_messages.text text NOT NULL
@@ -896,6 +966,7 @@ users.onboarding_completed boolean DEFAULT false
 users.password text
 users.password_changed_at timestamp without time zone
 users.pending_file_prefixes jsonb
+users.push_show_message_text boolean NOT NULL DEFAULT true
 users.quiet_hours_end smallint
 users.quiet_hours_start smallint
 users.role text NOT NULL DEFAULT 'client'

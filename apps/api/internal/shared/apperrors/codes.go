@@ -37,6 +37,9 @@ const (
 	// signs people out whenever a token simply aged.
 	CodeSessionEnded = "session_ended"
 	CodeInternal     = "internal"
+	// CodeDeliveryFailed: an external transport (Telegram) refused the
+	// message. Not internal: nothing here broke, and retrying later may work.
+	CodeDeliveryFailed = "delivery_failed"
 	// CodeRecognitionDailyLimit: distinct from rate_limited — waiting a moment
 	// will not help, the ceiling resets tomorrow, not in a few seconds. Named
 	// for the domain, not the sentinel: ErrDailyLimitReached is reusable for
@@ -93,6 +96,12 @@ const (
 	// «действие невозможно», а куда пойти заполнить. Как и выше, обработчик
 	// ставит код сам; в карту ниже он не входит.
 	CodeTargetMissing = "target_missing"
+
+	// CodeConsentsRequired: вход приложения создал бы аккаунт, а
+	// обязательных согласий в запросе нет (native/consents). Не общий
+	// validation: приложению нужно не «проверьте данные», а показать экран
+	// согласий. Сентинел — общий ErrValidation, код ставит обработчик.
+	CodeConsentsRequired = "consents_required"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -116,6 +125,7 @@ var codes = map[error]string{
 	ErrConflict:           CodeConflict,
 	ErrGone:               CodeGone,
 	ErrValidation:         CodeValidation,
+	ErrSessionEnded:       CodeSessionEnded,
 	ErrDailyLimitReached:  CodeRecognitionDailyLimit,
 }
 
@@ -151,9 +161,9 @@ func AllCodes() []string {
 	// который знает, о каком именно отказе речь. CodeLeadAlreadyClaimed —
 	// из того же ряда: очередь заявок общая, и «её уже взяли» читается
 	// иначе, чем «не удалось».
-	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded,
+	return append(all, CodeInternal, CodePasswordIncorrect,
 		CodeRecognitionUnclear, CodeRecognitionFailed,
 		CodeProviderOnlyWayIn, CodePasswordNotSet, CodeDeletionAlreadyRequested,
 		CodeExportAlreadyPending, CodeLastCurator, CodeJobAlreadyRunning,
-		CodeLeadAlreadyClaimed, CodeMagicLinkAccountExists)
+		CodeLeadAlreadyClaimed, CodeMagicLinkAccountExists, CodeConsentsRequired)
 }

@@ -74,6 +74,12 @@ type Deps struct {
 	// every environment except production. Its job is then not registered at
 	// all rather than running hourly to find nothing.
 	Metrika *metrika.Service
+	// AppleRevocations is nil without Sign in with Apple; the retry job is
+	// then not declared.
+	AppleRevocations *auth.AppleRevocations
+	// Idempotency хранит ключи Idempotency-Key; его задача убирает
+	// просроченные.
+	Idempotency *middleware.IdempotencyStore
 }
 
 // Register declares every periodic job. It panics on an invalid declaration:
@@ -288,6 +294,18 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// Ключи Idempotency-Key помнят ответ сутки; потом строка не нужна никому,
+	// а пишет её каждое изменение из очереди приложения. Раз в час — чтобы
+	// таблица не держала больше суток с небольшим.
+	registry.MustRegister(jobs.Job{
+		Name:     "cleanup.idempotency-keys",
+		Interval: time.Hour,
+		Timeout:  2 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Idempotency.PurgeExpired(ctx)
+		},
+	})
+
 	// Коды подтверждения из письма. Запас в сутки взят не для кода, а ради
 	// окна ограничения повторной отправки: оно считает строки по created_at,
 	// и слишком ранняя чистка вернула бы уже потраченные попытки.
@@ -320,6 +338,21 @@ func Register(registry *jobs.Registry, d Deps) {
 	// даже если о нём некому сообщить.
 	//
 	// Раз в час: конверсия ценна не срочностью, а тем, что она вообще дошла.
+	// Повтор отзыва доступа у Apple (Guideline 5.1.1(v)). Удаление аккаунта
+	// и отвязка Apple пробуют отозвать сразу; неудача остаётся строкой
+	// apple_token_revocations со своей отсрочкой (минута, удваиваясь, не
+	// больше суток), и эта задача берёт созревшие.
+	if d.AppleRevocations != nil {
+		registry.MustRegister(jobs.Job{
+			Name:     "auth.apple-revoke-retry",
+			Interval: 15 * time.Minute,
+			Timeout:  2 * time.Minute,
+			Run: func(ctx context.Context) (int, error) {
+				return d.AppleRevocations.RetryDue(ctx)
+			},
+		})
+	}
+
 	if d.Metrika != nil {
 		registry.MustRegister(jobs.Job{
 			Name:     "metrika.upload-conversions",
@@ -478,14 +511,18 @@ func Register(registry *jobs.Registry, d Deps) {
 		})
 
 		// Push. Runs often: it is the channel that exists to arrive before
-		// somebody opens the application, and a push that is ten minutes late
-		// has lost most of its point.
+		// somebody opens the application, and a chat message that arrives a
+		// minute after it was written reads as a slow messenger.
+		//
+		// Gated on either transport. It used to check Web Push alone, and a
+		// deployment with only the APNs key would have queued pushes to
+		// iPhones that nothing ever sent.
 		registry.MustRegister(jobs.Job{
 			Name:     "notifications.send-pushes",
-			Interval: time.Minute,
+			Interval: 15 * time.Second,
 			Timeout:  2 * time.Minute,
 			Run: func(ctx context.Context) (int, error) {
-				if !d.Notifications.PushReady() {
+				if !d.Notifications.PushChannelReady() {
 					return 0, nil
 				}
 				return d.Notifications.SendDuePushes(ctx)

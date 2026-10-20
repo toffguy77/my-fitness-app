@@ -59,7 +59,7 @@ func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.POST("/push", d.Notifications.SubscribePush)
 	g.DELETE("/push", d.Notifications.UnsubscribePush)
 	g.POST("/devices", d.Notifications.RegisterDevice)
-	g.DELETE("/devices", d.Notifications.UnregisterDevice)
+	g.DELETE("/devices/:token", d.Notifications.UnregisterDevice)
 }
 
 // registerUnsubscribeRoute exposes the link at the bottom of a digest.

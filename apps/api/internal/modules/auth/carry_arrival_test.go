@@ -94,13 +94,16 @@ func TestCarryArrival_SurvivesWithoutLeads(t *testing.T) {
 
 // Every way into a new account carries the arrival across. The assignment of
 // a curator was once forgotten on one of three paths
-// (TestEveryAccountPathAssignsCurator); this holds the same line for where the
+// (TestEveryAccountPathAssignsCuratorOnlyToServiceAccounts); this holds the same line for where the
 // person came from. The provider callback cannot be driven end to end without
-// a provider, so the check is on the code: each handler calls carryArrival.
+// a provider, so the check is on the code: each handler calls carryArrival,
+// directly or through afterSignIn — which every handler finishing an external
+// sign-in goes through.
 func TestEveryAccountPathCarriesArrival(t *testing.T) {
 	found := map[string]bool{}
+	viaAfterSignIn := map[string]bool{}
 	fset := token.NewFileSet()
-	for _, file := range []string{"handler.go", "oauth_handler.go"} {
+	for _, file := range []string{"handler.go", "oauth_handler.go", "native_session.go", "native_oauth.go", "native_apple.go"} {
 		parsed, err := parser.ParseFile(fset, file, nil, 0)
 		if !assert.NoError(t, err) {
 			return
@@ -115,13 +118,26 @@ func TestEveryAccountPathCarriesArrival(t *testing.T) {
 					if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "carryArrival" {
 						found[decl.Name.Name] = true
 					}
+					if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "afterSignIn" {
+						viaAfterSignIn[decl.Name.Name] = true
+					}
 				}
 				return true
 			})
 		}
 	}
 
-	for _, fn := range []string{"Register", "ConsumeMagicLink", "Callback"} {
+	// NativeConsents — где аккаунт появляется у входа через Apple, Яндекс и
+	// VK из приложения: native/apple и native/oauth/exchange аккаунтов не
+	// создают, а отвечают needs_consents. lead_token приходит в теле — cookie
+	// гостя у ASWebAuthenticationSession и у приложения нет.
+	for _, fn := range []string{"Register", "ConsumeMagicLink", "afterSignIn", "NativeRegister", "NativeConsumeMagicLink", "NativeConsents"} {
 		assert.True(t, found[fn], "%s creates accounts and does not call carryArrival", fn)
+	}
+	// Вход через провайдера завершается в двух местах: колбэк (сегодня он
+	// уводит на согласия, но ветка регистрации в нём осталась) и экран
+	// согласий. Ввод адреса, которого провайдер не дал, аккаунта не создаёт.
+	for _, fn := range []string{"Callback", "CompleteConsents"} {
+		assert.True(t, viaAfterSignIn[fn], "%s finishes an external sign-in and does not call afterSignIn", fn)
 	}
 }

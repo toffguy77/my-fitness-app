@@ -51,6 +51,7 @@ const SURFACE: Record<string, Kind> = {
 
     '/auth': 'utility',
     '/auth/complete': 'utility',
+    '/auth/consents': 'utility',
     '/auth/email': 'utility',
     '/auth/link': 'utility',
     '/auth/link/consume': 'utility',

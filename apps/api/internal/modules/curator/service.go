@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -167,6 +168,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 	var (
 		unreadMap       map[int64]int
 		weightMap       map[int64]*float64
+		weightSourceMap map[int64]*string
 		trendMap        map[int64]string
 		targetMap       map[int64]*float64
 		waterMap        map[int64]*WaterView
@@ -190,7 +192,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 	})
 
 	eg.Go(func() error {
-		weightMap, trendMap = s.getWeightData(egCtx, clientIDs)
+		weightMap, weightSourceMap, trendMap = s.getWeightData(egCtx, clientIDs)
 		return nil
 	})
 
@@ -241,6 +243,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 			Alerts:             make([]Alert, 0),
 			UnreadCount:        unreadMap[cr.id],
 			LastWeight:         weightMap[cr.id],
+			LastWeightSource:   weightSourceMap[cr.id],
 			WeightTrend:        trendMap[cr.id],
 			TargetWeight:       targetMap[cr.id],
 			TodayWater:         waterMap[cr.id],
@@ -449,7 +452,8 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 
 	// Get daily metrics (steps, workout) for the date range
 	metricsQuery := `
-		SELECT date, steps, workout_completed, COALESCE(workout_type, ''), COALESCE(workout_duration, 0)
+		SELECT date, steps, workout_completed, COALESCE(workout_type, ''), COALESCE(workout_duration, 0),
+		       weight, steps_source, weight_source, workout_source
 		FROM daily_metrics
 		WHERE user_id = $1 AND date >= $2 AND date <= $3
 	`
@@ -464,6 +468,10 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		workoutCompleted bool
 		workoutType      string
 		workoutDuration  int
+		weight           *float64
+		stepsSource      *string
+		weightSource     *string
+		workoutSource    *string
 	}
 	metricsByDate := make(map[string]*metricsData)
 
@@ -472,7 +480,8 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		var m metricsData
 		var steps sql.NullInt64
 		var workoutCompleted sql.NullBool
-		if err := metricsRows.Scan(&d, &steps, &workoutCompleted, &m.workoutType, &m.workoutDuration); err != nil {
+		if err := metricsRows.Scan(&d, &steps, &workoutCompleted, &m.workoutType, &m.workoutDuration,
+			&m.weight, &m.stepsSource, &m.weightSource, &m.workoutSource); err != nil {
 			return nil, fmt.Errorf("failed to scan daily metrics: %w", err)
 		}
 		if steps.Valid {
@@ -547,7 +556,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 
 	// Get weight history (last 8 weeks)
 	historyQuery := `
-		SELECT date, weight FROM daily_metrics
+		SELECT date, weight, weight_source FROM daily_metrics
 		WHERE user_id = $1 AND weight IS NOT NULL AND date >= CURRENT_DATE - INTERVAL '56 days'
 		ORDER BY date ASC
 	`
@@ -559,17 +568,24 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 
 	weightHistory := make([]WeightHistoryPoint, 0)
 	var lastWeight sql.NullFloat64
+	var lastWeightSource *string
 	for historyRows.Next() {
 		var d time.Time
 		var weight float64
-		if err := historyRows.Scan(&d, &weight); err != nil {
+		var source sql.NullString
+		if err := historyRows.Scan(&d, &weight, &source); err != nil {
 			return nil, fmt.Errorf("failed to scan weight history: %w", err)
 		}
-		weightHistory = append(weightHistory, WeightHistoryPoint{
+		point := WeightHistoryPoint{
 			Date:   d.Format("2006-01-02"),
 			Weight: weight,
-		})
+		}
+		if source.Valid {
+			point.Source = &source.String
+		}
+		weightHistory = append(weightHistory, point)
 		lastWeight = sql.NullFloat64{Float64: weight, Valid: true}
+		lastWeightSource = point.Source
 	}
 	if err := historyRows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating weight history: %w", err)
@@ -609,6 +625,10 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 
 		if m := metricsByDate[dateKey]; m != nil {
 			dayDetail.Steps = m.steps
+			dayDetail.Weight = m.weight
+			dayDetail.StepsSource = m.stepsSource
+			dayDetail.WeightSource = m.weightSource
+			dayDetail.WorkoutSource = m.workoutSource
 			if m.workoutCompleted || m.workoutType != "" || m.workoutDuration > 0 {
 				dayDetail.Workout = &WorkoutView{
 					Completed: m.workoutCompleted,
@@ -660,6 +680,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	if lastWeight.Valid {
 		w := lastWeight.Float64
 		detail.LastWeight = &w
+		detail.LastWeightSource = lastWeightSource
 	}
 
 	if targetWeight.Valid {
@@ -844,19 +865,20 @@ func abs(x float64) float64 {
 	return x
 }
 
-// getWeightData returns last weight and trend for a list of clients
-func (s *Service) getWeightData(ctx context.Context, clientIDs []int64) (map[int64]*float64, map[int64]string) {
+// getWeightData returns last weight, its source and trend for a list of clients
+func (s *Service) getWeightData(ctx context.Context, clientIDs []int64) (map[int64]*float64, map[int64]*string, map[int64]string) {
 	weightMap := make(map[int64]*float64)
+	sourceMap := make(map[int64]*string)
 	trendMap := make(map[int64]string)
 
 	if len(clientIDs) == 0 {
-		return weightMap, trendMap
+		return weightMap, sourceMap, trendMap
 	}
 
 	// Get last 2 weight entries per client to compute trend
 	const query = `
-		SELECT user_id, weight, date FROM (
-			SELECT user_id, weight, date,
+		SELECT user_id, weight, date, weight_source FROM (
+			SELECT user_id, weight, date, weight_source,
 				ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY date DESC) as rn
 			FROM daily_metrics
 			WHERE user_id = ANY($1) AND weight IS NOT NULL
@@ -867,13 +889,13 @@ func (s *Service) getWeightData(ctx context.Context, clientIDs []int64) (map[int
 	rows, err := s.db.QueryContext(ctx, query, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query weight data for clients", "error", err)
-		return weightMap, trendMap
+		return weightMap, sourceMap, trendMap
 	}
 	defer rows.Close()
 
 	type weightEntry struct {
 		weight float64
-		rank   int
+		source *string
 	}
 	clientWeights := make(map[int64][]weightEntry)
 
@@ -881,22 +903,28 @@ func (s *Service) getWeightData(ctx context.Context, clientIDs []int64) (map[int
 		var userID int64
 		var weight float64
 		var date time.Time
-		if err := rows.Scan(&userID, &weight, &date); err != nil {
+		var source sql.NullString
+		if err := rows.Scan(&userID, &weight, &date, &source); err != nil {
 			continue
 		}
-		clientWeights[userID] = append(clientWeights[userID], weightEntry{weight: weight})
+		entry := weightEntry{weight: weight}
+		if source.Valid {
+			entry.source = &source.String
+		}
+		clientWeights[userID] = append(clientWeights[userID], entry)
 	}
 	if err := rows.Err(); err != nil {
 		// Iteration failed part-way: returning what we have would show the
 		// curator a silently truncated picture.
 		s.log.Error("Failed while iterating weight data", "error", err)
-		return weightMap, trendMap
+		return weightMap, sourceMap, trendMap
 	}
 
 	for userID, entries := range clientWeights {
 		if len(entries) > 0 {
 			w := entries[0].weight
 			weightMap[userID] = &w
+			sourceMap[userID] = entries[0].source
 		}
 		if len(entries) >= 2 {
 			if entries[0].weight < entries[1].weight {
@@ -909,7 +937,7 @@ func (s *Service) getWeightData(ctx context.Context, clientIDs []int64) (map[int
 		}
 	}
 
-	return weightMap, trendMap
+	return weightMap, sourceMap, trendMap
 }
 
 // getTargetWeights returns target weights for a list of clients
@@ -2416,6 +2444,7 @@ func (s *Service) sendPlanUpdatedNotification(ctx context.Context, clientID int6
 		Title:     title,
 		Content:   content,
 		ActionURL: &actionURL,
+		Target:    notifications.Target{IDs: notifications.IDs{"plan_id": plan.ID}},
 	}
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
@@ -2441,11 +2470,24 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 		Title:     title,
 		Content:   content,
 		ActionURL: &actionURL,
+		// task_type — не идентификатор, но без него приложение не отличит
+		// задачу-тренировку: ей «Выполнено» из уведомления не подходит, нужны
+		// тип и длительность.
+		Target: notifications.Target{IDs: notifications.IDs{"task_id": task.ID, "task_type": task.Type}},
 	}
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
 		s.log.Error("Failed to send task_assigned notification", "error", err, "client_id", clientID, "task_id", task.ID)
 	}
+}
+
+// FeedbackActionURL is where the client's feedback notification leads.
+//
+// The dashboard shows the feedback block for ?report=<id>. The previous path,
+// /dashboard/weekly-reports/<id>/feedback, had no page behind it: every
+// feedback notification opened a 404. Migration 097 rewrites the stored ones.
+func FeedbackActionURL(reportID string) string {
+	return "/dashboard?" + url.Values{"report": {reportID}}.Encode()
 }
 
 // sendFeedbackReceivedNotification sends a feedback_received notification to the client
@@ -2463,9 +2505,10 @@ func (s *Service) sendFeedbackReceivedNotification(ctx context.Context, clientID
 		Type:     notifications.TypeFeedbackReceived,
 		Title:    title,
 		Content:  content,
+		Target:   notifications.Target{IDs: notifications.IDs{"report_id": reportID}},
 	}
 
-	actionURL := fmt.Sprintf("/dashboard/weekly-reports/%s/feedback", reportID)
+	actionURL := FeedbackActionURL(reportID)
 	notification.ActionURL = &actionURL
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {

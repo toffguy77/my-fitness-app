@@ -1,6 +1,7 @@
 package foodtracker
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -589,6 +590,12 @@ func (r *UpdateEntryRequest) Validate() error {
 	return nil
 }
 
+// MinSearchQueryRunes — короткий запрос поиска, с которого он работает.
+const MinSearchQueryRunes = 2
+
+// ErrSearchQueryTooShort — запрос короче MinSearchQueryRunes: 400, а не 500.
+var ErrSearchQueryTooShort = errors.New("поисковый запрос должен содержать минимум 2 символа")
+
 // SearchFoodsRequest represents the request to search for foods
 type SearchFoodsRequest struct {
 	Query  string `form:"q" binding:"required,min=2"`
@@ -601,8 +608,11 @@ func (r *SearchFoodsRequest) Validate() error {
 	if r.Query == "" {
 		return fmt.Errorf("поисковый запрос обязателен")
 	}
-	if len([]rune(r.Query)) < 3 {
-		return fmt.Errorf("поисковый запрос должен содержать минимум 3 символа")
+	// Со второго символа, как обещает руководство и как ищет приложение
+	// (`ios-food-logging`, `food-diary-entry`): короткий запрос держат ILIKE
+	// по каталогу и задержка 300 мс у клиента.
+	if len([]rune(r.Query)) < MinSearchQueryRunes {
+		return ErrSearchQueryTooShort
 	}
 	return nil
 }
@@ -620,10 +630,17 @@ func (r *GetEntriesRequest) Validate() error {
 	return nil
 }
 
-// AddWaterRequest represents the request to add water intake
+// Границы `glasses` в POST /food-tracker/water (water-decrement): −1 убирает
+// стакан, 0 или пропуск прибавляет один, как прежде, 1…10 — прибавляет столько.
+const (
+	MinWaterGlassesChange = -1
+	MaxWaterGlassesChange = 10
+)
+
+// AddWaterRequest — прибавить или убрать стаканы воды за дату.
 type AddWaterRequest struct {
 	Date    string `json:"date" binding:"required"`
-	Glasses int    `json:"glasses" binding:"omitempty,min=1"`
+	Glasses int    `json:"glasses" binding:"omitempty,min=-1,max=10"`
 }
 
 // Validate validates the add water request
@@ -631,10 +648,19 @@ func (r *AddWaterRequest) Validate() error {
 	if r.Date == "" {
 		return fmt.Errorf("дата обязательна")
 	}
-	if r.Glasses < 0 {
-		return fmt.Errorf("количество стаканов не может быть отрицательным")
+	if r.Glasses < MinWaterGlassesChange || r.Glasses > MaxWaterGlassesChange {
+		return fmt.Errorf("количество стаканов — от %d до %d", MinWaterGlassesChange, MaxWaterGlassesChange)
 	}
 	return nil
+}
+
+// WaterChange — сколько стаканов прибавить (отрицательное — убрать): пропуск
+// и 0 означают один стакан, как до появления −1.
+func (r *AddWaterRequest) WaterChange() int {
+	if r.Glasses == 0 {
+		return 1
+	}
+	return r.Glasses
 }
 
 // GetWaterRequest represents the request to get water intake

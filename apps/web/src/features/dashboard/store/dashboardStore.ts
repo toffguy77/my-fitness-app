@@ -26,6 +26,7 @@ import { getToken } from '@/shared/utils/token-storage';
 import { addToQueue, removeFromQueue, incrementAttempts, shouldRetry, sortQueueByTimestamp, type QueueEntry } from '../utils/offlineQueue';
 
 import { t, plural } from '@/shared/i18n'
+import type { MetricSource } from '@/shared/components/ui/HealthSourceLabel'
 import { mapApiError } from '@/shared/errors/mapApiError'
 import { isApiError } from '@/shared/errors/apiErrors'
 
@@ -269,6 +270,9 @@ interface BackendDailyMetrics {
     workout_types?: string[] | null;
     workout_duration?: number | null;
     workout_type_durations?: Record<string, number> | null;
+    steps_source?: MetricSource | null;
+    weight_source?: MetricSource | null;
+    workout_source?: MetricSource | null;
     created_at: string;
     updated_at: string;
 }
@@ -287,7 +291,7 @@ type Raw<Backend, Frontend> = Partial<Backend> & Partial<Frontend>;
  * Map flat backend metrics to nested frontend DailyMetrics shape.
  * Also handles already-mapped data gracefully (e.g. from cache or test mocks).
  */
-function mapBackendMetrics(raw: Raw<BackendDailyMetrics, DailyMetrics>): DailyMetrics {
+export function mapBackendMetrics(raw: Raw<BackendDailyMetrics, DailyMetrics>): DailyMetrics {
     // If already in frontend shape (has nested 'nutrition' object), return as-is
     if (raw.nutrition !== undefined && typeof raw.nutrition === 'object') {
         return raw as DailyMetrics;
@@ -314,6 +318,9 @@ function mapBackendMetrics(raw: Raw<BackendDailyMetrics, DailyMetrics>): DailyMe
             duration: raw.workout_duration ?? undefined,
             typeDurations: raw.workout_type_durations ?? undefined,
         },
+        stepsSource: raw.steps_source ?? null,
+        weightSource: raw.weight_source ?? null,
+        workoutSource: raw.workout_source ?? null,
         completionStatus: {
             nutritionFilled: (raw.calories || 0) > 0,
             weightLogged: raw.weight != null,
@@ -367,7 +374,7 @@ type GetWeeklyPlanResponse = RawWeeklyPlan & { plan?: RawWeeklyPlan | null };
  * Map backend weekly plan (snake_case) to frontend WeeklyPlan (camelCase).
  * Handles already-mapped data gracefully.
  */
-function mapBackendWeeklyPlan(raw: RawWeeklyPlan): WeeklyPlan {
+export function mapBackendWeeklyPlan(raw: RawWeeklyPlan): WeeklyPlan {
     // If already in frontend shape (has camelCase keys), return as-is
     if (raw.caloriesGoal !== undefined) {
         return raw as WeeklyPlan;
@@ -1165,14 +1172,18 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                     break;
                 case 'weight':
                     updatedMetrics.weight = metric.data.weight;
+                    // Ручной ввод главнее импорта: подпись «из Здоровья» уходит сразу.
+                    updatedMetrics.weightSource = 'manual';
                     updatedMetrics.completionStatus.weightLogged = true;
                     break;
                 case 'steps':
                     updatedMetrics.steps = metric.data.steps;
+                    updatedMetrics.stepsSource = metric.data.steps > 0 ? 'manual' : null;
                     updatedMetrics.completionStatus.activityCompleted = metric.data.steps >= (state.weeklyPlan?.stepsGoal || 10000);
                     break;
                 case 'workout':
                     updatedMetrics.workout = metric.data;
+                    updatedMetrics.workoutSource = metric.data.completed ? 'manual' : null;
                     updatedMetrics.completionStatus.activityCompleted = metric.data.completed;
                     break;
             }
@@ -1434,9 +1445,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             const url = getApiUrl('/dashboard/weekly-report');
 
             await retryWithBackoff(
+                // Ключи — как в API (week_start/week_end): с weekStart сервер
+                // отвечал 400, и отчёт из очереди без сети не доходил никогда.
                 () => apiClient.post<SubmitWeeklyReportResponse>(url, {
-                    weekStart: formatDateISO(weekStart),
-                    weekEnd: formatDateISO(weekEnd),
+                    week_start: formatDateISO(weekStart),
+                    week_end: formatDateISO(weekEnd),
                 }),
                 3,
                 1000

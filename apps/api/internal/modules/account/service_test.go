@@ -408,11 +408,13 @@ func TestPurgeLeftoverFiles_NothingOwed(t *testing.T) {
 
 type recordingNotifier struct {
 	sent []string
+	ids  []map[string]string
 	err  error
 }
 
-func (r *recordingNotifier) Notify(_ context.Context, userID int64, notificationType, _, _, _ string) error {
+func (r *recordingNotifier) Notify(_ context.Context, userID int64, notificationType, _, _, _ string, ids map[string]string) error {
 	r.sent = append(r.sent, fmt.Sprintf("%d:%s", userID, notificationType))
+	r.ids = append(r.ids, ids)
 	return r.err
 }
 
@@ -438,6 +440,8 @@ func TestRequestDeletion_TellsTheCurator(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"10:client_left"}, notifier.sent)
+	// notification-targets: client_left открывает карточку ушедшего клиента.
+	assert.Equal(t, []map[string]string{{"client_id": "1"}}, notifier.ids)
 }
 
 // A client without a curator simply has nobody to tell, which is not a failure.
@@ -481,4 +485,16 @@ func TestPurgeLeftoverFiles_RefusesToMarkWithoutAPrefixList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, purged, "an account whose files were never located must not be marked clean")
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// notification-targets: уведомление о готовой выгрузке открывает её саму.
+func TestAnnounceExport_TargetsTheExport(t *testing.T) {
+	service, _ := fixture(t)
+	notifier := &recordingNotifier{}
+	service.WithNotifier(notifier)
+
+	service.announceExport(context.Background(), 7, "exp-1")
+
+	assert.Equal(t, []string{"7:export_ready"}, notifier.sent)
+	assert.Equal(t, []map[string]string{{"export_id": "exp-1"}}, notifier.ids)
 }

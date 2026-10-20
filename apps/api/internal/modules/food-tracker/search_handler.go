@@ -55,9 +55,8 @@ func (h *Handler) SearchFoods(c *gin.Context) {
 
 		h.log.Errorw("Не удалось выполнить поиск", "error", err, "query", req.Query)
 
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "минимум 3 символа") {
-			response.Error(c, http.StatusBadRequest, errMsg)
+		if errors.Is(err, ErrSearchQueryTooShort) {
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 

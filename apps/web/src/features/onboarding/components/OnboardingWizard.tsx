@@ -10,7 +10,7 @@ import {
     TimezoneSelector,
 } from '@/shared/components/settings'
 import { updateSettings, getProfile } from '@/features/settings/api/settings'
-import { completeOnboarding } from '../api/onboarding'
+import { completeOnboarding, saveWeightMeasurement, todayIn } from '../api/onboarding'
 import { useOnboardingStore } from '../store/onboardingStore'
 import { StepIndicator } from './StepIndicator'
 import { cn } from '@/shared/utils/cn'
@@ -44,6 +44,8 @@ const activityLevels = ['sedentary', 'light', 'moderate', 'active'] as const
 
 const goals = ['loss', 'maintain', 'gain'] as const
 
+const LB_IN_KG = 0.45359237
+
 export function OnboardingWizard() {
     const router = useRouter()
     const [saving, setSaving] = useState(false)
@@ -62,7 +64,6 @@ export function OnboardingWizard() {
         fitnessGoal,
         telegram,
         instagram,
-        appleHealthEnabled,
         nextStep,
         setLanguage,
         setUnits,
@@ -75,7 +76,6 @@ export function OnboardingWizard() {
         setFitnessGoal,
         setTelegram,
         setInstagram,
-        setAppleHealth,
     } = useOnboardingStore()
 
     // Signed-out visitors never reach this page: proxy.ts redirects
@@ -108,7 +108,6 @@ export function OnboardingWizard() {
                     }
                     if (s.telegram_username) setTelegram(s.telegram_username)
                     if (s.instagram_username) setInstagram(s.instagram_username)
-                    if (s.apple_health_enabled) setAppleHealth(s.apple_health_enabled)
                 }
             } catch {
                 // Молчим намеренно: это необязательное предзаполнение, а не
@@ -128,7 +127,6 @@ export function OnboardingWizard() {
             timezone,
             telegram_username: telegram,
             instagram_username: instagram,
-            apple_health_enabled: appleHealthEnabled,
         }
     }
 
@@ -139,8 +137,17 @@ export function OnboardingWizard() {
         if (activityLevel) payload.activity_level = activityLevel
         if (fitnessGoal) payload.fitness_goal = fitnessGoal
         if (height) payload.height = parseFloat(height)
-        if (currentWeight) payload.target_weight = parseFloat(currentWeight)
+        // «Текущий вес» — не цель. Он уходит замером, см. currentWeightKg.
         return payload
+    }
+
+    // Вес из поля в килограммах — замеры хранятся в них, в фунтах его вводят
+    // только при имперских единицах. Пустое или нечисловое поле — замера нет.
+    function currentWeightKg(): number | null {
+        const value = parseFloat(currentWeight.replace(',', '.'))
+        if (!Number.isFinite(value) || value <= 0) return null
+        const kg = units === 'imperial' ? value * LB_IN_KG : value
+        return Math.round(kg * 10) / 10
     }
 
     async function handleNext() {
@@ -153,13 +160,20 @@ export function OnboardingWizard() {
                     nextStep()
                     break
 
-                case 1:
+                case 1: {
                     // Body & goals, then straight to the dashboard.
                     await updateSettings({ ...buildSettingsPayload(), ...buildBodyPayload() })
+                    // После настроек: в них только что записан часовой пояс,
+                    // в котором сервер разберёт дату замера.
+                    const weightKg = currentWeightKg()
+                    if (weightKg !== null) {
+                        await saveWeightMeasurement(weightKg, todayIn(timezone))
+                    }
                     await completeOnboarding()
                     toast(t('onboarding.welcome'))
                     router.push('/dashboard')
                     break
+                }
             }
         } catch (err) {
             toast.error(messageForOr(err, t('onboarding.saveFailed')))

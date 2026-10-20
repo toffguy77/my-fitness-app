@@ -75,7 +75,6 @@ function ProfileSettingsForm({
             timezone: profile.settings.timezone,
             telegram_username: profile.settings.telegram_username,
             instagram_username: profile.settings.instagram_username,
-            apple_health_enabled: profile.settings.apple_health_enabled,
             height: parsed,
         }).catch(() => {})
         setHeightChanged(false)
@@ -89,7 +88,6 @@ function ProfileSettingsForm({
             timezone: profile.settings.timezone,
             telegram_username: profile.settings.telegram_username,
             instagram_username: profile.settings.instagram_username,
-            apple_health_enabled: profile.settings.apple_health_enabled,
         }).catch(() => {})
     }
 
@@ -101,7 +99,6 @@ function ProfileSettingsForm({
             timezone: profile.settings.timezone,
             telegram_username: profile.settings.telegram_username,
             instagram_username: profile.settings.instagram_username,
-            apple_health_enabled: profile.settings.apple_health_enabled,
         }).catch(() => {})
     }
 
@@ -113,7 +110,6 @@ function ProfileSettingsForm({
             timezone,
             telegram_username: profile.settings.telegram_username,
             instagram_username: profile.settings.instagram_username,
-            apple_health_enabled: profile.settings.apple_health_enabled,
         }).catch(() => {})
     }
 

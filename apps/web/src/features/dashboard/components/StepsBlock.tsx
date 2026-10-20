@@ -20,6 +20,7 @@ import { Card, CardTitle } from '@/shared/components/ui/Card'
 import { Button, IconButton } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { ProgressBar } from '@/shared/components/ui/ProgressBar'
+import { HealthSourceLabel } from '@/shared/components/ui/HealthSourceLabel'
 import { cn } from '@/shared/utils/cn'
 import { formatLocalDate } from '@/shared/utils/format'
 import { useDashboardStore } from '../store/dashboardStore'
@@ -192,6 +193,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                     >
                         {t('dashboard.steps.ofGoal', { steps: formatSteps(stepsGoal) })}
                     </span>
+                    {currentSteps > 0 && <HealthSourceLabel source={dayData?.stepsSource} className="ml-auto" />}
                 </div>
                 <ProgressBar
                     value={Math.min(currentSteps, stepsGoal)}

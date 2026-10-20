@@ -24,6 +24,28 @@ export type NotificationType =
     | 'feedback_received';
 
 /**
+ * Screen a notification opens in the app. The web keeps using actionUrl;
+ * records created before the field existed carry {kind: 'notifications'}.
+ */
+export type NotificationTargetKind =
+    | 'chat'
+    | 'task'
+    | 'weekly_feedback'
+    | 'plan'
+    | 'client'
+    | 'support_conversation'
+    | 'lead'
+    | 'article'
+    | 'export'
+    | 'notifications';
+
+export interface NotificationTarget {
+    kind: NotificationTargetKind;
+    /** Every id is a string: a uuid or a decimal user id. */
+    ids?: Record<string, string>;
+}
+
+/**
  * Core notification data structure
  */
 export interface Notification {
@@ -38,6 +60,11 @@ export interface Notification {
     readAt?: string; // ISO 8601 format
     actionUrl?: string;
     contentCategory?: string;
+    /**
+     * GET /notifications always sends it. The web navigates by actionUrl and
+     * does not read it; optional so test fixtures need not spell it out.
+     */
+    target?: NotificationTarget;
 }
 
 /**

@@ -17,14 +17,20 @@ import (
 // expectDeliveryPlan sets up the queries planDelivery makes: reading the
 // recipient's settings, reading their stored choices, and one insert per
 // channel the event may use.
-func expectDeliveryPlan(mock sqlmock.Sqlmock, userID int64, inserts int) {
+// expectRecipient is loadRecipient's two reads, for somebody with no choices
+// stored.
+func expectRecipient(mock sqlmock.Sqlmock, userID int64) {
 	mock.ExpectQuery(`FROM users u\s+LEFT JOIN user_settings`).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"timezone", "quiet_hours_start", "quiet_hours_end", "email_unsubscribed_at"}).
-			AddRow("Europe/Moscow", nil, nil, nil))
+		WillReturnRows(sqlmock.NewRows([]string{"timezone", "quiet_hours_start", "quiet_hours_end", "email_unsubscribed_at", "push_show_message_text"}).
+			AddRow("Europe/Moscow", nil, nil, nil, true))
 	mock.ExpectQuery(`FROM notification_preferences WHERE user_id = \$1`).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"type", "channel", "enabled"}))
+}
+
+func expectDeliveryPlan(mock sqlmock.Sqlmock, userID int64, inserts int) {
+	expectRecipient(mock, userID)
 	for i := 0; i < inserts; i++ {
 		mock.ExpectExec(`INSERT INTO notification_deliveries`).
 			WillReturnResult(sqlmock.NewResult(int64(i+1), 1))
@@ -164,8 +170,8 @@ func TestPlanDeliverySkipsChannelsTheRecipientClosed(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(`FROM users u\s+LEFT JOIN user_settings`).
-		WillReturnRows(sqlmock.NewRows([]string{"timezone", "quiet_hours_start", "quiet_hours_end", "email_unsubscribed_at"}).
-			AddRow("Europe/Moscow", nil, nil, time.Now()))
+		WillReturnRows(sqlmock.NewRows([]string{"timezone", "quiet_hours_start", "quiet_hours_end", "email_unsubscribed_at", "push_show_message_text"}).
+			AddRow("Europe/Moscow", nil, nil, time.Now(), true))
 	mock.ExpectQuery(`FROM notification_preferences WHERE user_id = \$1`).
 		WillReturnRows(sqlmock.NewRows([]string{"type", "channel", "enabled"}).
 			AddRow("trainer_feedback", "push", false))

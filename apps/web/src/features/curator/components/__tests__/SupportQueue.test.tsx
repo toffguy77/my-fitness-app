@@ -8,6 +8,7 @@ jest.mock('../../api/curatorApi', () => ({
         getSupportConversations: jest.fn(),
         getSupportThread: jest.fn(),
         replyToSupport: jest.fn(),
+        retrySupportDelivery: jest.fn(),
         closeSupport: jest.fn(),
     },
 }))
@@ -30,6 +31,7 @@ const api = curatorApi as jest.Mocked<typeof curatorApi>
 function conversation(overrides: Partial<SupportConversation> = {}): SupportConversation {
     return {
         id: 'conv-1',
+        channel: 'telegram',
         chat_id: 555,
         status: 'escalated',
         telegram_name: 'Гость',
@@ -119,7 +121,7 @@ describe('SupportQueue', () => {
 
         render(<SupportQueue />)
         await userEvent.click(await screen.findByTestId('support-conversation'))
-        await userEvent.type(await screen.findByLabelText('Ответ'), 'Куратор входит в подписку')
+        await userEvent.type(await screen.findByLabelText('Ответ уйдёт в Telegram'), 'Куратор входит в подписку')
         await userEvent.click(screen.getByRole('button', { name: 'Отправить в Telegram' }))
 
         await waitFor(() =>
@@ -188,7 +190,7 @@ describe('SupportQueue', () => {
 
         render(<SupportQueue />)
         await userEvent.click(await screen.findByTestId('support-conversation'))
-        await userEvent.type(await screen.findByLabelText('Ответ'), 'ответ')
+        await userEvent.type(await screen.findByLabelText('Ответ уйдёт в Telegram'), 'ответ')
         await userEvent.click(screen.getByRole('button', { name: 'Отправить в Telegram' }))
 
         await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Не удалось отправить ответ'))

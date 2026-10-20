@@ -4,8 +4,11 @@ package account
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/burcev/api/internal/modules/auth"
 )
 
 // Strategy describes what happens to one table's rows when a user is erased.
@@ -51,6 +54,7 @@ var strategies = []TableStrategy{
 	{Table: "food_entries", Column: "user_id", Strategy: StrategyDelete, Reason: "the person's food diary"},
 	{Table: "water_logs", Column: "user_id", Strategy: StrategyDelete, Reason: "the person's water log"},
 	{Table: "daily_metrics", Column: "user_id", Strategy: StrategyDelete, Reason: "weight and measurements"},
+	{Table: "health_workouts", Column: "user_id", Strategy: StrategyDelete, Reason: "workouts imported from Apple Health"},
 	{Table: "daily_calculated_targets", Column: "user_id", Strategy: StrategyDelete, Reason: "derived from their body profile"},
 	{Table: "weekly_photos", Column: "user_id", Strategy: StrategyDelete, Reason: "progress photographs"},
 	{Table: "user_foods", Column: "user_id", Strategy: StrategyDelete, Reason: "foods they authored"},
@@ -83,11 +87,18 @@ var strategies = []TableStrategy{
 	// сама привязка позволила бы войти обратно в удалённый аккаунт.
 	{Table: "external_identities", Column: "user_id", Strategy: StrategyDelete, Reason: "the link that would sign them back in, plus their name and address at the provider"},
 	{Table: "push_subscriptions", Column: "user_id", Strategy: StrategyDelete, Reason: "browser endpoints and keys belonging to them"},
-	{Table: "oauth_app_handoffs", Column: "user_id", Strategy: StrategyDelete, Reason: "two-minute sign-in codes for the iOS app"},
-	{Table: "apns_devices", Column: "user_id", Strategy: StrategyDelete, Reason: "iPhone push tokens belonging to them"},
+	{Table: "push_devices", Column: "user_id", Strategy: StrategyDelete, Reason: "iPhone push tokens belonging to them"},
+	{Table: "push_deliveries", Column: "user_id", Strategy: StrategyDelete, Reason: "which of their browsers and phones were pushed what, and when"},
+	// Код передачи входа в приложение: живёт минуту, но, пока жив, его обмен
+	// выдаёт сессию в этот аккаунт.
+	{Table: "oauth_handoff_codes", Column: "user_id", Strategy: StrategyDelete, Reason: "one-minute codes that would hand a session in this account to the app"},
 	{Table: "notification_preferences", Column: "user_id", Strategy: StrategyDelete, Reason: "their channel choices"},
 	{Table: "notification_deliveries", Column: "user_id", Strategy: StrategyDelete, Reason: "what was sent to them and when"},
 	{Table: "ws_tickets", Column: "user_id", Strategy: StrategyDelete, Reason: "short-lived socket tickets — sessions by another name"},
+	// Ответы на изменения из очереди приложения: в них лежит то, что человек
+	// записал (еда, вес, текст сообщения). Строка users обезличивается, а не
+	// удаляется, так что ON DELETE CASCADE не сработает — удаление явное.
+	{Table: "idempotency_keys", Column: "user_id", Strategy: StrategyDelete, Reason: "stored responses to their own writes — food, weight, message text"},
 	// Связь посетителя браузера с человеком. Она и есть то, чем обезличенные
 	// события снова становятся личными; после удаления её быть не должно.
 	{Table: "analytics_identities", Column: "user_id", Strategy: StrategyDelete, Reason: "the mapping that re-identifies anonymous events"},
@@ -123,6 +134,10 @@ var strategies = []TableStrategy{
 	{Table: "support_messages", Column: "operator_id", Strategy: StrategyKeep, Reason: "reached through the conversation, which is deleted with the account"},
 	{Table: "leads", Column: "handled_by", Strategy: StrategyKeep, Reason: "an onboarding attempt by somebody else; the deleted curator's name drops to NULL"},
 	{Table: "oauth_pending_links", Column: "", Strategy: StrategyKeep, Reason: "unfinished sign-in attempts, holding no reference to an account"},
+	// Очередь отзыва доступа у Apple. Строку кладёт само стирание: токен
+	// нужен ровно для того, чтобы Apple забыла этого человека, и уходит, как
+	// только отзыв удался. На аккаунт не ссылается.
+	{Table: "apple_token_revocations", Column: "", Strategy: StrategyKeep, Reason: "Apple tokens queued for revocation by the erasure itself; no reference to an account, deleted once revoked"},
 
 	// Откуда человек пришёл и что мы об этом рассказали рекламному кабинету.
 	//
@@ -189,6 +204,15 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// Токен Apple — в очередь отзыва до того, как стратегии удалят привязку:
+	// иначе он исчез бы вместе со строкой, и отзывать стало бы нечего
+	// (Guideline 5.1.1(v)). В той же транзакции: откат стирания не оставит
+	// в очереди токен живого аккаунта.
+	appleQueued, err := queueAppleRevocations(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
+
 	for _, ts := range strategies {
 		if ts.Column == "" || ts.Strategy == StrategyKeep {
 			continue
@@ -246,6 +270,13 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 		}
 	}
 
+	// Отзыв у Apple — после фиксации и по возможности: Apple недоступна —
+	// аккаунт всё равно удалён, а строка очереди ждёт задачу
+	// auth.apple-revoke-retry.
+	if s.appleRevocations != nil {
+		s.appleRevocations.Attempt(ctx, appleQueued)
+	}
+
 	// Тема в Telegram закрывается, но не удаляется: решение не трогать историю
 	// переписки принято отдельно и записано в проектировании. Закрытие — то
 	// единственное, что бот умеет надёжно, и оно означает, что новых сообщений
@@ -260,6 +291,23 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 	}
 
 	return nil
+}
+
+func queueAppleRevocations(ctx context.Context, tx *sql.Tx, userID int64) ([]int64, error) {
+	rows, err := tx.QueryContext(ctx, auth.QueueAppleRevocationSQL, userID)
+	if err != nil {
+		return nil, fmt.Errorf("queue apple revocation: %w", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("queue apple revocation: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // systemUserID resolves the placeholder account anonymised rows point at.

@@ -94,7 +94,7 @@ func TestRegisterService(t *testing.T) {
 
 		// Expect refresh token insertion (6 args: userID, hash, expiresAt, ip, ua, rememberMe)
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false).
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false, "web", nil).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err := service.Register(ctx, "test@example.com", "Password1!", "Test User", "127.0.0.1", "TestAgent", nil)
@@ -128,7 +128,7 @@ func TestRegisterService(t *testing.T) {
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(2), sqlmock.AnyArg(), sqlmock.AnyArg(), "", "", false).
+			WithArgs(int64(2), sqlmock.AnyArg(), sqlmock.AnyArg(), "", "", false, "web", nil).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err := service.Register(ctx, "test2@example.com", "Password1!", "", "", "", nil)
@@ -154,7 +154,7 @@ func TestLoginService(t *testing.T) {
 				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false).
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false, "web", nil).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err := service.Login(ctx, "test@example.com", "password123", "127.0.0.1", "TestAgent", false)
@@ -197,8 +197,8 @@ func TestRefreshTokens(t *testing.T) {
 		// Lookup refresh token
 		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 			WithArgs(tokenHash).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me"}).
-				AddRow(1, int64(42), expiresAt, nil, nil, false))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me", "client_kind", "device_name"}).
+				AddRow(1, int64(42), expiresAt, nil, nil, false, "web", nil))
 
 		// Begin transaction
 		mock.ExpectBegin()
@@ -210,7 +210,7 @@ func TestRefreshTokens(t *testing.T) {
 
 		// Insert new token
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(42), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false).
+			WithArgs(int64(42), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false, "web", nil).
 			WillReturnResult(sqlmock.NewResult(2, 1))
 
 		// Commit transaction
@@ -242,8 +242,8 @@ func TestRefreshTokens(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 			WithArgs(tokenHash).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me"}).
-				AddRow(1, int64(42), expiredAt, nil, nil, false))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me", "client_kind", "device_name"}).
+				AddRow(1, int64(42), expiredAt, nil, nil, false, "web", nil))
 
 		result, err := service.RefreshTokens(ctx, plainToken, "", "")
 		assert.Error(t, err)
@@ -251,7 +251,30 @@ func TestRefreshTokens(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
-	t.Run("revoked token triggers reuse detection", func(t *testing.T) {
+	// Отозванный ради безопасности (выход, смена пароля) токен просто не
+	// принимается: других сессий его повтор не касается.
+	t.Run("token revoked for safety fails without ending other sessions", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+		ctx := context.Background()
+
+		plainToken := "signed-out-token"
+		tokenHash := service.tokens.HashToken(plainToken)
+		revokedAt := sql.NullTime{Time: time.Now().Add(-1 * time.Hour), Valid: true}
+
+		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
+			WithArgs(tokenHash).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me", "client_kind", "device_name"}).
+				AddRow(1, int64(42), time.Now().Add(24*time.Hour), revokedAt, nil, false, "web", nil))
+
+		result, err := service.RefreshTokens(ctx, plainToken, "", "")
+		assert.ErrorIs(t, err, apperrors.ErrSessionEnded)
+		assert.Nil(t, result)
+		// No UPDATE ... WHERE user_id expected: sqlmock fails on an unexpected one.
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("token replaced by rotation triggers reuse detection", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
@@ -262,8 +285,8 @@ func TestRefreshTokens(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 			WithArgs(tokenHash).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me"}).
-				AddRow(1, int64(42), time.Now().Add(24*time.Hour), revokedAt, nil, false))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me", "client_kind", "device_name"}).
+				AddRow(1, int64(42), time.Now().Add(24*time.Hour), revokedAt, "successor-hash", false, "web", nil))
 
 		// Expect all tokens to be revoked
 		mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
@@ -367,7 +390,7 @@ func TestLoginRememberMe(t *testing.T) {
 					AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 			mock.ExpectExec("INSERT INTO refresh_tokens").
-				WithArgs(int64(1), sqlmock.AnyArg(), expiresAtMatcher{tc.expectedTTL}, "127.0.0.1", "TestAgent", tc.rememberMe).
+				WithArgs(int64(1), sqlmock.AnyArg(), expiresAtMatcher{tc.expectedTTL}, "127.0.0.1", "TestAgent", tc.rememberMe, "web", nil).
 				WillReturnResult(sqlmock.NewResult(1, 1))
 
 			result, err := service.Login(ctx, "test@example.com", "password123", "127.0.0.1", "TestAgent", tc.rememberMe)
@@ -399,8 +422,8 @@ func TestRefreshTokensInheritsRememberMe(t *testing.T) {
 
 			mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 				WithArgs(tokenHash).
-				WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me"}).
-					AddRow(1, int64(42), expiresAt, nil, nil, tc.rememberMe))
+				WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me", "client_kind", "device_name"}).
+					AddRow(1, int64(42), expiresAt, nil, nil, tc.rememberMe, "web", nil))
 
 			mock.ExpectBegin()
 
@@ -409,7 +432,7 @@ func TestRefreshTokensInheritsRememberMe(t *testing.T) {
 				WillReturnResult(sqlmock.NewResult(0, 1))
 
 			mock.ExpectExec("INSERT INTO refresh_tokens").
-				WithArgs(int64(42), sqlmock.AnyArg(), expiresAtMatcher{tc.expectedTTL}, "127.0.0.1", "TestAgent", tc.rememberMe).
+				WithArgs(int64(42), sqlmock.AnyArg(), expiresAtMatcher{tc.expectedTTL}, "127.0.0.1", "TestAgent", tc.rememberMe, "web", nil).
 				WillReturnResult(sqlmock.NewResult(2, 1))
 
 			mock.ExpectCommit()

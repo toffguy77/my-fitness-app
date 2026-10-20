@@ -19,9 +19,11 @@ const (
 	// ChannelEmail is the digest. One message covering everything that went
 	// unread, not one message per event.
 	ChannelEmail Channel = "email"
-	// ChannelPush reaches a browser that agreed to be interrupted. It is the
-	// immediate channel: it exists to arrive before somebody opens the
-	// application, so unlike email it does not wait.
+	// ChannelPush reaches every browser and iPhone of the person that agreed
+	// to be interrupted: Web Push subscriptions and APNs devices alike, one
+	// push_deliveries row per addressee. It is the immediate channel: it exists
+	// to arrive before somebody opens the application, so unlike email it does
+	// not wait.
 	ChannelPush Channel = "push"
 )
 
@@ -31,6 +33,9 @@ const (
 	StatusSent    = "sent"
 	StatusFailed  = "failed"
 	StatusSkipped = "skipped"
+	// StatusCancelled: a push that was no longer worth sending by the time it
+	// was due — the person read it elsewhere first. push_deliveries only.
+	StatusCancelled = "cancelled"
 )
 
 // defaultEmailDelay is how long a notification is given to be read in the
@@ -87,7 +92,16 @@ var defaultChannels = map[NotificationType][]Channel{
 	TypeNewFeature:   {ChannelApp},
 	TypeGeneral:      {ChannelApp},
 	TypeNewContent:   {ChannelApp},
+	// A chat message is not a notification: it has no row in the list and no
+	// email. Push is the one channel a person can switch, and it is on: a
+	// curator's answer that waits for the app to be opened is the problem this
+	// exists to solve.
+	TypeChatMessage: {ChannelPush},
 }
+
+// pushOnlyTypes cannot be mailed, whatever is stored: the digest is a summary
+// of the notification list, and these have no row in it.
+var pushOnlyTypes = map[NotificationType]bool{TypeChatMessage: true}
 
 // channelsFor returns the default channels for a type, falling back to the
 // application alone. An event type nobody has classified must not start
@@ -112,12 +126,21 @@ type recipient struct {
 	quietStart       sql.NullInt16
 	quietEnd         sql.NullInt16
 	emailUnsubscribe sql.NullTime
+	// showMessageText: a chat push carries the message itself, or only who
+	// wrote it.
+	showMessageText bool
 	// preferences holds only the deliberate choices: "type:channel" -> enabled.
 	preferences map[string]bool
 }
 
+// queryer is what loadRecipient needs: a transaction or the pool.
+type queryer interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
 // loadRecipient reads the settings that decide where a notification goes.
-func (s *Service) loadRecipient(ctx context.Context, tx *sql.Tx, userID int64) (*recipient, error) {
+func (s *Service) loadRecipient(ctx context.Context, tx queryer, userID int64) (*recipient, error) {
 	r := &recipient{preferences: map[string]bool{}}
 
 	// The timezone lives on user_settings, the rest on users. Reading it from
@@ -128,11 +151,12 @@ func (s *Service) loadRecipient(ctx context.Context, tx *sql.Tx, userID int64) (
 	// LEFT JOIN because an account can exist before its settings row does.
 	err := tx.QueryRowContext(ctx,
 		`SELECT COALESCE(s.timezone, 'Europe/Moscow'),
-		        u.quiet_hours_start, u.quiet_hours_end, u.email_unsubscribed_at
+		        u.quiet_hours_start, u.quiet_hours_end, u.email_unsubscribed_at,
+		        u.push_show_message_text
 		 FROM users u
 		 LEFT JOIN user_settings s ON s.user_id = u.id
 		 WHERE u.id = $1`, userID).
-		Scan(&r.timezone, &r.quietStart, &r.quietEnd, &r.emailUnsubscribe)
+		Scan(&r.timezone, &r.quietStart, &r.quietEnd, &r.emailUnsubscribe, &r.showMessageText)
 	if err != nil {
 		return nil, fmt.Errorf("load recipient: %w", err)
 	}
@@ -162,7 +186,7 @@ func (r *recipient) allows(notificationType NotificationType, channel Channel) b
 	if channel == ChannelApp {
 		return true
 	}
-	if channel == ChannelEmail && r.emailUnsubscribe.Valid {
+	if channel == ChannelEmail && (r.emailUnsubscribe.Valid || pushOnlyTypes[notificationType]) {
 		return false
 	}
 	if choice, ok := r.preferences[string(notificationType)+":"+string(channel)]; ok {
@@ -176,22 +200,21 @@ func (r *recipient) allows(notificationType NotificationType, channel Channel) b
 	return false
 }
 
-// afterQuietHours moves a send past the hours somebody asked not to be
-// disturbed in. It delays; it never drops. A notice that arrives in the morning
-// is late, a notice that never arrives is a bug.
-func (r *recipient) afterQuietHours(at time.Time) time.Time {
+// inQuietHours reports whether a moment falls in the hours somebody asked not
+// to be disturbed in, in their own timezone.
+func (r *recipient) inQuietHours(at time.Time) (bool, time.Time, *time.Location) {
 	if !r.quietStart.Valid || !r.quietEnd.Valid {
-		return at
+		return false, at, nil
 	}
 	start, end := int(r.quietStart.Int16), int(r.quietEnd.Int16)
 	if start == end {
-		return at
+		return false, at, nil
 	}
 
 	location, err := time.LoadLocation(r.timezone)
 	if err != nil {
 		// An unknown timezone is not a reason to hold the message.
-		return at
+		return false, at, nil
 	}
 
 	local := at.In(location)
@@ -202,9 +225,21 @@ func (r *recipient) afterQuietHours(at time.Time) time.Time {
 	if start > end {
 		quiet = hour >= start || hour < end
 	}
+	return quiet, local, location
+}
+
+// afterQuietHours moves a send past the hours somebody asked not to be
+// disturbed in. It delays; it never drops. A notice that arrives in the morning
+// is late, a notice that never arrives is a bug.
+//
+// Web Push only. An iPhone is not delayed: it gets the push at once, without
+// sound and without lighting the screen (interruption-level passive).
+func (r *recipient) afterQuietHours(at time.Time) time.Time {
+	quiet, local, location := r.inQuietHours(at)
 	if !quiet {
 		return at
 	}
+	end := int(r.quietEnd.Int16)
 
 	wake := time.Date(local.Year(), local.Month(), local.Day(), end, 0, 0, 0, location)
 	if !wake.After(local) {
@@ -237,20 +272,20 @@ func (s *Service) planDelivery(ctx context.Context, tx *sql.Tx, notification *No
 			continue
 		}
 		if channel == ChannelPush {
-			if !s.anyPushReady() {
-				// No key pair in this environment. Recorded as skipped rather
-				// than left pending, so the sender's queue does not fill with
-				// work nothing can do.
-				plans = append(plans, deliveryPlan{channel: channel, status: StatusSkipped, notBefore: now})
-				continue
+			// One job per browser and per iPhone. Nobody to reach — no keys in
+			// this environment, or no device that ever agreed — is recorded as
+			// skipped rather than left pending, so the sender's queue does not
+			// fill with work nothing can do.
+			queued, err := s.queuePushes(ctx, tx, pushSource{notificationID: notification.ID}, notification.UserID, r, now)
+			if err != nil {
+				return err
 			}
-			// Push is the immediate channel — it exists precisely to arrive
-			// before somebody opens the application, so it does not wait.
-			plans = append(plans, deliveryPlan{
-				channel:   channel,
-				status:    StatusPending,
-				notBefore: r.afterQuietHours(now),
-			})
+			status := StatusPending
+			if queued == 0 {
+				status = StatusSkipped
+			}
+			// The row is the summary: "sent" once any addressee got the push.
+			plans = append(plans, deliveryPlan{channel: channel, status: status, notBefore: now})
 			continue
 		}
 		plans = append(plans, deliveryPlan{

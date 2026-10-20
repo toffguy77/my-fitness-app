@@ -15,12 +15,15 @@ func registerMealPlanRoutes(v1 *gin.RouterGroup, d Deps) {
 	client := v1.Group("")
 	client.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 	client.Use(middleware.RequireRole("client"))
+	// «Съел» приложение досылает из очереди: Idempotency-Key не даёт повтору
+	// после потерянного ответа записать блюдо в дневник второй раз.
+	idem := middleware.Idempotency(d.DB, d.Log)
 	{
 		client.GET("/meal-plans/:date", d.MealPlan.Get)
 		client.POST("/meal-plans/:date/regenerate", d.MealPlan.Regenerate)
 		client.GET("/meal-plans/:date/items/:mealType/alternatives", d.MealPlan.Alternatives)
 		client.PUT("/meal-plans/:date/items/:mealType", d.MealPlan.UpdateItem)
-		client.POST("/meal-plans/:date/items/:mealType/eat", d.MealPlan.Eat)
+		client.POST("/meal-plans/:date/items/:mealType/eat", idem, d.MealPlan.Eat)
 		client.POST("/meal-plans/:date/refit", d.MealPlan.Refit)
 		client.GET("/meal-plan-settings", d.MealPlan.GetSettings)
 		client.PUT("/meal-plan-settings", d.MealPlan.SetSettings)

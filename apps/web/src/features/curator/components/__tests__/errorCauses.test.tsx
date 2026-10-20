@@ -206,6 +206,7 @@ describe('Очередь поддержки', () => {
 
     const conversation = {
         id: 'conv-1',
+        channel: 'telegram',
         chat_id: 555,
         status: 'escalated',
         telegram_name: 'Гость',
@@ -239,7 +240,7 @@ describe('Очередь поддержки', () => {
 
         render(<SupportQueue />)
         await userEvent.click(await screen.findByTestId('support-conversation'))
-        await userEvent.type(await screen.findByLabelText('Ответ'), 'Куратор входит в подписку')
+        await userEvent.type(await screen.findByLabelText('Ответ уйдёт в Telegram'), 'Куратор входит в подписку')
         await userEvent.click(screen.getByRole('button', { name: 'Отправить в Telegram' }))
 
         await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Возможность отключена в этой среде'), WAIT)

@@ -6,21 +6,20 @@
  * Modal for adding food entries with multiple entry methods:
  * - Поиск (Search)
  * - Штрих-код (Barcode)
+ * - Ручной ввод (Manual)
  * - Фото еды (Photo)
- * - Чат (Chat)
  *
  * @module food-tracker/components/FoodEntryModal
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { X, Search, Barcode, Camera, MessageCircle, ArrowLeft, Check, Pencil, Edit3, Bookmark } from 'lucide-react';
+import { X, Search, Barcode, Camera, ArrowLeft, Check, Pencil, Edit3, Bookmark } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { EntryMethodTab, FoodEntry, FoodItem, MealType, PortionType, KBZHU, CloneUserFoodRequest, UserFood } from '../types';
 import { SearchTab } from './SearchTab';
 import { BarcodeTab } from './BarcodeTab';
 import { AIPhotoTab } from './AIPhotoTab';
 import { MACRO_COLORS } from '@/shared/constants/macros';
-import { ChatTab } from './ChatTab';
 import { recognizeFood } from '../api/recognizeFood';
 import { PortionSelector } from './PortionSelector';
 import { ManualEntryForm } from './ManualEntryForm';
@@ -73,7 +72,6 @@ const TABS: TabConfig[] = [
     { id: 'barcode', label: t('foodTracker.tabs.barcode'), icon: Barcode },
     { id: 'manual', label: t('foodTracker.tabs.manual'), icon: Edit3 },
     { id: 'photo', label: t('foodTracker.tabs.photo'), icon: Camera },
-    { id: 'chat', label: t('foodTracker.tabs.chat'), icon: MessageCircle },
 ];
 
 const DEFAULT_TAB: EntryMethodTab = 'search';
@@ -492,11 +490,6 @@ export function FoodEntryModal({
                                     onSelectFoods={handleSelectFoods}
                                     onManualSearch={() => setActiveTab('search')}
                                     onRecognize={recognizeFood}
-                                />
-                            )}
-                            {activeTab === 'chat' && (
-                                <ChatTab
-                                    onSelectFood={handleSelectFood}
                                 />
                             )}
                             {activeTab === 'manual' && step === 'select-food' && (

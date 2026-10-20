@@ -209,14 +209,6 @@ jest.mock('../AIPhotoTab', () => ({
     ),
 }));
 
-jest.mock('../ChatTab', () => ({
-    ChatTab: () => (
-        <div data-testid="chat-tab">
-            <p>Опишите, что вы съели</p>
-        </div>
-    ),
-}));
-
 jest.mock('../ManualEntryForm', () => ({
     ManualEntryForm: ({ onSubmit, onCancel }: Pick<ManualEntryFormProps, 'onSubmit' | 'onCancel'>) => (
         <div data-testid="manual-entry-form">

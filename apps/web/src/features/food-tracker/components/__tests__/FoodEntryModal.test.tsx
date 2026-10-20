@@ -48,13 +48,19 @@ describe('FoodEntryModal', () => {
     });
 
     describe('Tab Rendering', () => {
-        it('renders all four tabs with Russian labels', () => {
+        // Спека food-diary-entry, «Открытие окна»: четыре вкладки и нет «Чата».
+        // Вкладка «Чат» была заглушкой: обработчик её отправки никто не
+        // подключил, и сообщение уходило в никуда.
+        it('renders exactly four tabs and no «Чат»', () => {
             render(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
 
-            expect(screen.getByRole('tab', { name: 'Поиск' })).toBeInTheDocument();
-            expect(screen.getByRole('tab', { name: 'Штрих-код' })).toBeInTheDocument();
-            expect(screen.getByRole('tab', { name: 'Фото еды' })).toBeInTheDocument();
-            expect(screen.getByRole('tab', { name: 'Чат' })).toBeInTheDocument();
+            expect(screen.getAllByRole('tab').map((tab) => tab.textContent?.trim())).toEqual([
+                'Поиск',
+                'Штрих-код',
+                'Ручной ввод',
+                'Фото еды',
+            ]);
+            expect(screen.queryByRole('tab', { name: 'Чат' })).not.toBeInTheDocument();
         });
 
         it('defaults to "Поиск" tab selected', () => {
@@ -91,15 +97,6 @@ describe('FoodEntryModal', () => {
             expect(screen.getByRole('tab', { name: 'Фото еды' })).toHaveAttribute('aria-selected', 'true');
         });
 
-        it('switches to chat tab when clicked', async () => {
-            const user = userEvent.setup();
-            render(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
-
-            await user.click(screen.getByRole('tab', { name: 'Чат' }));
-
-            expect(screen.getByRole('tab', { name: 'Чат' })).toHaveAttribute('aria-selected', 'true');
-        });
-
         it('displays corresponding tab panel content', async () => {
             const user = userEvent.setup();
             render(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
@@ -115,11 +112,6 @@ describe('FoodEntryModal', () => {
             // Switch to photo - check for photo-related content
             await user.click(screen.getByRole('tab', { name: 'Фото еды' }));
             expect(screen.getByRole('tab', { name: 'Фото еды' })).toHaveAttribute('aria-selected', 'true');
-
-            // Switch to chat - check for chat-related content
-            await user.click(screen.getByRole('tab', { name: 'Чат' }));
-            // Chat tab shows welcome message
-            expect(screen.getByText(/Опишите, что вы съели/)).toBeInTheDocument();
         });
     });
 
@@ -200,12 +192,12 @@ describe('FoodEntryModal', () => {
             const user = userEvent.setup();
             render(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
 
-            // Switch to chat tab (last)
-            await user.click(screen.getByRole('tab', { name: 'Чат' }));
+            // Switch to the photo tab (last)
+            await user.click(screen.getByRole('tab', { name: 'Фото еды' }));
 
-            // Focus on chat tab
-            const chatTab = screen.getByRole('tab', { name: 'Чат' });
-            chatTab.focus();
+            // Focus on the photo tab
+            const photoTab = screen.getByRole('tab', { name: 'Фото еды' });
+            photoTab.focus();
 
             // Press arrow right
             await user.keyboard('{ArrowRight}');
@@ -221,20 +213,20 @@ describe('FoodEntryModal', () => {
             const searchTab = screen.getByRole('tab', { name: 'Поиск' });
             fireEvent.keyDown(searchTab, { key: 'ArrowLeft' });
 
-            // Should wrap to chat tab
-            expect(screen.getByRole('tab', { name: 'Чат' })).toHaveAttribute('aria-selected', 'true');
+            // Should wrap to the photo tab (last)
+            expect(screen.getByRole('tab', { name: 'Фото еды' })).toHaveAttribute('aria-selected', 'true');
         });
 
         it('supports Home key to go to first tab', async () => {
             const user = userEvent.setup();
             render(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
 
-            // Switch to chat tab
-            await user.click(screen.getByRole('tab', { name: 'Чат' }));
+            // Switch to the photo tab
+            await user.click(screen.getByRole('tab', { name: 'Фото еды' }));
 
-            // Focus on chat tab
-            const chatTab = screen.getByRole('tab', { name: 'Чат' });
-            chatTab.focus();
+            // Focus on the photo tab
+            const photoTab = screen.getByRole('tab', { name: 'Фото еды' });
+            photoTab.focus();
 
             // Press Home
             await user.keyboard('{Home}');
@@ -250,8 +242,8 @@ describe('FoodEntryModal', () => {
             const searchTab = screen.getByRole('tab', { name: 'Поиск' });
             fireEvent.keyDown(searchTab, { key: 'End' });
 
-            // Should go to chat tab
-            expect(screen.getByRole('tab', { name: 'Чат' })).toHaveAttribute('aria-selected', 'true');
+            // Should go to the photo tab (last)
+            expect(screen.getByRole('tab', { name: 'Фото еды' })).toHaveAttribute('aria-selected', 'true');
         });
     });
 
@@ -350,8 +342,8 @@ describe('FoodEntryModal', () => {
                 <FoodEntryModal key="open-1" isOpen={true} onClose={jest.fn()} />
             );
 
-            fireEvent.click(screen.getByRole('tab', { name: 'Чат' }));
-            expect(screen.getByRole('tab', { name: 'Чат' })).toHaveAttribute('aria-selected', 'true');
+            fireEvent.click(screen.getByRole('tab', { name: 'Фото еды' }));
+            expect(screen.getByRole('tab', { name: 'Фото еды' })).toHaveAttribute('aria-selected', 'true');
 
             rerender(<FoodEntryModal key="closed" isOpen={false} onClose={jest.fn()} />);
             rerender(<FoodEntryModal key="open-2" isOpen={true} onClose={jest.fn()} />);

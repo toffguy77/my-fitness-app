@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/burcev/api/internal/modules/auth"
@@ -32,6 +33,10 @@ type Service struct {
 	notifier Notifier
 	// topics may be nil: без моста закрывать нечего.
 	topics TopicCloser
+	// appleRevocations отзывает доступ у Apple после стирания. nil, когда
+	// Sign in with Apple не настроен: токены тогда остаются в очереди до
+	// настройки, стирание от этого не зависит.
+	appleRevocations AppleRevocationAttempter
 	// deletionCoder may be nil; without it a passwordless account cannot
 	// complete RequestDeletion (there is nothing else to check instead of a
 	// password), but every other call in this service is unaffected.
@@ -67,7 +72,9 @@ func (s *Service) WithCodeVerifier(coder DeletionCodeService) *Service {
 // narrowest thing this module needs, so account does not depend on the
 // notifications module's types.
 type Notifier interface {
-	Notify(ctx context.Context, userID int64, notificationType, title, content, actionURL string) error
+	// ids — идентификаторы экрана, который откроет уведомление в приложении
+	// (вид экрана выводится из типа).
+	Notify(ctx context.Context, userID int64, notificationType, title, content, actionURL string, ids map[string]string) error
 }
 
 // WithNotifier attaches the notifier used for export readiness and for telling
@@ -79,11 +86,11 @@ func (s *Service) WithNotifier(notifier Notifier) *Service {
 
 // notify is best effort: an archive that was built and a client who left are
 // both facts already, and a failure to announce them must not undo either.
-func (s *Service) notify(ctx context.Context, userID int64, notificationType, title, content, actionURL string) {
+func (s *Service) notify(ctx context.Context, userID int64, notificationType, title, content, actionURL string, ids map[string]string) {
 	if s.notifier == nil {
 		return
 	}
-	if err := s.notifier.Notify(ctx, userID, notificationType, title, content, actionURL); err != nil {
+	if err := s.notifier.Notify(ctx, userID, notificationType, title, content, actionURL, ids); err != nil {
 		s.log.Error("Failed to send notification", "error", err, "user_id", userID, "type", notificationType)
 	}
 }
@@ -98,6 +105,18 @@ func NewService(db *database.DB, log *logger.Logger, buckets map[string]*storage
 // Узкий интерфейс: стиранию не нужно знать ни про Telegram, ни про форумы.
 type TopicCloser interface {
 	Close(ctx context.Context, clientID int64) error
+}
+
+// AppleRevocationAttempter tries queued Apple revocations at once;
+// *auth.AppleRevocations is one.
+type AppleRevocationAttempter interface {
+	Attempt(ctx context.Context, ids []int64)
+}
+
+// WithAppleRevocations подключает отзыв доступа у Apple при стирании.
+func (s *Service) WithAppleRevocations(revocations AppleRevocationAttempter) *Service {
+	s.appleRevocations = revocations
+	return s
 }
 
 // WithTopics подключает закрытие тем. Без него стирание работает по-прежнему.
@@ -402,5 +421,5 @@ func (s *Service) notifyCurator(ctx context.Context, clientID int64) {
 
 	s.notify(ctx, curatorID, "client_left", "Клиент уходит",
 		"Один из ваших клиентов запросил удаление аккаунта и больше не появится в списках.",
-		"/curator")
+		"/curator", map[string]string{"client_id": strconv.FormatInt(clientID, 10)})
 }

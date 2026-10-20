@@ -177,6 +177,15 @@ export default defineConfig<SessionOptions>({
         'tests/plan-diary-logging.spec.ts',
         // Те же рецепты и свежий клиент, что у плана дня: роль проекта не нужна.
         'tests/shopping-list.spec.ts',
+        // Куратор оставляет отзыв, клиент читает его из уведомления: две роли
+        // в одном файле, роль проекта не нужна.
+        'tests/report-feedback.spec.ts',
+        // Регистрация через Яндекс (заглушка scripts/oauth-stub.mjs): каждый
+        // раз свежий адрес, вход начинается без сессии.
+        'tests/oauth-registration.spec.ts',
+        // Возврат входа в iOS-приложение: страница /auth/native-complete и
+        // вход через ту же заглушку Яндекса с client=ios — без сессии.
+        'tests/native-complete.spec.ts',
       ],
     },
   ],

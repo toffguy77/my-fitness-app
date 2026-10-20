@@ -93,8 +93,8 @@ func TestGetClients(t *testing.T) {
 			WillReturnRows(unreadRows)
 
 		// Weight data query (getWeightData)
-		weightDataColumns := []string{"user_id", "weight", "date"}
-		mock.ExpectQuery(`SELECT user_id, weight, date FROM`).
+		weightDataColumns := []string{"user_id", "weight", "date", "weight_source"}
+		mock.ExpectQuery(`SELECT user_id, weight, date, weight_source FROM`).
 			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows(weightDataColumns))
 
@@ -199,9 +199,9 @@ func TestGetClients(t *testing.T) {
 			WillReturnRows(unreadRows)
 
 		// Weight data query (getWeightData)
-		mock.ExpectQuery(`SELECT user_id, weight, date FROM`).
+		mock.ExpectQuery(`SELECT user_id, weight, date, weight_source FROM`).
 			WithArgs([]int64{1}).
-			WillReturnRows(sqlmock.NewRows([]string{"user_id", "weight", "date"}))
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "weight", "date", "weight_source"}))
 
 		// Target weights query (getTargetWeights)
 		mock.ExpectQuery(`SELECT user_id, target_weight FROM user_settings`).
@@ -314,11 +314,13 @@ func TestGetClientDetail(t *testing.T) {
 				AddRow(time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC), 6, 8, 250))
 
 		// Daily metrics (steps, workout)
-		metricsColumns := []string{"date", "steps", "workout_completed", "workout_type", "workout_duration"}
+		metricsColumns := []string{"date", "steps", "workout_completed", "workout_type", "workout_duration",
+			"weight", "steps_source", "weight_source", "workout_source"}
 		mock.ExpectQuery(`SELECT date, steps, workout_completed`).
 			WithArgs(clientID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 			WillReturnRows(sqlmock.NewRows(metricsColumns).
-				AddRow(time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC), int64(8500), true, "cardio", 45))
+				AddRow(time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC), int64(8500), true, "cardio", 45,
+					75.5, "healthkit", "healthkit", "manual"))
 
 		// Weekly photos
 		photoColumns := []string{"id", "photo_url", "week_start", "week_end", "uploaded_at"}
@@ -338,11 +340,11 @@ func TestGetClientDetail(t *testing.T) {
 				AddRow(2000.0, 150.0, 70.0, 250.0))
 
 		// Weight history
-		mock.ExpectQuery(`SELECT date, weight FROM daily_metrics`).
+		mock.ExpectQuery(`SELECT date, weight, weight_source FROM daily_metrics`).
 			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"date", "weight"}).
-				AddRow(time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC), 76.0).
-				AddRow(time.Date(2026, 2, 27, 0, 0, 0, 0, time.UTC), 75.5))
+			WillReturnRows(sqlmock.NewRows([]string{"date", "weight", "weight_source"}).
+				AddRow(time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC), 76.0, "manual").
+				AddRow(time.Date(2026, 2, 27, 0, 0, 0, 0, time.UTC), 75.5, "healthkit"))
 
 		// Unread count
 		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
@@ -397,6 +399,16 @@ func TestGetClientDetail(t *testing.T) {
 		assert.Equal(t, "cardio", day.Workout.Type)
 		assert.Equal(t, 45, day.Workout.Duration)
 
+		// Источники метрик дня (daily-metric-source)
+		require.NotNil(t, day.Weight)
+		assert.Equal(t, 75.5, *day.Weight)
+		require.NotNil(t, day.StepsSource)
+		assert.Equal(t, "healthkit", *day.StepsSource)
+		require.NotNil(t, day.WeightSource)
+		assert.Equal(t, "healthkit", *day.WeightSource)
+		require.NotNil(t, day.WorkoutSource)
+		assert.Equal(t, "manual", *day.WorkoutSource)
+
 		// Check photos
 		require.Len(t, detail.Photos, 1)
 		assert.Equal(t, "photo-1", detail.Photos[0].ID)
@@ -415,6 +427,10 @@ func TestGetClientDetail(t *testing.T) {
 		// Check weight from embedded ClientCard
 		require.NotNil(t, detail.LastWeight)
 		assert.Equal(t, 75.5, *detail.LastWeight)
+		require.NotNil(t, detail.LastWeightSource)
+		assert.Equal(t, "healthkit", *detail.LastWeightSource)
+		require.NotNil(t, detail.WeightHistory[0].Source)
+		assert.Equal(t, "manual", *detail.WeightHistory[0].Source)
 
 		// Check target weight
 		require.NotNil(t, detail.TargetWeight)
@@ -472,7 +488,8 @@ func TestGetClientDetail(t *testing.T) {
 		// Empty metrics
 		mock.ExpectQuery(`SELECT date, steps, workout_completed`).
 			WithArgs(clientID, sqlmock.AnyArg(), sqlmock.AnyArg()).
-			WillReturnRows(sqlmock.NewRows([]string{"date", "steps", "workout_completed", "workout_type", "workout_duration"}))
+			WillReturnRows(sqlmock.NewRows([]string{"date", "steps", "workout_completed", "workout_type", "workout_duration",
+				"weight", "steps_source", "weight_source", "workout_source"}))
 
 		// Empty photos
 		mock.ExpectQuery(`SELECT id, photo_url, week_start, week_end, uploaded_at`).
@@ -486,9 +503,9 @@ func TestGetClientDetail(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows(planColumns))
 
 		// No weight history
-		mock.ExpectQuery(`SELECT date, weight FROM daily_metrics`).
+		mock.ExpectQuery(`SELECT date, weight, weight_source FROM daily_metrics`).
 			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"date", "weight"}))
+			WillReturnRows(sqlmock.NewRows([]string{"date", "weight", "weight_source"}))
 
 		// No unread
 		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).

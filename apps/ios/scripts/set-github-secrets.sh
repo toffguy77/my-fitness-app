@@ -3,8 +3,9 @@
 # GitHub этого репозитория. Значения не печатаются.
 #
 # Команда Apple у приложений общая (3GWRDGA8B7), поэтому ключ App Store Connect
-# и сертификат дистрибуции те же; профиль под team.burcev.app fastlane выпускает
-# сам при сборке.
+# и сертификат дистрибуции те же; профили «Взвешено» — team.burcev.app (прод) и
+# team.burcev.app.dev (dev), каждый со своим .widget — fastlane выпускает сам
+# при сборке (lane beta, APP_ENV=dev|prod).
 #
 # Запуск из корня репозитория:
 #   apps/ios/scripts/set-github-secrets.sh [путь к lorito/secrets]

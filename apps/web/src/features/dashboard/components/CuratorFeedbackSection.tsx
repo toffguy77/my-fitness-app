@@ -8,12 +8,14 @@
  * - Recommendations (if any)
  * - Collapsible (collapsed by default)
  *
- * Only renders when a reportId is provided.
+ * Only renders when a reportId is provided. The dashboard passes one from
+ * `?report=<id>` — the link in the «feedback received» notification — and then
+ * opens the block and scrolls to it: the person came here to read it.
  */
 
 'use client'
 
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import { ChevronDown, MessageSquare } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { dashboardApi } from '../api/dashboardApi'
@@ -25,6 +27,10 @@ import { t } from '@/shared/i18n'
  */
 export interface CuratorFeedbackSectionProps {
     reportId?: string
+    /** Show the ratings, summary and recommendations without a click. */
+    defaultExpanded?: boolean
+    /** Scroll the block into view once the feedback has loaded. */
+    scrollIntoViewOnLoad?: boolean
     className?: string
 }
 
@@ -65,11 +71,14 @@ function getCategoryName(category: string): string {
  */
 export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
     reportId,
+    defaultExpanded = false,
+    scrollIntoViewOnLoad = false,
     className,
 }: CuratorFeedbackSectionProps) {
     const [feedback, setFeedback] = useState<CuratorFeedback | null>(null)
     const [loading, setLoading] = useState(false)
-    const [expanded, setExpanded] = useState(false)
+    const [expanded, setExpanded] = useState(defaultExpanded)
+    const sectionRef = useRef<HTMLElement>(null)
 
     useEffect(() => {
         if (!reportId) return
@@ -93,6 +102,12 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
         }
     }, [reportId])
 
+    // Прокрутка — после загрузки: до неё блока нет, и прокручивать некуда.
+    useEffect(() => {
+        if (!scrollIntoViewOnLoad || !feedback) return
+        sectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    }, [scrollIntoViewOnLoad, feedback])
+
     // Don't render if no reportId or no feedback
     if (!reportId) return null
     if (loading) return null
@@ -106,6 +121,7 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
     // итог недели — цитатой засечками, как в карточке куратора.
     return (
         <section
+            ref={sectionRef}
             className={cn('rounded-card bg-coach p-5 text-on-coach', className)}
             aria-labelledby="curator-feedback-heading"
         >

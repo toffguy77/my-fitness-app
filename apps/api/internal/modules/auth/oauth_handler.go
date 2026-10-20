@@ -29,6 +29,20 @@ type OAuthHandler struct {
 	leads LeadClaimer
 	// analytics may be nil; nothing depends on it being there.
 	analytics EventRecorder
+	// apple is nil when Sign in with Apple is not configured; its endpoints
+	// then answer 503 feature_unavailable.
+	apple AppleAuthenticator
+}
+
+// AppleAuthenticator is what the Apple endpoints need; *oauth.Apple is one.
+type AppleAuthenticator interface {
+	Authenticate(ctx context.Context, in oauth.AppleCredential) (*oauth.Profile, error)
+}
+
+// WithApple attaches Sign in with Apple.
+func (h *OAuthHandler) WithApple(apple AppleAuthenticator) *OAuthHandler {
+	h.apple = apple
+	return h
 }
 
 // WithAnalytics attaches the recorder for facts a browser cannot report.
@@ -65,6 +79,12 @@ func (h *OAuthHandler) WithLeads(claimer LeadClaimer) *OAuthHandler {
 // and carries no request body. What happened before the sign-up therefore
 // stays anonymous on this path.
 func (h *OAuthHandler) recordOutcome(ctx context.Context, outcome *OAuthOutcome, provider string) {
+	h.recordOutcomeFor(ctx, outcome, provider, ClientWeb)
+}
+
+// recordOutcomeFor is recordOutcome naming the client: the app's sign-ins
+// carry client=ios, so the funnel can tell them from the site's.
+func (h *OAuthHandler) recordOutcomeFor(ctx context.Context, outcome *OAuthOutcome, provider string, client ClientKind) {
 	if h.analytics == nil || outcome == nil {
 		return
 	}
@@ -79,8 +99,11 @@ func (h *OAuthHandler) recordOutcome(ctx context.Context, outcome *OAuthOutcome,
 		return
 	}
 
-	h.analytics.RecordServerEvent(ctx, name, outcome.User.User.ID,
-		map[string]any{"method": provider})
+	properties := map[string]any{"method": provider}
+	if client == ClientIOS {
+		properties["client"] = string(ClientIOS)
+	}
+	h.analytics.RecordServerEvent(ctx, name, outcome.User.User.ID, properties)
 }
 
 func NewOAuthHandler(cfg *config.Config, log *logger.Logger, service *Service, registry *oauth.Registry) *OAuthHandler {
@@ -112,7 +135,13 @@ const (
 // The sign-in screen asks rather than assuming: a deployment without
 // credentials for a provider must not offer a button that cannot work.
 func (h *OAuthHandler) Providers(c *gin.Context) {
-	response.Success(c, http.StatusOK, gin.H{"providers": h.registry.Names()})
+	names := h.registry.Names()
+	// Apple signs in from the app only (no browser flow), but the app reads
+	// this same list; the site's buttons leave out what it cannot start.
+	if h.apple != nil {
+		names = append(names, "apple")
+	}
+	response.Success(c, http.StatusOK, gin.H{"providers": names})
 }
 
 // Start handles GET /api/v1/auth/oauth/:provider.
@@ -131,15 +160,32 @@ func (h *OAuthHandler) Start(c *gin.Context) {
 		return
 	}
 
+	// Вход из приложения: client=ios и PKCE-вызов приложения (см.
+	// native_oauth.go). Без client — обычный вход сайта. Неизвестный client
+	// или ios без верного вызова — ошибка, а не тихий вход сайта: приложение
+	// иначе получило бы cookie, которую не может прочитать.
+	challenge := ""
+	switch client := c.Query("client"); client {
+	case "":
+	case string(ClientIOS):
+		challenge = c.Query("app_challenge")
+		if !appChallengePattern.MatchString(challenge) {
+			response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation,
+				"Нужен app_challenge: BASE64URL(SHA256(code_verifier))")
+			return
+		}
+	default:
+		response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation, "Неизвестный client")
+		return
+	}
+
 	h.setFlowCookie(c, stateCookie, pkce.State)
 	h.setFlowCookie(c, verifierCookie, pkce.Verifier)
 	h.setFlowCookie(c, providerCookie, name)
-	// Вход из iOS-приложения: хэш его секрета, см. oauth_app.go. Без него —
-	// обычный вход сайта; чужая строка вместо хэша просто не принимается.
-	if challenge := c.Query("app_challenge"); appChallengePattern.MatchString(challenge) {
-		h.setFlowCookie(c, appChallengeCookie, challenge)
+	if challenge != "" {
+		h.setFlowCookie(c, nativeChallengeCookie, challenge)
 	} else {
-		c.SetCookie(appChallengeCookie, "", -1, "/api/v1/auth", "", true, true)
+		c.SetCookie(nativeChallengeCookie, "", -1, "/api/v1/auth", "", true, true)
 	}
 
 	c.Redirect(http.StatusFound,
@@ -149,6 +195,9 @@ func (h *OAuthHandler) Start(c *gin.Context) {
 // Callback handles GET /api/v1/auth/oauth/:provider/callback.
 func (h *OAuthHandler) Callback(c *gin.Context) {
 	name := c.Param("provider")
+	// Read before clearFlowCookies: whether the attempt belongs to the app
+	// decides where every outcome below goes, failures included.
+	challenge := nativeChallenge(c)
 
 	// The user declined at the provider; that is a choice, not a failure.
 	if reason := c.Query("error"); reason != "" {
@@ -204,6 +253,11 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 		return
 	}
 
+	if challenge != "" {
+		h.handOffToApp(c, name, profile, challenge)
+		return
+	}
+
 	outcome, err := h.service.SignInWithProvider(c.Request.Context(), name, profile,
 		c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
@@ -212,18 +266,7 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 		return
 	}
 
-	// A registration through a provider carries the guest's answers across in
-	// the same way a password registration does; without this, one of the two
-	// paths would silently ask everything again.
-	if outcome.Result == OAuthRegistered {
-		token, _ := c.Cookie(leadCookie)
-		carryArrival(c, h.leads, h.log, outcome.User.User.ID, token)
-		if token != "" {
-			c.SetCookie(leadCookie, "", -1, "/", "", true, true)
-		}
-	}
-
-	h.recordOutcome(c.Request.Context(), outcome, name)
+	h.afterSignIn(c, outcome, name)
 
 	switch outcome.Result {
 	case OAuthSignedIn, OAuthRegistered:
@@ -243,7 +286,36 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 			return
 		}
 		h.redirectToApp(c, "/auth/email?"+url.Values{"provider": {name}}.Encode())
+	case OAuthNeedsConsents:
+		// No account yet — or one without the mandatory consents. The screen
+		// asks for them and POST /auth/oauth/consents finishes the attempt.
+		if !h.parkPending(c, name, profile) {
+			return
+		}
+		h.redirectToApp(c, ConsentsPath+"?"+url.Values{"provider": {name}}.Encode())
 	}
+}
+
+// ConsentsPath is the screen an external sign-in is sent to when it needs the
+// mandatory consents first.
+const ConsentsPath = "/auth/consents"
+
+// afterSignIn does what follows any finished external sign-in, wherever it
+// finished: in the callback or on the consents screen.
+//
+// A registration through a provider carries the guest's answers across in the
+// same way a password registration does; without this, one of the two paths
+// would silently ask everything again. And the outcome is recorded, or the
+// funnel shows every account arriving by password.
+func (h *OAuthHandler) afterSignIn(c *gin.Context, outcome *OAuthOutcome, provider string) {
+	if outcome.Result == OAuthRegistered {
+		token, _ := c.Cookie(leadCookie)
+		carryArrival(c, h.leads, h.log, outcome.User.User.ID, token)
+		if token != "" {
+			c.SetCookie(leadCookie, "", -1, "/", "", true, true)
+		}
+	}
+	h.recordOutcome(c.Request.Context(), outcome, provider)
 }
 
 // LinkedProviders handles GET /api/v1/auth/providers/linked.
@@ -311,6 +383,11 @@ func (h *OAuthHandler) redirectURI(provider string) string {
 }
 
 func (h *OAuthHandler) appOrigin() string {
+	// Local runs and the end-to-end suite: back through the routing proxy,
+	// not Next, which drops the flow's Set-Cookie. Refused in production.
+	if h.cfg.OAuthAppOrigin != "" {
+		return h.cfg.OAuthAppOrigin
+	}
 	if h.cfg.AppDomain == "" {
 		return "http://localhost:3069"
 	}
@@ -318,20 +395,16 @@ func (h *OAuthHandler) appOrigin() string {
 }
 
 func (h *OAuthHandler) redirectToApp(c *gin.Context, path string) {
-	// Вход, начатый из iOS-приложения, возвращается туда же, а не на сайт.
-	if appChallenge(c) != "" {
-		redirectToAppClient(c, h.appOrigin(), path)
+	// Вход, начатый из iOS-приложения, и отказ возвращает туда же.
+	if nativeChallenge(c) != "" {
+		h.redirectToNativeFailure(c, path)
 		return
 	}
 	c.Redirect(http.StatusFound, h.appOrigin()+path)
 }
 
-// redirectWithSession hands the session to the app.
+// redirectWithSession hands the session to the site.
 func (h *OAuthHandler) redirectWithSession(c *gin.Context, outcome *OAuthOutcome) {
-	if challenge := appChallenge(c); challenge != "" {
-		h.handoffToApp(c, outcome, challenge)
-		return
-	}
 	// The refresh token goes in an HttpOnly cookie so it never reaches
 	// JavaScript, the URL, or anything that logs URLs.
 	c.SetSameSite(http.SameSiteLaxMode)
@@ -373,7 +446,7 @@ func (h *OAuthHandler) setFlowCookie(c *gin.Context, name, value string) {
 }
 
 func (h *OAuthHandler) clearFlowCookies(c *gin.Context) {
-	for _, name := range []string{stateCookie, verifierCookie, providerCookie, appChallengeCookie} {
+	for _, name := range []string{stateCookie, verifierCookie, providerCookie, nativeChallengeCookie} {
 		c.SetCookie(name, "", -1, "/api/v1/auth", "", true, true)
 	}
 }
@@ -407,6 +480,9 @@ func (h *OAuthHandler) ConfirmLink(c *gin.Context) {
 	}
 
 	pendingID, err := c.Cookie(pendingCookie)
+	if err == nil && pendingID != "" && !requireCanonicalPending(c, pendingID) {
+		return
+	}
 	if err != nil || pendingID == "" {
 		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
 		return
@@ -440,14 +516,19 @@ func (h *OAuthHandler) ConfirmLink(c *gin.Context) {
 	}
 
 	h.clearPendingCookie(c)
+	// Как у входа по паролю: refresh-токен — в HttpOnly-cookie. Без неё
+	// браузер, получивший только access-токен, выходил при перезагрузке.
+	setSessionCookies(c, result.RefreshToken, true)
 	response.Success(c, http.StatusOK, result)
 }
 
 // CompleteEmail handles POST /api/v1/auth/oauth/email.
 //
 // Used when the provider returned no address. The address comes from the user,
-// so it is unverified: a new account starts unverified, and an existing one
-// still has to be claimed with its password.
+// so it is unverified: an existing account still has to be claimed with its
+// password (result needs_link_confirmation), and a new one is created only on
+// the consents screen (result needs_consents), starting unverified. This step
+// issues no session.
 func (h *OAuthHandler) CompleteEmail(c *gin.Context) {
 	var req struct {
 		Email string `json:"email" binding:"required,email"`
@@ -458,6 +539,9 @@ func (h *OAuthHandler) CompleteEmail(c *gin.Context) {
 	}
 
 	pendingID, err := c.Cookie(pendingCookie)
+	if err == nil && pendingID != "" && !requireCanonicalPending(c, pendingID) {
+		return
+	}
 	if err != nil || pendingID == "" {
 		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
 		return
@@ -477,9 +561,92 @@ func (h *OAuthHandler) CompleteEmail(c *gin.Context) {
 		return
 	}
 
-	if outcome.Result == OAuthNeedsLinkConfirmation {
+	switch outcome.Result {
+	case OAuthNeedsLinkConfirmation:
 		// The address belongs to somebody already; the pending row stays so the
 		// confirmation step can finish the same attempt.
+		response.Success(c, http.StatusOK, gin.H{
+			"result": string(OAuthNeedsLinkConfirmation),
+			"email":  outcome.Email,
+		})
+	case OAuthNeedsConsents:
+		// A new address: the account is created on the consents screen, from
+		// the same attempt — so the pending cookie stays.
+		response.Success(c, http.StatusOK, gin.H{
+			"result": string(OAuthNeedsConsents),
+		})
+	default:
+		// Сессии этот шаг не выдаёт: аккаунт заводится только после согласий.
+		h.log.Error("Unexpected outcome of completing a sign-in with an address", "result", outcome.Result)
+		response.InternalError(c, "Не удалось завершить вход")
+	}
+}
+
+// OAuthConsentsRequest is the body of POST /api/v1/auth/oauth/consents.
+type OAuthConsentsRequest struct {
+	Consents *ConsentsInput `json:"consents"`
+}
+
+// CompleteConsents handles POST /api/v1/auth/oauth/consents.
+//
+// The callback sent the person here instead of creating an account (or
+// letting in one that never consented). The attempt is identified by the
+// oauth_pending cookie; the profile never left the server.
+//
+// Answers as the other completion steps do: 200 with the session (user,
+// token) and the refresh token in an HttpOnly cookie; or 200 with
+// result=needs_link_confirmation when the address has meanwhile become an
+// account's. 400 validation without the mandatory consents — nothing is
+// written; 400 token_invalid when the attempt is gone.
+func (h *OAuthHandler) CompleteConsents(c *gin.Context) {
+	var req OAuthConsentsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+	if !consentsComplete(req.Consents) {
+		response.Error(c, http.StatusBadRequest,
+			"Нужно согласие на условия, политику конфиденциальности и обработку данных")
+		return
+	}
+
+	pendingID, err := c.Cookie(pendingCookie)
+	if err == nil && pendingID != "" && !requireCanonicalPending(c, pendingID) {
+		return
+	}
+	if err != nil || pendingID == "" {
+		response.Fail(c, http.StatusBadRequest, apperrors.ErrTokenInvalid,
+			"Попытка входа истекла. Начните заново.")
+		return
+	}
+
+	outcome, err := h.service.CompleteWithConsents(c.Request.Context(), pendingID,
+		req.Consents, c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrValidation):
+		response.Error(c, http.StatusBadRequest,
+			"Нужно согласие на условия, политику конфиденциальности и обработку данных")
+		return
+	case errors.Is(err, apperrors.ErrTokenInvalid):
+		h.clearPendingCookie(c)
+		response.Fail(c, http.StatusBadRequest, apperrors.ErrTokenInvalid,
+			"Попытка входа истекла. Начните заново.")
+		return
+	case errors.Is(err, apperrors.ErrConflict):
+		h.clearPendingCookie(c)
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+			"Этот адрес уже зарегистрирован. Войдите заново.", nil)
+		return
+	default:
+		h.log.Error("Failed to complete external sign-in with consents", "error", err)
+		response.InternalError(c, "Не удалось завершить вход")
+		return
+	}
+
+	if outcome.Result == OAuthNeedsLinkConfirmation {
+		// Адрес за это время занял другой аккаунт: попытка остаётся, чтобы
+		// шаг подтверждения паролем завершил её.
 		response.Success(c, http.StatusOK, gin.H{
 			"result": string(OAuthNeedsLinkConfirmation),
 			"email":  outcome.Email,
@@ -487,7 +654,9 @@ func (h *OAuthHandler) CompleteEmail(c *gin.Context) {
 		return
 	}
 
+	h.afterSignIn(c, outcome, outcome.Provider)
 	h.clearPendingCookie(c)
+	setSessionCookies(c, outcome.User.RefreshToken, true)
 	response.Success(c, http.StatusOK, outcome.User)
 }
 

@@ -571,4 +571,32 @@ describe('StepsBlock', () => {
             expect(card).toBeInTheDocument()
         })
     })
+
+    describe('Источник шагов', () => {
+        const withSteps = (steps: number, stepsSource: DailyMetrics['stepsSource']) => {
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                dailyData: { [dateStr]: { date: dateStr, steps, stepsSource } as DailyMetrics },
+                weeklyPlan: { stepsGoal: 10000 } as WeeklyPlan,
+                updateMetric: mockUpdateMetric,
+            })
+        }
+
+        it('подписывает шаги из Здоровья', () => {
+            withSteps(6412, 'healthkit')
+            render(<StepsBlock date={testDate} />)
+            expect(screen.getByText('из Здоровья')).toBeInTheDocument()
+        })
+
+        it('не подписывает введённые вручную', () => {
+            withSteps(8000, 'manual')
+            render(<StepsBlock date={testDate} />)
+            expect(screen.queryByText('из Здоровья')).not.toBeInTheDocument()
+        })
+
+        it('не подписывает пустое значение', () => {
+            withSteps(0, null)
+            render(<StepsBlock date={testDate} />)
+            expect(screen.queryByText('из Здоровья')).not.toBeInTheDocument()
+        })
+    })
 })

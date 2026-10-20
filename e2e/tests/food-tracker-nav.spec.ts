@@ -81,3 +81,56 @@ test.describe('Food Tracker Navigation & Tabs', () => {
     await foodTracker.expectMealSlotsVisible()
   })
 })
+
+/**
+ * Быстрая запись со вчерашнего дня дашборда ведёт сюда с
+ * `?date=<вчера>&add=search`. Раньше дневник брал дату только из своего
+ * состояния и открывался на сегодня: запись уходила не в тот день, и заметить
+ * это можно было только по пропаже еды из вчерашнего итога.
+ */
+test.describe('Дневник по ссылке с датой', () => {
+  const MONTHS = [
+    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+  ]
+
+  test('быстрая запись со вчерашнего дня открывает вчера', async ({ page }) => {
+    // «Вчера» — по часам браузера: так же его считают и дашборд, и дневник.
+    await page.goto('/')
+    const yesterday = await page.evaluate(() => {
+      const d = new Date()
+      d.setDate(d.getDate() - 1)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      return {
+        iso: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+        day: d.getDate(),
+        month: d.getMonth(),
+      }
+    })
+
+    const dayRequest = page.waitForRequest(
+      (request) => request.url().includes('/api/v1/food-tracker') && request.url().includes(`date=${yesterday.iso}`),
+      { timeout: 15000 },
+    )
+    await page.goto(`/food-tracker?date=${yesterday.iso}&add=search`)
+
+    // Выбран вчерашний день: на кнопке календаря его число, без «Сегодня»,
+    // и шаг вперёд доступен — с сегодняшнего он выключен.
+    const dateButton = page.getByLabel('Открыть календарь')
+    await expect(dateButton).toHaveText(new RegExp(`^\\s*${yesterday.day} ${MONTHS[yesterday.month]}\\s*$`, 'i'))
+    await expect(page.getByLabel('Следующий день')).toBeEnabled()
+    await dayRequest
+
+    // И окно добавления открыто сразу на поиске.
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible({ timeout: 10000 })
+    await expect(dialog.getByRole('tab', { name: 'Поиск' })).toHaveAttribute('aria-selected', 'true')
+    await expect(dialog.getByPlaceholder('Поиск блюд и продуктов')).toBeVisible()
+  })
+
+  test('мусор в дате открывает сегодня', async ({ page }) => {
+    await page.goto('/food-tracker?date=вчера')
+    await expect(page.getByLabel('Открыть календарь')).toContainText('Сегодня')
+    await expect(page.getByLabel('Следующий день')).toBeDisabled()
+  })
+})

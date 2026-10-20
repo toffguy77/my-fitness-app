@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import type { MetricSource } from '@/shared/components/ui/HealthSourceLabel'
 
 export type CuratorNavigationItemId = 'hub' | 'chats' | 'content' | 'recipes' | 'leads' | 'support' | 'profile'
 
@@ -37,6 +38,8 @@ export interface ClientCard {
     alerts: Alert[]
     unread_count: number
     last_weight: number | null
+    /** Откуда последний вес: manual | healthkit; null — веса нет. */
+    last_weight_source?: MetricSource | null
     weight_trend: 'up' | 'down' | 'stable' | ''
     target_weight: number | null
     today_water: WaterView | null
@@ -72,6 +75,7 @@ export interface FoodEntryView {
 export interface WeightHistoryPoint {
     date: string
     weight: number
+    source?: MetricSource | null
 }
 
 export interface WaterView {
@@ -103,6 +107,11 @@ export interface DayDetail {
     water: WaterView | null
     steps: number
     workout: WorkoutView | null
+    // Вес даты и источники метрик дня (daily-metric-source); null — значения нет.
+    weight?: number | null
+    steps_source?: MetricSource | null
+    weight_source?: MetricSource | null
+    workout_source?: MetricSource | null
 }
 
 export interface ClientDetail extends ClientCard {

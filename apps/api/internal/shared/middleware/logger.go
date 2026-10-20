@@ -96,6 +96,15 @@ var secretParams = map[string]struct{}{
 	"password":      {},
 	"access_token":  {},
 	"secret":        {},
+	// Секреты нативного входа (ios-native-session). Приходят они в теле, а
+	// тело журнал не пишет; но имя в адресе попадает в журнал целиком, и
+	// клиент, однажды положивший поле не туда, не должен оставить его там.
+	"identity_token":     {},
+	"authorization_code": {},
+	"code_verifier":      {},
+	"verifier":           {},
+	"current_password":   {},
+	"new_password":       {},
 }
 
 // maskSecrets replaces the values of sensitive query parameters.

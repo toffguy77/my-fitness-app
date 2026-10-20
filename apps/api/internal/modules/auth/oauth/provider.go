@@ -23,6 +23,11 @@ type Profile struct {
 	Email     string
 	Name      string
 	AvatarURL string
+	// SealedRefreshToken is the provider's own refresh token, encrypted by
+	// the adapter that obtained it (see Sealer), kept so the access can be
+	// revoked when the account is deleted. Only Apple sets it; it is opaque
+	// to everything outside the adapter.
+	SealedRefreshToken string
 }
 
 // ExchangeRequest is what the callback hands the adapter.

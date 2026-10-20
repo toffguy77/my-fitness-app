@@ -75,8 +75,10 @@ type CreateFoodEntryRequest struct {
 	FoodName string  `json:"food_name" binding:"required"`
 	MealType string  `json:"meal_type" binding:"required,oneof=breakfast lunch dinner snack"`
 	Weight   float64 `json:"weight" binding:"required,gt=0"`
-	Calories float64 `json:"calories" binding:"required,gte=0"`
-	Protein  float64 `json:"protein" binding:"required,gte=0"`
-	Fat      float64 `json:"fat" binding:"required,gte=0"`
-	Carbs    float64 `json:"carbs" binding:"required,gte=0"`
+	// No `required` on the nutrients: for a float it means "not zero", and
+	// chicken breast has no carbs — such an entry answered 400.
+	Calories float64 `json:"calories" binding:"gte=0"`
+	Protein  float64 `json:"protein" binding:"gte=0"`
+	Fat      float64 `json:"fat" binding:"gte=0"`
+	Carbs    float64 `json:"carbs" binding:"gte=0"`
 }

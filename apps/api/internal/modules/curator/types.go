@@ -4,31 +4,33 @@ import "encoding/json"
 
 // ClientCard represents a summary view of a client for the curator dashboard
 type ClientCard struct {
-	ID                 int64       `json:"id"`
-	Name               string      `json:"name"`
-	AvatarURL          string      `json:"avatar_url,omitempty"`
-	TodayKBZHU         *DailyKBZHU `json:"today_kbzhu"`
-	Plan               *PlanKBZHU  `json:"plan"`
-	Alerts             []Alert     `json:"alerts"`
-	UnreadCount        int         `json:"unread_count"`
-	LastWeight         *float64    `json:"last_weight"`
-	WeightTrend        string      `json:"weight_trend"`
-	TargetWeight       *float64    `json:"target_weight"`
-	TodayWater         *WaterView  `json:"today_water"`
-	Email              string      `json:"email,omitempty"`
-	Height             *float64    `json:"height,omitempty"`
-	Timezone           string      `json:"timezone,omitempty"`
-	TelegramUsername   string      `json:"telegram_username,omitempty"`
-	InstagramUsername  string      `json:"instagram_username,omitempty"`
-	BirthDate          *string     `json:"birth_date,omitempty"`
-	BiologicalSex      *string     `json:"biological_sex,omitempty"`
-	ActivityLevel      *string     `json:"activity_level,omitempty"`
-	FitnessGoal        *string     `json:"fitness_goal,omitempty"`
-	WeeklyKBZHUPercent *float64    `json:"weekly_kbzhu_percent,omitempty"`
-	ActiveTasksCount   int         `json:"active_tasks_count"`
-	OverdueTasksCount  int         `json:"overdue_tasks_count"`
-	LastActivityDate   *string     `json:"last_activity_date,omitempty"`
-	StreakDays         int         `json:"streak_days"`
+	ID          int64       `json:"id"`
+	Name        string      `json:"name"`
+	AvatarURL   string      `json:"avatar_url,omitempty"`
+	TodayKBZHU  *DailyKBZHU `json:"today_kbzhu"`
+	Plan        *PlanKBZHU  `json:"plan"`
+	Alerts      []Alert     `json:"alerts"`
+	UnreadCount int         `json:"unread_count"`
+	LastWeight  *float64    `json:"last_weight"`
+	// Источник последнего веса: "manual" | "healthkit" | null (daily-metric-source).
+	LastWeightSource   *string    `json:"last_weight_source"`
+	WeightTrend        string     `json:"weight_trend"`
+	TargetWeight       *float64   `json:"target_weight"`
+	TodayWater         *WaterView `json:"today_water"`
+	Email              string     `json:"email,omitempty"`
+	Height             *float64   `json:"height,omitempty"`
+	Timezone           string     `json:"timezone,omitempty"`
+	TelegramUsername   string     `json:"telegram_username,omitempty"`
+	InstagramUsername  string     `json:"instagram_username,omitempty"`
+	BirthDate          *string    `json:"birth_date,omitempty"`
+	BiologicalSex      *string    `json:"biological_sex,omitempty"`
+	ActivityLevel      *string    `json:"activity_level,omitempty"`
+	FitnessGoal        *string    `json:"fitness_goal,omitempty"`
+	WeeklyKBZHUPercent *float64   `json:"weekly_kbzhu_percent,omitempty"`
+	ActiveTasksCount   int        `json:"active_tasks_count"`
+	OverdueTasksCount  int        `json:"overdue_tasks_count"`
+	LastActivityDate   *string    `json:"last_activity_date,omitempty"`
+	StreakDays         int        `json:"streak_days"`
 }
 
 // DailyKBZHU represents daily nutrition totals (calories, protein, fat, carbs)
@@ -57,6 +59,8 @@ type Alert struct {
 type WeightHistoryPoint struct {
 	Date   string  `json:"date"`
 	Weight float64 `json:"weight"`
+	// "manual" | "healthkit" (daily-metric-source).
+	Source *string `json:"source"`
 }
 
 // ClientDetail represents a detailed view of a single client for the curator
@@ -79,6 +83,12 @@ type DayDetail struct {
 	Water       *WaterView      `json:"water"`
 	Steps       int             `json:"steps"`
 	Workout     *WorkoutView    `json:"workout"`
+	// Вес даты и источники метрик дня: "manual" | "healthkit" | null, если
+	// значения нет (daily-metric-source).
+	Weight        *float64 `json:"weight"`
+	StepsSource   *string  `json:"steps_source"`
+	WeightSource  *string  `json:"weight_source"`
+	WorkoutSource *string  `json:"workout_source"`
 }
 
 // WaterView represents water intake data for a day

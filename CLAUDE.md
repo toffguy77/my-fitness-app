@@ -47,6 +47,19 @@ make build-web    # Next.js production build (standalone output)
 make build-api    # Go binary → apps/api/bin/server
 ```
 
+### iOS (`apps/ios`)
+Mac нет: для iOS Swift компилируется только в CI (`.github/workflows/ios.yml`,
+задача `ios`). Перед каждым пушем — локальная петля в Docker:
+```bash
+# Ядро VzveshenoKit (Foundation): монтируется весь репозиторий — Generated
+# ведёт в packages/design-tokens, тесты сверяются с apps/api.
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/repo \
+  -w /repo/apps/ios/VzveshenoKit swift-sqlite:6.2 swift test   # swift:6.2-noble + libsqlite3-dev
+docker run --rm -v "$PWD/apps/ios":/work -w /work ghcr.io/realm/swiftlint:latest lint --strict
+```
+На Mac: `cd apps/ios && xcodegen generate && swiftlint --strict && xcodebuild test -scheme Vzvesheno-Dev -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.5'`.
+Схемы, среды, подпись и lanes — `apps/ios/README.md`.
+
 ## Architecture
 
 ### Monorepo Layout
@@ -56,7 +69,8 @@ make build-api    # Go binary → apps/api/bin/server
 - `packages/ui/` — Shared React UI components (@burcev/ui)
 - `packages/utils/` — Shared utilities (@burcev/utils)
 - `packages/config/` — Shared ESLint/TypeScript configs (@burcev/config)
-- `packages/design-tokens/` — Design tokens (@burcev/design-tokens): W3C DTCG source → CSS, Tailwind theme, JS, JSON for mobile
+- `packages/design-tokens/` — Design tokens (@burcev/design-tokens): W3C DTCG source → CSS, Tailwind theme, JS, JSON, Swift + asset catalog (`dist/ios`)
+- `apps/ios/` — iOS app «Взвешено»: SwiftUI, iOS 18, XcodeGen (`project.yml`), local package `VzveshenoKit`; 0.3.x code kept in `apps/ios/_legacy/` for porting only
 
 ### Frontend (`apps/web/src/`)
 Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
@@ -142,6 +156,10 @@ the Metrika work were nearly shipped dead.
   отключена в теме и запрещена ESLint, как и цвет литералом. В SVG и графиках —
   `color.*` из `@burcev/design-tokens` или `@/shared/charts/chartTheme`.
 - **`dark:` для цвета не нужен** — роли переключаются темой сами.
+- **Swift: цвет — только `DS.Color.*`** (каталог `dist/ios/Colors.xcassets`,
+  подключён ссылкой в `DesignSystem`). `Color(red:…)`, `Color(hex:)`,
+  `UIColor(red:…)`, `#colorLiteral` и `"#RRGGBB"` вне `DesignSystem` валят
+  `swiftlint --strict` (правило `ds_color_literal`). Шрифты — `.dsText(DS.Typography.*)`.
 - **Ветка до дизайн-системы**: `node apps/web/scripts/design-system-codemod.mjs`,
   затем `npm run lint:web`.
 - Новый повторяющийся элемент — компонент в `shared/components/ui` с тестом и
@@ -195,8 +213,11 @@ never string matching on error text.
 
 `config.Features` derives which capabilities are on from the presence of
 credentials: `email`, `food_recognition`, `weekly_photos`, `profile_avatars`,
-`chat_attachments`, `content_media`. A disabled capability answers `503`
-consistently and is listed in a startup `WARN` and in `GET /health`.
+`chat_attachments`, `content_media` and others — the full list is
+`Features.Map()` in `internal/config/config.go`. A disabled capability answers
+`503` consistently and is listed in a startup `WARN` and in the `features`
+object of `GET /ready`. `GET /health` is the liveness probe: it touches no
+dependency and does not list capabilities.
 
 In production, missing required variables are fatal at startup: `config.Load()`
 reports every problem at once rather than failing on the first. See
@@ -302,10 +323,13 @@ canonical на себя, полный Open Graph, бренд в заголовк
 Граница проходит по приставке, а не по домену: `director@burcev.team` —
 человек, и повысить его можно.
 
-**Куратор назначается на каждом пути внутрь** — форма регистрации, ссылка,
-внешний провайдер. Назначение нигде не повторяется, так что путь, где о нём
-забыли, оставляет клиента без куратора навсегда.
-`TestEveryAccountPathAssignsCurator` проверяет все три.
+**Куратор при регистрации — только служебным.** Куратор — платная услуга
+(`curator-access`): ни один путь внутрь — форма регистрации, ссылка, внешний
+провайдер (веб и приложение) — не назначает его живому клиенту, а служебная
+учётка получает служебного куратора на каждом из них. Решение принимается в
+одном месте, `assignCurator`, и проверять нужно все пути: забыть можно и
+назначение, и запрет. `TestEveryAccountPathAssignsCuratorOnlyToServiceAccounts`
+проверяет все три.
 
 ## Integrity Checks
 

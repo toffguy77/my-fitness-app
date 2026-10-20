@@ -45,6 +45,27 @@ describe('SettingsProviders', () => {
         )
     })
 
+    // Apple is linked from the app (an identity token the browser cannot get),
+    // so the site never offers to link it — but a linked Apple shows under its
+    // name and can be unlinked like any other service.
+    it('does not offer to link Apple, but shows and unlinks a linked one', async () => {
+        api.linked.mockResolvedValue({ linked: [link('apple')], has_password: true })
+        api.list.mockResolvedValue(['yandex', 'apple'])
+        api.unlink.mockResolvedValue({ unlinked: true })
+
+        render(<SettingsProviders />)
+
+        expect(await screen.findByText('Apple')).toBeInTheDocument()
+        const linkButtons = screen.getAllByRole('link', { name: 'Привязать' })
+        expect(linkButtons).toHaveLength(1)
+        expect(linkButtons[0]).toHaveAttribute('href', '/api/v1/auth/oauth/yandex')
+
+        await userEvent.click(screen.getByRole('button', { name: 'Отвязать' }))
+        await waitFor(() => expect(api.unlink).toHaveBeenCalledWith('apple'))
+        await waitFor(() => expect(screen.queryByText('Apple')).not.toBeInTheDocument())
+        expect(screen.queryByRole('link', { name: /Apple/ })).toBeNull()
+    })
+
     // Removing the only way in would cost the user a year of data in one click.
     it('refuses to unlink the last sign-in method and says why', async () => {
         api.linked.mockResolvedValue({ linked: [link('yandex')], has_password: false })

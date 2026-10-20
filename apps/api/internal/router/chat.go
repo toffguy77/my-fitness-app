@@ -23,11 +23,18 @@ func registerChatRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("", d.Chat.GetConversations)
 	g.GET("/unread", d.Chat.GetUnreadCount)
 	g.GET("/access", d.Chat.GetAccess)
+	// Переписка с конкретным человеком: экран куратора открывается по клиенту,
+	// а не по id переписки. Идентификатор вызывающего — часть запроса, поэтому
+	// чужая пара неотличима от несуществующей.
+	g.GET("/by-participant/:userId", d.Chat.GetConversationWith)
 	g.GET("/:id/messages", d.Chat.GetMessages)
 	g.POST("/:id/read", d.Chat.MarkAsRead)
 
 	w := g.Group("/:id", middleware.RequireCuratorAccess(d.DB, d.Log))
-	w.POST("/messages", d.Chat.SendMessage)
+	// Сообщение досылается из очереди приложения: Idempotency-Key не даёт
+	// повтору после потерянного ответа отправить его дважды. Стоит после
+	// проверки права: отказ по праву не запоминается под ключом.
+	w.POST("/messages", middleware.Idempotency(d.DB, d.Log), d.Chat.SendMessage)
 	w.POST("/upload", d.Chat.UploadAttachment)
 	w.POST("/messages/:msgId/food-entry", d.Chat.CreateFoodEntry)
 }

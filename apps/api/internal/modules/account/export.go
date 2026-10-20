@@ -212,6 +212,7 @@ var sections = []exportSection{
 	{"food_diary", `SELECT * FROM food_entries WHERE user_id = $1 ORDER BY date`},
 	{"water", `SELECT * FROM water_logs WHERE user_id = $1 ORDER BY date`},
 	{"metrics", `SELECT * FROM daily_metrics WHERE user_id = $1 ORDER BY date`},
+	{"health_workouts", `SELECT * FROM health_workouts WHERE user_id = $1 ORDER BY started_at`},
 	{"tasks", `SELECT * FROM tasks WHERE user_id = $1 ORDER BY created_at`},
 	{"weekly_plans", `SELECT * FROM weekly_plans WHERE user_id = $1 ORDER BY start_date`},
 	{"weekly_reports", `SELECT * FROM weekly_reports WHERE user_id = $1 ORDER BY created_at`},
@@ -290,11 +291,7 @@ func (s *Service) buildExport(ctx context.Context, exportID string, userID int64
 		return fmt.Errorf("mark ready: %w", err)
 	}
 
-	// The archive expires. Telling them is the difference between a download
-	// and a build nobody collected.
-	s.notify(ctx, userID, "export_ready", "Выгрузка данных готова",
-		"Архив с вашими данными собран. Ссылка действует ограниченное время.",
-		"/settings/privacy")
+	s.announceExport(ctx, userID, exportID)
 
 	s.log.Info("Data export ready", "user_id", userID, "export_id", exportID, "bytes", buf.Len())
 	return nil
@@ -420,4 +417,13 @@ func (s *Service) PurgeExpiredExports(ctx context.Context) (int, error) {
 	}
 
 	return removed, nil
+}
+
+// announceExport tells the person their archive is ready. It expires, so
+// telling them is the difference between a download and a build nobody
+// collected. The app opens the export itself (notification-targets).
+func (s *Service) announceExport(ctx context.Context, userID int64, exportID string) {
+	s.notify(ctx, userID, "export_ready", "Выгрузка данных готова",
+		"Архив с вашими данными собран. Ссылка действует ограниченное время.",
+		"/settings/privacy", map[string]string{"export_id": exportID})
 }

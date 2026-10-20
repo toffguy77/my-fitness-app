@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import {
     providersApi,
     providerLabel,
+    startsInBrowser,
     type LinkedProvider,
 } from '@/features/auth/api/providers'
 import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
@@ -75,8 +76,9 @@ export function SettingsProviders() {
         return <p className="py-8 text-center text-sm text-fg-muted">{t('settings.loading')}</p>
     }
 
+    // Only what the site can start: Apple is linked from the app.
     const unlinked = available.filter(
-        (provider) => !linked.some((item) => item.provider === provider)
+        (provider) => startsInBrowser(provider) && !linked.some((item) => item.provider === provider)
     )
 
     return (

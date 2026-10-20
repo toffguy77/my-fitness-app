@@ -1,0 +1,40 @@
+{
+  "about": "Общие фикстуры карточки «Питание»: ответы API (поле data) и числа, которые обязаны показать и NutritionBlock веба (apps/web/src/features/dashboard/components/__tests__/NutritionBlock.fixtures.test.tsx), и «Сегодня» iOS (apps/ios/VzveshenoKit/Tests/ClientTests/NutritionFixturesTests.swift). expected.headline — главное число без разделителя разрядов, macros — остаток по Б/Ж/У (null — остатка нет: не заданы все три нормы).",
+  "cases": [
+    {
+      "name": "расчётная норма, остаток",
+      "daily": {"id": "d1", "user_id": 7, "date": "2025-10-17T00:00:00Z", "calories": 549, "protein": 76, "fat": 49, "carbs": 18, "steps": 6412, "workout_completed": false, "steps_source": "healthkit", "weight_source": null, "workout_source": null, "created_at": "2025-10-17T07:00:00Z", "updated_at": "2025-10-17T07:42:00Z"},
+      "weekly_plan": {"plan": null},
+      "targets": {"id": 1, "user_id": 7, "date": "2025-10-17T00:00:00Z", "calories": 2471.6, "protein": 125.4, "fat": 80.2, "carbs": 230.4, "bmr": 1600, "tdee": 2471.6, "workout_bonus": 0, "weight_used": 78.4, "source": "calculated", "created_at": "2025-10-17T00:00:00Z"},
+      "expected": {"headline": "1923", "eaten": 549, "goal": 2472, "over": false, "source": "calculated", "macros": {"protein": "49", "fat": "31", "carbs": "212"}}
+    },
+    {
+      "name": "превышение",
+      "daily": {"id": "d2", "user_id": 7, "date": "2025-10-17T00:00:00Z", "calories": 2600, "protein": 140, "fat": 90, "carbs": 260, "steps": 0, "workout_completed": false, "steps_source": null, "weight_source": null, "workout_source": null, "created_at": "2025-10-17T07:00:00Z", "updated_at": "2025-10-17T07:42:00Z"},
+      "weekly_plan": {"plan": null},
+      "targets": {"id": 2, "user_id": 7, "date": "2025-10-17T00:00:00Z", "calories": 2472, "protein": 125, "fat": 80, "carbs": 230, "bmr": 1600, "tdee": 2472, "workout_bonus": 0, "weight_used": 78.4, "source": "calculated", "created_at": "2025-10-17T00:00:00Z"},
+      "expected": {"headline": "+128", "eaten": 2600, "goal": 2472, "over": true, "source": "calculated", "macros": {"protein": "+15", "fat": "+10", "carbs": "+30"}}
+    },
+    {
+      "name": "план куратора важнее расчёта",
+      "daily": {"id": "d3", "user_id": 7, "date": "2025-10-17T00:00:00Z", "calories": 549, "protein": 76, "fat": 49, "carbs": 18, "steps": 0, "workout_completed": false, "steps_source": null, "weight_source": null, "workout_source": null, "created_at": "2025-10-17T07:00:00Z", "updated_at": "2025-10-17T07:42:00Z"},
+      "weekly_plan": {"id": "p1", "user_id": 7, "curator_id": 3, "calories_goal": 2240, "protein_goal": 140, "fat_goal": 70, "carbs_goal": 230, "steps_goal": 8000, "start_date": "2025-10-13T00:00:00Z", "end_date": "2025-10-19T00:00:00Z", "is_active": true, "created_at": "2025-10-12T10:00:00Z", "updated_at": "2025-10-12T10:00:00Z", "created_by": 3},
+      "targets": {"id": 3, "user_id": 7, "date": "2025-10-17T00:00:00Z", "calories": 2472, "protein": 125, "fat": 80, "carbs": 230, "bmr": 1600, "tdee": 2472, "workout_bonus": 0, "weight_used": 78.4, "source": "calculated", "created_at": "2025-10-17T00:00:00Z"},
+      "expected": {"headline": "1691", "eaten": 549, "goal": 2240, "over": false, "source": "curator", "macros": {"protein": "64", "fat": "21", "carbs": "212"}}
+    },
+    {
+      "name": "план без жиров и углеводов — они из расчёта",
+      "daily": {"id": "d4", "user_id": 7, "date": "2025-10-17T00:00:00Z", "calories": 1200, "protein": 60, "fat": 40, "carbs": 150, "steps": 0, "workout_completed": false, "steps_source": null, "weight_source": null, "workout_source": null, "created_at": "2025-10-17T07:00:00Z", "updated_at": "2025-10-17T07:42:00Z"},
+      "weekly_plan": {"id": "p2", "user_id": 7, "curator_id": 3, "calories_goal": 2000, "protein_goal": 120, "start_date": "2025-10-13T00:00:00Z", "end_date": "2025-10-19T00:00:00Z", "is_active": true, "created_at": "2025-10-12T10:00:00Z", "updated_at": "2025-10-12T10:00:00Z", "created_by": 3},
+      "targets": {"id": 4, "user_id": 7, "date": "2025-10-17T00:00:00Z", "calories": 2472, "protein": 125, "fat": 80.5, "carbs": 230.4, "bmr": 1600, "tdee": 2472, "workout_bonus": 0, "weight_used": 78.4, "source": "calculated", "created_at": "2025-10-17T00:00:00Z"},
+      "expected": {"headline": "800", "eaten": 1200, "goal": 2000, "over": false, "source": "curator", "macros": {"protein": "60", "fat": "41", "carbs": "80"}}
+    },
+    {
+      "name": "норма не посчитана",
+      "daily": {"id": "d5", "user_id": 7, "date": "2025-10-17T00:00:00+03:00", "calories": 300, "protein": 10, "fat": 12, "carbs": 40, "steps": 0, "workout_completed": false, "steps_source": null, "weight_source": null, "workout_source": null, "created_at": "2025-10-17T07:00:00Z", "updated_at": "2025-10-17T07:42:00Z"},
+      "weekly_plan": {"plan": null},
+      "targets": {"targets": null, "message": "Профиль не заполнен или нет данных о весе", "missing": {"profile": true, "weight": true}},
+      "expected": {"headline": "300", "eaten": 300, "goal": null, "over": false, "source": null, "macros": null}
+    }
+  ]
+}

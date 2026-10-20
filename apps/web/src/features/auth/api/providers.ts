@@ -7,7 +7,7 @@
  */
 
 import { apiClient } from '@/shared/utils/api-client'
-import type { AuthResponse } from '@/features/auth/types'
+import type { AuthResponse, ConsentState } from '@/features/auth/types'
 
 export type ProviderName = 'yandex' | 'vk' | 'max'
 
@@ -17,6 +17,20 @@ export const providerLabels: Record<string, string> = {
     yandex: 'Яндекс ID', // i18n-exempt: brand name
     vk: 'VK ID',
     max: 'MAX',
+    apple: 'Apple',
+}
+
+/**
+ * Providers the site can start a sign-in or a link with. The server lists
+ * every configured provider, and the app reads the same list; Apple signs in
+ * only from the app (an identity token from AuthenticationServices, no
+ * browser flow), so the site neither shows its button nor offers to link it.
+ * A linked Apple still shows in settings and can be unlinked.
+ */
+const appOnlyProviders = new Set(['apple'])
+
+export function startsInBrowser(provider: string): boolean {
+    return !appOnlyProviders.has(provider)
 }
 
 export function providerLabel(provider: string): string {
@@ -43,8 +57,20 @@ export interface NeedsLinkConfirmation {
     email: string
 }
 
+/**
+ * The address is new: the account is created on the consents screen, from the
+ * same pending attempt, and not before.
+ */
+export interface NeedsConsents {
+    result: 'needs_consents'
+}
+
+export function needsConsents(value: object): value is NeedsConsents {
+    return (value as NeedsConsents).result === 'needs_consents'
+}
+
 export function needsLinkConfirmation(
-    value: AuthResponse | NeedsLinkConfirmation
+    value: AuthResponse | NeedsLinkConfirmation | NeedsConsents
 ): value is NeedsLinkConfirmation {
     return (value as NeedsLinkConfirmation).result === 'needs_link_confirmation'
 }
@@ -79,8 +105,22 @@ export const providersApi = {
     },
 
     /** Supplies the address a provider did not return. */
-    completeWithEmail(email: string): Promise<AuthResponse | NeedsLinkConfirmation> {
-        return apiClient.post<AuthResponse | NeedsLinkConfirmation>('/api/v1/auth/oauth/email', { email })
+    completeWithEmail(email: string): Promise<AuthResponse | NeedsLinkConfirmation | NeedsConsents> {
+        return apiClient.post<AuthResponse | NeedsLinkConfirmation | NeedsConsents>('/api/v1/auth/oauth/email', {
+            email,
+        })
+    },
+
+    /**
+     * Creates the account a provider sign-in was waiting on, with the consents
+     * the registration form asks for. The pending sign-in is the `oauth_pending`
+     * cookie on /api/v1/auth, which the browser attaches by itself.
+     *
+     * Like completeWithEmail, it can answer that the address has meanwhile
+     * become an existing account's, to be claimed with its password.
+     */
+    completeWithConsents(consents: ConsentState): Promise<AuthResponse | NeedsLinkConfirmation> {
+        return apiClient.post<AuthResponse | NeedsLinkConfirmation>('/api/v1/auth/oauth/consents', { consents })
     },
 
     linked(): Promise<LinkedProvidersResponse> {

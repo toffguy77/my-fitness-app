@@ -81,7 +81,6 @@ export type {
 // export { SearchTab } from './components/SearchTab';
 // export { BarcodeTab } from './components/BarcodeTab';
 // export { AIPhotoTab } from './components/AIPhotoTab';
-// export { ChatTab } from './components/ChatTab';
 // export { PortionSelector } from './components/PortionSelector';
 
 // Page components
@@ -96,7 +95,6 @@ export { FoodEntryModal } from './components/FoodEntryModal';
 export { SearchTab } from './components/SearchTab';
 export { BarcodeTab } from './components/BarcodeTab';
 export { AIPhotoTab } from './components/AIPhotoTab';
-export { ChatTab } from './components/ChatTab';
 export { PortionSelector } from './components/PortionSelector';
 export { ManualEntryForm } from './components/ManualEntryForm';
 export { MealSlot } from './components/MealSlot';

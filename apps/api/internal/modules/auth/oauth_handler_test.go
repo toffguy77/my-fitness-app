@@ -3,6 +3,7 @@ package auth
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/burcev/api/internal/config"
@@ -157,4 +158,45 @@ func TestOAuthCallback_UserDenialReturnsToSignIn(t *testing.T) {
 	require.Equal(t, http.StatusFound, w.Code)
 	assert.Contains(t, w.Header().Get("Location"), "oauth=cancelled")
 	assert.Contains(t, w.Header().Get("Location"), "https://app.example.com")
+}
+
+// external-identity: without the consent to process personal data the
+// consents step answers 400 validation before anything is looked up — the
+// handler here has no service at all, so reaching it would panic.
+func TestOAuthConsents_RefusesWithoutMandatoryConsents(t *testing.T) {
+	h := NewOAuthHandler(&config.Config{AppDomain: "app.example.com"}, logger.New(), nil, oauth.NewRegistry())
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/api/v1/auth/oauth/consents", h.CompleteConsents)
+
+	for name, body := range map[string]string{
+		"terms and privacy only": `{"consents":{"terms_of_service":true,"privacy_policy":true,"data_processing":false,"marketing":true}}`,
+		"no consents object":     `{}`,
+		"not json":               `consents`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/oauth/consents", strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			req.AddCookie(&http.Cookie{Name: pendingCookie, Value: "0b6f1c2e-6c1d-4d39-9a52-3f8e2f0b9a11"})
+			w := httptest.NewRecorder()
+
+			r.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+			assert.Contains(t, w.Body.String(), `"code":"validation"`)
+			assert.Nil(t, flowCookie(w.Result(), "refresh_token"), "no session without consents")
+		})
+	}
+
+	t.Run("no pending attempt", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/oauth/consents", strings.NewReader(
+			`{"consents":{"terms_of_service":true,"privacy_policy":true,"data_processing":true}}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), `"code":"token_invalid"`)
+	})
 }

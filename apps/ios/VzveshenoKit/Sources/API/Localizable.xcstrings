@@ -1,0 +1,446 @@
+{
+  "sourceLanguage": "ru",
+  "strings": {
+    "error.code_expired": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Срок действия кода истёк"
+          }
+        }
+      }
+    },
+    "error.conflict": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Действие невозможно в текущем состоянии"
+          }
+        }
+      }
+    },
+    "error.consents_required": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нужно согласие на условия, политику конфиденциальности и обработку данных"
+          }
+        }
+      }
+    },
+    "error.curator_access_required": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переписка с куратором недоступна. Напишите в поддержку."
+          }
+        }
+      }
+    },
+    "error.decoding": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложение не поняло ответ сервера. Обновите приложение."
+          }
+        }
+      }
+    },
+    "error.deletion_already_requested": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаление аккаунта уже запрошено — его ещё можно отменить."
+          }
+        }
+      }
+    },
+    "error.delivery_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telegram не принял сообщение. Попробуйте позже."
+          }
+        }
+      }
+    },
+    "error.email_unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отправка писем сейчас недоступна"
+          }
+        }
+      }
+    },
+    "error.export_already_pending": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выгрузка уже готовится. Мы пришлём уведомление, когда она будет готова."
+          }
+        }
+      }
+    },
+    "error.feature_unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта возможность сейчас недоступна"
+          }
+        }
+      }
+    },
+    "error.forbidden": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет доступа"
+          }
+        }
+      }
+    },
+    "error.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не получилось выполнить запрос. Попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "error.gone": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Больше недоступно"
+          }
+        }
+      }
+    },
+    "error.internal": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервис временно недоступен"
+          }
+        }
+      }
+    },
+    "error.invalid_credentials": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неверная почта или пароль"
+          }
+        }
+      }
+    },
+    "error.job_already_running": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Задача уже выполняется — дождитесь, пока она закончится."
+          }
+        }
+      }
+    },
+    "error.last_curator": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это последний куратор — его клиентов некому передать."
+          }
+        }
+      }
+    },
+    "error.lead_already_claimed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заявка уже отмечена обработанной"
+          }
+        }
+      }
+    },
+    "error.magic_link_account_exists": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот адрес уже зарегистрирован. Запросите ссылку для входа ещё раз."
+          }
+        }
+      }
+    },
+    "error.network": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверьте подключение к интернету"
+          }
+        }
+      }
+    },
+    "error.not_found": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не найдено"
+          }
+        }
+      }
+    },
+    "error.password_incorrect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неверный пароль"
+          }
+        }
+      }
+    },
+    "error.password_not_set": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У этого аккаунта нет пароля. Войдите через сервис, который к нему уже привязан."
+          }
+        }
+      }
+    },
+    "error.password_policy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пароль: от 8 до 128 символов, заглавная и строчная буквы, цифра и спецсимвол"
+          }
+        }
+      }
+    },
+    "error.password_unchanged": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый пароль должен отличаться от текущего"
+          }
+        }
+      }
+    },
+    "error.provider_only_way_in": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это единственный способ входа. Сначала задайте пароль."
+          }
+        }
+      }
+    },
+    "error.rate_limited": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слишком много запросов. Подождите немного."
+          }
+        }
+      }
+    },
+    "error.recognition_daily_limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снимки на сегодня закончились — новый можно будет сделать завтра. Добавьте эту еду вручную."
+          }
+        }
+      }
+    },
+    "error.recognition_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось распознать фото — попробуйте ещё раз через минуту или добавьте эту еду вручную"
+          }
+        }
+      }
+    },
+    "error.recognition_unclear": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось разобрать это фото — попробуйте снять ближе или добавьте еду вручную"
+          }
+        }
+      }
+    },
+    "error.server": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервис временно недоступен"
+          }
+        }
+      }
+    },
+    "error.session_ended": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сессия завершена, войдите снова"
+          }
+        }
+      }
+    },
+    "error.session_ended_sign_in": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сессия завершена, войдите снова"
+          }
+        }
+      }
+    },
+    "error.target_missing": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Норма не посчитана — без неё план питания не собрать"
+          }
+        }
+      }
+    },
+    "error.token_expired": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Срок действия ссылки истёк"
+          }
+        }
+      }
+    },
+    "error.token_invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ссылка или код недействительны. Начните заново."
+          }
+        }
+      }
+    },
+    "error.too_many_attempts": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слишком много попыток. Попробуйте позже."
+          }
+        }
+      }
+    },
+    "error.unauthorized": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нужно войти в аккаунт"
+          }
+        }
+      }
+    },
+    "error.unsupported_media": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Такой файл загрузить нельзя"
+          }
+        }
+      }
+    },
+    "error.validation": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверьте введённые данные"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

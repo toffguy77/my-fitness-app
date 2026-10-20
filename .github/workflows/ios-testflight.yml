@@ -1,7 +1,8 @@
 name: iOS TestFlight
 
-# Собирает подписанную сборку и загружает её в TestFlight без отправки на
-# ревью. Номер сборки — номер прогона.
+# Собирает подписанную сборку «Взвешено» и загружает её в TestFlight без
+# отправки на ревью (lane beta). Номер сборки — число коммитов
+# (apps/ios/scripts/build-number.sh), поэтому нужна полная история.
 #
 # Запуск — тегом `ios-v*` на любом коммите или вручную. Ручной запуск GitHub
 # показывает, только когда файл уже есть в main; тег работает с любой ветки,
@@ -15,6 +16,10 @@ on:
         description: 'Что нового для тестировщиков'
         required: false
         default: 'Новая сборка'
+      environment:
+        description: 'Среда: prod (team.burcev.app) или dev (team.burcev.app.dev)'
+        required: false
+        default: 'prod'
 
 permissions:
   contents: read
@@ -29,12 +34,15 @@ jobs:
         working-directory: apps/ios
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Номер сборки — git rev-list --count HEAD.
+          fetch-depth: 0
 
       - name: Select Xcode 26
         run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
 
       - name: Install fastlane and XcodeGen
-        run: brew install fastlane xcodegen
+        run: brew install fastlane xcodegen getsentry/tools/sentry-cli
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -57,9 +65,10 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
-          BUILD_NUMBER: ${{ github.run_number }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           CHANGELOG: ${{ inputs.changelog || 'Новая сборка' }}
-        run: fastlane ci_beta
+          APP_ENV: ${{ inputs.environment || 'prod' }}
+        run: fastlane beta
 
       - name: Clean up secrets
         if: always()

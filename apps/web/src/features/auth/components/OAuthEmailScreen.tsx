@@ -12,7 +12,7 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { providersApi, providerLabel, needsLinkConfirmation } from '@/features/auth/api/providers'
+import { providersApi, providerLabel, needsLinkConfirmation, needsConsents } from '@/features/auth/api/providers'
 import { storeSession, destinationFor } from '@/features/auth/utils/session'
 import { isApiError } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
@@ -41,6 +41,13 @@ export function OAuthEmailScreen() {
                 router.replace(
                     `/auth/link?provider=${encodeURIComponent(provider)}&email=${encodeURIComponent(result.email)}`
                 )
+                return
+            }
+
+            // A new address: no account until the consents are given, on the
+            // next screen and from the same pending attempt.
+            if (needsConsents(result)) {
+                router.replace(`/auth/consents?provider=${encodeURIComponent(provider)}`)
                 return
             }
 

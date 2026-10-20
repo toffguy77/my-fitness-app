@@ -9,9 +9,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginUser, registerUser } from '@/features/auth/api/auth';
-import { apiClient } from '@/shared/utils/api-client';
-import { clearAuth } from '@/shared/utils/token-storage';
+import { loginUser, registerUser, logoutUser } from '@/features/auth/api/auth';
 import { storeSession, destinationFor } from '@/features/auth/utils/session';
 import { forgetLeadToken } from '@/features/onboarding/api/guest';
 import { EVENTS, track, flush } from '@/shared/analytics';
@@ -96,26 +94,7 @@ export function useAuth() {
      * Revokes refresh token on backend, clears local auth data, redirects to auth page
      */
     const logout = async () => {
-        // The refresh token is in a cookie the browser attaches by itself, so
-        // there is nothing to send and nothing to check first. The server
-        // revokes it and clears the cookie; this is best-effort, and the local
-        // cleanup below happens either way.
-        try {
-            await apiClient.post('/api/v1/auth/logout', {});
-        } catch {
-            // Молчим намеренно: человек попросил выйти, и он выходит — сессия
-            // в этом браузере снимается ниже в любом случае. Причина отказа
-            // сервера ему сейчас не нужна и не про него: показывать её значит
-            // встретить его красной строкой на экране входа за действие,
-            // которое удалось.
-            //
-            // Обратная сторона названа честно: отозвать refresh-токен на
-            // сервере не вышло, и он доживёт свой срок. Это видно в логах
-            // сервера, а не здесь.
-        }
-
-        clearAuth();
-        apiClient.clearToken();
+        await logoutUser();
         router.push('/auth');
     };
 

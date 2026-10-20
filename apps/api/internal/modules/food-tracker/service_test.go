@@ -129,14 +129,14 @@ func TestSearchFoods(t *testing.T) {
 		service, _, cleanup := setupTestService(t)
 		defer cleanup()
 
-		query := "ab" // Only 2 characters, need 3
+		query := "г" // один символ; поиск — со второго
 		limit := 20
 
 		result, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "минимум 3 символа")
+		assert.Contains(t, err.Error(), "минимум 2 символа")
 	})
 
 	t.Run("uses default limit when limit is zero", func(t *testing.T) {

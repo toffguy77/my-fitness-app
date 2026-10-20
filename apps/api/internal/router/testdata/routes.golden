@@ -7,7 +7,7 @@ DELETE /api/v1/curator/clients/:id/weekly-plan/:planId
 DELETE /api/v1/food-tracker/entries/:id
 DELETE /api/v1/food-tracker/favorites/:foodId
 DELETE /api/v1/food-tracker/user-foods/:id
-DELETE /api/v1/notifications/devices
+DELETE /api/v1/notifications/devices/:token
 DELETE /api/v1/notifications/push
 DELETE /api/v1/recipes/:id/reject
 DELETE /api/v1/users/avatar
@@ -29,6 +29,7 @@ GET /api/v1/auth/oauth/:provider/callback
 GET /api/v1/auth/providers
 GET /api/v1/auth/providers/linked
 GET /api/v1/auth/validate-reset-token
+GET /api/v1/config
 GET /api/v1/content/articles
 GET /api/v1/content/articles/:id
 GET /api/v1/content/feed
@@ -36,6 +37,7 @@ GET /api/v1/content/feed/:id
 GET /api/v1/conversations
 GET /api/v1/conversations/:id/messages
 GET /api/v1/conversations/access
+GET /api/v1/conversations/by-participant/:userId
 GET /api/v1/conversations/unread
 GET /api/v1/curator/analytics
 GET /api/v1/curator/analytics/benchmark
@@ -117,7 +119,20 @@ POST /api/v1/auth/login
 POST /api/v1/auth/logout
 POST /api/v1/auth/magic-link/consume
 POST /api/v1/auth/magic-link/request
-POST /api/v1/auth/oauth/app-exchange
+POST /api/v1/auth/native/apple
+POST /api/v1/auth/native/apple/link
+POST /api/v1/auth/native/change-password
+POST /api/v1/auth/native/consents
+POST /api/v1/auth/native/login
+POST /api/v1/auth/native/logout
+POST /api/v1/auth/native/magic-link/consume
+POST /api/v1/auth/native/magic-link/request
+POST /api/v1/auth/native/oauth/email
+POST /api/v1/auth/native/oauth/exchange
+POST /api/v1/auth/native/oauth/link
+POST /api/v1/auth/native/refresh
+POST /api/v1/auth/native/register
+POST /api/v1/auth/oauth/consents
 POST /api/v1/auth/oauth/email
 POST /api/v1/auth/oauth/link
 POST /api/v1/auth/refresh
@@ -142,6 +157,7 @@ POST /api/v1/curator/leads/:id/handled
 POST /api/v1/curator/recipes/:id/approve
 POST /api/v1/curator/recipes/:id/return
 POST /api/v1/curator/support/conversations/:id/close
+POST /api/v1/curator/support/conversations/:id/messages/:messageId/retry
 POST /api/v1/curator/support/conversations/:id/reply
 POST /api/v1/dashboard/daily
 POST /api/v1/dashboard/photo-upload
@@ -156,6 +172,7 @@ POST /api/v1/food-tracker/recommendations/custom
 POST /api/v1/food-tracker/user-foods
 POST /api/v1/food-tracker/user-foods/clone
 POST /api/v1/food-tracker/water
+POST /api/v1/health/import
 POST /api/v1/leads/curator-request
 POST /api/v1/logs
 POST /api/v1/meal-plans/:date/items/:mealType/eat

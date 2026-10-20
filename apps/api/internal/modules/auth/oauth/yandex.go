@@ -29,10 +29,18 @@ type yandexProvider struct {
 // NewYandex creates the adapter. Returns nil when credentials are absent, so an
 // unconfigured provider is simply not offered.
 func NewYandex(clientID, clientSecret string) Provider {
+	return NewYandexAt(clientID, clientSecret, "")
+}
+
+// NewYandexAt is NewYandex with the provider's endpoints replaced by
+// `<baseURL>/authorize`, `<baseURL>/token` and `<baseURL>/info` — the stub the
+// end-to-end suite signs up through (OAUTH_YANDEX_BASE_URL; production refuses
+// to start with it). An empty baseURL means the real Yandex ID.
+func NewYandexAt(clientID, clientSecret, baseURL string) Provider {
 	if clientID == "" || clientSecret == "" {
 		return nil
 	}
-	return &yandexProvider{
+	p := &yandexProvider{
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		httpClient:   &http.Client{Timeout: 15 * time.Second},
@@ -40,6 +48,12 @@ func NewYandex(clientID, clientSecret string) Provider {
 		tokenURL:     "https://oauth.yandex.ru/token",
 		profileURL:   "https://login.yandex.ru/info?format=json",
 	}
+	if base := strings.TrimRight(baseURL, "/"); base != "" {
+		p.authURL = base + "/authorize"
+		p.tokenURL = base + "/token"
+		p.profileURL = base + "/info?format=json"
+	}
+	return p
 }
 
 func (p *yandexProvider) Name() string { return "yandex" }

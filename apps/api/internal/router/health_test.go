@@ -111,3 +111,38 @@ func TestMetricsEndpoint_OnlyWhenConfigured(t *testing.T) {
 	})
 	assert.Equal(t, http.StatusOK, get(withMetrics, "/metrics").Code)
 }
+
+// config-validation: the capabilities are listed by /ready, not /health. With
+// OPENROUTER_API_KEY set and no S3 keys, food recognition is on and the S3
+// uploads are off (config.Load derives the flags; this checks they reach the
+// response as they are).
+func TestReady_ListsFeatures_HealthDoesNot(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+	mock.ExpectPing()
+
+	gin.SetMode(gin.TestMode)
+	engine := New(Deps{
+		Cfg: &config.Config{Env: "test", Version: "test-build",
+			Features: config.Features{FoodRecognition: true}},
+		Log:             logger.New(),
+		DB:              &database.DB{DB: db},
+		AuthRateLimiter: middleware.NewAuthRateLimiter(),
+	})
+
+	var ready map[string]any
+	require.NoError(t, json.Unmarshal(get(engine, "/ready").Body.Bytes(), &ready))
+	features, ok := ready["features"].(map[string]any)
+	require.True(t, ok, "/ready must carry features")
+	assert.Equal(t, true, features["food_recognition"])
+	assert.Equal(t, false, features["weekly_photos"])
+	assert.Equal(t, false, features["profile_avatars"])
+
+	var health map[string]any
+	require.NoError(t, json.Unmarshal(get(engine, "/health").Body.Bytes(), &health))
+	for _, key := range []string{"status", "timestamp", "environment", "version"} {
+		assert.Contains(t, health, key)
+	}
+	assert.NotContains(t, health, "features", "/health is the liveness probe and lists no capabilities")
+}

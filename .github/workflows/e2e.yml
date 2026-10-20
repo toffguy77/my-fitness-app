@@ -108,6 +108,19 @@ jobs:
       # worth an email. The suite cannot.
       NOTIFICATION_EMAIL_DELAY: 2s
       MAILPIT_URL: http://localhost:8025
+      # Registration through a provider (oauth-registration.spec.ts) goes to
+      # scripts/oauth-stub.mjs instead of Yandex ID: the real one needs a
+      # person at its sign-in page and an address nobody has used. Placeholder
+      # credentials are enough to register the provider; the base URL sends all
+      # three of its endpoints to the stub. config.Load refuses both overrides
+      # in production.
+      YANDEX_OAUTH_CLIENT_ID: e2e-placeholder-client
+      YANDEX_OAUTH_CLIENT_SECRET: e2e-placeholder-secret
+      OAUTH_YANDEX_BASE_URL: http://127.0.0.1:3071
+      # The flow returns the browser to the API's callback and then to the
+      # app. By default that is Next on 3069, whose rewrite drops Set-Cookie —
+      # and the flow's cookies are the flow. Back through the proxy instead.
+      OAUTH_APP_ORIGIN: http://localhost:3070
 
     steps:
       - uses: actions/checkout@v4
@@ -197,6 +210,21 @@ jobs:
           done
           echo "Proxy failed to start:"; cat /tmp/proxy.log; exit 1
 
+      - name: Test the sign-in stub
+        run: node --test scripts/__tests__/oauth-stub.test.mjs
+
+      - name: Start sign-in stub
+        run: |
+          node scripts/oauth-stub.mjs > /tmp/oauth-stub.log 2>&1 &
+          for i in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:3071/health > /dev/null; then
+              echo "Sign-in stub is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Sign-in stub failed to start:"; cat /tmp/oauth-stub.log; exit 1
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -222,4 +250,5 @@ jobs:
             /tmp/api.log
             /tmp/web.log
             /tmp/proxy.log
+            /tmp/oauth-stub.log
           retention-days: 7

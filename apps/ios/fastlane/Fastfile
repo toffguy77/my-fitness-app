@@ -1,8 +1,30 @@
 default_platform(:ios)
 
-BUNDLE_ID = "team.burcev.app"
-WIDGET_ID = "team.burcev.app.widget"
+# Среда сборки: APP_ENV=dev — team.burcev.app.dev и new.burcev.team,
+# иначе прод — team.burcev.app и burcev.team (схемы и конфигурации — project.yml).
+APP_ENV = ENV["APP_ENV"] == "dev" ? "dev" : "prod"
+ENVIRONMENTS = {
+  "dev" => {
+    bundle_id: "team.burcev.app.dev",
+    scheme: "Vzvesheno-Dev",
+    configuration: "Dev-Release",
+    app_group: "group.team.burcev.app.dev",
+    name: "Взвешено Dev",
+  },
+  "prod" => {
+    bundle_id: "team.burcev.app",
+    scheme: "Vzvesheno-Prod",
+    configuration: "Prod-Release",
+    app_group: "group.team.burcev.app",
+    name: "Взвешено",
+  },
+}.freeze
+ENVIRONMENT = ENVIRONMENTS.fetch(APP_ENV)
+BUNDLE_ID = ENVIRONMENT[:bundle_id]
+WIDGET_ID = "#{BUNDLE_ID}.widget"
 TEAM_ID = "3GWRDGA8B7"
+PROJECT = "Vzvesheno.xcodeproj"
+IPA = "build/ipa/Vzvesheno.ipa"
 
 # Ключ App Store Connect. Предпочитаем файл .p8 на диске (ASC_KEY_PATH): часть
 # сборок fastlane неверно декодирует base64 в transporter. Переменная с base64 —
@@ -24,32 +46,41 @@ def asc_api_key
   end
 end
 
-# Идентификатор приложения регистрируется ключом API, если его ещё нет. Запись
-# приложения в App Store Connect API создать не позволяет — её заводит человек,
-# и без неё загрузка в TestFlight отказывает; об этом говорим прямо.
-def ensure_app_exists
-  bundle = Spaceship::ConnectAPI::BundleId.find(BUNDLE_ID)
+# Идентификатор регистрируется ключом API, если его ещё нет, и получает
+# возможности из entitlements сборки (project.yml): без них профиль их не
+# содержит и подпись отказывает.
+def ensure_bundle(identifier, name, capabilities)
+  bundle = Spaceship::ConnectAPI::BundleId.find(identifier)
   unless bundle
-    UI.message("Регистрирую идентификатор #{BUNDLE_ID}")
-    Spaceship::ConnectAPI::BundleId.create(name: "BURCEV", identifier: BUNDLE_ID, platform: "IOS")
+    UI.message("Регистрирую идентификатор #{identifier}")
+    Spaceship::ConnectAPI::BundleId.create(name: name, identifier: identifier, platform: "IOS")
+    bundle = Spaceship::ConnectAPI::BundleId.find(identifier)
   end
-  # Возможности App ID должны совпадать с entitlements сборки, иначе профиль
-  # их не содержит и подпись отказывает.
-  bundle ||= Spaceship::ConnectAPI::BundleId.find(BUNDLE_ID)
   enabled = bundle.get_capabilities.map(&:capability_type)
-  [
-    Spaceship::ConnectAPI::BundleIdCapability::Type::HEALTHKIT,
-    Spaceship::ConnectAPI::BundleIdCapability::Type::ASSOCIATED_DOMAINS,
-    Spaceship::ConnectAPI::BundleIdCapability::Type::PUSH_NOTIFICATIONS,
-  ].each do |capability|
+  capabilities.each do |capability|
     next if enabled.include?(capability)
-    UI.message("Включаю #{capability} у #{BUNDLE_ID}")
+    UI.message("Включаю #{capability} у #{identifier}")
     bundle.create_capability(capability)
   end
-  unless Spaceship::ConnectAPI::BundleId.find(WIDGET_ID)
-    UI.message("Регистрирую идентификатор виджета #{WIDGET_ID}")
-    Spaceship::ConnectAPI::BundleId.create(name: "BURCEV Widget", identifier: WIDGET_ID, platform: "IOS")
-  end
+  bundle
+end
+
+# Запись приложения в App Store Connect API создать не позволяет — её заводит
+# человек, и без неё загрузка в TestFlight отказывает; об этом говорим прямо.
+#
+# App Group (#{ENVIRONMENT[:app_group]}) заведена в портале вручную; ключ API
+# включает возможность, но привязку группы к идентификатору, если её нет,
+# делает человек в Certificates, Identifiers & Profiles.
+def ensure_app_exists
+  types = Spaceship::ConnectAPI::BundleIdCapability::Type
+  ensure_bundle(BUNDLE_ID, ENVIRONMENT[:name], [
+    types::HEALTHKIT,
+    types::ASSOCIATED_DOMAINS,
+    types::PUSH_NOTIFICATIONS,
+    types::APPLE_ID_AUTH,
+    types::APP_GROUPS,
+  ])
+  ensure_bundle(WIDGET_ID, "#{ENVIRONMENT[:name]} Widget", [types::APP_GROUPS])
   unless Spaceship::ConnectAPI::App.find(BUNDLE_ID)
     UI.user_error!("Приложения #{BUNDLE_ID} нет в App Store Connect. " \
                    "Создайте его: My Apps → + → New App, Bundle ID #{BUNDLE_ID}.")
@@ -65,7 +96,7 @@ platform :ios do
       api_key: key,
       app_identifier: BUNDLE_ID,
       output_path: "build",
-      filename: "burcev_appstore.mobileprovision",
+      filename: "vzvesheno_appstore.mobileprovision",
       # Перевыпуск: профиль, выпущенный до включения возможности (HealthKit),
       # её не содержит.
       force: true,
@@ -77,15 +108,15 @@ platform :ios do
       api_key: key,
       app_identifier: WIDGET_ID,
       output_path: "build",
-      filename: "burcev_widget_appstore.mobileprovision",
+      filename: "vzvesheno_widget_appstore.mobileprovision",
       force: true,
     )
     widget_profile = lane_context[SharedValues::SIGH_NAME]
     UI.message("Профиль виджета: #{widget_profile}")
     update_code_signing_settings(
       use_automatic_signing: false,
-      path: "Burcev.xcodeproj",
-      targets: ["BurcevWidget"],
+      path: PROJECT,
+      targets: ["VzveshenoWidgets"],
       team_id: TEAM_ID,
       code_sign_identity: "Apple Distribution",
       profile_name: widget_profile,
@@ -97,24 +128,23 @@ platform :ios do
     # сборке упёрся в лимит сертификатов аккаунта.
     update_code_signing_settings(
       use_automatic_signing: false,
-      path: "Burcev.xcodeproj",
-      targets: ["Burcev"],
+      path: PROJECT,
+      targets: ["Vzvesheno"],
       team_id: TEAM_ID,
       code_sign_identity: "Apple Distribution",
       profile_name: profile_name,
       bundle_identifier: BUNDLE_ID,
     )
-    # Номер сборки — номер прогона CI: TestFlight требует, чтобы он рос.
-    build_number = ENV["BUILD_NUMBER"] || Time.now.strftime("%Y%m%d%H%M")
+    # Номер сборки — число коммитов: его пишет scripts/build-number.sh при
+    # `xcodegen generate` (BuildNumber.xcconfig), здесь он не задаётся.
     build_app(
-      project: "Burcev.xcodeproj",
-      scheme: "Burcev",
-      configuration: "Release",
+      project: PROJECT,
+      scheme: ENVIRONMENT[:scheme],
+      configuration: ENVIRONMENT[:configuration],
       export_method: "app-store",
       output_directory: "build/ipa",
-      output_name: "Burcev.ipa",
+      output_name: "Vzvesheno.ipa",
       clean: true,
-      xcargs: "CURRENT_PROJECT_VERSION=#{build_number}",
       export_options: {
         signingStyle: "manual",
         teamID: TEAM_ID,
@@ -131,7 +161,7 @@ platform :ios do
     FileUtils.mkdir_p(keys)
     FileUtils.cp(ENV["ASC_KEY_PATH"], File.join(keys, "AuthKey_#{ENV['APP_STORE_CONNECT_KEY_ID']}.p8"))
     Dir.chdir("..") do
-      sh("xcrun", "altool", "--validate-app", "-f", "build/ipa/Burcev.ipa", "-t", "ios",
+      sh("xcrun", "altool", "--validate-app", "-f", IPA, "-t", "ios",
          "--apiKey", ENV["APP_STORE_CONNECT_KEY_ID"], "--apiIssuer", ENV["APP_STORE_CONNECT_ISSUER_ID"],
          "--output-format", "normal")
     end
@@ -140,14 +170,17 @@ platform :ios do
   desc "Entitlements подписанного приложения и профиля — что сверяет Apple при приёме"
   lane :entitlements do
     Dir.chdir("..") do
-      sh("rm -rf build/inspect && mkdir -p build/inspect && cd build/inspect && unzip -q ../ipa/Burcev.ipa")
-      sh("codesign -d --entitlements :- build/inspect/Payload/Burcev.app 2>/dev/null")
-      sh("security cms -D -i build/inspect/Payload/Burcev.app/embedded.mobileprovision | plutil -extract Entitlements xml1 -o - -")
+      sh("rm -rf build/inspect && mkdir -p build/inspect && cd build/inspect && unzip -q ../ipa/Vzvesheno.ipa")
+      sh("codesign -d --entitlements :- build/inspect/Payload/Vzvesheno.app 2>/dev/null")
+      sh("security cms -D -i build/inspect/Payload/Vzvesheno.app/embedded.mobileprovision | plutil -extract Entitlements xml1 -o - -")
+      # Манифест приватности, фоновые режимы и номер сборки — до загрузки, а не письмом от Apple.
+      sh("scripts/check-bundle.sh build/inspect/Payload/Vzvesheno.app")
     end
   end
 
-  desc "CI: сертификат, сборка, загрузка в TestFlight без внешнего тестирования"
-  lane :ci_beta do
+  desc "Сборка в TestFlight для внутренних тестировщиков (docs/ios/IMPLEMENTATION.md): " \
+       "Vzvesheno-Prod, подпись вручную, загрузка ключом App Store Connect API без пароля Apple ID"
+  lane :beta do
     setup_ci
     import_certificate(
       certificate_path: "fastlane/certificate.p12",
@@ -159,6 +192,26 @@ platform :ios do
     entitlements
     validate
     upload_direct
+    upload_symbols
+    # Новые сборки сами попадают во внутреннюю группу «Команда» с доступом ко
+    # всем сборкам (lane distribute_internal её создаёт, если её нет).
+  end
+
+  desc "Прежнее имя lane beta — его вызывают старые теги"
+  lane :ci_beta do
+    beta
+  end
+
+  desc "dSYM в Sentry — без них стеки падений в отчётах нечитаемы"
+  lane :upload_symbols do
+    if ENV["SENTRY_AUTH_TOKEN"].to_s.empty?
+      UI.important("SENTRY_AUTH_TOKEN не задан — dSYM в Sentry не загружены")
+      next
+    end
+    Dir.chdir("..") do
+      sh("sentry-cli", "debug-files", "upload", "--org", "burcev-team", "--project", "apple-ios",
+         "--include-sources", "build/ipa/Vzvesheno.app.dSYM.zip")
+    end
   end
 
   desc "Загрузка altool с отслеживанием доставки: что Apple делает со сборкой"
@@ -168,7 +221,7 @@ platform :ios do
     # --build-status показывает состояние обработки и её ошибки.
     auth = ["--apiKey", ENV["APP_STORE_CONNECT_KEY_ID"], "--apiIssuer", ENV["APP_STORE_CONNECT_ISSUER_ID"]]
     output = Dir.chdir("..") do
-      sh("xcrun", "altool", "--upload-app", "-f", "build/ipa/Burcev.ipa", "-t", "ios", *auth, "--output-format", "normal")
+      sh("xcrun", "altool", "--upload-app", "-f", IPA, "-t", "ios", *auth, "--output-format", "normal")
     end
     delivery = output[/Delivery UUID:\s*([0-9a-fA-F-]{36})/, 1] || output[/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/, 1]
     UI.user_error!("altool не вернул номер доставки") unless delivery

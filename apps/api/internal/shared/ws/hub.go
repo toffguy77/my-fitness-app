@@ -45,6 +45,15 @@ func (h *Hub) Unregister(userID int64) {
 	delete(h.clients, userID)
 }
 
+// IsConnected reports whether the user has at least one open connection on
+// this instance. It is what decides that a chat message needs no push: the
+// person is looking at the application.
+func (h *Hub) IsConnected(userID int64) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.clients[userID]) > 0
+}
+
 func (h *Hub) SendToUser(userID int64, event OutgoingEvent) bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()

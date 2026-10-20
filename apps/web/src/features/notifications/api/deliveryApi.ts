@@ -8,7 +8,8 @@ export interface TypeSetting {
     type: string
     /** Always true. Reported rather than omitted so the column can explain why it does not move. */
     app: boolean
-    email: boolean
+    /** Absent for a type that is never mailed (chat messages): no switch is shown. */
+    email?: boolean
     push: boolean
 }
 
@@ -18,6 +19,8 @@ export interface DeliveryPreferences {
     quietHoursEnd: number | null
     timezone: string
     emailUnsubscribed: boolean
+    /** A chat push shows the message itself, or only who wrote it. */
+    showMessageText: boolean
 }
 
 export interface UpdateDeliveryPreferences {
@@ -25,6 +28,7 @@ export interface UpdateDeliveryPreferences {
     quietHoursStart: number | null
     quietHoursEnd: number | null
     emailUnsubscribed?: boolean
+    showMessageText?: boolean
 }
 
 export async function getDeliveryPreferences(): Promise<DeliveryPreferences> {
@@ -62,6 +66,7 @@ export const TYPE_LABELS: Record<string, string> = {
     general: t('notifications.types.general'),
     support_escalated: t('notifications.types.support_escalated'),
     curator_requested: t('notifications.types.curator_requested'),
+    chat_message: t('notifications.types.chat_message'),
 }
 
 /** The public half of the VAPID pair; a browser cannot subscribe without it. */

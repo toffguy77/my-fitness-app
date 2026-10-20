@@ -89,7 +89,7 @@ func (s *Service) WarnExpiringCuratorAccess(ctx context.Context) (int, error) {
 			"Доступ к куратору скоро закончится",
 			fmt.Sprintf("Работа с куратором оплачена до %s включительно. Продлите, чтобы продолжить переписку.",
 				e.ExpiredOn.Format("02.01.2006")),
-			"/pricing"); err != nil {
+			"/pricing", nil); err != nil {
 			s.log.Errorw("Failed to warn about expiring curator access",
 				"error", err, "client_id", e.ClientID)
 			continue
@@ -110,7 +110,7 @@ func (s *Service) notifyAccessEnded(ctx context.Context, e curatoraccess.Expirat
 		string(notifications.TypeCuratorAccessEnded),
 		"Доступ к куратору закончился",
 		"Переписка с куратором осталась доступной для чтения. Продлите доступ, чтобы снова писать.",
-		"/pricing"); err != nil {
+		"/pricing", nil); err != nil {
 		s.log.Errorw("Failed to notify client about ended curator access",
 			"error", err, "client_id", e.ClientID)
 	}
@@ -119,7 +119,7 @@ func (s *Service) notifyAccessEnded(ctx context.Context, e curatoraccess.Expirat
 		string(notifications.TypeCuratorAccessEnded),
 		"У клиента закончился доступ",
 		"Клиент больше не может писать вам, пока не продлит доступ.",
-		"/curator/chat"); err != nil {
+		"/curator/chat", nil); err != nil {
 		s.log.Errorw("Failed to notify curator about ended curator access",
 			"error", err, "curator_id", e.CuratorID, "client_id", e.ClientID)
 	}

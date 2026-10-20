@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/upload"
@@ -18,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/storage"
@@ -1137,12 +1139,12 @@ func (s *Service) PublishScheduledArticles(ctx context.Context) error {
 // content notifications or unsubscribed from the article's category.
 func (s *Service) createContentNotifications(ctx context.Context, articleID string) error {
 	// Fetch article details
-	var title, excerpt, category, audienceScope string
+	var title, excerpt, category, audienceScope, slug string
 	var authorID int64
 	err := s.db.QueryRowContext(ctx,
-		`SELECT title, excerpt, category, audience_scope, author_id FROM articles WHERE id = $1`,
+		`SELECT title, excerpt, category, audience_scope, author_id, slug FROM articles WHERE id = $1`,
 		articleID,
-	).Scan(&title, &excerpt, &category, &audienceScope, &authorID)
+	).Scan(&title, &excerpt, &category, &audienceScope, &authorID, &slug)
 	if err != nil {
 		return fmt.Errorf("failed to get article details for notifications: %w", err)
 	}
@@ -1224,6 +1226,16 @@ func (s *Service) createContentNotifications(ctx context.Context, articleID stri
 	}
 
 	actionURL := fmt.Sprintf("/content/%s", articleID)
+	// Адрес экрана статьи для приложения (notification-targets). Вставка
+	// здесь своя, мимо notifications.CreateNotification, — без явного target
+	// колонка взяла бы значение по умолчанию и вела бы в список уведомлений.
+	target, err := json.Marshal(notifications.Target{
+		Kind: notifications.TargetArticle,
+		IDs:  notifications.IDs{"article_id": articleID, "slug": slug},
+	})
+	if err != nil {
+		return fmt.Errorf("encode article target: %w", err)
+	}
 
 	// Batch insert notifications (500 per batch to avoid query size limits)
 	type insertedNotif struct {
@@ -1242,22 +1254,22 @@ func (s *Service) createContentNotifications(ctx context.Context, articleID stri
 		batch := userIDs[i:end]
 
 		valueStrings := make([]string, 0, len(batch))
-		args := make([]any, 0, len(batch)*6)
+		args := make([]any, 0, len(batch)*7)
 		var batchNotifs []insertedNotif
 
 		for j, userID := range batch {
 			notifID := uuid.New().String()
-			base := j * 6
+			base := j * 7
 			valueStrings = append(valueStrings, fmt.Sprintf(
-				"($%d, $%d, 'content', 'new_content', $%d, $%d, $%d, $%d, NOW())",
-				base+1, base+2, base+3, base+4, base+5, base+6,
+				"($%d, $%d, 'content', 'new_content', $%d, $%d, $%d, $%d, $%d::jsonb, NOW())",
+				base+1, base+2, base+3, base+4, base+5, base+6, base+7,
 			))
-			args = append(args, notifID, userID, notifTitle, excerpt, actionURL, category)
+			args = append(args, notifID, userID, notifTitle, excerpt, actionURL, category, string(target))
 			batchNotifs = append(batchNotifs, insertedNotif{userID: userID, notifID: notifID})
 		}
 
 		batchQuery := fmt.Sprintf( // nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
-			`INSERT INTO notifications (id, user_id, category, type, title, content, action_url, content_category, created_at) VALUES %s`,
+			`INSERT INTO notifications (id, user_id, category, type, title, content, action_url, content_category, target, created_at) VALUES %s`,
 			strings.Join(valueStrings, ", "),
 		)
 

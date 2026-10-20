@@ -46,12 +46,15 @@ import { useOnboardingState } from '@/features/dashboard/hooks/useOnboardingStat
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import { dashboardApi } from '@/features/dashboard/api/dashboardApi'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { formatLocalDate } from '@/shared/utils/format'
 import toast from 'react-hot-toast'
 import { WeekCaloriesCard } from '@/features/nutrition-calc/components/WeekCaloriesCard'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { TargetVsActual } from '@/features/nutrition-calc/types'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 import { t } from '@/shared/i18n'
+
+const REPORT_ID = /^[A-Za-z0-9-]{1,64}$/
 
 interface UserData {
     id: string
@@ -63,6 +66,10 @@ interface UserData {
 export default function DashboardPage() {
     const searchParams = useSearchParams()
     const highlightTaskId = searchParams.get('task')
+    // Id отчёта уходит в путь запроса, поэтому принимается только похожее на
+    // id: строка из адресной строки не должна дописывать к пути что-то своё.
+    const reportParam = searchParams.get('report')
+    const reportId = reportParam && REPORT_ID.test(reportParam) ? reportParam : null
     // Who is looking at this page. The cache paints the first frame; the
     // server settles it.
     const { user: currentUser, state: userState } = useCurrentUser()
@@ -185,9 +192,10 @@ export default function DashboardPage() {
         if (submittingReport) return
         setSubmittingReport(true)
         try {
-            // Сервер принимает дату недели, не момент времени.
-            const asDate = (d: Date) => d.toISOString().slice(0, 10)
-            await dashboardApi.submitWeeklyReport(asDate(selectedWeek.start), asDate(selectedWeek.end))
+            // Сервер принимает дату недели, не момент времени. Дата — местная:
+            // toISOString() давал дату по UTC, и в первые часы понедельника
+            // восточнее Гринвича отчёт уходил за воскресенье прошлой недели.
+            await dashboardApi.submitWeeklyReport(formatLocalDate(selectedWeek.start), formatLocalDate(selectedWeek.end))
             toast.success(t('dashboard.calendar.reportSent'))
         } catch (error) {
             toast.error(messageForOr(error, t('dashboard.calendar.reportFailed')))
@@ -275,6 +283,20 @@ export default function DashboardPage() {
                     className="w-full"
                 />
 
+                {/* Отзыв куратора на недельный отчёт — только по ссылке из
+                    уведомления (?report=<id>). Без отчёта блоку нечего
+                    показать: раньше он стоял здесь всегда и всегда пустым. */}
+                {reportId && (
+                    <ErrorBoundary variant="inline" label="dashboard-curator-feedback">
+                        <CuratorFeedbackSection
+                            reportId={reportId}
+                            defaultExpanded
+                            scrollIntoViewOnLoad
+                            className="w-full"
+                        />
+                    </ErrorBoundary>
+                )}
+
                 {/* Неделя точками — по той же причине не новичку */}
                 {!onboarding.isLoading && !showsFirstWeek && (
                     <ErrorBoundary variant="inline" label="dashboard-kbju-chart">
@@ -308,10 +330,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Curator feedback on weekly reports */}
-                <ErrorBoundary variant="inline" label="dashboard-curator-feedback">
-                    <CuratorFeedbackSection className="w-full" />
-                </ErrorBoundary>
             </div>
         </DashboardLayout>
     )

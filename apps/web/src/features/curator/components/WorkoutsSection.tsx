@@ -7,6 +7,8 @@ import type { DayDetail } from '../types'
 
 import { t } from '@/shared/i18n'
 import { workoutTypeLabel } from '@/features/dashboard/utils/workoutTypeLabel'
+import { HealthSourceLabel } from '@/shared/components/ui/HealthSourceLabel'
+
 interface WorkoutsSectionProps {
     days: DayDetail[]
 }
@@ -18,6 +20,7 @@ export function WorkoutsSection({ days }: WorkoutsSectionProps) {
             label: new Date(d.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
             shortLabel: new Date(d.date + 'T00:00:00').toLocaleDateString('ru-RU', { weekday: 'short' }),
             workout: d.workout,
+            workoutSource: d.workout_source,
         })),
         [days]
     )
@@ -73,6 +76,7 @@ export function WorkoutsSection({ days }: WorkoutsSectionProps) {
                         <span className="font-medium text-fg">
                             {d.workout!.type ? workoutTypeLabel(d.workout!.type) : t('curator.workouts.fallbackType')}
                             {d.workout!.duration > 0 && t('curator.workouts.duration', { minutes: d.workout!.duration })}
+                            {' '}<HealthSourceLabel source={d.workoutSource} />
                         </span>
                     </div>
                 ))}

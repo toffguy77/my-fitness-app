@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Send, Instagram } from 'lucide-react'
 import type { ClientDetail } from '../types'
 
 import { t } from '@/shared/i18n'
+import { HealthSourceLabel } from '@/shared/components/ui/HealthSourceLabel'
 
 /** Контакт — сведение, а не главное действие экрана: чернилами с подчёркиванием. */
 const CONTACT_LINK = 'text-fg underline decoration-line-strong underline-offset-2 hover:decoration-fg'
@@ -51,7 +52,10 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
                             <span><span className="text-fg-subtle">{t('curator.info.height')}</span> {t('curator.info.heightValue', { value: detail.height ?? '' })}</span>
                         )}
                         {hasWeight && (
-                            <span><span className="text-fg-subtle">{t('curator.info.weight')}</span> {t('curator.card.kilograms', { value: detail.last_weight ?? '' })}</span>
+                            <span>
+                                <span className="text-fg-subtle">{t('curator.info.weight')}</span> {t('curator.card.kilograms', { value: detail.last_weight ?? '' })}
+                                {' '}<HealthSourceLabel source={detail.last_weight_source} />
+                            </span>
                         )}
                     </div>
                     {hasTimezone && (

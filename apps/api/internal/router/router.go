@@ -138,6 +138,7 @@ func New(d Deps) *gin.Engine {
 	registerFoodTrackerRoutes(v1, d)
 	registerNutritionCalcRoutes(v1, d)
 	registerDashboardRoutes(v1, d)
+	registerHealthImportRoutes(v1, d)
 	registerChatRoutes(v1, d)
 	registerCuratorRoutes(v1, d)
 	registerAdminRoutes(v1, d)
@@ -149,6 +150,7 @@ func New(d Deps) *gin.Engine {
 	registerCuratorLeadRoutes(v1, d)
 	registerSupportRoutes(v1, d)
 	registerAnalyticsRoutes(v1, d)
+	registerClientConfigRoute(v1, d)
 
 	// WebSocket upgrade. Authentication happens inside the handler because
 	// browsers cannot set headers on a WebSocket handshake.
@@ -225,7 +227,7 @@ func registerHealth(engine *gin.Engine, d Deps) {
 			"environment": d.Cfg.Env,
 			"version":     d.Cfg.Version,
 			"checks":      checks,
-			"features":    d.Cfg.Features.Map(),
+			"features":    features(d.Cfg),
 		})
 	})
 }

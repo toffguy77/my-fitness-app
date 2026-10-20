@@ -111,6 +111,38 @@ func TestValidate_ProductionMissingAppDomain(t *testing.T) {
 	assert.Contains(t, err.Error(), "APP_DOMAIN")
 }
 
+// The sign-in stub of the end-to-end suite must never answer for production:
+// whoever runs the server at OAUTH_YANDEX_BASE_URL would decide who signs in.
+// OAUTH_APP_ORIGIN, the matching redirect origin, is refused for the same
+// reason — production returns to https://APP_DOMAIN and nowhere else.
+func TestValidate_ProductionRefusesTheSignInStub(t *testing.T) {
+	for _, name := range []string{"OAUTH_YANDEX_BASE_URL", "OAUTH_APP_ORIGIN"} {
+		t.Run(name, func(t *testing.T) {
+			prodEnv(t)
+			t.Setenv(name, "http://localhost:3071")
+
+			_, err := loadIn(t)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), name)
+		})
+	}
+}
+
+func TestValidate_DevelopmentAcceptsTheSignInStub(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("NODE_ENV", "development")
+	t.Setenv("DB_PASSWORD", "local")
+	t.Setenv("OAUTH_YANDEX_BASE_URL", "http://localhost:3071/")
+	t.Setenv("OAUTH_APP_ORIGIN", "http://localhost:3070")
+
+	cfg, err := loadIn(t)
+
+	require.NoError(t, err)
+	assert.Equal(t, "http://localhost:3071", cfg.OAuthYandexBaseURL)
+	assert.Equal(t, "http://localhost:3070", cfg.OAuthAppOrigin)
+}
+
 // Development must keep booting without a full environment; the unsafe default
 // is reported through JWTSecretIsUnsafe so the caller can warn.
 func TestValidate_DevelopmentAllowsDefaults(t *testing.T) {
@@ -165,7 +197,7 @@ func TestFeatures_DerivedFromCredentials(t *testing.T) {
 	// Обратная связь рекламному кабинету выключена по той же причине: токен
 	// привязан к живому человеку, и вывести его из учётных данных нельзя.
 	assert.Equal(t, []string{
-		"support_bot", "support_bridge", "web_push", "ios_push",
+		"support_bot", "support_bridge", "web_push", "apns", "apple_sign_in",
 		"error_reporting", "tracing", "ads_attribution",
 	}, cfg.Features.Disabled())
 }
