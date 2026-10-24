@@ -87,7 +87,8 @@ final class NativeAuthTests: XCTestCase {
             return .success(#"{"status":"needs_consents","pending_token":"\#(pending)","provider":"apple"}"#)
         }
         let api = auth(transport)
-        let outcome = try await api.apple(identityToken: "i", authorizationCode: "c", nonce: AppleNonce(raw: "server-nonce"), givenName: nil, familyName: nil)
+        let outcome = try await api.apple(identityToken: "i", authorizationCode: "c", nonce: AppleNonce(raw: "server-nonce"),
+                                          givenName: nil, familyName: nil)
         guard case let .pending(step) = outcome else { return XCTFail("ожидалось продолжение") }
         XCTAssertEqual(step.step, .needsConsents)
         XCTAssertEqual(step.pendingToken, pending)
