@@ -382,6 +382,11 @@ final class AccessibilityAuditUITests: XCTestCase {
             if size == "AX5" {
                 // На размерах доступности приём пищи — своей строкой под заголовком.
                 XCTAssertGreaterThanOrEqual(meal.frame.minY, title.frame.maxY, "\(size): приём пищи не под заголовком")
+                // Поле поиска получает фокус при открытии: клавиатура закрывает
+                // выдачу, и аудит мерил бы контраст строк под ней и пустые
+                // ячейки подсказок клавиатуры. Перевод строки её убирает.
+                if app.keyboards.firstMatch.exists { app.textFields["search.field"].typeText("\n") }
+                Thread.sleep(forTimeInterval: 1)
                 try audit(app, "шапка «Записать еду» на AX5")
             }
             app.terminate()
@@ -415,6 +420,13 @@ final class AccessibilityAuditUITests: XCTestCase {
         try audit(app, "онбординг: тело")
         app.buttons["onboarding.skip"].tap()
         _ = wait(app, "health.notNow", timeout: 5)
+        // «Подключить» внизу прокрутки уходит под край экрана; аудит
+        // контраста частично невидимой кнопки мерит пиксели за краем
+        // («Contrast failed» при 6:1 по токенам) — аудит по видимой кнопке.
+        let connect = app.buttons["health.continue"]
+        let window = app.windows.firstMatch.frame
+        for _ in 0..<4 where connect.frame.maxY > window.maxY - 34 { app.swipeUp() }
+        Thread.sleep(forTimeInterval: 1)
         try audit(app, "онбординг: Здоровье")
     }
 

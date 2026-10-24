@@ -53,7 +53,11 @@ extension ScreenSnapshotTests {
     /// что не наезжает.
     func testAddFoodLargeText() {
         assertScreenSnapshot(addFood(meal: .snack), named: "xxxLarge", typeSize: .xxxLarge)
-        assertScreenSnapshot(addFood(meal: .snack), named: "ax5", typeSize: .accessibility5)
+        // На AX5 выдача уходит далеко за экран — снимок шапки и переключателя
+        // способов целиком, без выдачи.
+        assertScreenSnapshot(AddFoodContent(method: .constant(.search), meal: .constant(.snack), onCancel: {},
+                                            content: { EmptyView() }),
+                             named: "ax5", height: nil, typeSize: .accessibility5)
     }
 
     private func addFood(meal: MealType) -> some View {

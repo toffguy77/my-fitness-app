@@ -24,40 +24,19 @@ struct AddFoodContent<Method: View>: View {
         .padding(.top, DS.Space.s2)
     }
 
-    /// «Отмена» · «Записать еду» · приём пищи. В одну строку — пока все три
-    /// помещаются целиком; иначе (и всегда на размерах доступности) —
-    /// столбиком: заголовок переносится, выбор приёма — своей строкой под ним
-    /// (#279: на крупном тексте заголовок поверх строки наезжал на соседей).
-    @ViewBuilder private var header: some View {
-        if typeSize.isAccessibilitySize {
-            stackedHeader
-        } else {
-            ViewThatFits(in: .horizontal) {
-                rowHeader
-                stackedHeader
-            }
-        }
-    }
-
-    /// Заголовок посередине: боковые части делят остаток поровну и не
-    /// сжимаются меньше своей подписи — не поместилось, `ViewThatFits` берёт
-    /// столбик, а не обрезает и не накладывает.
-    private var rowHeader: some View {
-        HStack(spacing: DS.Space.s2) {
-            cancelButton.fixedSize().frame(maxWidth: .infinity, alignment: .leading)
-            title.fixedSize()
-            mealPicker.fixedSize().frame(maxWidth: .infinity, alignment: .trailing)
-        }
-    }
-
-    private var stackedHeader: some View {
-        VStack(alignment: .leading, spacing: DS.Space.s2) {
+    /// «Отмена» · «Записать еду» · приём пищи. Одна раскладка на все размеры
+    /// (`AddFoodHeaderLayout`): в строку с заголовком посередине, пока все три
+    /// помещаются целиком; иначе — и всегда на размерах доступности —
+    /// столбиком: заголовок переносится, выбор приёма своей строкой под ним
+    /// (#279: заголовок поверх строки наезжал на соседей на крупном тексте).
+    /// Подвиды те же при любой раскладке — аудит доступности, меняя размер
+    /// текста, видит те же элементы, а не другую ветку `ViewThatFits`.
+    private var header: some View {
+        AddFoodHeaderLayout(stacked: typeSize.isAccessibilitySize, spacing: DS.Space.s2) {
             cancelButton
             title
-                .fixedSize(horizontal: false, vertical: true)
             mealPicker
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var cancelButton: some View {
@@ -320,5 +299,52 @@ struct PortionCard: View {
         .overlay(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).strokeBorder(DS.Color.lineDefault))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("portion.card")
+    }
+}
+
+/// Шапка листа: три подвида — «Отмена», заголовок, приём пищи. В строку —
+/// заголовок точно посередине, боковые по краям, если каждый помещается в
+/// свою подпись без сжатия; иначе столбиком по левому краю, заголовок на всю
+/// ширину с переносом.
+struct AddFoodHeaderLayout: Layout {
+    var stacked: Bool
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        let ideal = subviews.map { $0.sizeThatFits(.unspecified) }
+        let width = proposal.width ?? rowWidth(ideal)
+        if fitsInRow(ideal, width: width) {
+            return CGSize(width: width, height: ideal.map(\.height).max() ?? 0)
+        }
+        let heights = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)).height }
+        return CGSize(width: width, height: heights.reduce(0, +) + spacing * CGFloat(max(heights.count - 1, 0)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        let ideal = subviews.map { $0.sizeThatFits(.unspecified) }
+        if fitsInRow(ideal, width: bounds.width), subviews.count == 3 {
+            subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading, proposal: .unspecified)
+            subviews[1].place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center, proposal: .unspecified)
+            subviews[2].place(at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing, proposal: .unspecified)
+            return
+        }
+        var y = bounds.minY
+        for subview in subviews {
+            let size = ProposedViewSize(width: bounds.width, height: nil)
+            let height = subview.sizeThatFits(size).height
+            subview.place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading, proposal: size)
+            y += height + spacing
+        }
+    }
+
+    /// Ширина строки с заголовком посередине: по обе стороны от него —
+    /// место под более широкую из боковых частей.
+    private func rowWidth(_ ideal: [CGSize]) -> CGFloat {
+        guard ideal.count == 3 else { return ideal.map(\.width).reduce(0, +) }
+        return ideal[1].width + 2 * (max(ideal[0].width, ideal[2].width) + spacing)
+    }
+
+    private func fitsInRow(_ ideal: [CGSize], width: CGFloat) -> Bool {
+        !stacked && ideal.count == 3 && rowWidth(ideal) <= width
     }
 }
