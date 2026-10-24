@@ -123,6 +123,45 @@ func TestAppleRefusedAuthorizationCodeIsRejected(t *testing.T) {
 	require.ErrorIs(t, err, oauth.ErrIdentityRejected)
 }
 
+// Точка выдачи токенов Apple не отвечает: это не отказ в личности, а
+// недоступность (503 apple_unavailable у обработчика). Identify без обмена
+// при этом работает и токен не трогает.
+func TestAppleTokenEndpointDownIsUnavailableNotRejected(t *testing.T) {
+	stub := applestub.New(t)
+	apple := stub.Adapter(nil)
+	stub.AcceptCode("code-1", "refresh-1")
+	in := credential(stub, applestub.Token{Subject: "s", Email: "a@example.test"}, "code-1")
+	stub.SetFailToken(true)
+
+	_, err := apple.Authenticate(context.Background(), in)
+	require.ErrorIs(t, err, oauth.ErrAppleUnavailable)
+	require.NotErrorIs(t, err, oauth.ErrIdentityRejected)
+
+	profile, err := apple.Identify(context.Background(), in)
+	require.NoError(t, err)
+	require.Equal(t, "s", profile.ProviderUserID)
+	require.Equal(t, "a@example.test", profile.Email)
+	require.Empty(t, profile.SealedRefreshToken)
+
+	stub.SetFailToken(false)
+	sealed, err := apple.ExchangeCode(context.Background(), "code-1")
+	require.NoError(t, err)
+	require.NotEmpty(t, sealed)
+}
+
+// Набор ключей Apple недоступен, а в кэше ключа нет: проверить токен нечем —
+// это недоступность, а не поддельный токен.
+func TestAppleKeysUnreachableIsUnavailable(t *testing.T) {
+	stub := applestub.New(t)
+	apple := stub.Adapter(nil)
+	in := credential(stub, applestub.Token{Subject: "s"}, "code-1")
+	stub.Close()
+
+	_, err := apple.Identify(context.Background(), in)
+	require.ErrorIs(t, err, oauth.ErrAppleUnavailable)
+	require.NotErrorIs(t, err, oauth.ErrIdentityRejected)
+}
+
 // «Неизвестный ключ подписи»: набор ключей кэшируется на час; неизвестный kid
 // перечитывает его, но не чаще раза в минуту, и проверка идёт по свежему.
 func TestAppleKeysAreCachedAndRefetchedAtMostOnceAMinute(t *testing.T) {

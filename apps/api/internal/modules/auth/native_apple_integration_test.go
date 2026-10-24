@@ -37,6 +37,7 @@ type appleStand struct {
 	stub        *applestub.Server
 	revocations *auth.AppleRevocations
 	accounts    *account.Service
+	service     *auth.Service
 }
 
 func newAppleStand(t *testing.T, name string, withApple bool) appleStand {
@@ -50,7 +51,7 @@ func newAppleStand(t *testing.T, name string, withApple bool) appleStand {
 	oauthHandler := auth.NewOAuthHandler(cfg, log, service, oauth.NewRegistry())
 	accounts := account.NewService(db, log, nil)
 
-	stand := appleStand{db: db, accounts: accounts}
+	stand := appleStand{db: db, accounts: accounts, service: service}
 	if withApple {
 		stand.stub = applestub.New(t)
 		apple := stand.stub.Adapter(nil)
@@ -331,4 +332,178 @@ func TestAppleServiceAccountGetsACurator(t *testing.T) {
 	userID := int64(data(body)["user"].(map[string]any)["id"].(float64))
 	assert.Equal(t, 1, s.count(t,
 		`SELECT COUNT(*) FROM curator_client_relationships WHERE client_id = $1 AND status = 'active'`, userID))
+}
+
+// register signs a new person in with Apple and gives the consents.
+func (s appleStand) register(t *testing.T, sub, refresh string) int64 {
+	t.Helper()
+	_, body := s.signIn(t, sub, sub+"@privaterelay.appleid.com", refresh)
+	code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/consents",
+		`{"pending_token":"`+data(body)["pending_token"].(string)+`",`+appleConsents+`}`, "")
+	require.Equal(t, http.StatusOK, code, body)
+	return int64(data(body)["user"].(map[string]any)["id"].(float64))
+}
+
+func (s appleStand) storedToken(t *testing.T, sub string) string {
+	t.Helper()
+	var sealed sql.NullString
+	require.NoError(t, s.db.QueryRowContext(context.Background(),
+		`SELECT provider_refresh_token_enc FROM external_identities WHERE provider = 'apple' AND provider_user_id = $1`,
+		sub).Scan(&sealed))
+	return sealed.String
+}
+
+// «Apple недоступна при входе привязанного аккаунта»: аккаунт найден по sub и
+// хранит токен — вход не зависит от точки выдачи токенов Apple; удачный обмен
+// обновляет сохранённый токен, неудачный (сбой или отказ в коде) — нет.
+func TestAppleLinkedSignInDoesNotNeedTheTokenEndpoint(t *testing.T) {
+	s := newAppleStand(t, "apple_linked_down", true)
+	userID := s.register(t, "001.linked", "apple-l1")
+	first := s.storedToken(t, "001.linked")
+	require.NotEmpty(t, first)
+
+	signedIn := func(t *testing.T, code int, body map[string]any) {
+		t.Helper()
+		require.Equal(t, http.StatusOK, code, body)
+		d := data(body)
+		assert.Equal(t, "signed_in", d["status"])
+		assert.Equal(t, float64(userID), d["user"].(map[string]any)["id"])
+		assert.NotEmpty(t, d["access_token"])
+	}
+
+	t.Run("точка выдачи токенов не отвечает", func(t *testing.T) {
+		s.stub.SetFailToken(true)
+		defer s.stub.SetFailToken(false)
+		code, body := s.signIn(t, "001.linked", "001.linked@privaterelay.appleid.com", "apple-l2")
+		signedIn(t, code, body)
+		assert.Equal(t, first, s.storedToken(t, "001.linked"), "сбой Apple изменил сохранённый токен")
+	})
+
+	t.Run("Apple не приняла код", func(t *testing.T) {
+		token := s.stub.Sign(applestub.Token{Subject: "001.linked", Email: "001.linked@privaterelay.appleid.com", RawNonce: "spent"})
+		code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
+			`{"identity_token":"`+token+`","authorization_code":"never-issued","nonce":"spent"}`, "")
+		signedIn(t, code, body)
+		assert.Equal(t, first, s.storedToken(t, "001.linked"))
+	})
+
+	t.Run("без кода", func(t *testing.T) {
+		token := s.stub.Sign(applestub.Token{Subject: "001.linked", RawNonce: "nocode"})
+		code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
+			`{"identity_token":"`+token+`","nonce":"nocode"}`, "")
+		signedIn(t, code, body)
+		assert.Equal(t, first, s.storedToken(t, "001.linked"))
+	})
+
+	t.Run("обмен удался — токен обновлён", func(t *testing.T) {
+		code, body := s.signIn(t, "001.linked", "001.linked@privaterelay.appleid.com", "apple-l3")
+		signedIn(t, code, body)
+		updated := s.storedToken(t, "001.linked")
+		assert.NotEmpty(t, updated)
+		assert.NotEqual(t, first, updated, "свежий токен Apple не сохранён")
+	})
+
+	t.Run("подпись identity token по-прежнему проверяется", func(t *testing.T) {
+		token := s.stub.Sign(applestub.Token{Subject: "001.linked", Audience: "com.other.app", RawNonce: "aud"})
+		code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
+			`{"identity_token":"`+token+`","nonce":"aud"}`, "")
+		assert.Equal(t, http.StatusUnauthorized, code)
+		assert.Equal(t, apperrors.CodeTokenInvalid, body["code"])
+	})
+}
+
+// Новому человеку и привязке токен Apple обязателен (его отзывает удаление
+// аккаунта): без точки выдачи токенов — 503 apple_unavailable, а не 500, и
+// ничего не создано.
+func TestAppleUnavailableForNewAccountsAndLinking(t *testing.T) {
+	s := newAppleStand(t, "apple_new_down", true)
+	s.stub.SetFailToken(true)
+
+	code, body := s.signIn(t, "001.fresh", "fresh@privaterelay.appleid.com", "apple-f")
+	assert.Equal(t, http.StatusServiceUnavailable, code, body)
+	assert.Equal(t, apperrors.CodeAppleUnavailable, body["code"])
+	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM oauth_pending_links`))
+	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM external_identities`))
+
+	// Без кода новому человеку — 400: обменивать нечего.
+	token := s.stub.Sign(applestub.Token{Subject: "001.fresh", RawNonce: "nc"})
+	code, body = s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
+		`{"identity_token":"`+token+`","nonce":"nc"}`, "")
+	assert.Equal(t, http.StatusBadRequest, code)
+	assert.Equal(t, apperrors.CodeValidation, body["code"])
+
+	s.stub.SetFailToken(false)
+	code, body = s.call(t, http.MethodPost, "/api/v1/auth/native/register",
+		`{"email":"linker@example.test","password":"IntegrationPass1!",`+appleConsents+`}`, "")
+	require.Equal(t, http.StatusCreated, code, body)
+	access := data(body)["access_token"].(string)
+
+	s.stub.SetFailToken(true)
+	s.stub.AcceptCode("link-down", "apple-link-down")
+	token = s.stub.Sign(applestub.Token{Subject: "001.linker", RawNonce: "ld"})
+	code, body = s.call(t, http.MethodPost, "/api/v1/auth/native/apple/link",
+		`{"identity_token":"`+token+`","authorization_code":"link-down","nonce":"ld"}`, access)
+	assert.Equal(t, http.StatusServiceUnavailable, code, body)
+	assert.Equal(t, apperrors.CodeAppleUnavailable, body["code"])
+	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM external_identities`))
+}
+
+// «Незавершённый вход истёк»: попытка Apple, не дошедшая до согласий,
+// уже обменяла код на токен; очистка отзывает его у Apple, а не забывает.
+// Токен попытки, чей Apple ID тем временем привязан другой попыткой, не
+// отзывается: отзыв Apple снимает авторизацию приложения целиком.
+func TestApplePurgedPendingSignInRevokesTheToken(t *testing.T) {
+	ctx := context.Background()
+	s := newAppleStand(t, "apple_purge", true)
+
+	_, body := s.signIn(t, "001.gone", "gone@privaterelay.appleid.com", "apple-gone")
+	require.Equal(t, "needs_consents", data(body)["status"], body)
+	// Вторая попытка того же человека, первая потом завершена.
+	_, body = s.signIn(t, "001.kept", "kept@privaterelay.appleid.com", "apple-kept-abandoned")
+	require.Equal(t, "needs_consents", data(body)["status"], body)
+	s.register(t, "001.kept", "apple-kept")
+
+	_, err := s.db.ExecContext(ctx, `UPDATE oauth_pending_links SET expires_at = NOW() - INTERVAL '1 second'`)
+	require.NoError(t, err)
+
+	purged, err := s.service.PurgeExpiredPendingLinks(ctx)
+	require.NoError(t, err)
+	assert.EqualValues(t, 2, purged)
+	assert.Equal(t, []string{"apple-gone"}, s.stub.RevokedTokens())
+	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM apple_token_revocations`))
+	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM oauth_pending_links`))
+
+	t.Run("Apple недоступна — отзыв ждёт в очереди", func(t *testing.T) {
+		_, body := s.signIn(t, "001.later", "later@privaterelay.appleid.com", "apple-later")
+		require.Equal(t, "needs_consents", data(body)["status"], body)
+		_, err := s.db.ExecContext(ctx, `UPDATE oauth_pending_links SET expires_at = NOW() - INTERVAL '1 second'`)
+		require.NoError(t, err)
+		s.stub.SetFailRevoke(true)
+		defer s.stub.SetFailRevoke(false)
+
+		purged, err := s.service.PurgeExpiredPendingLinks(ctx)
+		require.NoError(t, err)
+		assert.EqualValues(t, 1, purged)
+		assert.Equal(t, 1, s.count(t, `SELECT COUNT(*) FROM apple_token_revocations WHERE attempts = 1`))
+		assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM oauth_pending_links`))
+	})
+}
+
+// Попытка, сожжённая неверными паролями, тоже отзывает свой токен Apple.
+func TestAppleBurnedPendingSignInRevokesTheToken(t *testing.T) {
+	s := newAppleStand(t, "apple_burn", true)
+	hash, err := bcrypt.GenerateFromPassword([]byte("OwnerPass1!"), bcrypt.MinCost)
+	require.NoError(t, err)
+	_, err = s.db.Exec(`INSERT INTO users (email, password, name, role) VALUES ('burn@example.test', $1, 'Хозяин', 'client')`, string(hash))
+	require.NoError(t, err)
+
+	_, body := s.signIn(t, "001.burn", "burn@example.test", "apple-burn")
+	pending := data(body)["pending_token"].(string)
+	for i := 0; i < auth.MaxLinkPasswordFailures; i++ {
+		code, _ := s.call(t, http.MethodPost, "/api/v1/auth/native/oauth/link",
+			`{"pending_token":"`+pending+`","password":"wrong"}`, "")
+		require.NotEqual(t, http.StatusOK, code)
+	}
+	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM oauth_pending_links`))
+	assert.Equal(t, []string{"apple-burn"}, s.stub.RevokedTokens())
 }

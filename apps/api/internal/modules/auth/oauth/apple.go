@@ -47,9 +47,11 @@ import (
 //     person is asked for one). Private relay addresses
 //     (@privaterelay.appleid.com) are verified by Apple itself.
 //
-// The authorization_code is exchanged for Apple's refresh token at once — it
-// is single use and lives five minutes — and the token is kept sealed: it is
-// what account deletion revokes (Guideline 5.1.1(v)).
+// The authorization_code is exchanged for Apple's refresh token — it is
+// single use and lives five minutes — and the token is kept sealed: it is
+// what account deletion revokes (Guideline 5.1.1(v)). Identify and
+// ExchangeCode are separate so a caller that already holds a token for this
+// Apple ID can sign the person in while Apple's token endpoint is down.
 
 const (
 	appleIssuer = "https://appleid.apple.com"
@@ -68,6 +70,11 @@ const (
 // acceptable — forged, expired, for another app, replayed, or refused by
 // Apple. The caller answers 401 token_invalid.
 var ErrIdentityRejected = errors.New("apple identity rejected")
+
+// ErrAppleUnavailable: Apple did not answer as it should — its key set or
+// token endpoint is unreachable, timed out or failed. Nothing is wrong with
+// what the person sent; the same request may succeed later.
+var ErrAppleUnavailable = errors.New("apple is unavailable")
 
 // AppleConfig is what the adapter needs; all of it comes from APPLE_*.
 type AppleConfig struct {
@@ -160,20 +167,26 @@ type AppleCredential struct {
 // Authenticate verifies the identity token, exchanges the authorization code
 // for Apple's refresh token and returns the profile, the token sealed in it.
 func (a *Apple) Authenticate(ctx context.Context, in AppleCredential) (*Profile, error) {
+	profile, err := a.Identify(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	sealed, err := a.ExchangeCode(ctx, in.AuthorizationCode)
+	if err != nil {
+		return nil, err
+	}
+	profile.SealedRefreshToken = sealed
+	return profile, nil
+}
+
+// Identify verifies the identity token and returns the profile without
+// talking to Apple's token endpoint: SealedRefreshToken stays empty.
+func (a *Apple) Identify(ctx context.Context, in AppleCredential) (*Profile, error) {
 	claims, err := a.Verify(ctx, in.IdentityToken, in.Nonce)
 	if err != nil {
 		return nil, err
 	}
-	refresh, err := a.exchangeCode(ctx, in.AuthorizationCode)
-	if err != nil {
-		return nil, err
-	}
-	sealed, err := a.cfg.Sealer.Seal(refresh)
-	if err != nil {
-		return nil, fmt.Errorf("seal apple refresh token: %w", err)
-	}
-
-	profile := &Profile{ProviderUserID: claims.Subject, SealedRefreshToken: sealed}
+	profile := &Profile{ProviderUserID: claims.Subject}
 	if claims.EmailVerified {
 		profile.Email = strings.ToLower(strings.TrimSpace(claims.Email))
 	}
@@ -181,6 +194,21 @@ func (a *Apple) Authenticate(ctx context.Context, in AppleCredential) (*Profile,
 		profile.Name = strings.TrimSpace(strings.TrimSpace(in.FullName.GivenName) + " " + strings.TrimSpace(in.FullName.FamilyName))
 	}
 	return profile, nil
+}
+
+// ExchangeCode trades the authorization code for Apple's refresh token and
+// returns it sealed. A code Apple refuses wraps ErrIdentityRejected; Apple
+// failing to answer wraps ErrAppleUnavailable.
+func (a *Apple) ExchangeCode(ctx context.Context, code string) (string, error) {
+	refresh, err := a.exchangeCode(ctx, code)
+	if err != nil {
+		return "", err
+	}
+	sealed, err := a.cfg.Sealer.Seal(refresh)
+	if err != nil {
+		return "", fmt.Errorf("seal apple refresh token: %w", err)
+	}
+	return sealed, nil
 }
 
 // AppleClaims is the part of the identity token we use.
@@ -220,9 +248,12 @@ func (a *Apple) Verify(ctx context.Context, token, rawNonce string) (*AppleClaim
 	}
 
 	var claims appleTokenClaims
+	var keyErr error
 	parsed, err := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (any, error) {
 		kid, _ := t.Header["kid"].(string)
-		return a.publicKey(ctx, kid)
+		key, err := a.publicKey(ctx, kid)
+		keyErr = err
+		return key, err
 	},
 		jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}),
 		jwt.WithIssuer(appleIssuer),
@@ -230,6 +261,11 @@ func (a *Apple) Verify(ctx context.Context, token, rawNonce string) (*AppleClaim
 		jwt.WithExpirationRequired(),
 		jwt.WithTimeFunc(a.now),
 	)
+	if errors.Is(keyErr, ErrAppleUnavailable) {
+		// Apple's keys could not be fetched: the token is not known to be
+		// bad, it could not be checked.
+		return nil, fmt.Errorf("identity token: %w", keyErr)
+	}
 	if err != nil || !parsed.Valid {
 		return nil, fmt.Errorf("identity token: %v: %w", err, ErrIdentityRejected)
 	}
@@ -287,11 +323,11 @@ func (a *Apple) fetchKeys(ctx context.Context) (map[string]*rsa.PublicKey, error
 	}
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("fetch apple keys: %w", err)
+		return nil, fmt.Errorf("fetch apple keys: %v: %w", err, ErrAppleUnavailable)
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetch apple keys: status %d", res.StatusCode)
+		return nil, fmt.Errorf("fetch apple keys: status %d: %w", res.StatusCode, ErrAppleUnavailable)
 	}
 
 	var set struct {
@@ -303,7 +339,7 @@ func (a *Apple) fetchKeys(ctx context.Context) (map[string]*rsa.PublicKey, error
 		} `json:"keys"`
 	}
 	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&set); err != nil {
-		return nil, fmt.Errorf("decode apple keys: %w", err)
+		return nil, fmt.Errorf("decode apple keys: %v: %w", err, ErrAppleUnavailable)
 	}
 
 	keys := make(map[string]*rsa.PublicKey, len(set.Keys))
@@ -367,7 +403,7 @@ func (a *Apple) exchangeCode(ctx context.Context, code string) (string, error) {
 		"code":       {code},
 	})
 	if err != nil {
-		return "", fmt.Errorf("apple token exchange: %w", err)
+		return "", fmt.Errorf("apple token exchange: %v: %w", err, ErrAppleUnavailable)
 	}
 
 	var out struct {
@@ -381,7 +417,10 @@ func (a *Apple) exchangeCode(ctx context.Context, code string) (string, error) {
 	case status == http.StatusBadRequest && out.Error == "invalid_grant":
 		// Spent, expired, or issued to another app: the person tries again.
 		return "", fmt.Errorf("apple refused the authorization code: %w", ErrIdentityRejected)
+	case status >= http.StatusInternalServerError:
+		return "", fmt.Errorf("apple token exchange: status %d: %w", status, ErrAppleUnavailable)
 	default:
+		// invalid_client and the like: our configuration, not Apple's outage.
 		return "", fmt.Errorf("apple token exchange: status %d, error %q", status, out.Error)
 	}
 }

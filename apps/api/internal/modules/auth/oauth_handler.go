@@ -35,8 +35,11 @@ type OAuthHandler struct {
 }
 
 // AppleAuthenticator is what the Apple endpoints need; *oauth.Apple is one.
+// Identify checks the identity token alone; ExchangeCode trades the
+// authorization code for Apple's refresh token, sealed.
 type AppleAuthenticator interface {
-	Authenticate(ctx context.Context, in oauth.AppleCredential) (*oauth.Profile, error)
+	Identify(ctx context.Context, in oauth.AppleCredential) (*oauth.Profile, error)
+	ExchangeCode(ctx context.Context, code string) (string, error)
 }
 
 // WithApple attaches Sign in with Apple.

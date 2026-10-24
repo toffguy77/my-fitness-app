@@ -102,6 +102,13 @@ const (
 	// validation: приложению нужно не «проверьте данные», а показать экран
 	// согласий. Сентинел — общий ErrValidation, код ставит обработчик.
 	CodeConsentsRequired = "consents_required"
+
+	// CodeAppleUnavailable: Apple не ответила (ключи или обмен кода на
+	// токен), а без неё вход не завершить — новый аккаунт и привязка
+	// обязаны хранить токен Apple для отзыва при удалении. Не internal: у
+	// нас ничего не сломалось, повтор позже пройдёт. Сентинел —
+	// oauth.ErrAppleUnavailable, код ставит обработчик.
+	CodeAppleUnavailable = "apple_unavailable"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -165,5 +172,6 @@ func AllCodes() []string {
 		CodeRecognitionUnclear, CodeRecognitionFailed,
 		CodeProviderOnlyWayIn, CodePasswordNotSet, CodeDeletionAlreadyRequested,
 		CodeExportAlreadyPending, CodeLastCurator, CodeJobAlreadyRunning,
-		CodeLeadAlreadyClaimed, CodeMagicLinkAccountExists, CodeConsentsRequired)
+		CodeLeadAlreadyClaimed, CodeMagicLinkAccountExists, CodeConsentsRequired,
+		CodeAppleUnavailable)
 }
