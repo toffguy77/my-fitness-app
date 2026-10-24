@@ -40,7 +40,7 @@ xcrun simctl boot "$udid" 2>/dev/null || true
 xcrun simctl bootstatus "$udid" -b
 xcrun simctl ui "$udid" appearance light
 xcrun simctl status_bar "$udid" override --time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3 \
-  --cellularMode active --cellularBars 4 --operatorName "" --batteryState charged --batteryLevel 100
+  --cellularMode active --cellularBars 4 --operatorName "" --batteryState discharging --batteryLevel 100
 
 xcodebuild build -project Vzvesheno.xcodeproj -scheme Vzvesheno-Dev -configuration Dev-Debug \
   -destination "id=$udid" -derivedDataPath build/dd -quiet
