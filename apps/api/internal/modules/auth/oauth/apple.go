@@ -38,11 +38,12 @@ import (
 //   - the signature, by a key from https://appleid.apple.com/auth/keys picked
 //     by kid (RS256 only);
 //   - iss = https://appleid.apple.com, aud = APPLE_BUNDLE_ID, exp not passed;
-//   - nonce = hex(SHA-256(raw nonce)). The app generates a random raw nonce,
-//     sets ASAuthorizationAppleIDRequest.nonce to its SHA-256 in lowercase hex
-//     and sends us the raw value; Apple copies the request's nonce into the
-//     token verbatim. A token lifted from another sign-in carries another
-//     nonce, and the raw value never left the phone that asked for it;
+//   - nonce = hex(SHA-256(raw nonce)). The server issues the raw nonce
+//     (auth.IssueAppleNonce), the app sets ASAuthorizationAppleIDRequest.nonce
+//     to its SHA-256 in lowercase hex and sends us the raw value back; Apple
+//     copies the request's nonce into the token verbatim. That the raw nonce
+//     was issued by us and is spent once is the caller's check
+//     (auth.ConsumeAppleNonce), not this adapter's;
 //   - email_verified: an address Apple has not verified is not used (the
 //     person is asked for one). Private relay addresses
 //     (@privaterelay.appleid.com) are verified by Apple itself.

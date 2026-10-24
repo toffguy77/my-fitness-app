@@ -90,14 +90,31 @@ func (s appleStand) call(t *testing.T, method, path, body, access string) (int, 
 	return w.Code, out
 }
 
+// nonce asks the server for a one-time nonce, as the app does before the
+// Apple sheet.
+func (s appleStand) nonce(t *testing.T) string {
+	t.Helper()
+	code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/apple/nonce", "", "")
+	require.Equal(t, http.StatusOK, code, body)
+	nonce, _ := data(body)["nonce"].(string)
+	require.NotEmpty(t, nonce)
+	return nonce
+}
+
+// appleBody signs tok with a server-issued nonce and builds the request body.
+func (s appleStand) appleBody(t *testing.T, tok applestub.Token, code string, extra ...string) string {
+	t.Helper()
+	tok.RawNonce = s.nonce(t)
+	return `{"identity_token":"` + s.stub.Sign(tok) + `","authorization_code":"` + code + `","nonce":"` + tok.RawNonce + `"` +
+		strings.Join(extra, "") + `}`
+}
+
 // signIn sends a fresh Apple credential for sub/email; code yields refresh.
 func (s appleStand) signIn(t *testing.T, sub, email, refresh string, extra ...string) (int, map[string]any) {
 	t.Helper()
 	code := "code-" + refresh
 	s.stub.AcceptCode(code, refresh)
-	token := s.stub.Sign(applestub.Token{Subject: sub, Email: email, RawNonce: "raw-" + refresh, Private: strings.HasSuffix(email, "privaterelay.appleid.com")})
-	body := `{"identity_token":"` + token + `","authorization_code":"` + code + `","nonce":"raw-` + refresh + `"` +
-		strings.Join(extra, "") + `}`
+	body := s.appleBody(t, applestub.Token{Subject: sub, Email: email, Private: strings.HasSuffix(email, "privaterelay.appleid.com")}, code, extra...)
 	return s.call(t, http.MethodPost, "/api/v1/auth/native/apple", body, "")
 }
 
@@ -158,10 +175,8 @@ func TestAppleNewUserWithHiddenAddressWaitsForConsents(t *testing.T) {
 func TestAppleForeignAudienceCreatesNothing(t *testing.T) {
 	s := newAppleStand(t, "apple_aud", true)
 	s.stub.AcceptCode("c", "r")
-	token := s.stub.Sign(applestub.Token{Subject: "001.x", Email: "x@example.test", Audience: "com.other.app", RawNonce: "n"})
-
 	code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
-		`{"identity_token":"`+token+`","authorization_code":"c","nonce":"n"}`, "")
+		s.appleBody(t, applestub.Token{Subject: "001.x", Email: "x@example.test", Audience: "com.other.app"}, "c"), "")
 	assert.Equal(t, http.StatusUnauthorized, code)
 	assert.Equal(t, apperrors.CodeTokenInvalid, body["code"])
 	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM users WHERE email = 'x@example.test'`))
@@ -239,9 +254,8 @@ func TestAppleLinkAndUnlink(t *testing.T) {
 	access := data(body)["access_token"].(string)
 
 	s.stub.AcceptCode("link-code", "apple-link-r")
-	token := s.stub.Sign(applestub.Token{Subject: "001.link", Email: "withpass@example.test", RawNonce: "ln"})
 	code, body = s.call(t, http.MethodPost, "/api/v1/auth/native/apple/link",
-		`{"identity_token":"`+token+`","authorization_code":"link-code","nonce":"ln"}`, access)
+		s.appleBody(t, applestub.Token{Subject: "001.link", Email: "withpass@example.test"}, "link-code"), access)
 	require.Equal(t, http.StatusOK, code, body)
 
 	code, body = s.call(t, http.MethodGet, "/api/v1/auth/providers/linked", "", access)
@@ -354,13 +368,15 @@ func (s appleStand) storedToken(t *testing.T, sub string) string {
 }
 
 // «Apple недоступна при входе привязанного аккаунта»: аккаунт найден по sub и
-// хранит токен — вход не зависит от точки выдачи токенов Apple; удачный обмен
-// обновляет сохранённый токен, неудачный (сбой или отказ в коде) — нет.
-func TestAppleLinkedSignInDoesNotNeedTheTokenEndpoint(t *testing.T) {
+// хранит токен — сбой точки выдачи токенов Apple не мешает входу и токен не
+// меняет; удачный обмен его обновляет. Код, который Apple не приняла, —
+// отказ во входе для всех, привязанных тоже.
+func TestAppleLinkedSignInSurvivesAppleBeingDown(t *testing.T) {
 	s := newAppleStand(t, "apple_linked_down", true)
 	userID := s.register(t, "001.linked", "apple-l1")
 	first := s.storedToken(t, "001.linked")
 	require.NotEmpty(t, first)
+	linked := applestub.Token{Subject: "001.linked", Email: "001.linked@privaterelay.appleid.com", Private: true}
 
 	signedIn := func(t *testing.T, code int, body map[string]any) {
 		t.Helper()
@@ -379,20 +395,21 @@ func TestAppleLinkedSignInDoesNotNeedTheTokenEndpoint(t *testing.T) {
 		assert.Equal(t, first, s.storedToken(t, "001.linked"), "сбой Apple изменил сохранённый токен")
 	})
 
-	t.Run("Apple не приняла код", func(t *testing.T) {
-		token := s.stub.Sign(applestub.Token{Subject: "001.linked", Email: "001.linked@privaterelay.appleid.com", RawNonce: "spent"})
+	t.Run("Apple не приняла код — 401", func(t *testing.T) {
 		code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
-			`{"identity_token":"`+token+`","authorization_code":"never-issued","nonce":"spent"}`, "")
-		signedIn(t, code, body)
+			s.appleBody(t, linked, "never-issued"), "")
+		assert.Equal(t, http.StatusUnauthorized, code, body)
+		assert.Equal(t, apperrors.CodeTokenInvalid, body["code"])
 		assert.Equal(t, first, s.storedToken(t, "001.linked"))
 	})
 
-	t.Run("без кода", func(t *testing.T) {
-		token := s.stub.Sign(applestub.Token{Subject: "001.linked", RawNonce: "nocode"})
+	t.Run("без кода — 400", func(t *testing.T) {
+		tok := linked
+		tok.RawNonce = s.nonce(t)
 		code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
-			`{"identity_token":"`+token+`","nonce":"nocode"}`, "")
-		signedIn(t, code, body)
-		assert.Equal(t, first, s.storedToken(t, "001.linked"))
+			`{"identity_token":"`+s.stub.Sign(tok)+`","nonce":"`+tok.RawNonce+`"}`, "")
+		assert.Equal(t, http.StatusBadRequest, code, body)
+		assert.Equal(t, apperrors.CodeValidation, body["code"])
 	})
 
 	t.Run("обмен удался — токен обновлён", func(t *testing.T) {
@@ -402,13 +419,62 @@ func TestAppleLinkedSignInDoesNotNeedTheTokenEndpoint(t *testing.T) {
 		assert.NotEmpty(t, updated)
 		assert.NotEqual(t, first, updated, "свежий токен Apple не сохранён")
 	})
+}
 
-	t.Run("подпись identity token по-прежнему проверяется", func(t *testing.T) {
-		token := s.stub.Sign(applestub.Token{Subject: "001.linked", Audience: "com.other.app", RawNonce: "aud"})
-		code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
-			`{"identity_token":"`+token+`","nonce":"aud"}`, "")
-		assert.Equal(t, http.StatusUnauthorized, code)
-		assert.Equal(t, apperrors.CodeTokenInvalid, body["code"])
+// «Повтор identity token»: nonce выдаёт сервер и гасит первым входом.
+// Повтор того же тела, nonce, придуманный приложением, и истёкший nonce —
+// 401 token_invalid, в том числе когда Apple недоступна и привязанный
+// аккаунт вошёл бы без обмена кода.
+func TestAppleNonceIsServerIssuedAndSingleUse(t *testing.T) {
+	ctx := context.Background()
+	s := newAppleStand(t, "apple_nonce", true)
+	s.register(t, "001.replay", "apple-rp1")
+	linked := applestub.Token{Subject: "001.replay", Email: "001.replay@privaterelay.appleid.com", Private: true}
+	s.stub.SetFailToken(true) // худший случай: обмен кода не защищает
+
+	rejected := func(t *testing.T, body string) {
+		t.Helper()
+		code, out := s.call(t, http.MethodPost, "/api/v1/auth/native/apple", body, "")
+		assert.Equal(t, http.StatusUnauthorized, code, out)
+		assert.Equal(t, apperrors.CodeTokenInvalid, out["code"])
+	}
+
+	t.Run("повтор", func(t *testing.T) {
+		body := s.appleBody(t, linked, "code-x")
+		code, out := s.call(t, http.MethodPost, "/api/v1/auth/native/apple", body, "")
+		require.Equal(t, http.StatusOK, code, out)
+		rejected(t, body)
+	})
+
+	t.Run("nonce придуман приложением", func(t *testing.T) {
+		tok := linked
+		tok.RawNonce = "client-invented-nonce"
+		rejected(t, `{"identity_token":"`+s.stub.Sign(tok)+`","authorization_code":"code-y","nonce":"client-invented-nonce"}`)
+	})
+
+	t.Run("истёкший", func(t *testing.T) {
+		tok := linked
+		tok.RawNonce = s.nonce(t)
+		_, err := s.db.ExecContext(ctx, `UPDATE apple_sign_in_nonces SET expires_at = NOW() - INTERVAL '1 second' WHERE used_at IS NULL`)
+		require.NoError(t, err)
+		rejected(t, `{"identity_token":"`+s.stub.Sign(tok)+`","authorization_code":"code-z","nonce":"`+tok.RawNonce+`"}`)
+	})
+
+	t.Run("nonce другого токена", func(t *testing.T) {
+		// Свежий выданный nonce не подходит к токену, подписанному с другим.
+		tok := linked
+		tok.RawNonce = s.nonce(t)
+		other := s.nonce(t)
+		rejected(t, `{"identity_token":"`+s.stub.Sign(tok)+`","authorization_code":"code-w","nonce":"`+other+`"}`)
+	})
+
+	t.Run("очистка убирает истёкшие", func(t *testing.T) {
+		_, err := s.db.ExecContext(ctx, `UPDATE apple_sign_in_nonces SET expires_at = NOW() - INTERVAL '2 hours'`)
+		require.NoError(t, err)
+		purged, err := s.service.PurgeExpiredAppleNonces(ctx)
+		require.NoError(t, err)
+		assert.Positive(t, purged)
+		assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM apple_sign_in_nonces`))
 	})
 }
 
@@ -425,13 +491,6 @@ func TestAppleUnavailableForNewAccountsAndLinking(t *testing.T) {
 	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM oauth_pending_links`))
 	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM external_identities`))
 
-	// Без кода новому человеку — 400: обменивать нечего.
-	token := s.stub.Sign(applestub.Token{Subject: "001.fresh", RawNonce: "nc"})
-	code, body = s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
-		`{"identity_token":"`+token+`","nonce":"nc"}`, "")
-	assert.Equal(t, http.StatusBadRequest, code)
-	assert.Equal(t, apperrors.CodeValidation, body["code"])
-
 	s.stub.SetFailToken(false)
 	code, body = s.call(t, http.MethodPost, "/api/v1/auth/native/register",
 		`{"email":"linker@example.test","password":"IntegrationPass1!",`+appleConsents+`}`, "")
@@ -440,12 +499,21 @@ func TestAppleUnavailableForNewAccountsAndLinking(t *testing.T) {
 
 	s.stub.SetFailToken(true)
 	s.stub.AcceptCode("link-down", "apple-link-down")
-	token = s.stub.Sign(applestub.Token{Subject: "001.linker", RawNonce: "ld"})
 	code, body = s.call(t, http.MethodPost, "/api/v1/auth/native/apple/link",
-		`{"identity_token":"`+token+`","authorization_code":"link-down","nonce":"ld"}`, access)
+		s.appleBody(t, applestub.Token{Subject: "001.linker"}, "link-down"), access)
 	assert.Equal(t, http.StatusServiceUnavailable, code, body)
 	assert.Equal(t, apperrors.CodeAppleUnavailable, body["code"])
 	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM external_identities`))
+}
+
+// Код, который Apple не приняла, — 401 и новому человеку.
+func TestAppleRefusedCodeRejectsTheSignIn(t *testing.T) {
+	s := newAppleStand(t, "apple_refused", true)
+	code, body := s.call(t, http.MethodPost, "/api/v1/auth/native/apple",
+		s.appleBody(t, applestub.Token{Subject: "001.refused", Email: "r@privaterelay.appleid.com", Private: true}, "spent-code"), "")
+	assert.Equal(t, http.StatusUnauthorized, code, body)
+	assert.Equal(t, apperrors.CodeTokenInvalid, body["code"])
+	assert.Zero(t, s.count(t, `SELECT COUNT(*) FROM oauth_pending_links`))
 }
 
 // «Незавершённый вход истёк»: попытка Apple, не дошедшая до согласий,

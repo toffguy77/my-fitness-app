@@ -16,16 +16,17 @@ import (
 // колбэком, а identity token'ом в теле: oauth.Apple проверяет его и меняет
 // authorization_code на refresh-токен Apple, а дальше — ResolveProviderSignIn,
 // согласия, подтверждение владения адресом, привязка и отвязка как у всех.
+//
+// Nonce выдаёт сервер (native/apple/nonce) и гасит первым входом
+// (apple_nonce.go): identity token одноразовый сам по себе, а не только
+// благодаря одноразовому коду.
 
 // NativeAppleRequest — что приложение получило от AuthenticationServices.
 type NativeAppleRequest struct {
-	IdentityToken string `json:"identity_token" binding:"required"`
-	// AuthorizationCode меняется на refresh-токен Apple. Обязателен для
-	// нового аккаунта и привязки; для привязанного Apple ID с сохранённым
-	// токеном — нет (apple-sign-in, «Apple недоступна»).
-	AuthorizationCode string `json:"authorization_code"`
-	// Nonce — исходное значение; в запрос к Apple приложение кладёт
-	// hex(SHA-256(nonce)) строчными буквами.
+	IdentityToken     string `json:"identity_token" binding:"required"`
+	AuthorizationCode string `json:"authorization_code" binding:"required"`
+	// Nonce — исходное значение, выданное native/apple/nonce; в запрос к
+	// Apple приложение кладёт hex(SHA-256(nonce)) строчными буквами.
 	Nonce string `json:"nonce" binding:"required"`
 	// FullName Apple отдаёт приложению только при первой авторизации.
 	FullName   *oauth.AppleName `json:"full_name"`
@@ -41,10 +42,38 @@ func (r NativeAppleRequest) credential() oauth.AppleCredential {
 	}
 }
 
+// NativeAppleNonceResponse is the nonce for the next Apple sign-in.
+type NativeAppleNonceResponse struct {
+	Nonce     string `json:"nonce"`
+	ExpiresIn int    `json:"expires_in"`
+}
+
+// NativeAppleNonce handles POST /api/v1/auth/native/apple/nonce.
+//
+// 200 {nonce, expires_in}: a one-time nonce for native/apple or
+// native/apple/link, valid for AppleNonceTTL. 503 feature_unavailable when
+// Apple is not configured.
+func (h *OAuthHandler) NativeAppleNonce(c *gin.Context) {
+	if h.apple == nil {
+		response.Fail(c, http.StatusServiceUnavailable, apperrors.ErrFeatureUnavailable,
+			"Вход через Apple недоступен")
+		return
+	}
+	nonce, err := h.service.IssueAppleNonce(c.Request.Context())
+	if err != nil {
+		h.log.Error("Failed to issue an Apple nonce", "error", err)
+		response.Fail(c, http.StatusInternalServerError, err, "Не удалось начать вход через Apple")
+		return
+	}
+	response.Success(c, http.StatusOK, NativeAppleNonceResponse{
+		Nonce: nonce, ExpiresIn: int(AppleNonceTTL.Seconds()),
+	})
+}
+
 // failApple answers for a failure of the Apple adapter.
 func (h *OAuthHandler) failApple(c *gin.Context, err error) {
 	switch {
-	case errors.Is(err, oauth.ErrIdentityRejected):
+	case errors.Is(err, oauth.ErrIdentityRejected), errors.Is(err, apperrors.ErrTokenInvalid):
 		h.log.Warn("Apple identity rejected", "error", err)
 		response.Fail(c, http.StatusUnauthorized, apperrors.ErrTokenInvalid,
 			"Apple не подтвердила вход. Попробуйте ещё раз.")
@@ -58,8 +87,9 @@ func (h *OAuthHandler) failApple(c *gin.Context, err error) {
 	}
 }
 
-// appleRequest binds the request and verifies the identity token, answering
-// for every failure. The authorization code is not exchanged yet.
+// appleRequest binds the request, verifies the identity token and spends the
+// server-issued nonce it carries, answering for every failure. The
+// authorization code is not exchanged yet.
 func (h *OAuthHandler) appleRequest(c *gin.Context) (*oauth.Profile, NativeAppleRequest, bool) {
 	var req NativeAppleRequest
 	if h.apple == nil {
@@ -72,62 +102,54 @@ func (h *OAuthHandler) appleRequest(c *gin.Context) (*oauth.Profile, NativeApple
 			"Нужны identity_token, authorization_code и nonce")
 		return nil, req, false
 	}
-	profile, err := h.apple.Identify(c.Request.Context(), req.credential())
+	ctx := c.Request.Context()
+	profile, err := h.apple.Identify(ctx, req.credential())
 	if err != nil {
+		h.failApple(c, err)
+		return nil, req, false
+	}
+	// После проверки подписи: чужой мусор не гасит выданные nonce. Токен
+	// несёт хэш именно этого nonce — это Identify уже проверил.
+	if err := h.service.ConsumeAppleNonce(ctx, req.Nonce); err != nil {
 		h.failApple(c, err)
 		return nil, req, false
 	}
 	return profile, req, true
 }
 
-// exchangeAppleCode puts Apple's refresh token into the profile; the account
-// about to be created or linked must hold one, since deleting it revokes the
-// token at Apple. Answers for every failure.
-func (h *OAuthHandler) exchangeAppleCode(c *gin.Context, profile *oauth.Profile, code string) bool {
-	if code == "" {
-		response.Fail(c, http.StatusBadRequest, apperrors.ErrValidation,
-			"Нужны identity_token, authorization_code и nonce")
-		return false
-	}
-	sealed, err := h.apple.ExchangeCode(c.Request.Context(), code)
-	if err != nil {
-		h.failApple(c, err)
-		return false
-	}
-	profile.SealedRefreshToken = sealed
-	return true
-}
-
-// appleProfile verifies the request and secures Apple's refresh token.
+// appleProfile verifies the request and exchanges the authorization code for
+// Apple's refresh token, which account deletion revokes.
 //
-// An Apple ID already linked to an account that holds a token signs in
-// without the exchange: the token deletion needs is there, and Apple's token
-// endpoint being down must not lock the person out. A code that came along
-// is still exchanged, best effort — success replaces the stored token,
-// failure is logged and changes nothing. Everyone else needs the exchange.
-func (h *OAuthHandler) appleProfile(c *gin.Context) (*oauth.Profile, NativeAppleRequest, bool) {
+// A code Apple refuses is a refusal of the sign-in: 401, whoever asks. Only
+// when Apple does not answer at all, and only for an Apple ID linked to an
+// account that already holds a token (allowStored), does the sign-in go on
+// without a fresh one: the identity token is verified and its nonce spent,
+// and the token deletion needs is already there. Everyone else gets 503
+// apple_unavailable.
+func (h *OAuthHandler) appleProfile(c *gin.Context, allowStored bool) (*oauth.Profile, NativeAppleRequest, bool) {
 	profile, req, ok := h.appleRequest(c)
 	if !ok {
 		return nil, req, false
 	}
 	ctx := c.Request.Context()
-	holds, err := h.service.HoldsProviderToken(ctx, "apple", profile.ProviderUserID)
-	if err != nil {
-		h.failApple(c, err)
-		return nil, req, false
+	sealed, err := h.apple.ExchangeCode(ctx, req.AuthorizationCode)
+	if err == nil {
+		profile.SealedRefreshToken = sealed
+		return profile, req, true
 	}
-	if !holds {
-		return profile, req, h.exchangeAppleCode(c, profile, req.AuthorizationCode)
-	}
-	if req.AuthorizationCode != "" {
-		sealed, err := h.apple.ExchangeCode(ctx, req.AuthorizationCode)
-		if err != nil {
-			h.log.Warn("Apple token not refreshed; signing in with the stored one", "error", err)
-		} else {
-			profile.SealedRefreshToken = sealed
+	if allowStored && errors.Is(err, oauth.ErrAppleUnavailable) {
+		holds, herr := h.service.HoldsProviderToken(ctx, "apple", profile.ProviderUserID)
+		if herr != nil {
+			h.failApple(c, herr)
+			return nil, req, false
+		}
+		if holds {
+			h.log.Warn("Apple unavailable; signing a linked Apple ID in with its stored token", "error", err)
+			return profile, req, true
 		}
 	}
-	return profile, req, true
+	h.failApple(c, err)
+	return nil, req, false
 }
 
 // NativeApple handles POST /api/v1/auth/native/apple.
@@ -138,12 +160,13 @@ func (h *OAuthHandler) appleProfile(c *gin.Context) (*oauth.Profile, NativeApple
 // is created until native/consents), needs_link_confirmation when the
 // address belongs to an existing account (native/oauth/link with its
 // password), needs_email when Apple gave no verified address. 401
-// token_invalid for a token or code Apple does not vouch for; 503
-// apple_unavailable when Apple does not answer and the exchange is needed
-// (anyone but a linked Apple ID that already holds a token); 503
+// token_invalid for a token or code Apple does not vouch for, or a nonce the
+// server did not issue, already spent or expired; 503 apple_unavailable when
+// Apple does not answer and the exchange is needed (anyone but a linked
+// Apple ID that already holds a token); 503
 // feature_unavailable when Apple is not configured.
 func (h *OAuthHandler) NativeApple(c *gin.Context) {
-	profile, req, ok := h.appleProfile(c)
+	profile, req, ok := h.appleProfile(c, true)
 	if !ok {
 		return
 	}
@@ -201,8 +224,8 @@ func (h *OAuthHandler) NativeAppleLink(c *gin.Context) {
 		return
 	}
 	// Привязка всегда меняет код: токен нужен отзыву при удалении аккаунта.
-	profile, req, ok := h.appleRequest(c)
-	if !ok || !h.exchangeAppleCode(c, profile, req.AuthorizationCode) {
+	profile, _, ok := h.appleProfile(c, false)
+	if !ok {
 		return
 	}
 	err := h.service.LinkProvider(c.Request.Context(), userID.(int64), "apple", profile)

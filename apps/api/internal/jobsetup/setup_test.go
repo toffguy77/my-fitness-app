@@ -38,6 +38,7 @@ func TestRegister_DeclaresEveryJobValidly(t *testing.T) {
 		"cleanup.refresh-tokens",
 		"cleanup.oauth-pending-links",
 		"cleanup.magic-links",
+		"cleanup.apple-nonces",
 		"cleanup.verification-codes",
 		"cleanup.idempotency-keys",
 		"leads.send-reminders",

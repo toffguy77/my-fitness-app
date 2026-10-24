@@ -1,5 +1,4 @@
 import API
-import AuthenticationServices
 import Client
 import DesignSystem
 import Session
@@ -143,10 +142,8 @@ struct PasswordScreen: View {
 /// у входа через них из приложения нет режима привязки (`ios-client-settings`).
 struct SignInMethodsScreen: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.colorScheme) private var colorScheme
     @State private var linked: LinkedProviders?
     @State private var available: [String] = []
-    @State private var appleNonce = AppleNonce.random()
     @State private var working = false
     @State private var error: String?
     @State private var result: String?
@@ -176,12 +173,7 @@ struct SignInMethodsScreen: View {
                     .dsText(DS.Typography.caption)
                     .foregroundStyle(DS.Color.fgMuted)
                 if available.contains("apple"), !linked.linked.contains(where: { $0.provider == "apple" }) {
-                    SignInWithAppleButton(.continue, onRequest: { request in
-                        appleNonce = AppleNonce.random()
-                        request.requestedScopes = []
-                        request.nonce = appleNonce.hashed
-                    }, onCompletion: { outcome in Task { await linkApple(outcome) } })
-                    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                    AppleSignInButton(label: .continue, title: "Продолжить с Apple") { Task { await linkApple() } }
                     .frame(height: DS.Size.control)
                     .clipShape(Capsule())
                     .disabled(working)
@@ -212,28 +204,34 @@ struct SignInMethodsScreen: View {
         available = (try? await model.auth.providers()) ?? []
     }
 
-    private func linkApple(_ outcome: Result<ASAuthorization, Error>) async {
-        switch outcome {
-        case let .success(authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                  let tokenData = credential.identityToken, let token = String(data: tokenData, encoding: .utf8),
-                  let codeData = credential.authorizationCode, let code = String(data: codeData, encoding: .utf8) else {
-                error = "Apple не передала данные. Попробуйте ещё раз."
-                return
-            }
-            working = true
-            defer { working = false }
-            do {
-                try await AccountService(api: model.api).linkApple(identityToken: token, authorizationCode: code, nonce: appleNonce)
-                error = nil
-                result = "Apple привязан: теперь можно входить через Apple."
-                await load()
-            } catch {
-                self.error = model.messages.message(for: error)
-            }
-        case let .failure(failure):
-            if (failure as? ASAuthorizationError)?.code == .canceled { return }
-            error = "Не получилось привязать Apple. Попробуйте ещё раз."
+    /// Nonce сервера, затем лист Apple, затем `native/apple/link`.
+    private func linkApple() async {
+        guard !working else { return }
+        working = true
+        error = nil
+        defer { working = false }
+        let account = AccountService(api: model.api)
+        let nonce: AppleNonce
+        do {
+            nonce = try await account.appleNonce()
+        } catch {
+            self.error = AppleAuthorization.startFailureMessage(error, messages: model.messages)
+            return
+        }
+        do {
+            let credential = try await AppleAuthorization.request(nonce: nonce, scopes: [])
+            try await account.linkApple(identityToken: credential.identityToken,
+                                        authorizationCode: credential.authorizationCode, nonce: nonce)
+            result = "Apple привязан: теперь можно входить через Apple."
+            await load()
+        } catch AppleSignInFailure.canceled {
+            return
+        } catch AppleSignInFailure.missingCredential {
+            self.error = "Apple не передала данные. Попробуйте ещё раз."
+        } catch AppleSignInFailure.failed {
+            self.error = "Не получилось привязать Apple. Попробуйте ещё раз."
+        } catch {
+            self.error = model.messages.message(for: error)
         }
     }
 
