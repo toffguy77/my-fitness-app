@@ -188,3 +188,60 @@ func TestLiveViewsExcludeStaff(t *testing.T) {
 	assert.Equal(t, map[string]bool{"stranger": true, "client-before": true, "client": true}, got,
 		"в расчёт попали события сотрудников или прогонов, либо пропали клиентские")
 }
+
+// У владельца и разработчика есть личные учётки с ролью client — ими проверяют
+// продукт. По роли и адресу они не отличаются от клиентов, поэтому отмечаются
+// явно. За 2026-10-06..19 они дали 22 из 24 записей еды «клиентов».
+func TestLiveViewsExcludeOwnAccounts(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "live_own")
+	ctx := context.Background()
+
+	addUser := func(email string, excluded bool) int64 {
+		var id int64
+		require.NoError(t, db.QueryRowContext(ctx,
+			`INSERT INTO users (email, password, name, role, exclude_from_analytics)
+			 VALUES ($1,'x','Проверка','client',$2) RETURNING id`,
+			email, excluded,
+		).Scan(&id))
+		return id
+	}
+	clientID := addUser("person@example.com", false)
+	ownID := addUser("owner@example.com", true)
+
+	var client, own int
+	require.NoError(t, db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FILTER (WHERE id = $1), COUNT(*) FILTER (WHERE id = $2)
+		FROM live_users`, clientID, ownID,
+	).Scan(&client, &own))
+	assert.Equal(t, 1, client, "клиент пропал из live_users")
+	assert.Equal(t, 0, own, "своя учётка попала в live_users")
+
+	var ownVisitor string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT gen_random_uuid()::text`).Scan(&ownVisitor))
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO analytics_identities (visitor_id, user_id) VALUES ($1::uuid, $2)`, ownVisitor, ownID)
+	require.NoError(t, err)
+
+	insert := func(visitor *string, userID int64, anonymous bool) {
+		var uid any = userID
+		if anonymous {
+			uid = nil
+		}
+		_, err := db.ExecContext(ctx, `
+			INSERT INTO analytics_events (name, visitor_id, user_id, platform, properties)
+			VALUES ('food_entry_created', COALESCE($1::uuid, gen_random_uuid()), $2, 'web', '{}'::jsonb)`,
+			visitor, uid)
+		require.NoError(t, err)
+	}
+	insert(nil, clientID, false)     // клиент — остаётся
+	insert(nil, ownID, false)        // своя учётка — исчезает
+	insert(&ownVisitor, ownID, true) // её браузер анонимно — исчезает
+
+	var total int
+	require.NoError(t, db.QueryRowContext(ctx, `
+		SELECT COUNT(*), COUNT(*) FILTER (WHERE user_id = $1 OR visitor_id = $2::uuid)
+		FROM live_analytics_events`, ownID, ownVisitor,
+	).Scan(&total, &own))
+	assert.Equal(t, 1, total, "событие клиента пропало или лишнее просочилось")
+	assert.Equal(t, 0, own, "события своей учётки попали в расчёты")
+}

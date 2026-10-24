@@ -964,6 +964,7 @@ users.deletion_requested_at timestamp with time zone
 users.email text NOT NULL
 users.email_unsubscribed_at timestamp with time zone
 users.email_verified boolean NOT NULL DEFAULT false
+users.exclude_from_analytics boolean NOT NULL DEFAULT false
 users.files_purged_at timestamp with time zone
 users.id bigint NOT NULL DEFAULT nextval('users_id_seq')
 users.is_system boolean NOT NULL DEFAULT false
