@@ -49,27 +49,75 @@ final class ComplianceTests: XCTestCase {
                                                                   includingPropertiesForKeys: nil)
         bundles += plugins.filter { $0.pathExtension == "appex" }
         XCTAssertEqual(bundles.count, 2, "приложение и расширение виджетов")
+        var collected: [String: [String: String]] = [:]
         for bundle in bundles {
             let url = bundle.appendingPathComponent("PrivacyInfo.xcprivacy")
             let data = try Data(contentsOf: url)
             let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
             XCTAssertNotNil(plist["NSPrivacyAccessedAPITypes"], bundle.lastPathComponent)
             XCTAssertEqual(plist["NSPrivacyTracking"] as? Bool, false, bundle.lastPathComponent)
+            collected[bundle.pathExtension] = Self.collectedTypes(plist)
+        }
+        // Расширение пишет воду и вес из интентов и досылает общую очередь
+        // изменений (записи дневника, сообщения и вложения, импорт Здоровья):
+        // его типы объявлены и не выходят за типы приложения.
+        let widget = try XCTUnwrap(collected["appex"])
+        XCTAssertEqual(Set(widget.keys), ["NSPrivacyCollectedDataTypeHealth", "NSPrivacyCollectedDataTypeFitness",
+                                          "NSPrivacyCollectedDataTypePhotosorVideos",
+                                          "NSPrivacyCollectedDataTypeOtherUserContent"])
+        let app = try XCTUnwrap(collected["app"])
+        for (name, entry) in widget {
+            XCTAssertEqual(entry, app[name], "\(name): в расширении объявлен не так, как в приложении")
         }
     }
 
+    /// Тип → «связан · отслеживание · цели».
+    private static func collectedTypes(_ plist: [String: Any]) -> [String: String] {
+        let types = plist["NSPrivacyCollectedDataTypes"] as? [[String: Any]] ?? []
+        return Dictionary(types.compactMap { type in
+            (type["NSPrivacyCollectedDataType"] as? String).map { name in
+                (name, "\(type["NSPrivacyCollectedDataTypeLinked"] as? Bool ?? false) · "
+                    + "\(type["NSPrivacyCollectedDataTypeTracking"] as? Bool ?? true) · "
+                    + ((type["NSPrivacyCollectedDataTypePurposes"] as? [String]) ?? []).joined(separator: ","))
+            }
+        }, uniquingKeysWith: { first, _ in first })
+    }
+
     /// Ярлыки приватности: здоровье, фитнес, фото, почта, события и сбои — без отслеживания.
+    /// Типы ровно те, что в анкете App Privacy (fastlane/metadata/app_privacy.txt,
+    /// шаг 4): связаны с пользователем, без отслеживания, с той же целью.
+    /// Device ID — токен APNs и модель устройства у сессии; IDFA не собирается.
     func testCollectedDataTypes() throws {
         let url = try XCTUnwrap(Bundle.main.url(forResource: "PrivacyInfo", withExtension: "xcprivacy"))
         let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: Data(contentsOf: url), format: nil) as? [String: Any])
         let types = (plist["NSPrivacyCollectedDataTypes"] as? [[String: Any]] ?? [])
-        let names = Set(types.compactMap { $0["NSPrivacyCollectedDataType"] as? String })
-        for required in ["NSPrivacyCollectedDataTypeHealth", "NSPrivacyCollectedDataTypeFitness",
-                         "NSPrivacyCollectedDataTypePhotosorVideos", "NSPrivacyCollectedDataTypeEmailAddress",
-                         "NSPrivacyCollectedDataTypeProductInteraction", "NSPrivacyCollectedDataTypeCrashData"] {
-            XCTAssertTrue(names.contains(required), required)
+        let functionality = "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+        let expected: [String: String] = [
+            "NSPrivacyCollectedDataTypeName": functionality,
+            "NSPrivacyCollectedDataTypeEmailAddress": functionality,
+            "NSPrivacyCollectedDataTypeOtherUserContactInfo": functionality,
+            "NSPrivacyCollectedDataTypeHealth": functionality,
+            "NSPrivacyCollectedDataTypeFitness": functionality,
+            "NSPrivacyCollectedDataTypePhotosorVideos": functionality,
+            "NSPrivacyCollectedDataTypeOtherUserContent": functionality,
+            "NSPrivacyCollectedDataTypeUserID": functionality,
+            "NSPrivacyCollectedDataTypeDeviceID": functionality,
+            "NSPrivacyCollectedDataTypeProductInteraction": "NSPrivacyCollectedDataTypePurposeAnalytics",
+            "NSPrivacyCollectedDataTypeCrashData": functionality,
+        ]
+        var declared: [String: [String]] = [:]
+        for type in types {
+            let name = try XCTUnwrap(type["NSPrivacyCollectedDataType"] as? String)
+            XCTAssertNil(declared[name], "\(name) объявлен дважды")
+            declared[name] = type["NSPrivacyCollectedDataTypePurposes"] as? [String] ?? []
+            XCTAssertEqual(type["NSPrivacyCollectedDataTypeLinked"] as? Bool, true, "\(name): linked")
+            XCTAssertEqual(type["NSPrivacyCollectedDataTypeTracking"] as? Bool, false, "\(name): tracking")
         }
-        XCTAssertTrue(types.allSatisfy { $0["NSPrivacyCollectedDataTypeTracking"] as? Bool == false })
+        XCTAssertEqual(Set(declared.keys), Set(expected.keys), "типы манифеста и анкеты App Privacy разошлись")
+        for (name, purpose) in expected {
+            XCTAssertEqual(declared[name], [purpose], "\(name): цель")
+        }
+        XCTAssertEqual(plist["NSPrivacyTracking"] as? Bool, false)
     }
 
     // Сценарий «Проверка зависимостей»: из сторонних — только Sentry (отчёты о сбоях);
