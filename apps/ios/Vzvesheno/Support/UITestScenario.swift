@@ -377,7 +377,7 @@ extension ScenarioTransport {
                        slot: ("breakfast", "08:12", date)),
             Self.entry("e3", "Куриная грудка запечённая", portion: ("grams", 150), nutrition: [229, 46, 5, 0],
                        slot: ("lunch", "13:20", date)),
-        ]
+        ] + Self.storeShotEntries(date)
     }
 
     static let buckwheat = #"{"id":"p1","name":"Гречка отварная","servingSize":100,"servingUnit":"g","#

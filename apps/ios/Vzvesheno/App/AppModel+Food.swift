@@ -78,9 +78,11 @@ extension AppModel {
     }
 
     /// Аксессуар виден на всех вкладках, кроме переписки (там низ занимает
-    /// поле сообщения).
+    /// поле сообщения) и подключения Здоровья (там внизу «Продолжить» и «Не
+    /// сейчас» — панель закрывала их).
     func showsFoodAccessory(on tab: AppTab) -> Bool {
-        paths[tab]?.last != .curatorChat
+        let top = paths[tab]?.last
+        return top != .curatorChat && top != .health
     }
 
     /// Сценарий UI-теста: «Снять» берёт готовый снимок — камеры в симуляторе нет.

@@ -5,11 +5,11 @@ import Navigation
 
 /// Снимки для App Store (`scripts/screenshots.sh`): `-uiTestShot <экран>`
 /// вместе с `-uiTestScenario client` открывает экран сразу после запуска и
-/// включает данные витрины — полный день, три результата поиска, план на
-/// четыре приёма. Без `-uiTestShot` сценарии UI-тестов отвечают как раньше.
+/// включает данные витрины — полный день с нормой куратора, три результата
+/// поиска, фото тарелки, план на четыре приёма, обложки статей. Без `-uiTestShot` сценарии UI-тестов отвечают как раньше.
 ///
-/// Фото тарелки скрипт кладёт в контейнер приложения
-/// (`Documents/uitest-media/plate.jpg`): оно не входит ни в одну сборку.
+/// Фото (CC0, `scripts/screenshots/*.jpg`) скрипт кладёт в контейнер
+/// приложения (`Documents/uitest-media`): в сборку они не входят.
 enum StoreShot: String {
     case today, addFood, photoResult, diary, chat, menu, articles, health
 
@@ -65,12 +65,54 @@ extension ScenarioTransport {
             return Self.ok(#"{"items":[\#(Self.buckwheat),\#(Self.buckwheatDry),\#(Self.buckwheatChicken)],"total":3}"#)
         case "/api/v1/food-tracker/recognize":
             return Self.ok(Self.plateRecognition)
+        case let daily where daily.hasPrefix("/api/v1/dashboard/daily/"):
+            // Итог дневника витрины: завтрак, обед, ужин и перекус; тренировка из Здоровья.
+            let date = String(daily.suffix(10))
+            return Self.ok(#"{"id":"d","user_id":7,"date":"\#(date)T00:00:00Z","calories":792,"protein":83,"fat":52,"carbs":65,"#
+                           + #""weight":78.4,"steps":6412,"workout_completed":true,"workout_types":["strength"],"#
+                           + #""workout_duration":45,"steps_source":"healthkit","weight_source":"healthkit","#
+                           + #""workout_source":"healthkit"}"#)
+        case "/api/v1/dashboard/weekly-plan":
+            return Self.ok(#"{"plan":{"id":"wp1","user_id":7,"curator_id":3,"calories_goal":1850,"protein_goal":120,"#
+                           + #""fat_goal":62,"carbs_goal":200,"steps_goal":10000,"start_date":"2026-01-01T00:00:00Z","#
+                           + #""end_date":"2099-12-31T00:00:00Z","is_active":true}}"#)
         case "/api/v1/dashboard/week":
             return Self.ok(Self.json(["metrics": Self.pastWeek(), "count": 6]))
         case let plan where plan.hasPrefix("/api/v1/meal-plans/") && parts.count == 4:
             return Self.ok(Self.storePlan(parts[3]))
         default:
             return nil
+        }
+    }
+
+    /// Ужин и перекус дневника витрины: без пустых приёмов.
+    static func storeShotEntries(_ date: String) -> [[String: Any]] {
+        guard StoreShot.current != nil else { return [] }
+        return [
+            entry("e4", "Гречка отварная", portion: ("grams", 150), nutrition: [165, 6, 2, 32], slot: ("dinner", "19:10", date)),
+            entry("e5", "Яблоко", portion: ("grams", 150), nutrition: [78, 1, 1, 15], slot: ("snack", "16:30", date)),
+        ]
+    }
+
+    /// Переписка витрины продолжается: ответ клиента и куратора.
+    static func storeShotMessages() -> [[String: Any]] {
+        guard StoreShot.current != nil else { return [] }
+        return [
+            message("m6", sender: 7, content: "Спасибо! На ужин гречка и салат из свежих овощей", time: "13:44"),
+            message("m7", sender: 3, content: "Отлично, так и до нормы клетчатки доберёте", time: "13:46"),
+        ]
+    }
+
+    /// Обложки статей витрины — фото из `uitest-media` (CC0, scripts/screenshots).
+    static func withStoreShotCovers(_ articles: [[String: Any]]) -> [[String: Any]] {
+        guard StoreShot.current != nil else { return articles }
+        let covers = ["a1": "ostatok", "a2": "zavtrak", "a3": "voda", "a4": "shagi"]
+        return articles.map { article in
+            var article = article
+            if let id = article["id"] as? String, let cover = covers[id] {
+                article["cover_image_url"] = "https://new.burcev.team/uitest/cover-\(cover).jpg"
+            }
+            return article
         }
     }
 
@@ -120,14 +162,15 @@ extension ScenarioTransport {
 
     /// План дня на четыре приёма; завтрак съеден, ужин закреплён.
     static func storePlan(_ date: String) -> String {
-        let target = [2472.0, 125, 80, 230]
+        // Норма — план куратора витрины (`/dashboard/weekly-plan`).
+        let target = [1850.0, 120, 62, 200]
         let dishes = [
-            Dish(meal: "breakfast", id: "r1", name: "Сырники со сметаной и ягодами", grams: 230, nutrition: [520, 30, 20, 52],
+            Dish(meal: "breakfast", id: "r1", name: "Сырники со сметаной и ягодами", grams: 200, nutrition: [420, 28, 16, 40],
                  eaten: true),
-            Dish(meal: "lunch", id: "r3", name: "Куриная грудка с гречкой и овощами", grams: 380, nutrition: [690, 46, 22, 70]),
-            Dish(meal: "dinner", id: "r4", name: "Запечённая треска с булгуром", grams: 420, nutrition: [760, 40, 26, 80],
+            Dish(meal: "lunch", id: "r3", name: "Куриная грудка с гречкой и овощами", grams: 350, nutrition: [560, 42, 16, 58]),
+            Dish(meal: "dinner", id: "r4", name: "Запечённая треска с булгуром", grams: 380, nutrition: [590, 38, 20, 60],
                  locked: true),
-            Dish(meal: "snack", id: "r5", name: "Греческий йогурт с орехами", grams: 200, nutrition: [380, 16, 16, 32]),
+            Dish(meal: "snack", id: "r5", name: "Греческий йогурт с орехами", grams: 150, nutrition: [230, 12, 9, 26]),
         ]
         func percent(_ value: [Double]) -> [String: Int] {
             let shares = (0..<4).map { Int((value[$0] / target[$0] * 100).rounded()) }

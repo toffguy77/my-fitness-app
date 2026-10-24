@@ -9,10 +9,14 @@
 # Имена 01_…08_ задают порядок на странице (deliver сортирует по имени).
 # Запуск на Mac из apps/ios после `xcodegen generate`.
 #
-# Фото тарелки — scripts/screenshots/plate.jpg, CC0:
-# https://commons.wikimedia.org/wiki/File:Chicken_breast,_roasted_with_garlic_olive_oil_and_black_pepper,_on_fried_rice_and_peas_with_soy_sauce_-_Massachusetts.jpg
-# (EXIF с координатами снят). В сборку не входит: скрипт кладёт его в
+# Фото — scripts/screenshots/*.jpg, CC0 и общественное достояние с Wikimedia
+# Commons (EXIF с координатами снят). В сборку не входят: скрипт кладёт их в
 # контейнер приложения.
+#   plate.jpg — File:Chicken_breast,_roasted_with_garlic_olive_oil_and_black_pepper,_on_fried_rice_and_peas_with_soy_sauce_-_Massachusetts.jpg
+#   cover-ostatok.jpg — File:Salad_Bowl_(Unsplash).jpg
+#   cover-zavtrak.jpg — File:Breakfast_meal_-_MyPlate_20210810-FNS-UNC-0018.jpg (USDA, public domain)
+#   cover-voda.jpg — File:Glass_of_Water_(50838445027).jpg
+#   cover-shagi.jpg — File:Pair_of_8kg_dumbbells_(Unsplash).jpg
 set -euo pipefail
 
 out="fastlane/screenshots/ru"
@@ -43,10 +47,11 @@ xcodebuild build -project Vzvesheno.xcodeproj -scheme Vzvesheno-Dev -configurati
 app=$(find build/dd/Build/Products/Dev-Debug-iphonesimulator -maxdepth 1 -name 'Vzvesheno.app' | head -n1)
 xcrun simctl install "$udid" "$app"
 
-# Фото для «Нашли на тарелке» и переписки — в Documents приложения.
+# Фото тарелки (результат распознавания, переписка) и обложки статей — в
+# Documents приложения.
 media="$(xcrun simctl get_app_container "$udid" "$bundle" data)/Documents/uitest-media"
 mkdir -p "$media"
-cp scripts/screenshots/plate.jpg "$media/plate.jpg"
+cp scripts/screenshots/*.jpg "$media/"
 
 rm -rf "$out" && mkdir -p "$out"
 
