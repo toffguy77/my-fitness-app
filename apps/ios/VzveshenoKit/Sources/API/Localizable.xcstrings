@@ -1,6 +1,17 @@
 {
   "sourceLanguage": "ru",
   "strings": {
+    "error.apple_unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple сейчас не отвечает. Попробуйте войти чуть позже."
+          }
+        }
+      }
+    },
     "error.code_expired": {
       "extractionState": "manual",
       "localizations": {

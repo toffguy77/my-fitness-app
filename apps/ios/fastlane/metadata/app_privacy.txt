@@ -1,28 +1,128 @@
-Ответы анкеты «Конфиденциальность приложения» (App Privacy) в App Store Connect.
-Анкету заполняет человек; источник — PrivacyInfo.xcprivacy (VzveshenoTests/ComplianceTests
-сверяет типы данных). Отслеживания (tracking) нет, запроса App Tracking Transparency нет.
+Лист ответов анкеты «Конфиденциальность приложения» (App Privacy) в App Store Connect
+для «Взвешено» (team.burcev.app), версия 1.0.0.
 
-Данные, связанные с пользователем (Data Linked to You), не для отслеживания:
+Анкету заполняет человек: App Store Connect → приложение → App Privacy. Lane `metadata`
+её не загружает. Ответы сверены с кодом (Vzvesheno/App/Telemetry.swift, VzveshenoKit,
+project.yml), манифестом Vzvesheno/Resources/PrivacyInfo.xcprivacy (его типы сверяет
+VzveshenoTests/ComplianceTests) и политикой https://burcev.team/legal/privacy
+(разделы 2, 2-а, 9-а). Анкета может объявлять больше, чем манифест, но не меньше.
 
-- Здоровье и фитнес (Health, Fitness): вес, шаги, тренировки, съеденное, вода —
-  функциональность приложения (App Functionality). Из «Здоровья» читаются шаги, вес
-  и тренировки; в «Здоровье» записываются калории, БЖУ и вода — только с разрешения.
-- Контактные данные — адрес почты (Email Address): вход и письма сервиса
-  (App Functionality).
-- Пользовательский контент — фото и видео (Photos or Videos): снимки блюд для
-  распознавания, вложения в переписке с куратором, фото недели, аватар
-  (App Functionality). Снимок перед отправкой сжимается, метаданные EXIF и
-  геопозиция удаляются.
-- Пользовательский контент — прочее (Other User Content): сообщения куратору
-  (App Functionality).
-- Идентификаторы — идентификатор пользователя (User ID): аккаунт сервиса
-  (App Functionality).
-- Использование — взаимодействие с продуктом (Product Interaction): события
-  продукта на собственный сервер, без сторонних SDK (Analytics).
-- Диагностика — данные о сбоях (Crash Data): Sentry, без трассировки, сетевых
-  крошек и снимков экрана (App Functionality).
+Отслеживания (tracking) нет: сторонних SDK рекламы и аналитики нет, IDFA не
+используется, запроса App Tracking Transparency нет, NSUserTrackingUsageDescription
+отсутствует. Единственный сторонний пакет — Sentry, только отчёты о сбоях.
 
-Тексты системных разрешений (Info.plist, project.yml):
+=====================================================================
+ШАГ 1. Privacy Policy URL
+=====================================================================
+https://burcev.team/legal/privacy
+
+=====================================================================
+ШАГ 2. «Do you or your third-party partners collect data from this app?»
+=====================================================================
+Yes, we collect data from this app.
+
+=====================================================================
+ШАГ 3. Типы данных — отметить ровно эти, остальное не отмечать
+=====================================================================
+
+Contact Info
+  [x] Name             — имя в профиле; имя из «Войти с Apple», если пользователь его отдал
+  [x] Email Address    — вход, письма сервиса, ссылка входа
+  [ ] Phone Number     [ ] Physical Address
+  [x] Other User Contact Info — привязка Telegram («Профиль → Telegram»): чат и имя,
+                         куда пишет бот. Отмечено с запасом: саму привязку человек
+                         завершает в Telegram.
+
+Health & Fitness
+  [x] Health           — вес и замеры тела (в том числе вес из Apple Здоровье),
+                         съеденное и вода, фото прогресса, пищевые ограничения
+  [x] Fitness          — шаги и тренировки (вручную и из Apple Здоровье)
+
+Financial Info         — ничего: оплаты в приложении нет
+Location               — ничего: часовой пояс профиля — не геопозиция; геопозиция и
+                         EXIF удаляются из снимков перед отправкой
+Sensitive Info         — ничего (раса, религия, ориентация, биометрия и т. п. не собираются)
+Contacts               — ничего: адресная книга не читается
+
+User Content
+  [ ] Emails or Text Messages — не отмечать: переписка с куратором объявлена как
+                         Other User Content (так же в манифесте)
+  [x] Photos or Videos — снимок блюда для распознавания, вложения в переписке,
+                         фото недели, аватар
+  [ ] Audio Data       [ ] Gameplay Content
+  [ ] Customer Support — не отмечать: «Написать в поддержку» открывает почту или
+                         Telegram вне приложения
+  [x] Other User Content — сообщения куратору, записи дневника, отметки задач
+
+Browsing History       — ничего
+Search History         — ничего: запросы поиска продуктов сервер не хранит
+
+Identifiers
+  [x] User ID          — числовой id аккаунта (сервер; отчёты о сбоях в Sentry)
+  [x] Device ID        — токен push-уведомлений APNs и модель устройства у сессии.
+                         Рекламный идентификатор (IDFA) НЕ собирается.
+
+Purchases              — ничего
+Usage Data
+  [x] Product Interaction — собственные события продукта (POST /api/v1/public/analytics/events)
+  [ ] Advertising Data [ ] Other Usage Data
+Diagnostics
+  [x] Crash Data       — Sentry: стек, модель устройства, версии iOS и приложения,
+                         id аккаунта и роль
+  [ ] Performance Data — не отмечать: трассировка и отслеживание зависаний выключены
+  [ ] Other Diagnostic Data
+Surroundings, Body     — ничего
+Other Data             — ничего
+
+=====================================================================
+ШАГ 4. Для каждого отмеченного типа — три вопроса подряд
+=====================================================================
+Порядок у Apple: цель (purposes) → связан ли с пользователем (linked) →
+используется ли для отслеживания (tracking).
+
+Тип                      | Purposes            | Linked to you | Used for tracking
+-------------------------|---------------------|---------------|------------------
+Name                     | App Functionality   | Yes           | No
+Email Address            | App Functionality   | Yes           | No
+Other User Contact Info  | App Functionality   | Yes           | No
+Health                   | App Functionality   | Yes           | No
+Fitness                  | App Functionality   | Yes           | No
+Photos or Videos         | App Functionality   | Yes           | No
+Other User Content       | App Functionality   | Yes           | No
+User ID                  | App Functionality   | Yes           | No
+Device ID                | App Functionality   | Yes           | No
+Product Interaction      | Analytics           | Yes           | No
+Crash Data               | App Functionality   | Yes           | No
+
+Пояснения:
+- Целей Third-Party Advertising, Developer's Advertising or Marketing, Product
+  Personalization и Other Purposes не отмечать нигде. Данные Здоровья — только
+  App Functionality (App Review 5.1.3: не для рекламы, маркетинга и data mining).
+- Product Interaction связан с пользователем: после входа события посетителя
+  привязываются к аккаунту (analytics_identities); при удалении аккаунта связь
+  удаляется, а события обезличиваются.
+- Crash Data связаны с пользователем: Telemetry.identify передаёт в Sentry
+  числовой id и роль. Цель App Functionality у Apple включает устранение сбоев.
+  Данных Здоровья, дневника, сообщений, почты и имени в отчётах нет
+  (sendDefaultPii = false; без снимков экрана, иерархии видов, сетевых крошек и
+  трассировки; beforeSend убирает request).
+- Tracking = No везде: данные не объединяются с чужими данными для рекламы и не
+  передаются брокерам данных.
+
+=====================================================================
+ШАГ 5. Проверка перед публикацией
+=====================================================================
+- Превью ярлыка: «Data Linked to You» — Contact Info, Health & Fitness, User
+  Content, Identifiers, Usage Data, Diagnostics. «Data Used to Track You» и
+  «Data Not Linked to You» — пусто.
+- Расхождение с манифестом: в PrivacyInfo.xcprivacy нет User ID, Device ID и Other
+  User Contact Info. Анкета их объявляет; манифест стоит дополнить
+  (NSPrivacyCollectedDataTypeUserID, NSPrivacyCollectedDataTypeDeviceID,
+  NSPrivacyCollectedDataTypeOtherUserContactInfo) вместе с ComplianceTests.
+
+=====================================================================
+Тексты системных разрешений (Info.plist из project.yml) — для справки
+=====================================================================
 - Камера: «Камера нужна, чтобы сканировать штрихкод продукта и фотографировать
   блюдо для распознавания.»
 - Фото: «Доступ к фото нужен, чтобы выбрать снимок блюда или фотографию

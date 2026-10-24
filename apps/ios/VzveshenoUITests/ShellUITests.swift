@@ -113,16 +113,29 @@ final class ShellUITests: XCTestCase {
 final class AccessibilityAuditUITests: XCTestCase {
     /// Аудит с описанием каждой находки в журнале: без него в CI видно лишь
     /// «Contrast failed», но не какой элемент.
+    ///
+    /// Два прохода. Проверки Dynamic Type и обрезки перебирают размеры текста
+    /// прямо в приложении, и экран после перебора может стоять не так, как до
+    /// него: приложение запускалось на размере, оставленном аудитом прошлого
+    /// теста, а поле сообщения в переписке сохраняло высоту крупного текста.
+    /// Контраст в общем проходе сверял снимок одной раскладки с рамками
+    /// другой — и «падал» на тексте с контрастом выше 12:1 (`testChat`, прогон
+    /// 40114602261: рамки пузырей ложились на края пузырей и плашку «Сегодня»).
+    /// Поэтому контраст и остальное — по нетронутому экрану, перебор размеров —
+    /// отдельно и последним.
     private func audit(_ app: XCUIApplication, _ screen: String = "") throws {
         var found: [String] = []
         defer {
             // Журнал CI оставляет только строки с «error:» — находки одной строкой.
             if !found.isEmpty { XCTFail("аудит \(screen): " + found.joined(separator: " ;; ")) }
         }
-        try app.performAccessibilityAudit { issue in
-            if Self.isExcluded(issue, in: app) { return true }
-            found.append(Self.describe(issue))
-            return false
+        let resizing: XCUIAccessibilityAuditType = [.dynamicType, .textClipped]
+        for types in [XCUIAccessibilityAuditType.all.subtracting(resizing), resizing] {
+            try app.performAccessibilityAudit(for: types) { issue in
+                if Self.isExcluded(issue, in: app) { return true }
+                found.append(Self.describe(issue))
+                return false
+            }
         }
     }
 
@@ -141,6 +154,16 @@ final class AccessibilityAuditUITests: XCTestCase {
         // Контраст недоступного элемента WCAG 1.4.3 не нормирует: кнопка
         // «Войти» до ввода почты и пароля и должна выглядеть погашенной.
         if issue.auditType == .contrast, let element = issue.element, !element.isEnabled {
+            return true
+        }
+        // Элемент, выходящий за край окна («Подключить» внизу шага
+        // «Здоровье»): контраст меряется и по пикселям за краем, которых нет
+        // на экране, — «Contrast failed» при 6:1 по токенам. Прокрутка перед
+        // аудитом не помогает: после неё аудит находил «failed» у всего
+        // текста экрана. Та же пара (primaryFg на primaryDefault) целиком на
+        // экране проверяется в «порции» (`testAddFoodSearchAndPortion`).
+        if issue.auditType == .contrast, let element = issue.element,
+           !app.windows.firstMatch.frame.contains(element.frame) {
             return true
         }
         // Под полупрозрачным таббаром контраст считается по тому, что за
@@ -189,12 +212,6 @@ final class AccessibilityAuditUITests: XCTestCase {
            singleLineFields.contains(element.identifier) {
             return true
         }
-        // «Contrast nearly passed» — пары токенов packages/design-tokens,
-        // общие с вебом: основная кнопка (primaryFg на primaryDefault), мягкая
-        // (primaryDefault на primarySoft), fgSubtle на bgSubtle. Их меняет
-        // дизайн-система для обеих платформ, а не экран; пары записаны в отчёт
-        // аудита как задача токенам. «Contrast failed» это не прикрывает.
-        if issue.auditType == .contrast, issue.compactDescription.contains("nearly passed") { return true }
         // Подписи в панели навигации («Шаг 1 из 3», «Написать» в карточке):
         // панель не растёт с Dynamic Type, крупную подпись показывает Large
         // Content Viewer долгим нажатием (accessibilityShowsLargeContentViewer).
@@ -243,10 +260,9 @@ final class AccessibilityAuditUITests: XCTestCase {
     func testChat() throws {
         let app = launch("client")
         open(app, "header.chat")
-        XCTAssertTrue(app.descendants(matching: .any)["message.m5"].waitForExistence(timeout: 10), app.screenSummary)
-        // Лента докручивается к последнему сообщению с анимацией: аудит посреди
-        // прокрутки сравнивал текст пузыря с тем, что под ним проезжало.
-        Thread.sleep(forTimeInterval: 1.5)
+        // Лента докручивается к последнему сообщению с анимацией — аудит по
+        // остановившейся ленте.
+        settle(app, "message.m5", inWindow: true)
         try audit(app)
     }
 
@@ -325,6 +341,33 @@ final class AccessibilityAuditUITests: XCTestCase {
         return element
     }
 
+    /// Ждёт, пока элемент не встанет на место: две рамки подряд, прочитанные
+    /// с промежутком, совпадают (и, если `inWindow`, целиком в окне). Вместо
+    /// паузы «на анимацию»: пауза то коротка, то лишняя, а неподвижность
+    /// проверяется прямо.
+    @discardableResult
+    private func settle(_ app: XCUIApplication, _ identifier: String, inWindow: Bool = false,
+                        timeout: TimeInterval = 10) -> XCUIElement {
+        let element = wait(app, identifier, timeout: timeout)
+        let window = app.windows.firstMatch.frame
+        let deadline = Date().addingTimeInterval(timeout)
+        var previous = CGRect.null
+        while Date() < deadline {
+            let frame = element.exists ? element.frame : .null
+            if !frame.isEmpty, frame == previous, !inWindow || window.contains(frame) { return element }
+            previous = frame
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+        XCTFail("\(identifier) не остановился в окне \(window): \(element.frame)")
+        return element
+    }
+
+    /// Клавиатура убрана — аудит экрана, а не её.
+    private func waitForKeyboardGone(_ app: XCUIApplication) {
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.keyboards.firstMatch)
+        wait(for: [gone], timeout: 5)
+    }
+
     private func scrollTo(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
         let element = app.descendants(matching: .any)[identifier].firstMatch
         var swipes = 0
@@ -345,14 +388,56 @@ final class AccessibilityAuditUITests: XCTestCase {
         field.tap()
         // Перевод строки убирает клавиатуру: аудит — экрана, а не клавиатуры.
         field.typeText("гр\n")
-        _ = wait(app, "food.p1", timeout: 5)
         // Лист и выдача ещё анимируются — аудит по устоявшемуся экрану.
-        Thread.sleep(forTimeInterval: 1.5)
+        settle(app, "food.p1")
         try audit(app, "поиск")
         app.buttons["food.p1"].tap()
-        _ = wait(app, "portion.card", timeout: 5)
-        Thread.sleep(forTimeInterval: 1)
+        settle(app, "portion.card")
         try audit(app, "порция")
+    }
+
+    /// #279: шапка листа «Записать еду» на крупном тексте. Аудит наложения
+    /// не видит — заголовок поверх «Отмены» и «Завтрака» он не находил, —
+    /// поэтому рамки сверяются прямо: «Отмена», заголовок и выбор приёма не
+    /// пересекаются и не выходят за ширину окна ни на одном размере.
+    func testAddFoodHeaderAtLargeText() throws {
+        let sizes = [("по умолчанию", [String]()),
+                     ("xxxLarge", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryXXXL"]),
+                     ("AX1", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]),
+                     ("AX5", ax5)]
+        for (size, arguments) in sizes {
+            let app = launch("client", arguments)
+            wait(app, "accessory.search").tap()
+            let cancel = wait(app, "addFood.cancel", timeout: 5)
+            let title = wait(app, "addFood.title", timeout: 5)
+            // Лист ещё выезжает — рамки по устоявшемуся экрану.
+            let meal = settle(app, "addFood.meal")
+            // У «Отмены» рамка VoiceOver расширена на 14 pt во все стороны
+            // (`touchTarget`); сама подпись — внутри.
+            let frames = [("«Отмена»", cancel.frame.insetBy(dx: 14, dy: 14)), ("заголовок", title.frame),
+                          ("приём пищи", meal.frame)]
+            let window = app.windows.firstMatch.frame
+            for (index, (name, frame)) in frames.enumerated() {
+                XCTAssertFalse(frame.isEmpty, "\(size): у \(name) пустая рамка")
+                XCTAssertTrue(window.contains(frame), "\(size): \(name) \(frame) выходит за окно \(window)")
+                for (other, otherFrame) in frames[(index + 1)...] {
+                    XCTAssertFalse(frame.intersects(otherFrame),
+                                   "\(size): \(name) \(frame) наезжает на \(other) \(otherFrame)")
+                }
+            }
+            if size == "AX5" {
+                // На размерах доступности приём пищи — своей строкой под заголовком.
+                XCTAssertGreaterThanOrEqual(meal.frame.minY, title.frame.maxY, "\(size): приём пищи не под заголовком")
+                // Поле поиска получает фокус при открытии: клавиатура закрывает
+                // выдачу, и аудит мерил бы контраст строк под ней и пустые
+                // ячейки подсказок клавиатуры. Перевод строки её убирает.
+                if app.keyboards.firstMatch.exists { app.textFields["search.field"].typeText("\n") }
+                waitForKeyboardGone(app)
+                settle(app, "addFood.meal")
+                try audit(app, "шапка «Записать еду» на AX5")
+            }
+            app.terminate()
+        }
     }
 
     /// Результат распознавания фото.
@@ -360,8 +445,7 @@ final class AccessibilityAuditUITests: XCTestCase {
         let app = launch("client")
         wait(app, "accessory.photo").tap()
         wait(app, "photo.camera").tap()
-        _ = wait(app, "photo.apply.0")
-        Thread.sleep(forTimeInterval: 1.5)
+        settle(app, "photo.apply.0")
         try audit(app, "результат фото")
     }
 
@@ -401,8 +485,7 @@ final class AccessibilityAuditUITests: XCTestCase {
 
     func testCuratorClientCard() throws {
         let app = launch("coordinator", ["-uiTestOpenURL", "https://new.burcev.team/curator/clients/11"])
-        _ = wait(app, "card.name")
-        Thread.sleep(forTimeInterval: 1)
+        settle(app, "card.name")
         try audit(app, "карточка клиента")
     }
 
@@ -411,11 +494,10 @@ final class AccessibilityAuditUITests: XCTestCase {
         let app = launch("coordinator", ["-uiTestOpenURL", "https://new.burcev.team/curator/chat/11"])
         _ = wait(app, "conversation.name")
         // Лента докручивается к последнему сообщению с анимацией.
-        Thread.sleep(forTimeInterval: 1.5)
+        settle(app, "food.enter.k2")
         try audit(app, "переписка куратора")
         wait(app, "food.enter.k2").tap()
-        _ = wait(app, "sheet.foodEntry", timeout: 5)
-        Thread.sleep(forTimeInterval: 1.5)
+        settle(app, "sheet.foodEntry")
         try audit(app, "лист КБЖУ")
     }
 

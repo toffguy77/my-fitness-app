@@ -121,6 +121,7 @@ POST /api/v1/auth/magic-link/consume
 POST /api/v1/auth/magic-link/request
 POST /api/v1/auth/native/apple
 POST /api/v1/auth/native/apple/link
+POST /api/v1/auth/native/apple/nonce
 POST /api/v1/auth/native/change-password
 POST /api/v1/auth/native/consents
 POST /api/v1/auth/native/login

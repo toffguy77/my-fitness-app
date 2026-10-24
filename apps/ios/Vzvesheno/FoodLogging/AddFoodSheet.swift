@@ -68,8 +68,20 @@ struct AddFoodSheet: View {
                 search = model
                 await model.loadSuggestions()
             }
+            #if DEBUG
+            await prepareStoreShot()
+            #endif
         }
         .onChange(of: method) { _, _ in selected = nil }
+    }
+
+    /// Поиск открыт сам — клавиатура сразу. На снимке для App Store её нет:
+    /// она закрыла бы выдачу и порцию.
+    private var focusesSearch: Bool {
+        #if DEBUG
+        if StoreShot.current != nil { return false }
+        #endif
+        return request.method == .search
     }
 
     private var timeText: String {
@@ -86,7 +98,7 @@ struct AddFoodSheet: View {
                     query: $search.query, showsSuggestions: search.showsSuggestions, results: search.results,
                     recent: search.recent, favorites: search.favorites, searching: search.searching, error: search.error,
                     searchedFor: search.searchedFor, isFavorite: search.isFavorite, selected: selected, portion: $portion,
-                    meal: meal, focusOnAppear: request.method == .search,
+                    meal: meal, focusOnAppear: focusesSearch,
                     onSelect: { item in
                         selected = item
                         portion = Portion(unit: item.defaultUnit, amount: item.defaultUnit.quick[0],
@@ -137,6 +149,34 @@ struct AddFoodSheet: View {
         await add(result.drafts(meal: meal, date: request.date, stamp: stamp))
     }
 }
+
+#if DEBUG
+extension AddFoodSheet {
+    /// Снимок для App Store (`StoreShot`): выбранная порция в поиске или
+    /// результат фото тарелки.
+    private func prepareStoreShot() async {
+        switch StoreShot.current {
+        case .addFood?:
+            guard let search, selected == nil else { return }
+            search.query = StoreShot.searchQuery
+            await search.waitForSearch()
+            guard let item = search.results.first else { return }
+            selected = item
+            portion = Portion(unit: item.defaultUnit, amount: StoreShot.searchGrams, servingGrams: item.servingSize)
+        case .photoResult?:
+            guard photo == nil, let data = StoreShot.media("plate.jpg"), let image = UIImage(data: data),
+                  let jpeg = PhotoPreparation.jpeg(from: image),
+                  let recognition = try? await RecognitionAPI.recognize(jpeg: jpeg, api: model.api) else { return }
+            var result = RecognitionResult(recognition: recognition)
+            // Вес первой позиции уже подтверждён — как на макете PhotoResult.png.
+            if let first = result.items.first { result.applyEstimate(first.id) }
+            photo = (result, image)
+        default:
+            break
+        }
+    }
+}
+#endif
 
 /// Способ «Вручную»: свой продукт (`POST /user-foods`), затем порция.
 struct ManualFoodView: View {

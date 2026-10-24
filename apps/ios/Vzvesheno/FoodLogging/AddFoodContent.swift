@@ -10,42 +10,11 @@ struct AddFoodContent<Method: View>: View {
     let onCancel: () -> Void
     @ViewBuilder let content: Method
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Button("Отмена", action: onCancel)
-                    .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.medium))
-                    .foregroundStyle(DS.Color.primaryDefault)
-                    .frame(minHeight: DS.Size.touch)
-                    .touchTarget()
-                    .accessibilityIdentifier("addFood.cancel")
-                Spacer()
-                Menu {
-                    Picker("Приём пищи", selection: $meal) {
-                        ForEach(MealType.allCases) { Text($0.title).tag($0) }
-                    }
-                } label: {
-                    HStack(spacing: DS.Space.s1) {
-                        Text(meal.title)
-                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
-                    }
-                    .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .subheadline).weight(.medium))
-                    .foregroundStyle(DS.Color.primaryDefault)
-                    .padding(.horizontal, DS.Space.s3)
-                    .frame(minHeight: 32)
-                    .background(Capsule().fill(DS.Color.primarySoft))
-                    .frame(minHeight: DS.Size.touch)
-                }
-                .accessibilityLabel("Приём пищи: \(meal.title)")
-                .accessibilityIdentifier("addFood.meal")
-            }
-            .overlay {
-                Text("Записать еду")
-                    .dsText(DS.Typography.title3)
-                    .foregroundStyle(DS.Color.fgDefault)
-                    .accessibilityAddTraits(.isHeader)
-                    .allowsHitTesting(false)
-            }
+            header
             SegmentedTabs(items: FoodLogMethod.allCases.map { ($0, $0.title) }, selection: $method, fontSize: 13) {
                 "addFood.method.\($0.rawValue)"
             }
@@ -53,6 +22,69 @@ struct AddFoodContent<Method: View>: View {
         }
         .padding(.horizontal, DS.Space.screenX)
         .padding(.top, DS.Space.s2)
+    }
+
+    /// «Отмена» · «Записать еду» · приём пищи. Одна раскладка на все размеры
+    /// (`AddFoodHeaderLayout`): в строку с заголовком посередине, пока все три
+    /// помещаются целиком; иначе — и всегда на размерах доступности —
+    /// столбиком: заголовок переносится, выбор приёма своей строкой под ним
+    /// (#279: заголовок поверх строки наезжал на соседей на крупном тексте).
+    /// Подвиды те же при любой раскладке — аудит доступности, меняя размер
+    /// текста, видит те же элементы, а не другую ветку `ViewThatFits`.
+    private var header: some View {
+        AddFoodHeaderLayout(stacked: typeSize.isAccessibilitySize, spacing: DS.Space.s2) {
+            cancelButton
+            title
+            mealPicker
+        }
+    }
+
+    private var cancelButton: some View {
+        Button("Отмена", action: onCancel)
+            .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.medium))
+            .foregroundStyle(DS.Color.primaryDefault)
+            .frame(minHeight: DS.Size.touch)
+            .touchTarget()
+            .accessibilityIdentifier("addFood.cancel")
+    }
+
+    private var title: some View {
+        Text("Записать еду")
+            .dsText(DS.Typography.title3)
+            .foregroundStyle(DS.Color.fgDefault)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("addFood.title")
+    }
+
+    private var mealPicker: some View {
+        Menu {
+            Picker("Приём пищи", selection: $meal) {
+                ForEach(MealType.allCases) { Text($0.title).tag($0) }
+            }
+        } label: {
+            HStack(spacing: DS.Space.s1) {
+                Text(meal.title)
+                    .fixedSize(horizontal: false, vertical: true)
+                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+            }
+            .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .subheadline).weight(.medium))
+            .foregroundStyle(DS.Color.primaryDefault)
+            .padding(.horizontal, DS.Space.s3)
+            .padding(.vertical, typeSize.isAccessibilitySize ? DS.Space.s1 : 0)
+            .frame(minHeight: 32)
+            .background {
+                // Перенесённая на крупном тексте подпись в капсуле — почти
+                // круг; плашка со скруглением держит форму кнопки.
+                if typeSize.isAccessibilitySize {
+                    RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).fill(DS.Color.primarySoft)
+                } else {
+                    Capsule().fill(DS.Color.primarySoft)
+                }
+            }
+            .frame(minHeight: DS.Size.touch)
+        }
+        .accessibilityLabel("Приём пищи: \(meal.title)")
+        .accessibilityIdentifier("addFood.meal")
     }
 }
 
@@ -267,5 +299,52 @@ struct PortionCard: View {
         .overlay(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).strokeBorder(DS.Color.lineDefault))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("portion.card")
+    }
+}
+
+/// Шапка листа: три подвида — «Отмена», заголовок, приём пищи. В строку —
+/// заголовок точно посередине, боковые по краям, если каждый помещается в
+/// свою подпись без сжатия; иначе столбиком по левому краю, заголовок на всю
+/// ширину с переносом.
+struct AddFoodHeaderLayout: Layout {
+    var stacked: Bool
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        let ideal = subviews.map { $0.sizeThatFits(.unspecified) }
+        let width = proposal.width ?? rowWidth(ideal)
+        if fitsInRow(ideal, width: width) {
+            return CGSize(width: width, height: ideal.map(\.height).max() ?? 0)
+        }
+        let heights = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)).height }
+        return CGSize(width: width, height: heights.reduce(0, +) + spacing * CGFloat(max(heights.count - 1, 0)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        let ideal = subviews.map { $0.sizeThatFits(.unspecified) }
+        if fitsInRow(ideal, width: bounds.width), subviews.count == 3 {
+            subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading, proposal: .unspecified)
+            subviews[1].place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center, proposal: .unspecified)
+            subviews[2].place(at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing, proposal: .unspecified)
+            return
+        }
+        var y = bounds.minY
+        for subview in subviews {
+            let size = ProposedViewSize(width: bounds.width, height: nil)
+            let height = subview.sizeThatFits(size).height
+            subview.place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading, proposal: size)
+            y += height + spacing
+        }
+    }
+
+    /// Ширина строки с заголовком посередине: по обе стороны от него —
+    /// место под более широкую из боковых частей.
+    private func rowWidth(_ ideal: [CGSize]) -> CGFloat {
+        guard ideal.count == 3 else { return ideal.map(\.width).reduce(0, +) }
+        return ideal[1].width + 2 * (max(ideal[0].width, ideal[2].width) + spacing)
+    }
+
+    private func fitsInRow(_ ideal: [CGSize], width: CGFloat) -> Bool {
+        !stacked && ideal.count == 3 && rowWidth(ideal) <= width
     }
 }

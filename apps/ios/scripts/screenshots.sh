@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
-# Снимает скриншоты для App Store: отладочная Dev-сборка в сценариях
-# UI-тестов (-uiTestScenario, Vzvesheno/Support/UITestScenario.swift) —
-# заготовленные ответы, без сети и без настоящих учёток.
+# Снимает скриншоты для App Store: отладочная Dev-сборка в сценарии UI-тестов
+# (-uiTestScenario, Vzvesheno/Support/UITestScenario.swift) — заготовленные
+# ответы, без сети и без настоящих учёток. `-uiTestShot <экран>`
+# (UITestScenario+Screenshots.swift) открывает экран сразу после запуска и
+# включает данные витрины.
 #
 # App Store требует снимки iPhone 6.9″ (1320×2868) — берём симулятор Pro Max.
+# Имена 01_…08_ задают порядок на странице (deliver сортирует по имени).
 # Запуск на Mac из apps/ios после `xcodegen generate`.
+#
+# Фото — scripts/screenshots/*.jpg, CC0 и общественное достояние с Wikimedia
+# Commons (EXIF с координатами снят). В сборку не входят: скрипт кладёт их в
+# контейнер приложения.
+#   plate.jpg — File:Chicken_breast,_roasted_with_garlic_olive_oil_and_black_pepper,_on_fried_rice_and_peas_with_soy_sauce_-_Massachusetts.jpg
+#   cover-ostatok.jpg — File:Salad_Bowl_(Unsplash).jpg
+#   cover-zavtrak.jpg — File:Breakfast_meal_-_MyPlate_20210810-FNS-UNC-0018.jpg (USDA, public domain)
+#   cover-voda.jpg — File:Glass_of_Water_(50838445027).jpg
+#   cover-shagi.jpg — File:Pair_of_8kg_dumbbells_(Unsplash).jpg
 set -euo pipefail
 
 out="fastlane/screenshots/ru"
@@ -27,36 +39,48 @@ echo "симулятор: $udid"
 xcrun simctl boot "$udid" 2>/dev/null || true
 xcrun simctl bootstatus "$udid" -b
 xcrun simctl ui "$udid" appearance light
-xcrun simctl status_bar "$udid" override --time "9:41" --dataNetwork wifi --wifiBars 3 \
-  --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+xcrun simctl status_bar "$udid" override --time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3 \
+  --cellularMode active --cellularBars 4 --operatorName "" --batteryState discharging --batteryLevel 100
 
 xcodebuild build -project Vzvesheno.xcodeproj -scheme Vzvesheno-Dev -configuration Dev-Debug \
   -destination "id=$udid" -derivedDataPath build/dd -quiet
 app=$(find build/dd/Build/Products/Dev-Debug-iphonesimulator -maxdepth 1 -name 'Vzvesheno.app' | head -n1)
 xcrun simctl install "$udid" "$app"
 
+# Фото тарелки (результат распознавания, переписка) и обложки статей — в
+# Documents приложения.
+media="$(xcrun simctl get_app_container "$udid" "$bundle" data)/Documents/uitest-media"
+mkdir -p "$media"
+cp scripts/screenshots/*.jpg "$media/"
+
 rm -rf "$out" && mkdir -p "$out"
 
+# shot <имя> <экран> [секунд до снимка] [сценарий]
 shot() {
-  local name="$1" scenario="$2"
+  local name="$1" screen="$2" wait="${3:-6}" scenario="${4:-client}"
   xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
   # Русская локаль: иначе раннер в en_US показал бы «1,173 ккал» и «8:20 AM».
-  xcrun simctl launch "$udid" "$bundle" -uiTestScenario "$scenario" \
+  xcrun simctl launch "$udid" "$bundle" -uiTestScenario "$scenario" -uiTestShot "$screen" \
     -AppleLanguages "(ru)" -AppleLocale ru_RU >/dev/null
-  sleep 5
+  sleep "$wait"
   xcrun simctl io "$udid" screenshot "$out/$name.png" >/dev/null
   echo "снят $name"
 }
 
-# Экраны клиента и куратора появятся с ios-client-app и ios-curator-app;
-# до тех пор снимки показывают каркас оболочек.
-shot "01_sign_in" signedOut
-shot "02_client" client
-shot "03_curator" coordinator
+shot "01_today" today
+shot "02_add_food" addFood 8
+shot "03_photo_result" photoResult 10
+shot "04_diary" diary
+shot "05_chat" chat 8
+shot "06_menu" menu 8
+shot "07_articles" articles
+shot "08_health" health
 
 python3 - "$out" <<'EOF'
 import struct, sys, pathlib
 for p in sorted(pathlib.Path(sys.argv[1]).glob("*.png")):
     w, h = struct.unpack(">II", p.read_bytes()[16:24])
     print(f"{p.name}: {w}×{h}")
+    if (w, h) != (1320, 2868):
+        sys.exit(f"{p.name}: {w}×{h}, а App Store ждёт 1320×2868")
 EOF

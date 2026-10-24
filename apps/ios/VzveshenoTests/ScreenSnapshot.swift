@@ -20,6 +20,7 @@ func assertScreenSnapshot<V: View>(
     named name: String,
     colorScheme: ColorScheme = .light,
     height: CGFloat? = 844,
+    typeSize: DynamicTypeSize = .large,
     file: StaticString = #filePath,
     testName: String = #function,
     line: UInt = #line
@@ -33,7 +34,7 @@ func assertScreenSnapshot<V: View>(
         .background(DS.Color.bgCanvas)
         .environment(\.colorScheme, colorScheme)
         .environment(\.locale, Locale(identifier: "ru_RU"))
-        .environment(\.dynamicTypeSize, .large)
+        .environment(\.dynamicTypeSize, typeSize)
     let hosting = UIHostingController(rootView: content)
     hosting.safeAreaRegions = []
     hosting.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light

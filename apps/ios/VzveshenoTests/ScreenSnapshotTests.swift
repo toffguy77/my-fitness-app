@@ -43,14 +43,31 @@ extension ScreenSnapshotTests {
     /// Лист «Записать еду», поиск «гречка», выбрана гречка 150 г в ужин. Сам
     /// лист (затемнение и скругление сверху) рисует система.
     func testAddFood() {
-        let content = AddFoodContent(method: .constant(.search), meal: .constant(.dinner), onCancel: {}, content: {
+        assertScreenSnapshot(addFood(meal: .dinner), named: "light")
+    }
+
+    /// #279: шапка листа на крупном тексте. На крупнейшем размере вне
+    /// доступности (xxxLarge) — ещё одной строкой, если «Отмена», заголовок
+    /// и «Перекус» (самая длинная подпись приёма) помещаются; на AX5 —
+    /// столбиком, выбор приёма своей строкой под заголовком. Ничто ни на
+    /// что не наезжает.
+    func testAddFoodLargeText() {
+        assertScreenSnapshot(addFood(meal: .snack), named: "xxxLarge", typeSize: .xxxLarge)
+        // На AX5 выдача уходит далеко за экран — снимок шапки и переключателя
+        // способов целиком, без выдачи.
+        assertScreenSnapshot(AddFoodContent(method: .constant(.search), meal: .constant(.snack), onCancel: {},
+                                            content: { EmptyView() }),
+                             named: "ax5", height: nil, typeSize: .accessibility5)
+    }
+
+    private func addFood(meal: MealType) -> some View {
+        AddFoodContent(method: .constant(.search), meal: .constant(meal), onCancel: {}, content: {
             FoodSearchContent(query: .constant("гречка"), showsSuggestions: false, results: FoodFixture.results, recent: [],
                               favorites: [FoodFixture.results[0]], searching: false, error: nil, searchedFor: "гречка",
                               isFavorite: { $0.id == "p1" }, selected: FoodFixture.results[0],
                               portion: .constant(Portion(unit: .grams, amount: 150)), meal: .dinner,
                               onSelect: { _ in }, onStar: { _ in }, onAdd: {})
         })
-        assertScreenSnapshot(content, named: "light")
     }
 
     /// Сканер нашёл йогурт: карточка с «Добавить 140 г». Камера — фоном.

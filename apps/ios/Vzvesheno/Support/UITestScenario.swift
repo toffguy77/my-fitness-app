@@ -27,8 +27,11 @@ import Session
 /// - `-uiTestStore <имя>` — каталог данных постоянный между запусками
 ///   (`tmp/uitest-<имя>`), `-uiTestResetStore` — очистить его при запуске:
 ///   первый запуск с сетью наполняет кэш экранов, второй его показывает;
+/// - `-uiTestAppleNonceOffline` — nonce входа через Apple не получить (нет
+///   сети): лист Apple не должен открываться;
 /// - `-uiTestOffline` — нет сети совсем (любая роль), в отличие от
-///   `offlineClient`, у которого роль закреплена, а кэша нет.
+///   `offlineClient`, у которого роль закреплена, а кэша нет;
+/// - `-uiTestShot <экран>` — снимок для App Store (`UITestScenario+Screenshots.swift`).
 enum UITestScenario: String {
     case client
     case coordinator
@@ -127,6 +130,10 @@ enum UITestScenario: String {
                 await model.handlePush(.openWorkoutSheet(taskID: "t1"))
             }
         }
+        // Снимок для App Store (`UITestScenario+Screenshots.swift`).
+        if let shot = StoreShot.current {
+            Task { @MainActor in await shot.open(model) }
+        }
         if let raw = Self.argument("-uiTestOpenURL"), let url = URL(string: raw) {
             Task { @MainActor in
                 await model.start()
@@ -191,6 +198,9 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
         if path.hasSuffix("/food-entry"), ProcessInfo.processInfo.arguments.contains("-uiTestFoodEntryOffline") {
             throw URLError(.notConnectedToInternet)
         }
+        if path == "/api/v1/auth/native/apple/nonce", ProcessInfo.processInfo.arguments.contains("-uiTestAppleNonceOffline") {
+            throw URLError(.notConnectedToInternet)
+        }
         if path == "/api/v1/auth/native/logout" || path.hasPrefix("/api/v1/notifications/devices/") {
             let token = (body["device_token"] as? String).map { " device_token=\($0)" } ?? ""
             let line = "\(method) \(path)\(token)"
@@ -199,7 +209,8 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
         let query = Dictionary((URLComponents(url: request.url ?? URL(fileURLWithPath: "/"), resolvingAgainstBaseURL: false)?
             .queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
         let (status, text) = lock.withLock {
-            curatorResponse(method, path, body, query) ?? foodResponse(method, path, body, query) ?? menuResponse(method, path, body)
+            storeShotResponse(method, path) ?? curatorResponse(method, path, body, query) ?? foodResponse(method, path, body, query)
+                ?? menuResponse(method, path, body)
                 ?? clientResponse(method, path, body, query) ?? respond(method, path, body)
         }
         let response = HTTPURLResponse(url: request.url ?? URL(fileURLWithPath: "/"), statusCode: status,
@@ -250,6 +261,9 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
             return Self.ok(#"{"providers":[\#(providers.map { "\"\($0)\"" }.joined(separator: ","))]}"#)
         case "/api/v1/auth/native/logout":
             return (204, "")
+        case "/api/v1/auth/native/apple/nonce":
+            // Nonce выдаёт сервер (apple-sign-in); лист Apple открывается после него.
+            return Self.ok(#"{"nonce":"uitest-apple-nonce","expires_in":600}"#)
         case "/api/v1/auth/native/login":
             // «deleting@…» — аккаунт, ждущий удаления: вход успешен, сессия выдана.
             let deleting = (body["email"] as? String)?.hasPrefix("deleting") == true
@@ -363,7 +377,7 @@ extension ScenarioTransport {
                        slot: ("breakfast", "08:12", date)),
             Self.entry("e3", "Куриная грудка запечённая", portion: ("grams", 150), nutrition: [229, 46, 5, 0],
                        slot: ("lunch", "13:20", date)),
-        ]
+        ] + Self.storeShotEntries(date)
     }
 
     static let buckwheat = #"{"id":"p1","name":"Гречка отварная","servingSize":100,"servingUnit":"g","#

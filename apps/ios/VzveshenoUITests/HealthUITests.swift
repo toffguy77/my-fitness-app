@@ -57,4 +57,40 @@ final class HealthUITests: XCTestCase {
         app.buttons["health.disconnect"].tap()
         XCTAssertTrue(app.buttons["health.continue"].waitForExistence(timeout: 5))
     }
+
+    // «Продолжить» и «Не сейчас» видны и нажимаются без прокрутки при любом
+    // размере текста: таббара на экране нет, панель «Записать еду» и таббар
+    // их не закрывают, кнопки — внутри окна над нижним краем.
+    func testActionsStayAboveTabBarAtAnyTextSize() {
+        let sizes = [("стандартный", [String]()),
+                     ("AX5", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])]
+        for (size, arguments) in sizes {
+            // Экран открывается сразу (`-uiTestShot health`): на AX5 пункт
+            // «Здоровье» в профиле пришлось бы искать прокруткой.
+            let app = XCUIApplication()
+            app.launchArguments = ["-uiTestScenario", "client", "-uiTestShot", "health", "-AppleLanguages", "(ru)",
+                                   "-AppleLocale", "ru_RU"] + arguments
+            app.launch()
+            XCTAssertTrue(app.otherElements["screen.health"].waitForExistence(timeout: 10)
+                          || app.buttons["health.continue"].waitForExistence(timeout: 5), "\(size): нет экрана Здоровья")
+            let window = app.windows.firstMatch.frame
+            for id in ["health.continue", "health.notNow"] {
+                let button = app.buttons[id]
+                XCTAssertTrue(button.waitForExistence(timeout: 5), "\(size): нет \(id)")
+                XCTAssertTrue(button.isHittable, "\(size): \(id) не нажимается")
+                XCTAssertTrue(window.contains(button.frame), "\(size): \(id) за краем окна: \(button.frame)")
+                let tabBar = app.tabBars.firstMatch
+                if tabBar.exists && tabBar.isHittable {
+                    XCTAssertFalse(tabBar.frame.intersects(button.frame), "\(size): таббар закрывает \(id)")
+                }
+                let accessory = app.otherElements["accessory.foodLog"]
+                if accessory.exists {
+                    XCTAssertFalse(accessory.frame.intersects(button.frame), "\(size): «Записать еду» закрывает \(id)")
+                }
+            }
+            let tabBar = app.tabBars.firstMatch
+            XCTAssertFalse(tabBar.exists && tabBar.isHittable, "\(size): таббар на подключении Здоровья")
+            app.terminate()
+        }
+    }
 }

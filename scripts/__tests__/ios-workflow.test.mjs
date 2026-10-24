@@ -60,3 +60,18 @@ test('задача ios генерирует проект, проверяет л�
     assert.match(ios, /__Snapshots__/)
     assert.match(ios, /xcresult/)
 })
+
+test('ручной запуск принимает выборку тестов и число прогонов подряд', () => {
+    const dispatch = ios.slice(ios.indexOf('  workflow_dispatch:'), ios.indexOf('\npermissions:'))
+    assert.match(dispatch, /\n {6}only_testing:\n(?: {8}.*\n)*? {8}type: string\n/)
+    assert.match(dispatch, /\n {6}iterations:\n(?: {8}.*\n)*? {8}type: number\n(?: {8}.*\n)*? {8}default: 1\n/)
+    // Выборка без повторов: тест обязан пройти все прогоны подряд.
+    assert.match(ios, /selection\+=\("-only-testing:\$id"\)/)
+    assert.match(ios, /selection\+=\(-test-iterations "\$iterations" -run-tests-until-failure\)/)
+})
+
+test('без выборки — полный набор с повтором упавших, как на push', () => {
+    assert.match(ios, /selection=\(-retry-tests-on-failure -test-iterations 3\)/)
+    assert.equal(ios.match(/-retry-tests-on-failure/g).length, 1, 'повтор только у полного набора')
+    assert.match(ios, /- name: Check the built bundle\n {8}if: inputs\.only_testing == ''\n/)
+})

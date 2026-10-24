@@ -314,6 +314,7 @@ struct Composer: View {
     let onSend: () -> Void
     let onAttach: () -> Void
     let onType: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(alignment: .bottom, spacing: DS.Space.s3) {
@@ -336,6 +337,12 @@ struct Composer: View {
                     .lineLimit(1...5)
                     .padding(.vertical, 12)
                     .onChange(of: text) { _, _ in onType() }
+                    // Многострочное поле запоминает высоту, набранную на
+                    // крупном тексте: после возврата к обычному размеру оно
+                    // оставалось в две строки, и лента над ним съезжала вверх
+                    // (видно на записи прогона 40114602261). Новое поле на
+                    // каждый размер меряется заново; текст — в привязке.
+                    .id(dynamicTypeSize)
                     .accessibilityIdentifier("chat.input")
                 Button(action: onSend) {
                     Image(systemName: "arrow.up")

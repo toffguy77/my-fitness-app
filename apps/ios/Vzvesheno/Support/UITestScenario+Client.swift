@@ -28,7 +28,7 @@ extension ScenarioTransport {
                          metadata: ["food_entry_id": "e3", "food_name": "Куриная грудка", "meal_type": "lunch", "weight": 150,
                                     "calories": 229, "protein": 46, "fat": 5, "carbs": 0]),
             Self.message("m5", sender: 3, content: "Белок держите отлично, добавьте овощей к ужину", time: "13:40"),
-        ]
+        ] + Self.storeShotMessages()
     }
 
     var curatorAccess: String { UITestScenario.argument("-uiTestCuratorAccess") ?? "allowed" }
@@ -145,7 +145,7 @@ extension ScenarioTransport {
 
     private func contentResponse(_ method: String, _ path: String) -> (Int, String)? {
         guard method == "GET" else { return nil }
-        let articles: [[String: Any]] = [
+        let feed: [[String: Any]] = [
             ["id": "a1", "slug": "ostatok-vazhnee", "title": "Почему остаток важнее съеденного", "category": "nutrition",
              "excerpt": "Как читать дневной остаток и не срываться к вечеру", "published_at": "2026-10-16T09:00:00Z",
              "author_name": "Анна Смирнова"],
@@ -156,6 +156,7 @@ extension ScenarioTransport {
             ["id": "a4", "slug": "shagi", "title": "Шаги или зал: что сдвигает норму", "category": "training",
              "published_at": "2026-10-13T09:00:00Z"],
         ]
+        let articles = Self.withStoreShotCovers(feed)
         switch path {
         case "/api/v1/content/feed":
             return Self.ok(Self.json(["articles": articles, "total": articles.count]))

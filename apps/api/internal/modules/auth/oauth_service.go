@@ -485,6 +485,26 @@ func insertIdentity(ctx context.Context, db execer, userID int64, provider strin
 	return nil
 }
 
+// HoldsProviderToken reports whether the identity (provider, providerUserID)
+// is linked to an account and keeps the provider's refresh token. For Apple
+// it decides whether a sign-in needs the authorization code exchanged: an
+// identity that already holds a token has something account deletion can
+// revoke, so Apple's token endpoint being down need not stop the sign-in.
+func (s *Service) HoldsProviderToken(ctx context.Context, provider, providerUserID string) (bool, error) {
+	var holds bool
+	err := s.db.QueryRowContext(ctx, `
+		SELECT provider_refresh_token_enc IS NOT NULL FROM external_identities
+		 WHERE provider = $1 AND provider_user_id = $2`,
+		provider, providerUserID).Scan(&holds)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("look up external identity token: %w", err)
+	}
+	return holds, nil
+}
+
 func (s *Service) userIDForExternalIdentity(ctx context.Context, provider, providerUserID string) (int64, error) {
 	var userID int64
 	err := s.db.QueryRowContext(ctx,
@@ -652,14 +672,63 @@ func (s *Service) deletePendingLink(ctx context.Context, id string) {
 	}
 }
 
-// PurgeExpiredPendingLinks drops attempts nobody came back to finish.
-func (s *Service) PurgeExpiredPendingLinks(ctx context.Context) (int64, error) {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM oauth_pending_links WHERE expires_at <= NOW()`)
+// discardPendingLinksSQL deletes unfinished attempts matching the condition
+// and moves the Apple refresh tokens they parked into the revocation queue,
+// in one statement: the token must not vanish with the row. Apple's revoke
+// ends the person's whole authorization of the app, so a token whose Apple
+// ID has meanwhile been linked to an account (another attempt finished) is
+// not revoked — that would sign the account out of Apple. Returns the number
+// of attempts deleted on every row, with a queue id or NULL.
+const discardPendingLinksSQL = `
+	WITH gone AS (
+		DELETE FROM oauth_pending_links WHERE %s
+		RETURNING provider, provider_user_id, provider_refresh_token_enc
+	), queued AS (
+		INSERT INTO apple_token_revocations (token_enc)
+		SELECT g.provider_refresh_token_enc FROM gone g
+		 WHERE g.provider = 'apple' AND g.provider_refresh_token_enc IS NOT NULL
+		   AND NOT EXISTS (
+			SELECT 1 FROM external_identities e
+			 WHERE e.provider = g.provider AND e.provider_user_id = g.provider_user_id)
+		RETURNING id
+	)
+	SELECT (SELECT COUNT(*) FROM gone), q.id
+	  FROM (SELECT 1) AS one LEFT JOIN queued q ON true`
+
+// discardPendingLinks runs discardPendingLinksSQL and tries the revocations.
+func (s *Service) discardPendingLinks(ctx context.Context, where string, args ...any) (int64, error) {
+	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(discardPendingLinksSQL, where), args...)
 	if err != nil {
-		return 0, fmt.Errorf("purge pending links: %w", err)
+		return 0, fmt.Errorf("discard pending links: %w", err)
 	}
-	affected, _ := result.RowsAffected()
-	return affected, nil
+	defer func() { _ = rows.Close() }()
+	var deleted int64
+	var queued []int64
+	for rows.Next() {
+		var id sql.NullInt64
+		if err := rows.Scan(&deleted, &id); err != nil {
+			return 0, fmt.Errorf("discard pending links: %w", err)
+		}
+		if id.Valid {
+			queued = append(queued, id.Int64)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("discard pending links: %w", err)
+	}
+	// Удачный отзыв удаляет строку очереди; неудачный дождётся задачи
+	// auth.apple-revoke-retry.
+	s.appleRevocations.Attempt(ctx, queued)
+	return deleted, nil
+}
+
+// PurgeExpiredPendingLinks drops attempts nobody came back to finish. An
+// Apple attempt that never reached the consents had already exchanged its
+// code for a refresh token; the token is revoked (queued) rather than
+// forgotten, or Apple would list the app as signed in with nothing here to
+// show for it.
+func (s *Service) PurgeExpiredPendingLinks(ctx context.Context) (int64, error) {
+	return s.discardPendingLinks(ctx, `expires_at <= NOW()`)
 }
 
 // ConfirmLinkWithPassword finishes a sign-in whose address already had an
@@ -711,7 +780,10 @@ func (s *Service) ConfirmLinkWithPasswordFor(ctx context.Context, spec SessionSp
 	if err := bcrypt.CompareHashAndPassword([]byte(hash.String), []byte(password)); err != nil {
 		if attempt >= MaxLinkPasswordFailures {
 			s.log.Warnw("Pending external sign-in burned after wrong passwords", "attempts", attempt)
-			s.deletePendingLink(ctx, pendingID)
+			// Сожжённая попытка не станет аккаунтом: токен Apple отзывается.
+			if _, err := s.discardPendingLinks(ctx, `id = $1`, pendingID); err != nil {
+				s.log.Errorw("Failed to burn pending link", "error", err)
+			}
 		}
 		return nil, fmt.Errorf("confirm link: %w", apperrors.ErrInvalidCredentials)
 	}

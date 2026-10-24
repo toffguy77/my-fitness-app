@@ -15,13 +15,30 @@ on:
   pull_request:
     branches: [dev, main]
     paths: ['apps/ios/**', 'packages/design-tokens/**', '.github/workflows/ios.yml']
-  workflow_dispatch: {}
+  # Ручной запуск. Без входов — полный прогон, как на push. С `only_testing` —
+  # только названные тесты, `iterations` раз подряд до первого провала: так
+  # один прогон доказывает, что нестабильный тест больше не падает
+  # (apps/ios/README.md, «Прогон отдельных тестов»).
+  workflow_dispatch:
+    inputs:
+      only_testing:
+        description: 'Тесты для -only-testing через пробел или запятую (VzveshenoUITests/AccessibilityAuditUITests/testChat); пусто — весь набор'
+        type: string
+        required: false
+        default: ''
+      iterations:
+        description: 'Сколько раз подряд прогнать выбранные тесты (только вместе с only_testing)'
+        type: number
+        required: false
+        default: 1
 
 permissions:
   contents: read
 
+# Выборка — в имени группы: два ручных запуска с разными тестами на одной
+# ветке идут оба, а не отменяют друг друга. У push и PR выборки нет.
 concurrency:
-  group: ios-${{ github.ref }}
+  group: ios-${{ github.ref }}-${{ inputs.only_testing }}
   cancel-in-progress: true
 
 jobs:
@@ -84,29 +101,57 @@ jobs:
       # TEST_RUNNER_CI доходит до тестов как CI: снапшот без эталона в CI
       # падает при каждом повторе (`.new.png` в артефакте), а не записывает
       # эталон, который повтор нашёл бы и прошёл.
+      # Ручной запуск с only_testing — без повторов: выбранные тесты идут
+      # `iterations` раз подряд и останавливаются на первом провале.
       - name: Build and test
+        id: test
         env:
           TEST_RUNNER_CI: "true"
+          ONLY_TESTING: ${{ inputs.only_testing }}
+          ITERATIONS: ${{ inputs.iterations }}
         run: |
           set -o pipefail
           mkdir -p build
           rm -rf build/Vzvesheno.xcresult
+          selection=()
+          ui_only=false
+          if [ -n "${ONLY_TESTING//[ ,]/}" ]; then
+            ui_only=true
+            read -ra ids <<< "${ONLY_TESTING//,/ }"
+            for id in "${ids[@]}"; do
+              [[ "$id" =~ ^[A-Za-z0-9_/]+$ ]] || { echo "::error::не идентификатор теста: $id"; exit 1; }
+              [[ "$id" == VzveshenoUITests* ]] || ui_only=false
+              selection+=("-only-testing:$id")
+            done
+            iterations="${ITERATIONS:-1}"
+            [[ "$iterations" =~ ^[1-9][0-9]*$ ]] || { echo "::error::iterations — целое от 1: $iterations"; exit 1; }
+            if [ "$iterations" -gt 1 ]; then
+              selection+=(-test-iterations "$iterations" -run-tests-until-failure)
+            fi
+            echo "Выборка: ${selection[*]}"
+          else
+            selection=(-retry-tests-on-failure -test-iterations 3)
+          fi
+          echo "ui_only=$ui_only" >> "$GITHUB_OUTPUT"
           xcodebuild test \
             -project Vzvesheno.xcodeproj \
             -scheme Vzvesheno-Dev \
             -destination "$DESTINATION" \
             -derivedDataPath build/DerivedData \
             -resultBundlePath build/Vzvesheno.xcresult \
-            -retry-tests-on-failure -test-iterations 3 \
+            "${selection[@]}" \
             | tee build/xcodebuild.log \
             | grep -E "error:|warning: .*/apps/ios/V|Test Case .* failed|with [0-9]+ failures|\*\* (BUILD|TEST) " || true
           grep -q "\*\* TEST SUCCEEDED \*\*" build/xcodebuild.log
 
+      # Проверки состава сборки и снапшотов — дело полного прогона; при
+      # выборке одних UI-тестов снапшоты не снимаются.
       - name: Check the built bundle
+        if: inputs.only_testing == ''
         run: scripts/check-bundle.sh build/DerivedData/Build/Products/Dev-Debug-iphonesimulator/Vzvesheno.app
 
       - name: Upload snapshots
-        if: always()
+        if: always() && steps.test.outputs.ui_only != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ios-snapshots

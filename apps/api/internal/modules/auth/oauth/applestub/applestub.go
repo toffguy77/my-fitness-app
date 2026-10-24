@@ -50,6 +50,8 @@ type Server struct {
 	Revoked []string
 	// FailRevoke makes /auth/revoke answer 503.
 	FailRevoke bool
+	// FailToken makes /auth/token answer 503: Apple's token endpoint down.
+	FailToken bool
 	// ClientSecretErrors collects problems with the client_secret received.
 	ClientSecretErrors []string
 
@@ -209,6 +211,13 @@ func (s *Server) SetFailRevoke(fail bool) {
 	s.mu.Unlock()
 }
 
+// SetFailToken switches token endpoint failures on or off.
+func (s *Server) SetFailToken(fail bool) {
+	s.mu.Lock()
+	s.FailToken = fail
+	s.mu.Unlock()
+}
+
 // Fetches returns how many times the key set was requested.
 func (s *Server) Fetches() int {
 	s.mu.Lock()
@@ -261,6 +270,10 @@ func (s *Server) token(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.checkClientSecret(r)
+	if s.FailToken {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 	refresh, ok := s.Codes[r.PostFormValue("code")]
 	if !ok || r.PostFormValue("grant_type") != "authorization_code" {
 		w.WriteHeader(http.StatusBadRequest)

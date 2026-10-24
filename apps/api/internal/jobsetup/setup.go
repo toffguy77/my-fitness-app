@@ -294,6 +294,18 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// Nonce входа через Apple живёт десять минут и гасится первым входом;
+	// после этого строку не читает никто, а пишет её каждая попытка входа.
+	registry.MustRegister(jobs.Job{
+		Name:    "cleanup.apple-nonces",
+		RunAt:   jobs.At(3, 12),
+		Period:  jobs.PeriodDaily,
+		Timeout: 2 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Auth.PurgeExpiredAppleNonces(ctx)
+		},
+	})
+
 	// Ключи Idempotency-Key помнят ответ сутки; потом строка не нужна никому,
 	// а пишет её каждое изменение из очереди приложения. Раз в час — чтобы
 	// таблица не держала больше суток с небольшим.

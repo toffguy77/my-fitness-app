@@ -105,15 +105,15 @@
   --ds-color-bg-scrim: #14110D80;
   --ds-color-fg-default: #2A2118;
   --ds-color-fg-muted: #5E5245;
-  --ds-color-fg-subtle: #76695A;
+  --ds-color-fg-subtle: #6E6253;
   --ds-color-fg-disabled: #A89A87;
   --ds-color-fg-inverse: #F6F1E8;
   --ds-color-line-default: #E3D8C6;
   --ds-color-line-strong: #2A2118;
-  --ds-color-primary-default: #B8492F;
+  --ds-color-primary-default: #A84126;
   --ds-color-primary-hover: #9C3B25;
   --ds-color-primary-fg: #FFFFFF;
-  --ds-color-primary-soft: #B8492F1A;
+  --ds-color-primary-soft: #A8412614;
   --ds-color-coach-bg: #2A2118;
   --ds-color-coach-fg: #F6F1E8;
   --ds-color-coach-fg-muted: #CDBFAB;
@@ -135,9 +135,9 @@
   --ds-color-status-danger-fg: #A32A2A;
   --ds-color-status-danger-soft: #A32A2A14;
   --ds-color-status-info: #4666B0;
-  --ds-color-status-info-fg: #4666B0;
+  --ds-color-status-info-fg: #3E5BA3;
   --ds-color-status-info-soft: #4666B01A;
-  --ds-color-focus: #B8492F;
+  --ds-color-focus: #A84126;
   --ds-shadow-float: 0px 10px 30px 0px #2A211840;
   --ds-shadow-overlay: 0px 16px 48px 0px #2A211833;
 }
