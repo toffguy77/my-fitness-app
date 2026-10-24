@@ -10,42 +10,11 @@ struct AddFoodContent<Method: View>: View {
     let onCancel: () -> Void
     @ViewBuilder let content: Method
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Button("Отмена", action: onCancel)
-                    .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.medium))
-                    .foregroundStyle(DS.Color.primaryDefault)
-                    .frame(minHeight: DS.Size.touch)
-                    .touchTarget()
-                    .accessibilityIdentifier("addFood.cancel")
-                Spacer()
-                Menu {
-                    Picker("Приём пищи", selection: $meal) {
-                        ForEach(MealType.allCases) { Text($0.title).tag($0) }
-                    }
-                } label: {
-                    HStack(spacing: DS.Space.s1) {
-                        Text(meal.title)
-                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
-                    }
-                    .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .subheadline).weight(.medium))
-                    .foregroundStyle(DS.Color.primaryDefault)
-                    .padding(.horizontal, DS.Space.s3)
-                    .frame(minHeight: 32)
-                    .background(Capsule().fill(DS.Color.primarySoft))
-                    .frame(minHeight: DS.Size.touch)
-                }
-                .accessibilityLabel("Приём пищи: \(meal.title)")
-                .accessibilityIdentifier("addFood.meal")
-            }
-            .overlay {
-                Text("Записать еду")
-                    .dsText(DS.Typography.title3)
-                    .foregroundStyle(DS.Color.fgDefault)
-                    .accessibilityAddTraits(.isHeader)
-                    .allowsHitTesting(false)
-            }
+            header
             SegmentedTabs(items: FoodLogMethod.allCases.map { ($0, $0.title) }, selection: $method, fontSize: 13) {
                 "addFood.method.\($0.rawValue)"
             }
@@ -53,6 +22,90 @@ struct AddFoodContent<Method: View>: View {
         }
         .padding(.horizontal, DS.Space.screenX)
         .padding(.top, DS.Space.s2)
+    }
+
+    /// «Отмена» · «Записать еду» · приём пищи. В одну строку — пока все три
+    /// помещаются целиком; иначе (и всегда на размерах доступности) —
+    /// столбиком: заголовок переносится, выбор приёма — своей строкой под ним
+    /// (#279: на крупном тексте заголовок поверх строки наезжал на соседей).
+    @ViewBuilder private var header: some View {
+        if typeSize.isAccessibilitySize {
+            stackedHeader
+        } else {
+            ViewThatFits(in: .horizontal) {
+                rowHeader
+                stackedHeader
+            }
+        }
+    }
+
+    /// Заголовок посередине: боковые части делят остаток поровну и не
+    /// сжимаются меньше своей подписи — не поместилось, `ViewThatFits` берёт
+    /// столбик, а не обрезает и не накладывает.
+    private var rowHeader: some View {
+        HStack(spacing: DS.Space.s2) {
+            cancelButton.fixedSize().frame(maxWidth: .infinity, alignment: .leading)
+            title.fixedSize()
+            mealPicker.fixedSize().frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+
+    private var stackedHeader: some View {
+        VStack(alignment: .leading, spacing: DS.Space.s2) {
+            cancelButton
+            title
+                .fixedSize(horizontal: false, vertical: true)
+            mealPicker
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var cancelButton: some View {
+        Button("Отмена", action: onCancel)
+            .font(.custom(DS.FontFamily.sans, size: 16, relativeTo: .body).weight(.medium))
+            .foregroundStyle(DS.Color.primaryDefault)
+            .frame(minHeight: DS.Size.touch)
+            .touchTarget()
+            .accessibilityIdentifier("addFood.cancel")
+    }
+
+    private var title: some View {
+        Text("Записать еду")
+            .dsText(DS.Typography.title3)
+            .foregroundStyle(DS.Color.fgDefault)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("addFood.title")
+    }
+
+    private var mealPicker: some View {
+        Menu {
+            Picker("Приём пищи", selection: $meal) {
+                ForEach(MealType.allCases) { Text($0.title).tag($0) }
+            }
+        } label: {
+            HStack(spacing: DS.Space.s1) {
+                Text(meal.title)
+                    .fixedSize(horizontal: false, vertical: true)
+                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+            }
+            .font(.custom(DS.FontFamily.sans, size: 14, relativeTo: .subheadline).weight(.medium))
+            .foregroundStyle(DS.Color.primaryDefault)
+            .padding(.horizontal, DS.Space.s3)
+            .padding(.vertical, typeSize.isAccessibilitySize ? DS.Space.s1 : 0)
+            .frame(minHeight: 32)
+            .background {
+                // Перенесённая на крупном тексте подпись в капсуле — почти
+                // круг; плашка со скруглением держит форму кнопки.
+                if typeSize.isAccessibilitySize {
+                    RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).fill(DS.Color.primarySoft)
+                } else {
+                    Capsule().fill(DS.Color.primarySoft)
+                }
+            }
+            .frame(minHeight: DS.Size.touch)
+        }
+        .accessibilityLabel("Приём пищи: \(meal.title)")
+        .accessibilityIdentifier("addFood.meal")
     }
 }
 
