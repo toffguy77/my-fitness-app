@@ -189,12 +189,6 @@ final class AccessibilityAuditUITests: XCTestCase {
            singleLineFields.contains(element.identifier) {
             return true
         }
-        // «Contrast nearly passed» — пары токенов packages/design-tokens,
-        // общие с вебом: основная кнопка (primaryFg на primaryDefault), мягкая
-        // (primaryDefault на primarySoft), fgSubtle на bgSubtle. Их меняет
-        // дизайн-система для обеих платформ, а не экран; пары записаны в отчёт
-        // аудита как задача токенам. «Contrast failed» это не прикрывает.
-        if issue.auditType == .contrast, issue.compactDescription.contains("nearly passed") { return true }
         // Подписи в панели навигации («Шаг 1 из 3», «Написать» в карточке):
         // панель не растёт с Dynamic Type, крупную подпись показывает Large
         // Content Viewer долгим нажатием (accessibilityShowsLargeContentViewer).
@@ -353,6 +347,45 @@ final class AccessibilityAuditUITests: XCTestCase {
         _ = wait(app, "portion.card", timeout: 5)
         Thread.sleep(forTimeInterval: 1)
         try audit(app, "порция")
+    }
+
+    /// #279: шапка листа «Записать еду» на крупном тексте. Аудит наложения
+    /// не видит — заголовок поверх «Отмены» и «Завтрака» он не находил, —
+    /// поэтому рамки сверяются прямо: «Отмена», заголовок и выбор приёма не
+    /// пересекаются и не выходят за ширину окна ни на одном размере.
+    func testAddFoodHeaderAtLargeText() throws {
+        let sizes = [("по умолчанию", [String]()),
+                     ("xxxLarge", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryXXXL"]),
+                     ("AX1", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]),
+                     ("AX5", ax5)]
+        for (size, arguments) in sizes {
+            let app = launch("client", arguments)
+            wait(app, "accessory.search").tap()
+            let cancel = wait(app, "addFood.cancel", timeout: 5)
+            let title = wait(app, "addFood.title", timeout: 5)
+            let meal = wait(app, "addFood.meal", timeout: 5)
+            // Лист ещё выезжает — рамки по устоявшемуся экрану.
+            Thread.sleep(forTimeInterval: 1.5)
+            // У «Отмены» рамка VoiceOver расширена на 14 pt во все стороны
+            // (`touchTarget`); сама подпись — внутри.
+            let frames = [("«Отмена»", cancel.frame.insetBy(dx: 14, dy: 14)), ("заголовок", title.frame),
+                          ("приём пищи", meal.frame)]
+            let window = app.windows.firstMatch.frame
+            for (index, (name, frame)) in frames.enumerated() {
+                XCTAssertFalse(frame.isEmpty, "\(size): у \(name) пустая рамка")
+                XCTAssertTrue(window.contains(frame), "\(size): \(name) \(frame) выходит за окно \(window)")
+                for (other, otherFrame) in frames[(index + 1)...] {
+                    XCTAssertFalse(frame.intersects(otherFrame),
+                                   "\(size): \(name) \(frame) наезжает на \(other) \(otherFrame)")
+                }
+            }
+            if size == "AX5" {
+                // На размерах доступности приём пищи — своей строкой под заголовком.
+                XCTAssertGreaterThanOrEqual(meal.frame.minY, title.frame.maxY, "\(size): приём пищи не под заголовком")
+                try audit(app, "шапка «Записать еду» на AX5")
+            }
+            app.terminate()
+        }
     }
 
     /// Результат распознавания фото.
