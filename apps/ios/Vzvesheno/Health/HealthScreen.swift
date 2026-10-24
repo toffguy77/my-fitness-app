@@ -30,20 +30,42 @@ struct HealthScreen: View {
             .padding(.horizontal, DS.Space.screenX)
             .padding(.vertical, DS.Space.s4)
         }
+        // «Продолжить» и «Не сейчас» — над нижним краем всегда, а не в
+        // конце прокрутки: под таббаром и «Записать еду» их не было видно.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if showsExplainer {
+                HealthExplainerActions(working: working, continueTitle: "health.connect.continue",
+                                       notNowTitle: "health.connect.notNow",
+                                       onContinue: { Task { await connect() } },
+                                       // Без запроса: системное окно появится только по «Продолжить».
+                                       onNotNow: { dismiss() })
+                    .padding(.horizontal, DS.Space.screenX)
+                    .padding(.top, DS.Space.s3)
+                    .padding(.bottom, DS.Space.s2)
+                    .background(DS.Color.bgCanvas)
+                    .overlay(alignment: .top) { Rectangle().fill(DS.Color.lineDefault).frame(height: 1) }
+            }
+        }
         .background(DS.Color.bgCanvas)
         .navigationTitle(Text(LocalizedStringKey(model.healthConnected ? "health.title" : "health.connect.title")))
         .navigationBarTitleDisplayMode(.inline)
+        // Подключение — отдельный шаг, как переписка: без таббара.
+        .toolbar(.hidden, for: .tabBar)
+        // Контейнер: иначе идентификатор экрана достаётся кнопкам нижней
+        // панели (они вне ScrollView) вместо `health.continue`/`health.notNow`.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.health")
     }
+
+    private var showsExplainer: Bool { model.healthAvailable && !model.healthConnected }
 
     // MARK: Подключение
 
     private var explainer: some View {
+        // Кнопки — в нижней панели экрана (`safeAreaInset`).
         HealthExplainer(failed: failed, working: working,
                         continueTitle: "health.connect.continue", notNowTitle: "health.connect.notNow",
-                        onContinue: { Task { await connect() } },
-                        // Без запроса: системное окно появится только по «Продолжить».
-                        onNotNow: { dismiss() })
+                        onContinue: {}, onNotNow: {}, showsActions: false)
     }
 
     private func connect() async {
@@ -143,6 +165,9 @@ struct HealthExplainer: View {
     let notNowTitle: LocalizedStringKey
     let onContinue: () -> Void
     let onNotNow: () -> Void
+    /// Кнопки в конце содержимого (онбординг); `false` — их показывает
+    /// нижняя панель экрана.
+    var showsActions = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s4) {
@@ -185,23 +210,11 @@ struct HealthExplainer: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("health.connect.failed")
             }
-            VStack(spacing: DS.Space.s2) {
-                Button(action: onContinue) {
-                    Text(continueTitle).frame(maxWidth: .infinity)
-                }
-                .buttonStyle(DSButtonStyle(.primary))
-                .disabled(working)
-                .accessibilityIdentifier("health.continue")
-                Button(action: onNotNow) {
-                    Text(notNowTitle)
-                        .dsText(DS.Typography.headline)
-                        .foregroundStyle(DS.Color.primaryDefault)
-                        .frame(maxWidth: .infinity, minHeight: DS.Size.touch)
-                }
-                .disabled(working)
-                .accessibilityIdentifier("health.notNow")
+            if showsActions {
+                HealthExplainerActions(working: working, continueTitle: continueTitle, notNowTitle: notNowTitle,
+                                       onContinue: onContinue, onNotNow: onNotNow)
+                    .padding(.top, DS.Space.s2)
             }
-            .padding(.top, DS.Space.s2)
         }
     }
 
@@ -242,6 +255,34 @@ struct HealthExplainer: View {
             }
             .background(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).fill(DS.Color.bgSurface))
             .overlay(RoundedRectangle(cornerRadius: DS.Radius.l, style: .continuous).strokeBorder(DS.Color.lineDefault))
+        }
+    }
+}
+
+/// «Продолжить» и «Не сейчас» подключения Здоровья.
+struct HealthExplainerActions: View {
+    let working: Bool
+    let continueTitle: LocalizedStringKey
+    let notNowTitle: LocalizedStringKey
+    let onContinue: () -> Void
+    let onNotNow: () -> Void
+
+    var body: some View {
+        VStack(spacing: DS.Space.s2) {
+            Button(action: onContinue) {
+                Text(continueTitle).frame(maxWidth: .infinity)
+            }
+            .buttonStyle(DSButtonStyle(.primary))
+            .disabled(working)
+            .accessibilityIdentifier("health.continue")
+            Button(action: onNotNow) {
+                Text(notNowTitle)
+                    .dsText(DS.Typography.headline)
+                    .foregroundStyle(DS.Color.primaryDefault)
+                    .frame(maxWidth: .infinity, minHeight: DS.Size.touch)
+            }
+            .disabled(working)
+            .accessibilityIdentifier("health.notNow")
         }
     }
 }

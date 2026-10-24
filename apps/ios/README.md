@@ -159,6 +159,10 @@ fastlane выпускает ключом App Store Connect API (`get_provisionin
 Среда — переменная `APP_ENV` (`dev` или `prod`, по умолчанию прод).
 Запуск в CI: тег `ios-v*` (`ios-testflight.yml`, поле `environment` у ручного
 запуска), `ios-meta-*` — страница App Store, `ios-status-*` — состояние.
+`ios-shots-*` — только скриншоты страницы (`scripts/screenshots.sh`, восемь
+экранов в сценарии `-uiTestShot`): артефакт `app-store-screenshots` для
+просмотра, в App Store Connect ничего не уходит
+(`gh run download <id> -n app-store-screenshots`).
 Секреты GitHub кладёт `scripts/set-github-secrets.sh` (запускает человек).
 
 App ID `.dev`, App Groups и запись приложения в App Store Connect заводятся в
