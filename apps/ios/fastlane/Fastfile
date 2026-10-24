@@ -288,6 +288,23 @@ platform :ios do
     version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
     UI.user_error!("Нет редактируемой версии в App Store Connect") unless version
     UI.message("Версия #{version.version_string}: #{version.app_store_state}")
+
+    # Номер версии в App Store Connect — тот же, что у сборки (MARKETING_VERSION
+    # в project.yml). 2026-10-25 редактируемой версией оставалась заготовка
+    # 0.1.0, а сборка — 1.0.0: ревью такую пару не принимает.
+    wanted = File.read(File.expand_path("../project.yml", __dir__))[/MARKETING_VERSION:\s*"?([0-9.]+)/, 1]
+    if wanted && version.version_string != wanted
+      apply.call("номер версии #{wanted}") { version.update(attributes: { version_string: wanted }) }
+      version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    end
+    # Сборка для ревью — последняя обработанная с этим номером версии.
+    build = Spaceship::ConnectAPI::Build.all(app_id: app.id, version: wanted, sort: "-uploadedDate", limit: 10)
+                                       .find { |b| b.processing_state == "VALID" }
+    if build
+      apply.call("сборка #{build.app_version} (#{build.version})") { version.select_build(build_id: build.id) }
+    else
+      UI.important("Обработанной сборки #{wanted} нет — выберите сборку в App Store Connect")
+    end
     apply.call("copyright") { version.update(attributes: { copyright: meta.("copyright.txt") }) }
     version_loc = version.get_app_store_version_localizations.find { |l| l.locale == "ru" }
     UI.user_error!("Нет локализации ru у версии") unless version_loc
