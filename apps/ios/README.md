@@ -105,6 +105,31 @@ docker run --rm -v "$PWD/apps/ios":/work -w /work ghcr.io/realm/swiftlint:latest
 Компиляция для iOS, снапшоты и UI-тесты — только в CI: `.github/workflows/ios.yml`
 (задача `ios`, macOS 15, Xcode 26.3, iPhone 16 Pro с iOS 18.5).
 
+### Прогон отдельных тестов
+
+Полный набор идёт около 40 минут и повторяет упавший тест до трёх раз — для
+проверки одного нестабильного теста это и долго, и не доказательство. Ручной
+запуск принимает два входа:
+
+- `only_testing` — идентификаторы для `-only-testing:` через пробел или
+  запятую: `Цель/Класс/метод`, `Цель/Класс` или `Цель`. Пусто — весь набор,
+  как на push.
+- `iterations` — сколько раз подряд прогнать выборку (по умолчанию 1).
+  Больше одного — `-test-iterations N -run-tests-until-failure` без повторов:
+  прогон зелёный, только если тест прошёл все N раз подряд.
+
+```bash
+gh workflow run ios.yml --ref <ветка> \
+  -f only_testing=VzveshenoUITests/AccessibilityAuditUITests/testChat -f iterations=10
+gh workflow run ios.yml --ref <ветка> \
+  -f only_testing="VzveshenoUITests/AccessibilityAuditUITests, VzveshenoTests/ClientScreenSnapshotTests" -f iterations=3
+```
+
+С выборкой не выполняется проверка состава сборки (`check-bundle.sh`), а если
+выбраны одни UI-тесты — и выгрузка снапшотов. `xcresult` и журнал выгружаются
+всегда. Новый запуск отменяет идущий на той же ветке с той же выборкой
+(`concurrency`); запуски с разными выборками идут параллельно.
+
 На Mac:
 
 ```bash
