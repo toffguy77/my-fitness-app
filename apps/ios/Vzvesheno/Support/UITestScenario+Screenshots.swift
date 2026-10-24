@@ -94,13 +94,11 @@ extension ScenarioTransport {
         ]
     }
 
-    /// Переписка витрины продолжается: ответ клиента и куратора.
+    /// Ответ клиента в переписке витрины: одна строка, чтобы первое
+    /// сообщение дня не уходило под шапку.
     static func storeShotMessages() -> [[String: Any]] {
         guard StoreShot.current != nil else { return [] }
-        return [
-            message("m6", sender: 7, content: "Спасибо! На ужин гречка и салат из свежих овощей", time: "13:44"),
-            message("m7", sender: 3, content: "Отлично, так и до нормы клетчатки доберёте", time: "13:46"),
-        ]
+        return [message("m6", sender: 7, content: "Спасибо! На ужин гречка с салатом", time: "13:44")]
     }
 
     /// Обложки статей витрины — фото из `uitest-media` (CC0, scripts/screenshots).
