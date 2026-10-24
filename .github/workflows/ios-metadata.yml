@@ -1,16 +1,23 @@
 name: iOS App Store page
 
-# Снимает скриншоты (сценарии UI-тестов отладочной сборки) и загружает тексты
-# и скриншоты на страницу приложения в App Store Connect. На ревью не
-# отправляет. Пока экраны клиента не перенесены (ios-client-app), снимки
-# показывают каркас — запускать после него.
+# Снимает скриншоты (сценарии UI-тестов отладочной сборки, scripts/screenshots.sh)
+# и загружает тексты и скриншоты на страницу приложения в App Store Connect.
+# На ревью не отправляет.
 #
-# Запуск — тегом `ios-meta-*` на любом коммите или вручную (ручной запуск
-# GitHub показывает, только когда файл уже есть в main).
+# - тег `ios-meta-*` — снимки и загрузка;
+# - тег `ios-shots-*` — только снимки: артефакт `app-store-screenshots` для
+#   просмотра, в App Store Connect ничего не уходит;
+# - вручную (GitHub показывает ручной запуск, только когда файл уже есть в
+#   main) — только снимки, загрузка — с `upload: true`.
 on:
   push:
-    tags: ['ios-meta-*']
-  workflow_dispatch: {}
+    tags: ['ios-meta-*', 'ios-shots-*']
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Загрузить тексты и скриншоты в App Store Connect
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,12 +46,15 @@ jobs:
         run: scripts/screenshots.sh
 
       - name: Upload screenshots for review
+        # И при сбое: видно, какие снимки успели получиться.
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: app-store-screenshots
           path: apps/ios/fastlane/screenshots
 
       - name: Decode App Store Connect API key
+        if: startsWith(github.ref, 'refs/tags/ios-meta-') || inputs.upload
         env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
         run: |
@@ -52,6 +62,7 @@ jobs:
           echo "ASC_KEY_PATH=$PWD/fastlane/asc_key.p8" >> "$GITHUB_ENV"
 
       - name: Upload metadata and screenshots
+        if: startsWith(github.ref, 'refs/tags/ios-meta-') || inputs.upload
         env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}

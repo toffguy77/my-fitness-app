@@ -17,6 +17,10 @@ struct ImageLoaders: Sendable {
         configuration.timeoutIntervalForRequest = 30
         let session = URLSession(configuration: configuration)
         let fetch: ImageLoader.Fetch = { url in
+            #if DEBUG
+            // Снимок для App Store: фото сценария — из контейнера, не из сети.
+            if let data = StoreShot.media(for: url) { return data }
+            #endif
             let (data, response) = try await session.data(from: url)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 throw URLError(.badServerResponse)

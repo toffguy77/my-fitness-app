@@ -30,7 +30,8 @@ import Session
 /// - `-uiTestAppleNonceOffline` — nonce входа через Apple не получить (нет
 ///   сети): лист Apple не должен открываться;
 /// - `-uiTestOffline` — нет сети совсем (любая роль), в отличие от
-///   `offlineClient`, у которого роль закреплена, а кэша нет.
+///   `offlineClient`, у которого роль закреплена, а кэша нет;
+/// - `-uiTestShot <экран>` — снимок для App Store (`UITestScenario+Screenshots.swift`).
 enum UITestScenario: String {
     case client
     case coordinator
@@ -129,6 +130,10 @@ enum UITestScenario: String {
                 await model.handlePush(.openWorkoutSheet(taskID: "t1"))
             }
         }
+        // Снимок для App Store (`UITestScenario+Screenshots.swift`).
+        if let shot = StoreShot.current {
+            Task { @MainActor in await shot.open(model) }
+        }
         if let raw = Self.argument("-uiTestOpenURL"), let url = URL(string: raw) {
             Task { @MainActor in
                 await model.start()
@@ -204,7 +209,8 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
         let query = Dictionary((URLComponents(url: request.url ?? URL(fileURLWithPath: "/"), resolvingAgainstBaseURL: false)?
             .queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
         let (status, text) = lock.withLock {
-            curatorResponse(method, path, body, query) ?? foodResponse(method, path, body, query) ?? menuResponse(method, path, body)
+            storeShotResponse(method, path) ?? curatorResponse(method, path, body, query) ?? foodResponse(method, path, body, query)
+                ?? menuResponse(method, path, body)
                 ?? clientResponse(method, path, body, query) ?? respond(method, path, body)
         }
         let response = HTTPURLResponse(url: request.url ?? URL(fileURLWithPath: "/"), statusCode: status,
