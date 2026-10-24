@@ -157,7 +157,7 @@ describe('PrivacyPage', () => {
             expect(text).toMatch(/Sentry/);
             expect(text).toMatch(/Данных «Здоровья»/);
             expect(text).toMatch(/за\s+пределами Российской Федерации/);
-            expect(container.textContent).toMatch(/Единственное исключение — отчёты о\s+сбоях/);
+            expect(container.textContent).toMatch(/Отдельно от них, за пределами\s+Российской Федерации, обрабатываются отчёты о сбоях/);
         });
 
         it('names the push token and the device model, and rules out tracking', () => {
