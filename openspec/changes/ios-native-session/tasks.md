@@ -44,5 +44,5 @@
 ## 6. Документация и выкат
 
 - [x] 6.1 `docs/user-guide/` — вход через Apple и в приложении; `make sync-knowledge`. Проверка: `TestKnowledgeMatchesUserGuide` зелёный.
-- [ ] 6.2 Apple Developer → Private Email Relay: зарегистрировать домен и адрес отправителя писем. Проверка: письмо со ссылкой для входа доходит на тестовый адрес `@privaterelay.appleid.com`.
-- [ ] 6.3 Секреты Apple в Dokploy для dev, выкат на dev. Проверка: `https://app-site-association.cdn-apple.com/a/v1/new.burcev.team` отдаёт наш JSON; вход через Apple из сборки TestFlight создаёт аккаунт.
+- [x] 6.2 Apple Developer → Private Email Relay: зарегистрировать домен и адрес отправителя писем. Проверка: письмо со ссылкой для входа доходит на тестовый адрес `@privaterelay.appleid.com`.
+- [x] 6.3 Секреты Apple в Dokploy для dev, выкат на dev. Проверка: `https://app-site-association.cdn-apple.com/a/v1/new.burcev.team` отдаёт наш JSON; вход через Apple из сборки TestFlight создаёт аккаунт.

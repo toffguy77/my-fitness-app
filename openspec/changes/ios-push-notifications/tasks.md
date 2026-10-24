@@ -43,4 +43,4 @@
 ## 6. Документация и выкат
 
 - [x] 6.1 Подпись колонки «Пуш (браузер и iPhone)» в вебе, `docs/user-guide/` — уведомления на iPhone; `make sync-knowledge`. Проверка: `TestKnowledgeMatchesUserGuide`, `npm run lint:web`.
-- [ ] 6.2 Ключ «Weighted» (Key ID `743P3Y36VM`) в секретах Dokploy, `APNS_TOPIC=team.burcev.app.dev` на dev и `team.burcev.app` на проде, выкат на dev. Проверка: сборка из Xcode на устройстве получает пуш о сообщении куратора и открывает переписку по тапу.
+- [x] 6.2 Ключ «Weighted» (Key ID `743P3Y36VM`) в секретах Dokploy, `APNS_TOPIC=team.burcev.app.dev` на dev и `team.burcev.app` на проде, выкат на dev. Проверка: сборка из Xcode на устройстве получает пуш о сообщении куратора и открывает переписку по тапу.
