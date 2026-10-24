@@ -15,7 +15,7 @@ ARG BASE_REGISTRY=mirror.gcr.io
 # доезжают до прода только с ней. Плавающий тег отдаётся из кэша зеркала и
 # мог несколько дней указывать на 1.26.8 после выхода 1.26.9. Держать в шаге с
 # GO_VERSION в .github/workflows/ci.yml и e2e.yml.
-FROM ${BASE_REGISTRY}/library/golang:1.26.9-alpine AS builder
+FROM ${BASE_REGISTRY}/library/golang:1.26.10-alpine AS builder
 
 # Install build dependencies
 # DL3018 asks for pinned apk versions. We deliberately do not pin: the base
@@ -56,7 +56,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -o server ./cmd/server
 
 # Development stage
-FROM ${BASE_REGISTRY}/library/golang:1.26.9-alpine AS development
+FROM ${BASE_REGISTRY}/library/golang:1.26.10-alpine AS development
 
 # DL3018 asks for pinned apk versions. We deliberately do not pin: the base
 # image tag already fixes the Alpine release, and `apk upgrade` exists to pull
