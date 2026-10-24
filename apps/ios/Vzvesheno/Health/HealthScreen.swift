@@ -51,6 +51,9 @@ struct HealthScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         // Подключение — отдельный шаг, как переписка: без таббара.
         .toolbar(.hidden, for: .tabBar)
+        // Контейнер: иначе идентификатор экрана достаётся кнопкам нижней
+        // панели (они вне ScrollView) вместо `health.continue`/`health.notNow`.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.health")
     }
 
