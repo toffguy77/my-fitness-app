@@ -143,6 +143,16 @@ final class AccessibilityAuditUITests: XCTestCase {
         if issue.auditType == .contrast, let element = issue.element, !element.isEnabled {
             return true
         }
+        // Элемент, выходящий за край окна («Подключить» внизу шага
+        // «Здоровье»): контраст меряется и по пикселям за краем, которых нет
+        // на экране, — «Contrast failed» при 6:1 по токенам. Прокрутка перед
+        // аудитом не помогает: после неё аудит находил «failed» у всего
+        // текста экрана. Та же пара (primaryFg на primaryDefault) целиком на
+        // экране проверяется в «порции» (`testAddFoodSearchAndPortion`).
+        if issue.auditType == .contrast, let element = issue.element,
+           !app.windows.firstMatch.frame.contains(element.frame) {
+            return true
+        }
         // Под полупрозрачным таббаром контраст считается по тому, что за
         // ним, — это не цвет текста экрана.
         let tabBar = app.tabBars.firstMatch
@@ -420,20 +430,6 @@ final class AccessibilityAuditUITests: XCTestCase {
         try audit(app, "онбординг: тело")
         app.buttons["onboarding.skip"].tap()
         _ = wait(app, "health.notNow", timeout: 5)
-        // «Подключить» внизу прокрутки уходит под край экрана; аудит
-        // контраста частично невидимой кнопки мерит пиксели за краем
-        // («Contrast failed» при 6:1 по токенам) — аудит по видимой кнопке.
-        let connect = app.buttons["health.continue"]
-        let window = app.windows.firstMatch.frame
-        for _ in 0..<4 where connect.frame.maxY > window.maxY - 34 { app.swipeUp(velocity: .slow) }
-        // Прокрутка докатывается и отпружинивает: аудит посреди движения
-        // сравнивал текст с тем, что под ним проезжало. Ждём, пока рамка
-        // кнопки не перестанет меняться.
-        var last = CGRect.null
-        for _ in 0..<20 where connect.frame != last {
-            last = connect.frame
-            Thread.sleep(forTimeInterval: 0.5)
-        }
         try audit(app, "онбординг: Здоровье")
     }
 
