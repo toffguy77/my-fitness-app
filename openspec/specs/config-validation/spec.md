@@ -1,7 +1,7 @@
 # config-validation Specification
 
 ## Purpose
-TBD - created by archiving change harden-config-and-secrets. Update Purpose after archive.
+Возможности перечисляет `/ready`, а не `/health`. Возможность введена изменением `web-fixes-before-ios` (архив `openspec/changes/archive/2026-10-24-harden-config-and-secrets`).
 ## Requirements
 ### Requirement: Строгая валидация конфигурации в production
 
