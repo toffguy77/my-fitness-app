@@ -47,7 +47,8 @@ describe('PrivacyPage', () => {
     it('mentions Yandex.Cloud hosting', () => {
         render(<PrivacyPage />);
 
-        expect(screen.getByText(/yandex\.cloud/i)).toBeInTheDocument();
+        // Раздел 7.1 и раздел о данных Здоровья.
+        expect(screen.getAllByText(/yandex\.cloud/i).length).toBeGreaterThan(0);
     });
 
     it('displays last update date', () => {
@@ -81,6 +82,91 @@ describe('PrivacyPage', () => {
         const intro = screen.getByTestId('privacy-intro');
         expect(intro).toHaveTextContent('Бурцев Сергей Викторович');
         expect(intro.textContent).not.toMatch(/ООО/);
+    });
+
+    // App Review 5.1.2 и 5.1.3: политика должна прямо сказать, что читается
+    // и пишется в HealthKit, зачем, что не для рекламы и не третьим лицам, не
+    // в iCloud, как отключить и что происходит при удалении аккаунта. Без
+    // такого раздела приложение с HealthKit отклоняют.
+    describe('Apple Health section', () => {
+        const section = () => {
+            render(<PrivacyPage />);
+            return screen.getByTestId('privacy-apple-health');
+        };
+
+        it('is a numbered section with an anchor the user guide links to', () => {
+            render(<PrivacyPage />);
+            const heading = screen.getByRole('heading', { level: 2, name: /2-а\. данные apple здоровье \(healthkit\)/i });
+            expect(heading.closest('section')).toHaveAttribute('id', 'apple-health');
+        });
+
+        it('names what is read from and written to Health, and that weight is never written', () => {
+            const text = section().textContent ?? '';
+            expect(text).toMatch(/шаги/);
+            expect(text).toMatch(/вес тела/);
+            expect(text).toMatch(/тренировки/);
+            expect(text).toMatch(/калории, белки, жиры и\s+углеводы/);
+            expect(text).toMatch(/выпитую\s+воду/);
+            expect(text).toMatch(/Вес тела приложение в «Здоровье» не записывает/);
+        });
+
+        it('limits the purpose to the diary and the curator', () => {
+            const text = section().textContent ?? '';
+            expect(text).toMatch(/только для работы\s+сервиса/);
+            expect(text).toMatch(/куратор/);
+        });
+
+        it('rules out advertising, marketing, data mining, sale and third parties', () => {
+            const text = section().textContent ?? '';
+            expect(text).toMatch(/не используем для рекламы, маркетинга/);
+            expect(text).toMatch(/data mining/);
+            expect(text).toMatch(/не продаём и не передаём третьим лицам/);
+        });
+
+        it('says Health data is not kept in iCloud and where it is kept instead', () => {
+            const text = section().textContent ?? '';
+            expect(text).toMatch(/не храним в iCloud/);
+            expect(text).toMatch(/Российской Федерации/);
+        });
+
+        it('explains how to disconnect in the app and revoke in iOS Settings', () => {
+            const text = section().textContent ?? '';
+            expect(text).toMatch(/«Профиль → Здоровье»/);
+            expect(text).toMatch(/«Настройки → Здоровье → Доступ к\s+данным и устройства → Взвешено»/);
+        });
+
+        it('ties retention to the account and deletion to account erasure', () => {
+            const text = section().textContent ?? '';
+            expect(text).toMatch(/пока существует ваша учётная запись/);
+            expect(text).toMatch(/При удалении учётной записи \(раздел 7-а\)/);
+        });
+    });
+
+    describe('iPhone app section', () => {
+        it('is a numbered section', () => {
+            render(<PrivacyPage />);
+            expect(screen.getByRole('heading', { level: 2, name: /9-а\. приложение для iphone/i })).toBeInTheDocument();
+        });
+
+        // Sentry принимает отчёты в ЕС (ingest.de.sentry.io), а п. 7.1 говорит
+        // о серверах в РФ: исключение должно быть названо, иначе политика
+        // неправдива.
+        it('names Sentry, what a crash report holds, and that it is processed outside Russia', () => {
+            const { container } = render(<PrivacyPage />);
+            const text = screen.getByTestId('privacy-ios-app').textContent ?? '';
+            expect(text).toMatch(/Sentry/);
+            expect(text).toMatch(/Данных «Здоровья»/);
+            expect(text).toMatch(/за\s+пределами Российской Федерации/);
+            expect(container.textContent).toMatch(/Единственное исключение — отчёты о\s+сбоях/);
+        });
+
+        it('names the push token and the device model, and rules out tracking', () => {
+            render(<PrivacyPage />);
+            const text = screen.getByTestId('privacy-ios-app').textContent ?? '';
+            expect(text).toMatch(/Токен push-уведомлений/);
+            expect(text).toMatch(/Название модели устройства/);
+            expect(text).toMatch(/не запрашиваем\s+разрешение на отслеживание/);
+        });
     });
 
     it('has correct metadata', () => {
