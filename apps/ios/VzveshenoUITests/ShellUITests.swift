@@ -425,8 +425,15 @@ final class AccessibilityAuditUITests: XCTestCase {
         // («Contrast failed» при 6:1 по токенам) — аудит по видимой кнопке.
         let connect = app.buttons["health.continue"]
         let window = app.windows.firstMatch.frame
-        for _ in 0..<4 where connect.frame.maxY > window.maxY - 34 { app.swipeUp() }
-        Thread.sleep(forTimeInterval: 1)
+        for _ in 0..<4 where connect.frame.maxY > window.maxY - 34 { app.swipeUp(velocity: .slow) }
+        // Прокрутка докатывается и отпружинивает: аудит посреди движения
+        // сравнивал текст с тем, что под ним проезжало. Ждём, пока рамка
+        // кнопки не перестанет меняться.
+        var last = CGRect.null
+        for _ in 0..<20 where connect.frame != last {
+            last = connect.frame
+            Thread.sleep(forTimeInterval: 0.5)
+        }
         try audit(app, "онбординг: Здоровье")
     }
 

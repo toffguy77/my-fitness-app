@@ -111,10 +111,14 @@ struct AppleSignInButton: View {
 
     var body: some View {
         Button(action: action) {
+            // Системная кнопка не должна ловить касание (открыла бы лист сама),
+            // но и подпись без области касания оставила бы Button глухой:
+            // касание принимает прозрачная подложка поверх.
             SignInWithAppleButton(label, onRequest: { _ in }, onCompletion: { _ in })
                 .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
+                .overlay { Rectangle().fill(Color.clear).contentShape(Rectangle()) }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(title))
