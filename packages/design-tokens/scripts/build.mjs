@@ -102,7 +102,14 @@ for (const k of darkKeys) if (!themes.light.has(k)) errors.push(`роль ${k} �
 // Контраст
 // ---------------------------------------------------------------------------
 
-/** [текст, фон, минимум]. 4.5 — обычный текст, 3 — крупный текст и значимая графика. */
+/**
+ * [текст, фон, минимум, подложки]. 4.5 — обычный текст, 3 — крупный текст и
+ * значимая графика. Полупрозрачный фон (`primary.soft`, `status.*-soft`)
+ * смешивается с каждой непрозрачной подложкой, на которой лежит, и пара
+ * проверяется на каждой: без подложки альфа-канал отбрасывался бы, и
+ * проверялся бы не тот цвет, что на экране.
+ */
+const ON_SCREEN = ['color.bg.canvas', 'color.bg.surface']
 const CONTRAST_PAIRS = [
     ['color.fg.default', 'color.bg.canvas', 4.5],
     ['color.fg.default', 'color.bg.surface', 4.5],
@@ -113,6 +120,13 @@ const CONTRAST_PAIRS = [
     ['color.fg.inverse', 'color.fg.default', 4.5],
     ['color.primary.fg', 'color.primary.default', 4.5],
     ['color.primary.default', 'color.bg.surface', 4.5],
+    // Найдены аудитом доступности iOS (#276) — «почти проходят»: мягкая
+    // кнопка, метки на вторичной заливке, «Связано с заявкой».
+    ['color.primary.default', 'color.bg.canvas', 4.5],
+    ['color.primary.default', 'color.primary.soft', 4.5, ON_SCREEN],
+    ['color.fg.subtle', 'color.bg.subtle', 4.5],
+    ['color.fg.muted', 'color.bg.subtle', 4.5],
+    ['color.status.info-fg', 'color.status.info-soft', 4.5, ON_SCREEN],
     ['color.coach.fg', 'color.coach.bg', 4.5],
     ['color.coach.fg-muted', 'color.coach.bg', 4.5],
     ['color.macro.protein-fg', 'color.bg.surface', 4.5],
@@ -129,9 +143,23 @@ const CONTRAST_PAIRS = [
     ['color.focus', 'color.bg.canvas', 3],
 ]
 
-function luminance(hex) {
+/** #RRGGBB или #RRGGBBAA → [r, g, b, a] в долях единицы. */
+function channels(hex) {
     const h = hex.replace('#', '')
-    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+    if (!/^([0-9a-f]{6}|[0-9a-f]{8})$/i.test(h)) throw new Error(`цвет ${hex} не в форме #RRGGBB[AA]`)
+    return [0, 2, 4, 6].map((i) => (i < h.length ? parseInt(h.slice(i, i + 2), 16) / 255 : 1))
+}
+const toHex = (c) => '#' + c.slice(0, 3).map((x) => Math.round(x * 255).toString(16).padStart(2, '0')).join('').toUpperCase()
+/** Цвет `top` с его альфой поверх непрозрачного `under`. */
+export function composite(top, under) {
+    const [t, u] = [channels(top), channels(under)]
+    return toHex([0, 1, 2].map((i) => t[i] * t[3] + u[i] * (1 - t[3])))
+}
+const isColor = (v) => typeof v === 'string' && /^#([0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)
+const isTranslucent = (hex) => channels(hex)[3] < 1
+
+function luminance(hex) {
+    const [r, g, b] = channels(hex)
     const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
     return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
 }
@@ -142,13 +170,29 @@ export function contrast(a, b) {
 
 const contrastReport = []
 for (const theme of ['light', 'dark']) {
-    for (const [fg, bg, min] of CONTRAST_PAIRS) {
-        const a = resolved[theme].get(fg)?.value
-        const b = resolved[theme].get(bg)?.value
-        if (!a || !b) { errors.push(`контраст: нет токена ${!a ? fg : bg} (${theme})`); continue }
-        const ratio = contrast(a, b)
-        contrastReport.push({ theme, fg, bg, ratio: Math.round(ratio * 100) / 100, min })
-        if (ratio < min) errors.push(`контраст ${theme}: ${fg} на ${bg} = ${ratio.toFixed(2)} < ${min}`)
+    for (const [fg, bg, min, unders] of CONTRAST_PAIRS) {
+        const get = (k) => resolved[theme].get(k)?.value
+        const missing = [fg, bg, ...(unders ?? [])].find((k) => !get(k))
+        if (missing) { errors.push(`контраст: нет токена ${missing} (${theme})`); continue }
+        // Значение, не ставшее цветом (цикл, ссылка в пустоту), уже названо
+        // ошибкой выше; мерить его контраст нечем.
+        if ([fg, bg, ...(unders ?? [])].some((k) => !isColor(get(k)))) continue
+        const translucent = [fg, bg, ...(unders ?? [])].filter((k) => isTranslucent(get(k)))
+        if (!unders && translucent.length) {
+            errors.push(`контраст ${theme}: ${translucent.join(', ')} полупрозрачен — у пары ${fg}/${bg} нужна подложка`)
+            continue
+        }
+        if (unders && translucent.some((k) => k !== bg)) {
+            errors.push(`контраст ${theme}: ${translucent.filter((k) => k !== bg).join(', ')} полупрозрачен в паре ${fg}/${bg}`)
+            continue
+        }
+        for (const under of unders ?? [null]) {
+            const back = under ? composite(get(bg), get(under)) : get(bg)
+            const ratio = contrast(get(fg), back)
+            const on = under ? `${bg} поверх ${under}` : bg
+            contrastReport.push({ theme, fg, bg: on, ratio: Math.round(ratio * 100) / 100, min })
+            if (ratio < min) errors.push(`контраст ${theme}: ${fg} на ${on} = ${ratio.toFixed(2)} < ${min}`)
+        }
     }
 }
 

@@ -12,7 +12,7 @@
     "fg": {
       "default": { "$value": "{palette.umber.900}", "$description": "Основной текст и иконки" },
       "muted": { "$value": "{palette.umber.500}", "$description": "Вторичный текст: подписи, единицы" },
-      "subtle": { "$value": "{palette.umber.400}", "$description": "Третичный текст: метки секций, неактивные вкладки. Контраст ≥ 4.5:1 к canvas" },
+      "subtle": { "$value": "{palette.umber.400}", "$description": "Третичный текст: метки секций, неактивные вкладки. Контраст ≥ 4.5:1 к canvas, surface и bg.subtle" },
       "disabled": { "$value": "{palette.sand.600}" },
       "inverse": { "$value": "{palette.sand.100}", "$description": "Текст на инвертированной заливке (выбранный день)" }
     },
@@ -24,7 +24,7 @@
       "default": { "$value": "{palette.terracotta.500}", "$description": "Главное действие экрана, бренд" },
       "hover": { "$value": "{palette.terracotta.600}" },
       "fg": { "$value": "{palette.white}", "$description": "Текст на primary" },
-      "soft": { "$value": "#B8492F1A", "$description": "Подложка акцента" }
+      "soft": { "$value": "#A8412614", "$description": "Подложка акцента; primary.default на ней ≥ 4.5:1 и на canvas, и на surface" }
     },
     "coach": {
       "bg": { "$value": "{palette.umber.900}", "$description": "Голос куратора: карточка сообщения, подсказки, панель быстрого ввода" },
@@ -52,7 +52,7 @@
       "danger-fg": { "$value": "{palette.red.600}" },
       "danger-soft": { "$value": "#A32A2A14" },
       "info": { "$value": "{palette.blue.600}" },
-      "info-fg": { "$value": "{palette.blue.600}" },
+      "info-fg": { "$value": "{palette.blue.700}", "$description": "Темнее info: подпись лежит и на info-soft" },
       "info-soft": { "$value": "#4666B01A" }
     },
     "focus": { "$value": "{palette.terracotta.500}", "$description": "Кольцо фокуса клавиатуры" }

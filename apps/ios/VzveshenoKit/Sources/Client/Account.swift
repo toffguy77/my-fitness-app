@@ -77,10 +77,16 @@ public struct AccountService: Sendable {
         try await api.send(.get("/api/v1/auth/providers/linked"))
     }
 
+    /// Nonce сервера для привязки Apple (см. `APIClient.appleNonce`).
+    public func appleNonce() async throws -> AppleNonce {
+        try await api.appleNonce()
+    }
+
     /// Привязать Apple к аккаунту, в который уже вошли: `POST /auth/native/apple/link`
     /// с access-токеном (`external-identity`). `nonce` — исходное значение, не хэш;
     /// Apple ID другого аккаунта — `409 conflict`.
     public func linkApple(identityToken: String, authorizationCode: String, nonce: AppleNonce) async throws {
+        // nonce — из appleNonce(): сервер принимает только выданный им.
         let body = ["identity_token": identityToken, "authorization_code": authorizationCode, "nonce": nonce.raw]
         _ = try await api.send(try .post("/api/v1/auth/native/apple/link", body: body), as: EmptyResponse.self)
     }

@@ -1,3 +1,4 @@
+import API
 import Foundation
 
 /// SHA-256 (FIPS 180-4) без внешних зависимостей.
@@ -88,16 +89,27 @@ enum SecureRandom {
 ///
 /// В `ASAuthorizationAppleIDRequest.nonce` уходит `hashed` — SHA-256 исходного
 /// значения строчным hex; серверу (`native/apple`) — `raw`. Apple кладёт хэш в
-/// identity token, сервер сверяет его с хэшем присланного `raw`: перехваченный
-/// токен без исходного значения не годится.
+/// identity token, сервер сверяет его с хэшем присланного `raw`. Исходное
+/// значение выдаёт сервер (`APIClient.appleNonce()`) и принимает один раз:
+/// перехваченный токен не предъявить повторно.
 public struct AppleNonce: Sendable, Equatable {
     public let raw: String
     public var hashed: String { SHA256.hex(raw) }
 
     public init(raw: String) { self.raw = raw }
+}
 
-    public static func random() -> AppleNonce {
-        AppleNonce(raw: SecureRandom.bytes(32).base64URLEncoded)
+public extension APIClient {
+    /// Одноразовый nonce для Sign in with Apple: `POST /auth/native/apple/nonce`.
+    ///
+    /// Nonce выдаёт сервер и гасит первым входом (`apple-sign-in`), поэтому
+    /// своего приложение не придумывает: его сервер отклонит. Берётся перед
+    /// листом Apple — без сети вход через Apple не начинается.
+    func appleNonce() async throws -> AppleNonce {
+        struct Issued: Decodable, Sendable { let nonce: String }
+        let issued: Issued = try await send(try .post("/api/v1/auth/native/apple/nonce", body: [String: String](),
+                                                      requiresAuth: false))
+        return AppleNonce(raw: issued.nonce)
     }
 }
 

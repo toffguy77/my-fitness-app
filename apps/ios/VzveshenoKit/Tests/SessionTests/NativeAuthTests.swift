@@ -38,9 +38,27 @@ final class NativeAuthTests: XCTestCase {
         XCTAssertEqual(body["device_name"] as? String, "iPhone Анны")
     }
 
-    func testRandomNoncesDiffer() {
-        XCTAssertNotEqual(AppleNonce.random(), AppleNonce.random())
-        XCTAssertEqual(AppleNonce.random().hashed.count, 64)
+    /// Nonce выдаёт сервер: `POST native/apple/nonce` без access-токена, в ответе — исходное значение.
+    func testAppleNonceComesFromTheServer() async throws {
+        let transport = StubTransport { _ in .success(#"{"nonce":"server-nonce","expires_in":600}"#) }
+        let nonce = try await auth(transport).appleNonce()
+        XCTAssertEqual(nonce.raw, "server-nonce")
+        XCTAssertEqual(nonce.hashed, SHA256.hex("server-nonce"))
+        let request = try XCTUnwrap(transport.requests.last)
+        XCTAssertEqual(request.method, "POST")
+        XCTAssertEqual(request.path, "/api/v1/auth/native/apple/nonce")
+        XCTAssertNil(request.header("Authorization"), "nonce выдаётся до входа")
+    }
+
+    /// Без сети nonce не получить — и вход через Apple не начинается: ошибка доходит до экрана.
+    func testAppleNonceOfflineFails() async {
+        let transport = StubTransport { _ in .offline }
+        do {
+            _ = try await auth(transport).appleNonce()
+            XCTFail("ожидалась ошибка")
+        } catch {
+            XCTAssertEqual(error as? APIError, .network)
+        }
     }
 
     func testProviderStartAndExchange() async throws {
@@ -69,7 +87,8 @@ final class NativeAuthTests: XCTestCase {
             return .success(#"{"status":"needs_consents","pending_token":"\#(pending)","provider":"apple"}"#)
         }
         let api = auth(transport)
-        let outcome = try await api.apple(identityToken: "i", authorizationCode: "c", nonce: .random(), givenName: nil, familyName: nil)
+        let outcome = try await api.apple(identityToken: "i", authorizationCode: "c", nonce: AppleNonce(raw: "server-nonce"),
+                                          givenName: nil, familyName: nil)
         guard case let .pending(step) = outcome else { return XCTFail("ожидалось продолжение") }
         XCTAssertEqual(step.step, .needsConsents)
         XCTAssertEqual(step.pendingToken, pending)

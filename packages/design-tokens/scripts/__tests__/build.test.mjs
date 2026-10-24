@@ -113,6 +113,28 @@ test('нечитаемый текст останавливает сборку и
     assert.match(result.stderr, /контраст dark: color\.fg\.muted на color\.bg\.canvas = 1\.00 < 4\.5/)
 })
 
+test('полупрозрачная подложка проверяется смешанной с фоном экрана, а не без альфы', (t) => {
+    const dir = sandbox(t)
+    // Прежние значения #276: смешанная с canvas подложка давала 4.05 —
+    // «почти проходит» в аудите iOS, а без альфы пару бы и не заметили.
+    edit(dir, 'primitive/color.json', (json) => { json.palette.terracotta['500'].$value = '#B8492F' })
+    edit(dir, 'semantic/light.json', (json) => { json.color.primary.soft.$value = '#B8492F1A' })
+    const result = run(dir)
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /контраст light: color\.primary\.default на color\.primary\.soft поверх color\.bg\.canvas = 4\.05 < 4\.5/)
+    assert.match(result.stderr, /color\.primary\.soft поверх color\.bg\.surface = 4\.43 < 4\.5/)
+})
+
+test('пары #276 под проверкой: метка на вторичной заливке и подпись на info-soft', (t) => {
+    const dir = sandbox(t)
+    edit(dir, 'primitive/color.json', (json) => { json.palette.umber['400'].$value = '#76695A' })
+    edit(dir, 'semantic/light.json', (json) => { json.color.status['info-fg'].$value = '{palette.blue.600}' })
+    const result = run(dir)
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /контраст light: color\.fg\.subtle на color\.bg\.subtle = 4\.34 < 4\.5/)
+    assert.match(result.stderr, /color\.status\.info-fg на color\.status\.info-soft поверх color\.bg\.canvas = 4\.33 < 4\.5/)
+})
+
 test('--check ловит dist/, отставший от источника', (t) => {
     const dir = sandbox(t)
     writeFileSync(join(dir, 'dist/tokens.css'), '/* устарело */')

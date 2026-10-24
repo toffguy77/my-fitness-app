@@ -15,7 +15,6 @@ struct SignInView: View {
     @State private var working = false
     @State private var errorText: String?
     @State private var providers: [String] = []
-    @State private var appleNonce = AppleNonce.random()
     @State private var path: [SignInRoute] = []
 
     var body: some View {
@@ -26,13 +25,7 @@ struct SignInView: View {
                 email: $email,
                 errorText: errorText,
                 working: working,
-                onAppleRequest: { request in
-                    appleNonce = AppleNonce.random()
-                    request.requestedScopes = [.fullName, .email]
-                    // В запрос к Apple — SHA-256 строчным hex; серверу — исходное.
-                    request.nonce = appleNonce.hashed
-                },
-                onAppleCompletion: { result in Task { await finishApple(result) } },
+                onApple: { Task { await signInWithApple() } },
                 onProvider: { provider in Task { await signIn(with: provider) } },
                 onMagicLink: { path.append(.magicLink) },
                 onPassword: { path.append(.password) }
@@ -63,28 +56,33 @@ struct SignInView: View {
         providers = ((try? await model.auth.providers()) ?? []).filter(known.contains)
     }
 
-    private func finishApple(_ result: Result<ASAuthorization, Error>) async {
-        switch result {
-        case let .success(authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                  let tokenData = credential.identityToken, let token = String(data: tokenData, encoding: .utf8),
-                  let codeData = credential.authorizationCode, let code = String(data: codeData, encoding: .utf8) else {
-                errorText = "Apple не передала данные для входа. Попробуйте ещё раз."
-                return
-            }
-            working = true
-            defer { working = false }
-            do {
-                let outcome = try await model.auth.apple(identityToken: token, authorizationCode: code, nonce: appleNonce,
-                                                         givenName: credential.fullName?.givenName,
-                                                         familyName: credential.fullName?.familyName)
-                try await model.complete(outcome)
-            } catch {
-                errorText = model.messages.message(for: error)
-            }
-        case let .failure(error):
-            if (error as? ASAuthorizationError)?.code == .canceled { return }
+    /// Nonce сервера, затем лист Apple, затем `native/apple` с исходным nonce.
+    private func signInWithApple() async {
+        guard !working else { return }
+        working = true
+        errorText = nil
+        defer { working = false }
+        let nonce: AppleNonce
+        do {
+            nonce = try await model.auth.appleNonce()
+        } catch {
+            errorText = AppleAuthorization.startFailureMessage(error, messages: model.messages)
+            return
+        }
+        do {
+            let credential = try await AppleAuthorization.request(nonce: nonce, scopes: [.fullName, .email])
+            let outcome = try await model.auth.apple(identityToken: credential.identityToken,
+                                                     authorizationCode: credential.authorizationCode, nonce: nonce,
+                                                     givenName: credential.givenName, familyName: credential.familyName)
+            try await model.complete(outcome)
+        } catch AppleSignInFailure.canceled {
+            return
+        } catch AppleSignInFailure.missingCredential {
+            errorText = "Apple не передала данные для входа. Попробуйте ещё раз."
+        } catch AppleSignInFailure.failed {
             errorText = "Не получилось войти через Apple. Попробуйте ещё раз."
+        } catch {
+            errorText = model.messages.message(for: error)
         }
     }
 
@@ -130,12 +128,10 @@ struct SignInContent: View {
     @Binding var email: String
     let errorText: String?
     let working: Bool
-    var onAppleRequest: (ASAuthorizationAppleIDRequest) -> Void = { _ in }
-    var onAppleCompletion: (Result<ASAuthorization, Error>) -> Void = { _ in }
+    var onApple: () -> Void = {}
     var onProvider: (String) -> Void = { _ in }
     var onMagicLink: () -> Void = {}
     var onPassword: () -> Void = {}
-    @Environment(\.colorScheme) private var colorScheme
 
     private var webProviders: [String] { providers.filter { $0 != "apple" } }
 
@@ -170,8 +166,7 @@ struct SignInContent: View {
 
                     VStack(spacing: DS.Space.s3) {
                         if providers.contains("apple") {
-                            SignInWithAppleButton(.signIn, onRequest: onAppleRequest, onCompletion: onAppleCompletion)
-                                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                            AppleSignInButton(label: .signIn, title: SignInView.providerTitle("apple"), action: onApple)
                                 .frame(height: DS.Size.control)
                                 .clipShape(Capsule())
                                 .disabled(working)

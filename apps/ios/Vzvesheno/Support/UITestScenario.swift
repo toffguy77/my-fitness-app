@@ -27,6 +27,8 @@ import Session
 /// - `-uiTestStore <имя>` — каталог данных постоянный между запусками
 ///   (`tmp/uitest-<имя>`), `-uiTestResetStore` — очистить его при запуске:
 ///   первый запуск с сетью наполняет кэш экранов, второй его показывает;
+/// - `-uiTestAppleNonceOffline` — nonce входа через Apple не получить (нет
+///   сети): лист Apple не должен открываться;
 /// - `-uiTestOffline` — нет сети совсем (любая роль), в отличие от
 ///   `offlineClient`, у которого роль закреплена, а кэша нет.
 enum UITestScenario: String {
@@ -191,6 +193,9 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
         if path.hasSuffix("/food-entry"), ProcessInfo.processInfo.arguments.contains("-uiTestFoodEntryOffline") {
             throw URLError(.notConnectedToInternet)
         }
+        if path == "/api/v1/auth/native/apple/nonce", ProcessInfo.processInfo.arguments.contains("-uiTestAppleNonceOffline") {
+            throw URLError(.notConnectedToInternet)
+        }
         if path == "/api/v1/auth/native/logout" || path.hasPrefix("/api/v1/notifications/devices/") {
             let token = (body["device_token"] as? String).map { " device_token=\($0)" } ?? ""
             let line = "\(method) \(path)\(token)"
@@ -250,6 +255,9 @@ final class ScenarioTransport: HTTPTransport, @unchecked Sendable {
             return Self.ok(#"{"providers":[\#(providers.map { "\"\($0)\"" }.joined(separator: ","))]}"#)
         case "/api/v1/auth/native/logout":
             return (204, "")
+        case "/api/v1/auth/native/apple/nonce":
+            // Nonce выдаёт сервер (apple-sign-in); лист Apple открывается после него.
+            return Self.ok(#"{"nonce":"uitest-apple-nonce","expires_in":600}"#)
         case "/api/v1/auth/native/login":
             // «deleting@…» — аккаунт, ждущий удаления: вход успешен, сессия выдана.
             let deleting = (body["email"] as? String)?.hasPrefix("deleting") == true

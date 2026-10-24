@@ -171,7 +171,12 @@ public struct NativeAuthAPI: Sendable {
                          ["token": .string(token), "device_name": .string(deviceName)])
     }
 
-    /// Sign in with Apple: `nonce` — исходное значение, не хэш.
+    /// Nonce сервера для следующего входа через Apple (см. `APIClient.appleNonce`).
+    public func appleNonce() async throws -> AppleNonce {
+        try await api.appleNonce()
+    }
+
+    /// Sign in with Apple: `nonce` — исходное значение из `appleNonce()`, не хэш.
     public func apple(identityToken: String, authorizationCode: String, nonce: AppleNonce,
                       givenName: String?, familyName: String?) async throws -> SignInOutcome {
         var body: [String: Body] = [

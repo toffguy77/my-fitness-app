@@ -36,6 +36,18 @@ final class AuthUITests: XCTestCase {
         XCTAssertFalse(app.buttons["signIn.provider.vk"].exists)
     }
 
+    /// «Вход через Apple без сети» (`apple-sign-in`): nonce выдаёт сервер, и
+    /// без него лист Apple не открывается — сразу понятная ошибка.
+    func testAppleSignInWithoutNetworkExplainsInsteadOfOpeningTheSheet() {
+        let app = launch("signedOut", ["-uiTestProviders", "apple,yandex", "-uiTestAppleNonceOffline"])
+        let apple = app.descendants(matching: .any)["signIn.apple"]
+        XCTAssertTrue(apple.waitForExistence(timeout: 10))
+        apple.tap()
+        let error = app.staticTexts["signIn.error"]
+        XCTAssertTrue(error.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(error.label.contains("Нет подключения"), error.label)
+    }
+
     func testAllProvidersInOrder() {
         let app = launch("signedOut", ["-uiTestProviders", "apple,yandex,vk"])
         let apple = app.descendants(matching: .any)["signIn.apple"]

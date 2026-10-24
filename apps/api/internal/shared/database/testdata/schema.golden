@@ -5,6 +5,8 @@ INDEX analytics_events idx_analytics_events_user btree (user_id, occurred_at) WH
 INDEX analytics_events idx_analytics_events_visitor btree (visitor_id, occurred_at)
 INDEX analytics_identities analytics_identities_pkey btree (visitor_id)
 INDEX analytics_identities idx_analytics_identities_user btree (user_id)
+INDEX apple_sign_in_nonces apple_sign_in_nonces_pkey btree (nonce_hash)
+INDEX apple_sign_in_nonces idx_apple_sign_in_nonces_expires_at btree (expires_at)
 INDEX apple_token_revocations apple_token_revocations_pkey btree (id)
 INDEX apple_token_revocations idx_apple_token_revocations_next_attempt_at btree (next_attempt_at)
 INDEX article_audience article_audience_pkey btree (article_id, client_id)
@@ -259,6 +261,10 @@ analytics_events.visitor_id uuid NOT NULL
 analytics_identities.linked_at timestamp with time zone NOT NULL DEFAULT now()
 analytics_identities.user_id bigint NOT NULL
 analytics_identities.visitor_id uuid NOT NULL
+apple_sign_in_nonces.created_at timestamp with time zone NOT NULL DEFAULT now()
+apple_sign_in_nonces.expires_at timestamp with time zone NOT NULL
+apple_sign_in_nonces.nonce_hash text NOT NULL
+apple_sign_in_nonces.used_at timestamp with time zone
 apple_token_revocations.attempts integer NOT NULL DEFAULT 0
 apple_token_revocations.created_at timestamp with time zone NOT NULL DEFAULT now()
 apple_token_revocations.id bigint NOT NULL DEFAULT nextval('apple_token_revocations_id_seq')
